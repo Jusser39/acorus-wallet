@@ -24,7 +24,7 @@ describe("api", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ status: "ok" });
+    expect(response.json()).toMatchObject({ status: "ok", store: "memory" });
   });
 
   it("creates anonymous user", async () => {
@@ -155,5 +155,28 @@ describe("api", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().items.some((item: { symbol: string }) => item.symbol === "USDT")).toBe(true);
+  });
+
+  it("stores onboarding progress", async () => {
+    const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
+    const userId = user.json().id as string;
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/onboarding-progress",
+      payload: {
+        userId,
+        step: "practice_intro",
+        completed: true,
+      },
+    });
+    const listed = await app.inject({
+      method: "GET",
+      url: `/api/onboarding-progress?userId=${userId}`,
+    });
+
+    expect(created.statusCode).toBe(200);
+    expect(created.json().step).toBe("practice_intro");
+    expect(listed.json().items).toHaveLength(1);
   });
 });

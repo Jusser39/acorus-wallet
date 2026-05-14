@@ -5,22 +5,29 @@ import {
   type WalletProfileRecord,
 } from "@acorus/shared";
 import type {
+  ApiChainRecord,
   AppStore,
   ContactCreateInput,
   ContactUpdateInput,
+  OnboardingProgressRecord,
   TransactionCreateInput,
   TransactionStatusUpdateInput,
   UserRecord,
   WalletProfileCreateInput,
   WalletProfileUpdateInput,
 } from "./store";
-import { getCuratedTokenItems, toExplorerUrl } from "./store";
+import { getChainsResponse, getCuratedTokenItems, toExplorerUrl } from "./store";
 
 export class MemoryStore implements AppStore {
   private readonly users = new Map<string, UserRecord>();
   private readonly walletProfiles = new Map<string, WalletProfileRecord>();
   private readonly contacts = new Map<string, ContactRecord>();
   private readonly transactions = new Map<string, TransactionRecordItem>();
+  private readonly onboarding = new Map<string, OnboardingProgressRecord>();
+
+  async close(): Promise<void> {
+    return;
+  }
 
   async createAnonymousUser(): Promise<UserRecord> {
     const now = new Date().toISOString();
@@ -56,7 +63,9 @@ export class MemoryStore implements AppStore {
   }
 
   async listWalletProfiles(userId: string): Promise<WalletProfileRecord[]> {
-    return [...this.walletProfiles.values()].filter((item) => item.userId === userId);
+    return [...this.walletProfiles.values()]
+      .filter((item) => item.userId === userId)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   async updateWalletProfile(
@@ -89,6 +98,12 @@ export class MemoryStore implements AppStore {
     }
 
     this.walletProfiles.delete(id);
+
+    for (const [txId, transaction] of this.transactions.entries()) {
+      if (transaction.walletProfileId === id) {
+        this.transactions.delete(txId);
+      }
+    }
   }
 
   async createContact(input: ContactCreateInput): Promise<ContactRecord> {
@@ -109,7 +124,9 @@ export class MemoryStore implements AppStore {
   }
 
   async listContacts(userId: string): Promise<ContactRecord[]> {
-    return [...this.contacts.values()].filter((item) => item.userId === userId);
+    return [...this.contacts.values()]
+      .filter((item) => item.userId === userId)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 
   async updateContact(id: string, input: ContactUpdateInput): Promise<ContactRecord> {
@@ -158,12 +175,12 @@ export class MemoryStore implements AppStore {
       tokenAddress: input.tokenAddress ?? null,
       symbol: input.symbol,
       amount: input.amount,
-      status: input.status,
+      status: input.status ?? "pending",
       direction: input.direction,
-      submittedAt: input.submittedAt,
+      submittedAt: input.submittedAt ?? now,
       confirmedAt: input.confirmedAt ?? null,
       rawStatus: input.rawStatus ?? null,
-      explorerUrl: toExplorerUrl(input.chainId, input.hash),
+      explorerUrl: input.hash.startsWith("0x") ? toExplorerUrl(input.chainId, input.hash) : null,
       createdAt: now,
       updatedAt: now,
     };
@@ -176,11 +193,13 @@ export class MemoryStore implements AppStore {
     userId: string,
     walletProfileId?: string,
   ): Promise<TransactionRecordItem[]> {
-    return [...this.transactions.values()].filter(
-      (item) =>
-        item.userId === userId &&
-        (walletProfileId ? item.walletProfileId === walletProfileId : true),
-    );
+    return [...this.transactions.values()]
+      .filter(
+        (item) =>
+          item.userId === userId &&
+          (walletProfileId ? item.walletProfileId === walletProfileId : true),
+      )
+      .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt));
   }
 
   async getTransaction(id: string, userId: string): Promise<TransactionRecordItem> {
@@ -211,7 +230,44 @@ export class MemoryStore implements AppStore {
     return next;
   }
 
-  async getTokens(chainId: number): Promise<TokenMetadataItem[]> {
+  async listChains(): Promise<ApiChainRecord[]> {
+    return getChainsResponse();
+  }
+
+  async listTokens(chainId?: number): Promise<TokenMetadataItem[]> {
     return getCuratedTokenItems(chainId);
+  }
+
+  async getOnboardingProgress(userId: string): Promise<OnboardingProgressRecord[]> {
+    return [...this.onboarding.values()]
+      .filter((item) => item.userId === userId)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  }
+
+  async setOnboardingProgress(
+    userId: string,
+    step: string,
+    completed: boolean,
+  ): Promise<OnboardingProgressRecord> {
+    const key = `${userId}:${step}`;
+    const current = this.onboarding.get(key);
+    const now = new Date().toISOString();
+    const record: OnboardingProgressRecord = current
+      ? {
+          ...current,
+          completed,
+          updatedAt: now,
+        }
+      : {
+          id: crypto.randomUUID(),
+          userId,
+          step,
+          completed,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+    this.onboarding.set(key, record);
+    return record;
   }
 }

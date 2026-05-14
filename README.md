@@ -62,7 +62,11 @@ pnpm test
 
 ## Notes about Prisma
 
-Prisma schema and store scaffolding are included, but the API currently defaults to `MemoryStore` unless `ACORUS_ENABLE_PRISMA_STORE=true`. This keeps the MVP runnable while Prisma generation/migration is finished for the target environment.
+Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`.
+
+- `MemoryStore` stays available as a local fallback mode
+- Docker API entrypoint waits for PostgreSQL, runs `prisma generate`, then `prisma db push`
+- `DATABASE_URL` and `POSTGRES_PASSWORD` belong only in `.env` or VPS secrets, never in committed docs
 
 ## Important constraints
 

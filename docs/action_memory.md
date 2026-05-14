@@ -20,6 +20,11 @@
 16. Fixed Fastify 5 boot by wiring the custom pino logger through `loggerInstance`.
 17. Moved Acorus public ingress to port `8080` because port `80` was already occupied on the VPS by another application.
 18. Rebuilt the VPS stack and confirmed live responses for `/`, `/health`, and `/api/chains` at `http://85.239.59.199:8080`.
+19. Added Prisma-ready API runtime pieces: parsed env booleans, `close()` lifecycle for stores, onboarding progress endpoints, PostgreSQL healthchecks, and Docker entrypoint that waits for Postgres and runs `prisma generate` + `prisma db push`.
+20. Fixed Prisma workspace generation by declaring `prisma` directly in `apps/api`, then revalidated `prisma generate`, API tests, API build, web build, and `docker compose config`.
+21. Switched VPS `.env` to `ACORUS_ENABLE_PRISMA_STORE=true` without exposing or replacing the existing Postgres secret.
+22. Hit a Linux runtime blocker caused by CRLF line endings in `scripts/docker/api-entrypoint.sh` (`bash\\r`), normalized shell scripts to LF, and added `.gitattributes` with `*.sh text eol=lf`.
+23. Rebuilt the VPS stack, confirmed `/health` reports `store: "prisma"`, and verified that wallet profiles, contacts, transactions, and onboarding progress survive `docker compose restart api`.
 
 ## Commands run
 
@@ -44,9 +49,12 @@
 - `docker compose --env-file .env -f infra/docker-compose.yml build api web`
 - `docker compose --env-file .env -f infra/docker-compose.yml up -d postgres redis api web nginx`
 - `docker compose --env-file .env -f infra/docker-compose.yml logs --tail=... api nginx web`
+- `pnpm --filter @acorus/api prisma:generate`
+- `docker compose --env-file .env.example -f infra/docker-compose.yml config`
+- `BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
+- `docker compose --env-file .env -f infra/docker-compose.yml restart api`
 
 ## Current follow-up
 
-- Run full workspace tests and builds end-to-end
-- Stabilize Prisma-backed Postgres runtime inside Docker so contacts/history survive container recreation
+- Keep Prisma/Postgres as the default VPS runtime and monitor real user flows against the persisted tables
 - Decide whether to reserve a dedicated domain or reverse proxy path instead of raw IP:port access

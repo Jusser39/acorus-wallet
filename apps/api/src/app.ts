@@ -4,11 +4,9 @@ import { refreshTxStatus } from "@acorus/wallet-core";
 import type { AppStore } from "./store";
 import { MemoryStore } from "./memory-store";
 import { PrismaStore } from "./prisma-store";
-import { createLogger } from "./logger";
-import { readEnv, type ApiEnv } from "./env";
-import { PrismaClient } from "@prisma/client";
+import { buildLoggerOptions, createLogger } from "./logger";
+import { readEnv, requireDatabaseUrl, type ApiEnv } from "./env";
 import {
-  getChainsResponse,
   type ContactCreateInput,
   type ContactUpdateInput,
   type TransactionCreateInput,
@@ -45,7 +43,7 @@ const contactSchema = z.object({
 const transactionCreateSchema = z.object({
   userId: z.string().min(1),
   walletProfileId: z.string().min(1),
-  chainId: z.number().int().positive(),
+  chainId: z.coerce.number().int().positive(),
   hash: z.string().min(1),
   from: z.string().min(1),
   to: z.string().min(1),
@@ -53,15 +51,21 @@ const transactionCreateSchema = z.object({
   tokenAddress: z.string().nullable().optional(),
   symbol: z.string().min(1),
   amount: z.string().min(1),
-  status: z.enum(["pending", "confirmed", "failed", "unknown"]),
+  status: z.enum(["pending", "confirmed", "failed", "unknown"]).optional(),
   direction: z.enum(["in", "out", "self"]),
-  submittedAt: z.string().datetime(),
+  submittedAt: z.string().datetime().optional(),
   confirmedAt: z.string().datetime().nullable().optional(),
   rawStatus: z.string().nullable().optional(),
 });
 
 const transactionStatusSchema = z.object({
   userId: z.string().min(1),
+});
+
+const onboardingProgressSchema = z.object({
+  userId: z.string().min(1),
+  step: z.string().min(1),
+  completed: z.boolean(),
 });
 
 export interface BuildAppOptions {
@@ -71,11 +75,40 @@ export interface BuildAppOptions {
 }
 
 export function resolveStore(env: ApiEnv): AppStore {
-  if (env.DATABASE_URL && process.env.ACORUS_ENABLE_PRISMA_STORE === "true") {
-    return new PrismaStore(new PrismaClient());
+  if (env.ACORUS_ENABLE_PRISMA_STORE) {
+    requireDatabaseUrl(env);
+    return new PrismaStore();
   }
 
   return new MemoryStore();
+}
+
+function normalizeError(error: unknown): { statusCode: number; message: string } {
+  if (error instanceof z.ZodError) {
+    return {
+      statusCode: 400,
+      message: "validation_error",
+    };
+  }
+
+  if (error instanceof Error) {
+    if (error.message.toLowerCase().includes("not found")) {
+      return {
+        statusCode: 404,
+        message: error.message,
+      };
+    }
+
+    return {
+      statusCode: 500,
+      message: error.message,
+    };
+  }
+
+  return {
+    statusCode: 500,
+    message: "internal_error",
+  };
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -83,27 +116,53 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify(
     typeof options.logger === "boolean"
       ? { logger: options.logger }
-      : { loggerInstance: options.logger ?? createLogger() },
+      : {
+          loggerInstance:
+            options.logger ?? createLogger(buildLoggerOptions(env.LOG_LEVEL)),
+        },
   );
   const store = options.store ?? resolveStore(env);
 
   app.register(cors, { origin: true });
+  app.addHook("onClose", async () => {
+    await store.close();
+  });
+  app.setErrorHandler((error, request, reply) => {
+    const normalized = normalizeError(error);
+
+    request.log.error(
+      {
+        err: error,
+        statusCode: normalized.statusCode,
+      },
+      "request_failed",
+    );
+
+    reply.status(normalized.statusCode).send({
+      error: normalized.message,
+    });
+  });
 
   app.get("/health", async () => ({
     status: "ok",
     service: "acorus-wallet-api",
+    store: env.ACORUS_ENABLE_PRISMA_STORE ? "prisma" : "memory",
+    time: new Date().toISOString(),
   }));
 
   app.post("/api/users/anonymous", async () => store.createAnonymousUser());
 
   app.get("/api/chains", async () => ({
-    items: getChainsResponse(),
+    items: await store.listChains(),
   }));
 
   app.get("/api/tokens", async (request) => {
-    const chainId = z.coerce.number().parse((request.query as { chainId?: string }).chainId);
+    const chainId = z.coerce
+      .number()
+      .optional()
+      .parse((request.query as { chainId?: string }).chainId);
     return {
-      items: await store.getTokens(chainId),
+      items: await store.listTokens(chainId),
     };
   });
 
@@ -212,6 +271,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       rawStatus: status,
       confirmedAt,
     });
+  });
+
+  app.get("/api/onboarding-progress", async (request) => {
+    const userId = z.string().min(1).parse((request.query as { userId?: string }).userId);
+    return {
+      items: await store.getOnboardingProgress(userId),
+    };
+  });
+
+  app.post("/api/onboarding-progress", async (request) => {
+    const body = onboardingProgressSchema.parse(request.body);
+    return store.setOnboardingProgress(body.userId, body.step, body.completed);
   });
 
   return app;

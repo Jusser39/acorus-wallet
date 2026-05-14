@@ -8,16 +8,18 @@ import type {
   WalletProfileType,
 } from "@acorus/shared";
 import type {
+  ApiChainRecord,
   AppStore,
   ContactCreateInput,
   ContactUpdateInput,
+  OnboardingProgressRecord,
   TransactionCreateInput,
   TransactionStatusUpdateInput,
   UserRecord,
   WalletProfileCreateInput,
   WalletProfileUpdateInput,
 } from "./store";
-import { getCuratedTokenItems, toExplorerUrl } from "./store";
+import { getChainsResponse, getCuratedTokenItems, toExplorerUrl } from "./store";
 
 type PrismaWalletProfileShape = {
   id: string;
@@ -74,6 +76,15 @@ type PrismaTokenShape = {
   decimals: number;
   logoUrl: string | null;
   isVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type PrismaOnboardingShape = {
+  id: string;
+  userId: string;
+  step: string;
+  completed: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -149,8 +160,23 @@ function mapToken(record: PrismaTokenShape): TokenMetadataItem {
   };
 }
 
+function mapOnboarding(record: PrismaOnboardingShape): OnboardingProgressRecord {
+  return {
+    id: record.id,
+    userId: record.userId,
+    step: record.step,
+    completed: record.completed,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
 export class PrismaStore implements AppStore {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient = new PrismaClient()) {}
+
+  async close(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
 
   async createAnonymousUser(): Promise<UserRecord> {
     const user = await this.prisma.user.create({ data: {} });
@@ -182,7 +208,7 @@ export class PrismaStore implements AppStore {
   async listWalletProfiles(userId: string): Promise<WalletProfileRecord[]> {
     const records = (await this.prisma.walletProfile.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     })) as PrismaWalletProfileShape[];
 
     return records.map(mapWalletProfile);
@@ -192,11 +218,11 @@ export class PrismaStore implements AppStore {
     id: string,
     input: WalletProfileUpdateInput,
   ): Promise<WalletProfileRecord> {
-    const current = (await this.prisma.walletProfile.findUniqueOrThrow({
+    const current = (await this.prisma.walletProfile.findUnique({
       where: { id },
-    })) as PrismaWalletProfileShape;
+    })) as PrismaWalletProfileShape | null;
 
-    if (current.userId !== input.userId) {
+    if (!current || current.userId !== input.userId) {
       throw new Error("Wallet profile not found.");
     }
 
@@ -213,11 +239,11 @@ export class PrismaStore implements AppStore {
   }
 
   async deleteWalletProfile(id: string, userId: string): Promise<void> {
-    const current = (await this.prisma.walletProfile.findUniqueOrThrow({
+    const current = (await this.prisma.walletProfile.findUnique({
       where: { id },
-    })) as PrismaWalletProfileShape;
+    })) as PrismaWalletProfileShape | null;
 
-    if (current.userId !== userId) {
+    if (!current || current.userId !== userId) {
       throw new Error("Wallet profile not found.");
     }
 
@@ -243,18 +269,18 @@ export class PrismaStore implements AppStore {
   async listContacts(userId: string): Promise<ContactRecord[]> {
     const records = (await this.prisma.contact.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     })) as PrismaContactShape[];
 
     return records.map(mapContact);
   }
 
   async updateContact(id: string, input: ContactUpdateInput): Promise<ContactRecord> {
-    const current = (await this.prisma.contact.findUniqueOrThrow({
+    const current = (await this.prisma.contact.findUnique({
       where: { id },
-    })) as PrismaContactShape;
+    })) as PrismaContactShape | null;
 
-    if (current.userId !== input.userId) {
+    if (!current || current.userId !== input.userId) {
       throw new Error("Contact not found.");
     }
 
@@ -272,11 +298,11 @@ export class PrismaStore implements AppStore {
   }
 
   async deleteContact(id: string, userId: string): Promise<void> {
-    const current = (await this.prisma.contact.findUniqueOrThrow({
+    const current = (await this.prisma.contact.findUnique({
       where: { id },
-    })) as PrismaContactShape;
+    })) as PrismaContactShape | null;
 
-    if (current.userId !== userId) {
+    if (!current || current.userId !== userId) {
       throw new Error("Contact not found.");
     }
 
@@ -300,12 +326,12 @@ export class PrismaStore implements AppStore {
         tokenAddress: input.tokenAddress ?? null,
         symbol: input.symbol,
         amount: input.amount,
-        status: input.status,
+        status: input.status ?? "pending",
         direction: input.direction,
-        submittedAt: new Date(input.submittedAt),
+        submittedAt: input.submittedAt ? new Date(input.submittedAt) : new Date(),
         confirmedAt: input.confirmedAt ? new Date(input.confirmedAt) : null,
         rawStatus: input.rawStatus ?? null,
-        explorerUrl: toExplorerUrl(input.chainId, input.hash),
+        explorerUrl: input.hash.startsWith("0x") ? toExplorerUrl(input.chainId, input.hash) : null,
       },
     })) as PrismaTransactionShape;
 
@@ -321,18 +347,18 @@ export class PrismaStore implements AppStore {
         userId,
         walletProfileId,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { submittedAt: "desc" },
     })) as PrismaTransactionShape[];
 
     return records.map(mapTransaction);
   }
 
   async getTransaction(id: string, userId: string): Promise<TransactionRecordItem> {
-    const record = (await this.prisma.transactionRecord.findUniqueOrThrow({
+    const record = (await this.prisma.transactionRecord.findUnique({
       where: { id },
-    })) as PrismaTransactionShape;
+    })) as PrismaTransactionShape | null;
 
-    if (record.userId !== userId) {
+    if (!record || record.userId !== userId) {
       throw new Error("Transaction not found.");
     }
 
@@ -344,11 +370,11 @@ export class PrismaStore implements AppStore {
     userId: string,
     input: TransactionStatusUpdateInput,
   ): Promise<TransactionRecordItem> {
-    const current = (await this.prisma.transactionRecord.findUniqueOrThrow({
+    const current = (await this.prisma.transactionRecord.findUnique({
       where: { id },
-    })) as PrismaTransactionShape;
+    })) as PrismaTransactionShape | null;
 
-    if (current.userId !== userId) {
+    if (!current || current.userId !== userId) {
       throw new Error("Transaction not found.");
     }
 
@@ -364,7 +390,11 @@ export class PrismaStore implements AppStore {
     return mapTransaction(record);
   }
 
-  async getTokens(chainId: number): Promise<TokenMetadataItem[]> {
+  async listChains(): Promise<ApiChainRecord[]> {
+    return getChainsResponse();
+  }
+
+  async listTokens(chainId?: number): Promise<TokenMetadataItem[]> {
     const curated = getCuratedTokenItems(chainId);
 
     await Promise.all(
@@ -397,10 +427,44 @@ export class PrismaStore implements AppStore {
     );
 
     const records = (await this.prisma.tokenMetadata.findMany({
-      where: { chainId },
+      where: typeof chainId === "number" ? { chainId } : undefined,
       orderBy: [{ isVerified: "desc" }, { symbol: "asc" }],
     })) as PrismaTokenShape[];
 
     return records.map(mapToken);
+  }
+
+  async getOnboardingProgress(userId: string): Promise<OnboardingProgressRecord[]> {
+    const records = (await this.prisma.onboardingProgress.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    })) as PrismaOnboardingShape[];
+
+    return records.map(mapOnboarding);
+  }
+
+  async setOnboardingProgress(
+    userId: string,
+    step: string,
+    completed: boolean,
+  ): Promise<OnboardingProgressRecord> {
+    const record = (await this.prisma.onboardingProgress.upsert({
+      where: {
+        userId_step: {
+          userId,
+          step,
+        },
+      },
+      update: {
+        completed,
+      },
+      create: {
+        userId,
+        step,
+        completed,
+      },
+    })) as PrismaOnboardingShape;
+
+    return mapOnboarding(record);
   }
 }

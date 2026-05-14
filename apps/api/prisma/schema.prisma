@@ -68,6 +68,10 @@ model WalletProfile {
   updatedAt         DateTime            @updatedAt
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions      TransactionRecord[]
+
+  @@index([userId])
+  @@index([publicAddress])
+  @@index([chainFamily])
 }
 
 model Contact {
@@ -80,6 +84,9 @@ model Contact {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([address])
 }
 
 model TransactionRecord {
@@ -94,7 +101,7 @@ model TransactionRecord {
   tokenAddress    String?
   symbol          String
   amount          String
-  status          TransactionStatus
+  status          TransactionStatus      @default(pending)
   direction       TransactionDirection
   submittedAt     DateTime
   confirmedAt     DateTime?
@@ -104,6 +111,12 @@ model TransactionRecord {
   updatedAt       DateTime             @updatedAt
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   walletProfile   WalletProfile        @relation(fields: [walletProfileId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([walletProfileId])
+  @@index([hash])
+  @@index([chainId])
+  @@index([status])
 }
 
 model TokenMetadata {
@@ -119,6 +132,8 @@ model TokenMetadata {
   updatedAt   DateTime @updatedAt
 
   @@unique([chainId, tokenAddress])
+  @@index([chainId])
+  @@index([symbol])
 }
 
 model OnboardingProgress {
@@ -129,4 +144,7 @@ model OnboardingProgress {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, step])
+  @@index([userId])
 }

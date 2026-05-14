@@ -28,6 +28,11 @@
 - `GET /api/transactions?userId=...&walletProfileId=...`
 - `PATCH /api/transactions/:id/status`
 
+## Onboarding progress
+
+- `GET /api/onboarding-progress?userId=...`
+- `POST /api/onboarding-progress`
+
 ## Metadata
 
 - `GET /api/chains`

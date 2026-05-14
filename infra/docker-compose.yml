@@ -6,14 +6,27 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-acorus_wallet}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-acorus_wallet}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
     container_name: acorus-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   api:
     build:
@@ -22,10 +35,12 @@ services:
     container_name: acorus-api
     restart: unless-stopped
     environment:
+      API_HOST: ${API_HOST:-0.0.0.0}
       API_PORT: ${API_PORT:-4000}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/acorus_wallet}
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      ACORUS_ENABLE_PRISMA_STORE: ${ACORUS_ENABLE_PRISMA_STORE:-false}
+      ACORUS_ENABLE_PRISMA_STORE: ${ACORUS_ENABLE_PRISMA_STORE:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       NEXT_PUBLIC_ETH_RPC_URL: ${NEXT_PUBLIC_ETH_RPC_URL:-https://ethereum-rpc.publicnode.com}
       NEXT_PUBLIC_BSC_RPC_URL: ${NEXT_PUBLIC_BSC_RPC_URL:-https://bsc-rpc.publicnode.com}
       NEXT_PUBLIC_POLYGON_RPC_URL: ${NEXT_PUBLIC_POLYGON_RPC_URL:-https://polygon-bor-rpc.publicnode.com}
@@ -33,8 +48,17 @@ services:
       NEXT_PUBLIC_OPTIMISM_RPC_URL: ${NEXT_PUBLIC_OPTIMISM_RPC_URL:-https://optimism-rpc.publicnode.com}
       NEXT_PUBLIC_BASE_RPC_URL: ${NEXT_PUBLIC_BASE_RPC_URL:-https://base-rpc.publicnode.com}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "4000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   web:
     build:
@@ -53,20 +77,26 @@ services:
     container_name: acorus-web
     restart: unless-stopped
     environment:
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       NEXT_PUBLIC_DEFAULT_SAFETY_MODE: ${NEXT_PUBLIC_DEFAULT_SAFETY_MODE:-true}
       NEXT_PUBLIC_DEFAULT_AUTOLOCK_MINUTES: ${NEXT_PUBLIC_DEFAULT_AUTOLOCK_MINUTES:-10}
       WEB_PORT: ${WEB_PORT:-3000}
+    expose:
+      - "3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   nginx:
     image: nginx:1.29-alpine
     container_name: acorus-nginx
     restart: unless-stopped
     depends_on:
-      - web
-      - api
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
     ports:
       - "${NGINX_PORT:-8080}:80"
     volumes:
@@ -74,3 +104,4 @@ services:
 
 volumes:
   postgres-data:
+  redis-data:
