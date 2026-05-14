@@ -1,0 +1,105 @@
+"use client";
+
+import { clearSensitiveMemoryBestEffort, type EncryptedVaultV1, type WalletVaultPlaintext } from "@acorus/wallet-core";
+import type { WalletProfileRecord } from "@acorus/shared";
+import { create } from "zustand";
+
+interface WalletState {
+  isBootstrapped: boolean;
+  userId: string | null;
+  encryptedVault: EncryptedVaultV1 | null;
+  unlockedVault: WalletVaultPlaintext | null;
+  profiles: WalletProfileRecord[];
+  activeProfileId: string | null;
+  selectedChainId: number;
+  safetyMode: boolean;
+  autoLockMinutes: number;
+  lastHiddenAt: number | null;
+  setBootstrapped(value: boolean): void;
+  setUserId(userId: string | null): void;
+  setEncryptedVault(vault: EncryptedVaultV1 | null): void;
+  unlockVault(vault: WalletVaultPlaintext): void;
+  lockWallet(): void;
+  setProfiles(profiles: WalletProfileRecord[]): void;
+  upsertProfile(profile: WalletProfileRecord): void;
+  setActiveProfileId(id: string | null): void;
+  setSelectedChainId(chainId: number): void;
+  setSafetyMode(value: boolean): void;
+  setAutoLockMinutes(value: number): void;
+  setLastHiddenAt(value: number | null): void;
+  clearWalletState(): void;
+}
+
+export const useWalletStore = create<WalletState>((set, get) => ({
+  isBootstrapped: false,
+  userId: null,
+  encryptedVault: null,
+  unlockedVault: null,
+  profiles: [],
+  activeProfileId: null,
+  selectedChainId: 1,
+  safetyMode: true,
+  autoLockMinutes: 10,
+  lastHiddenAt: null,
+  setBootstrapped(value) {
+    set({ isBootstrapped: value });
+  },
+  setUserId(userId) {
+    set({ userId });
+  },
+  setEncryptedVault(vault) {
+    set({ encryptedVault: vault });
+  },
+  unlockVault(vault) {
+    set({ unlockedVault: vault });
+  },
+  lockWallet() {
+    const current = get().unlockedVault;
+    clearSensitiveMemoryBestEffort(current ? { ...current } : null);
+    set({ unlockedVault: null, lastHiddenAt: null });
+  },
+  setProfiles(profiles) {
+    const activeId = get().activeProfileId;
+    const nextActiveId =
+      activeId && profiles.some((item) => item.id === activeId)
+        ? activeId
+        : profiles[0]?.id ?? null;
+
+    set({ profiles, activeProfileId: nextActiveId });
+  },
+  upsertProfile(profile) {
+    const current = get().profiles.filter((item) => item.id !== profile.id);
+    set({
+      profiles: [profile, ...current],
+      activeProfileId: get().activeProfileId ?? profile.id,
+    });
+  },
+  setActiveProfileId(id) {
+    set({ activeProfileId: id });
+  },
+  setSelectedChainId(chainId) {
+    set({ selectedChainId: chainId });
+  },
+  setSafetyMode(value) {
+    set({ safetyMode: value });
+  },
+  setAutoLockMinutes(value) {
+    set({ autoLockMinutes: value });
+  },
+  setLastHiddenAt(value) {
+    set({ lastHiddenAt: value });
+  },
+  clearWalletState() {
+    set({
+      encryptedVault: null,
+      unlockedVault: null,
+      activeProfileId: null,
+    });
+  },
+}));
+
+export function useActiveProfile(): WalletProfileRecord | null {
+  return useWalletStore((state) =>
+    state.profiles.find((item) => item.id === state.activeProfileId) ?? null,
+  );
+}

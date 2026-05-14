@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.turbo
+.next
+.pnpm-store
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+apps\web\.next
+apps\web\out
+apps\api\dist
+packages\shared\dist
+packages\wallet-core\dist

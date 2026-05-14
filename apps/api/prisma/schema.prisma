@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WalletProfileType {
+  local
+  view_only
+  practice
+}
+
+enum ChainFamily {
+  evm
+  solana
+  tron
+}
+
+enum PreferredCurrency {
+  USD
+  EUR
+  RUB
+}
+
+enum TransactionAssetType {
+  native
+  erc20
+  nft
+  practice
+}
+
+enum TransactionStatus {
+  pending
+  confirmed
+  failed
+  unknown
+}
+
+enum TransactionDirection {
+  in
+  out
+  self
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  walletProfiles     WalletProfile[]
+  contacts           Contact[]
+  transactionRecords TransactionRecord[]
+  onboarding         OnboardingProgress[]
+}
+
+model WalletProfile {
+  id                String              @id @default(cuid())
+  userId            String
+  name              String
+  type              WalletProfileType
+  publicAddress     String
+  chainFamily       ChainFamily
+  hiddenBalance     Boolean             @default(false)
+  preferredCurrency PreferredCurrency   @default(USD)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions      TransactionRecord[]
+}
+
+model Contact {
+  id          String      @id @default(cuid())
+  userId      String
+  name        String
+  address     String
+  chainFamily ChainFamily
+  note        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TransactionRecord {
+  id              String               @id @default(cuid())
+  userId          String
+  walletProfileId String
+  chainId         Int
+  hash            String
+  from            String
+  to              String
+  assetType       TransactionAssetType
+  tokenAddress    String?
+  symbol          String
+  amount          String
+  status          TransactionStatus
+  direction       TransactionDirection
+  submittedAt     DateTime
+  confirmedAt     DateTime?
+  rawStatus       String?
+  explorerUrl     String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletProfile   WalletProfile        @relation(fields: [walletProfileId], references: [id], onDelete: Cascade)
+}
+
+model TokenMetadata {
+  id          String   @id @default(cuid())
+  chainId     Int
+  tokenAddress String
+  symbol      String
+  name        String
+  decimals    Int
+  logoUrl     String?
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([chainId, tokenAddress])
+}
+
+model OnboardingProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  step      String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

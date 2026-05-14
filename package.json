@@ -1,0 +1,36 @@
+{
+  "name": "acorus-wallet",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @acorus/api --filter @acorus/web dev",
+    "dev:web": "pnpm --filter @acorus/web dev",
+    "dev:api": "pnpm --filter @acorus/api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "prisma:generate": "pnpm --filter @acorus/api prisma generate",
+    "prisma:migrate:dev": "pnpm --filter @acorus/api prisma migrate dev"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20.19.41",
+    "@vitest/coverage-v8": "^4.1.6",
+    "eslint": "^9.39.4",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.8.3",
+    "prisma": "^6.16.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.22.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
+  },
+  "dependencies": {
+    "@prisma/client": "6.16.2"
+  }
+}
