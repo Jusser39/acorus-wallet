@@ -80,9 +80,11 @@ export function resolveStore(env: ApiEnv): AppStore {
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const env = options.env ?? readEnv();
-  const app = Fastify({
-    logger: options.logger ?? createLogger(),
-  });
+  const app = Fastify(
+    typeof options.logger === "boolean"
+      ? { logger: options.logger }
+      : { loggerInstance: options.logger ?? createLogger() },
+  );
   const store = options.store ?? resolveStore(env);
 
   app.register(cors, { origin: true });

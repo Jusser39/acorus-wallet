@@ -41,15 +41,18 @@ Copy `.env.example` to `.env` and update RPC endpoints if needed.
 ### Docker Compose
 
 ```bash
-docker compose -f infra/docker-compose.yml up --build
+docker compose --env-file .env -f infra/docker-compose.yml up --build -d
 ```
 
 This brings up:
 
 - Postgres
 - Redis (optional placeholder)
-- API on `http://localhost:4000`
-- Web on `http://localhost:3000`
+- Nginx entrypoint on `http://localhost:8080` by default
+- API through `http://localhost:8080/api/*` and `http://localhost:8080/health`
+- Web through `http://localhost:8080`
+
+For Docker deployment, the web app defaults to **same-origin API calls** and expects Nginx to proxy `/api/*` to the API container. `NEXT_PUBLIC_*` values are injected into the Next.js build through Docker build args, so copy `.env.example` to `.env` before building if you want to override RPC URLs or safety defaults.
 
 ## Tests
 
