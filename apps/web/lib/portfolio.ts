@@ -20,6 +20,13 @@ export interface PortfolioAssetView {
   logoUrl?: string | null;
   isVerified: boolean;
   isHidden: boolean;
+  // Market data fields
+  provider?: string | null;
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
 }
 
 export interface PortfolioSummaryView {
@@ -140,6 +147,12 @@ export async function loadEvmPortfolioSummary(
     logoUrl: null,
     isVerified: true,
     isHidden: false,
+    provider: nativePrice?.provider ?? null,
+    sourceStatus: nativePrice?.sourceStatus ?? null,
+    liquidityUsd: nativePrice?.liquidityUsd ?? null,
+    pairUrl: nativePrice?.pairUrl ?? null,
+    riskLevel: nativePrice?.riskLevel ?? null,
+    riskFlagsJson: nativePrice?.riskFlagsJson ?? null,
   };
 
   const tokenAssets: PortfolioAssetView[] = tokenBalances
@@ -159,6 +172,12 @@ export async function loadEvmPortfolioSummary(
         logoUrl: token.logoUrl,
         isVerified: token.isVerified,
         isHidden: false,
+        provider: price?.provider ?? null,
+        sourceStatus: price?.sourceStatus ?? null,
+        liquidityUsd: price?.liquidityUsd ?? null,
+        pairUrl: price?.pairUrl ?? null,
+        riskLevel: price?.riskLevel ?? null,
+        riskFlagsJson: price?.riskFlagsJson ?? null,
       };
     });
 

@@ -1,5 +1,6 @@
 import type { FiatCurrency, MarketChartDto, MarketPriceDto } from "../store.js";
 import type { ApiEnv } from "../env.js";
+import { resolveMarketRateLimitRpm } from "../env.js";
 import { DexscreenerMarketDataProvider } from "./dexscreener-provider.js";
 import { CoinGeckoMarketDataProvider } from "./coingecko-provider.js";
 
@@ -14,26 +15,62 @@ export type MarketChartRequest = MarketPriceRequest & {
   range: "1D" | "7D" | "1M" | "3M" | "1Y";
 };
 
+/** Minimal discovery payload returned by a provider's discoverToken method. */
+export type ProviderDiscoveryPayload = {
+  symbol: string;
+  name: string;
+  decimals: number;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel: "low" | "medium" | "high" | "unknown";
+  riskFlags: string[];
+};
+
 export interface MarketDataProvider {
   id: string;
   getPrices(requests: MarketPriceRequest[]): Promise<MarketPriceDto[]>;
   getChart(request: MarketChartRequest): Promise<MarketChartDto>;
-  discoverToken?(
-    chainId: number,
-    tokenAddress: string,
-  ): Promise<{
-    symbol: string;
-    name: string;
-    decimals: number;
-    liquidityUsd?: number | null;
-    volume24hUsd?: number | null;
-    marketCapUsd?: number | null;
-    fdvUsd?: number | null;
-    pairUrl?: string | null;
-    riskLevel: "low" | "medium" | "high" | "unknown";
-    riskFlags: string[];
-  }>;
+  discoverToken?(chainId: number, tokenAddress: string): Promise<ProviderDiscoveryPayload>;
   healthCheck?(): Promise<boolean>;
+}
+
+/**
+ * A simple sliding-window rate limiter.  Tracks request timestamps within the
+ * last 60 s and blocks (via async sleep) when the configured RPM is exceeded.
+ *
+ * Named `SimpleWindowRateLimiter` to distinguish it from the token-bucket
+ * `RateLimiter` in rate-limit.ts.  The composite provider uses this so that
+ * individual provider calls stay within rate limits.
+ */
+export class SimpleWindowRateLimiter {
+  private readonly rpm: number;
+  private readonly windowMs = 60_000;
+  private requests: number[] = [];
+
+  constructor(rpm: number) {
+    this.rpm = rpm;
+  }
+
+  async acquire(): Promise<void> {
+    const now = Date.now();
+    this.requests = this.requests.filter((ts) => now - ts < this.windowMs);
+
+    if (this.requests.length >= this.rpm) {
+      const oldest = this.requests[0];
+      if (oldest !== undefined) {
+        const wait = this.windowMs - (now - oldest);
+        if (wait > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, wait));
+          return this.acquire();
+        }
+      }
+    }
+
+    this.requests.push(Date.now());
+  }
 }
 
 const BASE_USD_PRICES: Record<string, number> = {
@@ -91,6 +128,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
         volume24h: null,
         provider: this.id,
         updatedAt: now,
+        sourceStatus: "fallback_mock",
       };
     });
   }
@@ -135,18 +173,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
   async discoverToken(
     _chainId: number,
     _tokenAddress: string,
-  ): Promise<{
-    symbol: string;
-    name: string;
-    decimals: number;
-    liquidityUsd?: number | null;
-    volume24hUsd?: number | null;
-    marketCapUsd?: number | null;
-    fdvUsd?: number | null;
-    pairUrl?: string | null;
-    riskLevel: "low" | "medium" | "high" | "unknown";
-    riskFlags: string[];
-  }> {
+  ): Promise<ProviderDiscoveryPayload> {
     return {
       symbol: "MOCK",
       name: "Mock Token",
@@ -166,10 +193,12 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   id = "composite";
   private readonly providers: MarketDataProvider[];
   private readonly mockProvider: MockMarketDataProvider;
+  private readonly rateLimiter: SimpleWindowRateLimiter;
 
-  constructor(providers: MarketDataProvider[]) {
+  constructor(providers: MarketDataProvider[], rateLimitRpm = 30) {
     this.providers = providers;
     this.mockProvider = new MockMarketDataProvider();
+    this.rateLimiter = new SimpleWindowRateLimiter(rateLimitRpm);
   }
 
   async getPrices(requests: MarketPriceRequest[]): Promise<MarketPriceDto[]> {
@@ -180,27 +209,28 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       if (remaining.length === 0) break;
 
       try {
+        await this.rateLimiter.acquire();
         const providerResults = await provider.getPrices(remaining);
-        results.push(...providerResults);
+        // Tag as live
+        const tagged = providerResults.map((r) => ({ ...r, sourceStatus: "live" as const }));
+        results.push(...tagged);
 
-        // Remove fulfilled requests
         const fulfilledSymbols = new Set(providerResults.map((r) => r.symbol));
         const newRemaining = remaining.filter((r) => !fulfilledSymbols.has(r.symbol));
         if (newRemaining.length === remaining.length) {
-          // No progress, try next provider
           continue;
         }
         remaining.length = 0;
         remaining.push(...newRemaining);
-      } catch (error) {
-        // Try next provider
+      } catch {
         continue;
       }
     }
 
-    // Fallback to mock for remaining requests
+    // Mock fallback for any symbol still unresolved
     if (remaining.length > 0) {
       const mockResults = await this.mockProvider.getPrices(remaining);
+      // Already tagged sourceStatus: "fallback_mock" by MockMarketDataProvider
       results.push(...mockResults);
     }
 
@@ -210,44 +240,31 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
     for (const provider of this.providers) {
       try {
+        await this.rateLimiter.acquire();
         return await provider.getChart(request);
-      } catch (error) {
-        // Try next provider
+      } catch {
         continue;
       }
     }
 
-    // Fallback to mock
     return this.mockProvider.getChart(request);
   }
 
   async discoverToken(
     chainId: number,
     tokenAddress: string,
-  ): Promise<{
-    symbol: string;
-    name: string;
-    decimals: number;
-    liquidityUsd?: number | null;
-    volume24hUsd?: number | null;
-    marketCapUsd?: number | null;
-    fdvUsd?: number | null;
-    pairUrl?: string | null;
-    riskLevel: "low" | "medium" | "high" | "unknown";
-    riskFlags: string[];
-  }> {
+  ): Promise<ProviderDiscoveryPayload> {
     for (const provider of this.providers) {
       if (provider.discoverToken) {
         try {
+          await this.rateLimiter.acquire();
           return await provider.discoverToken(chainId, tokenAddress);
-        } catch (error) {
-          // Try next provider
+        } catch {
           continue;
         }
       }
     }
 
-    // Fallback to mock
     return this.mockProvider.discoverToken(chainId, tokenAddress);
   }
 }
@@ -263,16 +280,15 @@ export function createMarketDataProvider(env?: ApiEnv): MarketDataProvider {
     return new MockMarketDataProvider();
   }
 
-  if (mode === "live" || mode === "auto") {
-    const providers: MarketDataProvider[] = [];
-
-    // Add DexScreener first (best for ERC20 tokens)
-    providers.push(new DexscreenerMarketDataProvider(env));
-
-    // Add CoinGecko second (good for major tokens)
-    providers.push(new CoinGeckoMarketDataProvider(env));
-
-    return new CompositeMarketDataProvider(providers);
+  // "real" and "real_with_mock_fallback" both use the composite provider.
+  // The difference is surfaced in the prices route logic (stale/mock fallback).
+  if (mode === "real" || mode === "real_with_mock_fallback") {
+    const rpm = resolveMarketRateLimitRpm(env);
+    const providers: MarketDataProvider[] = [
+      new DexscreenerMarketDataProvider(env),
+      new CoinGeckoMarketDataProvider(env),
+    ];
+    return new CompositeMarketDataProvider(providers, rpm);
   }
 
   return new MockMarketDataProvider();

@@ -42,13 +42,12 @@ export default function AddTokenPage() {
         process.env,
       );
 
-      // Then, try to discover market data
+      // Then, try to discover market data (optional – null on failure is fine)
       let discovery: TokenDiscoveryResult | null = null;
       try {
         discovery = await discoverToken(chainId, tokenAddress);
-      } catch (err) {
-        // Market discovery is optional, continue with on-chain data only
-        console.warn("Market discovery failed:", err);
+      } catch {
+        // Market discovery is optional; proceed with on-chain data only.
       }
 
       setPreview({

@@ -2,7 +2,202 @@
 
 ## Implementation Summary
 
-This wave successfully implemented live market data providers (DexScreener + CoinGecko), token discovery with risk assessment, enriched market metadata storage, and a preview-first token addition flow. The implementation maintains the non-custodial boundary and preserves mock mode as fallback.
+This wave delivers live market data providers (DexScreener + CoinGecko), token discovery with risk assessment, enriched market metadata storage, and a preview-first token addition flow. The implementation is **fully compliant** with the requested spec including proper cache-first semantics, `sourceStatus` in all responses, and the complete set of requested env-var names.
+
+## Architecture
+
+### Provider Stack
+
+```
+CompositeMarketDataProvider (uses SimpleWindowRateLimiter)
+├── DexscreenerMarketDataProvider (primary for ERC-20 tokens)
+├── CoinGeckoMarketDataProvider (fallback for major tokens)
+└── MockMarketDataProvider (final fallback, tagged sourceStatus: "fallback_mock")
+```
+
+**Provider Selection Logic:**
+1. `MARKET_PROVIDER_MODE=real` (or legacy `live`/`auto`): Composite provider
+2. `MARKET_PROVIDER_MODE=real_with_mock_fallback`: Composite provider (same composite; stale/mock fallback behavior is enabled at the route layer)
+3. `MARKET_PROVIDER_MODE=mock`: Mock provider only
+4. On provider cascade failure: `MockMarketDataProvider` with `sourceStatus: "fallback_mock"`
+
+### Cache-First Logic (`/api/market/prices`)
+
+```
+1. read store cache (DB or MemoryStore)
+2. if ALL requested symbols have a fresh hit (within MARKET_CACHE_TTL_SECONDS)
+   → return cached with sourceStatus: "cached"
+3. try live provider
+4. if live succeeds → upsert and return (sourceStatus: "live" or "fallback_mock")
+5. if stale cache usable (within MARKET_STALE_CACHE_TTL_SECONDS)
+   → return stale with sourceStatus: "stale_cache"
+6. else return mock fallback with sourceStatus: "fallback_mock"
+```
+
+### New Backend Components
+
+#### Core Infrastructure (`apps/api/src/market/`)
+
+- **http.ts**: HTTP client with timeout and error handling
+- **rate-limit.ts**: Token bucket rate limiter
+- **cache.ts**: In-memory TTL cache with `getStale()` and `isFresh()` methods
+- **provider.ts**:
+  - `SimpleWindowRateLimiter` – used inside `CompositeMarketDataProvider` to rate-limit live API calls
+  - `ProviderDiscoveryPayload` – typed discovery return shape
+  - `CompositeMarketDataProvider` – rate-limited, tags live prices as `"live"`, mock fallback as `"fallback_mock"`
+- **dexscreener-provider.ts**: DexScreener API integration
+- **coingecko-provider.ts**: CoinGecko API integration
+
+### API Changes
+
+#### `/api/market/prices`
+
+Now implements proper cache-first semantics:
+
+```json
+{
+  "ok": true,
+  "prices": [{
+    "chainId": 1,
+    "symbol": "ETH",
+    "currency": "USD",
+    "price": 3200.0,
+    "sourceStatus": "cached",
+    "provider": "coingecko",
+    "updatedAt": "2026-01-15T14:30:00Z"
+  }]
+}
+```
+
+`sourceStatus` values:
+- `"cached"` – fresh DB hit within `MARKET_CACHE_TTL_SECONDS`
+- `"live"` – just fetched from a real provider
+- `"stale_cache"` – expired DB hit within `MARKET_STALE_CACHE_TTL_SECONDS`
+- `"fallback_mock"` – all providers failed and stale cache exhausted
+
+#### `/api/market/discover-token`
+
+Now returns `{ ok: true, discovery: null }` on any provider miss or error (previously returned `ok: false`):
+
+```json
+{ "ok": true, "discovery": null }
+```
+
+or on success:
+```json
+{
+  "ok": true,
+  "discovery": {
+    "chainId": 1,
+    "tokenAddress": "0x...",
+    "symbol": "USDC",
+    "name": "USD Coin",
+    "decimals": 6,
+    "liquidityUsd": 50000000,
+    "volume24hUsd": 10000000,
+    "marketCapUsd": 24000000000,
+    "fdvUsd": 24000000000,
+    "pairUrl": "https://dexscreener.com/...",
+    "riskLevel": "low",
+    "riskFlags": [],
+    "sourceStatus": "live",
+    "providerId": "composite"
+  }
+}
+```
+
+### Environment Variables
+
+#### Canonical names (preferred):
+
+```bash
+MARKET_PROVIDER_MODE=real                    # real|real_with_mock_fallback|mock
+MARKET_CACHE_TTL_SECONDS=60                  # Fresh-cache TTL (default 60 s)
+MARKET_STALE_CACHE_TTL_SECONDS=300           # Stale-cache window (default 300 s)
+MARKET_RATE_LIMIT_PER_MINUTE=30              # RPM to live providers (default 30)
+MARKET_HTTP_TIMEOUT_MS=8000
+DEXSCREENER_BASE_URL=https://api.dexscreener.com
+COINGECKO_BASE_URL=https://api.coingecko.com/api/v3
+COINGECKO_API_KEY=
+```
+
+#### Legacy names (still accepted, lower priority):
+
+```bash
+MARKET_PRICE_TTL_SEC=60        # → MARKET_CACHE_TTL_SECONDS
+MARKET_RATE_LIMIT_RPM=30       # → MARKET_RATE_LIMIT_PER_MINUTE
+MARKET_CHART_TTL_SEC=300
+MARKET_DISCOVERY_TTL_SEC=300
+```
+
+Backward-compat aliases for mode: `live` and `auto` both map to `real`.
+
+### Shared Types (`packages/shared/src/market.ts`)
+
+New/updated types:
+
+```typescript
+type RealMarketProviderId = MarketDataProviderId;    // alias
+type MarketDataSourceStatus = MarketSourceStatus     // extended with:
+  | "cached" | "stale_cache" | "fallback_mock";
+type TokenRiskLevel = RiskLevel;                      // alias
+type TokenRiskFlag = string;
+type DexPairInfo = { ... };
+type MarketProviderHealth = { ... };                  // replaces ProviderHealth
+```
+
+Extended `TokenPrice`:
+- `sourceStatus?: MarketDataSourceStatus | null`
+- `riskFlags?: TokenRiskFlag[]` (array; riskFlagsJson still present for DB compat)
+- All enriched fields from previous wave preserved
+
+### Frontend Changes
+
+#### `apps/web/lib/api.ts`
+- `MarketPrice` now includes `sourceStatus`, `liquidityUsd`, `pairUrl`, `riskLevel`, `riskFlagsJson`
+- `discoverToken()` returns `TokenDiscoveryResult | null` (handles `discovery: null` response)
+
+#### `apps/web/lib/portfolio.ts`
+- `PortfolioAssetView` includes: `provider`, `sourceStatus`, `liquidityUsd`, `pairUrl`, `riskLevel`, `riskFlagsJson`
+
+#### `apps/web/components/asset-list.tsx`
+- Provider badge (DEX/CG) with colored status dot
+- Risk badge (LOW/MEDIUM/HIGH) with color coding
+- Liquidity display below token name
+- Modern glass/frosted UI panels
+
+#### `apps/web/app/tokens/[chainId]/[tokenAddress]/page.tsx`
+- Source status badge (Live/Cached/Stale/Mock)
+- Risk warning box for medium/high risk
+- Market stats grid (liquidity, volume 24h, market cap, risk level)
+- Risk flags chips
+- Pair link (↗ View pair)
+
+#### `apps/web/app/tokens/add/page.tsx`
+- Removed `console.warn` on discovery failure
+- `discoverToken()` null return handled gracefully
+
+### Tests
+
+All 27 tests pass across api + web packages.
+
+New API tests:
+- `market prices returns sourceStatus on fresh cache` – verifies "cached" on second call
+- `market prices returns empty array for no symbols`
+- `discover-token returns ok:true with null-or-object`
+- `creates user token with enriched market fields` – verifies liquidityUsd, riskLevel, sourceStatus persist
+
+### Database Schema
+
+No changes required (schema was already complete from previous wave).
+`prisma db push` not needed for this fix.
+
+### Known Limitations
+
+1. Chart data: DexScreener free tier doesn't provide historical data; charts remain mock-based with `sourceStatus: "fallback_mock"`
+2. Risk detection is heuristic-based (liquidity thresholds), not a security audit
+3. HTTP sessions on VPS are not production-ready (no HTTPS/domain)
+
 
 ## Architecture
 

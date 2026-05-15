@@ -131,6 +131,8 @@ export interface MarketPriceDto {
   volume24h?: number | null;
   provider: string;
   updatedAt: string;
+  /** Populated at the API response layer to communicate cache semantics. */
+  sourceStatus?: string | null;
 }
 
 export interface MarketChartDto {

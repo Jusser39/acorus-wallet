@@ -2,13 +2,44 @@ export type FiatCurrency = "USD" | "EUR" | "RUB";
 
 export type MarketDataProviderId = "mock" | "coingecko" | "dexscreener" | "manual";
 
+/** Alias used in the spec; identical to MarketDataProviderId. */
+export type RealMarketProviderId = MarketDataProviderId;
+
 export type MarketSourceStatus = "live" | "stale" | "mock" | "error";
 
+/**
+ * Extended source-status values that include cache-layer semantics.
+ * "cached" = fresh DB hit; "stale_cache" = expired but usable DB hit;
+ * "fallback_mock" = live provider unavailable, mock data returned.
+ */
+export type MarketDataSourceStatus =
+  | MarketSourceStatus
+  | "cached"
+  | "stale_cache"
+  | "fallback_mock";
+
 export type RiskLevel = "low" | "medium" | "high" | "unknown";
+
+/** Alias used in the spec; identical to RiskLevel. */
+export type TokenRiskLevel = RiskLevel;
+
+/** A single risk flag string (e.g. "low_liquidity", "mock_price"). */
+export type TokenRiskFlag = string;
 
 export type PriceChange = {
   value: number;
   percent: number;
+};
+
+export type DexPairInfo = {
+  pairAddress?: string | null;
+  pairUrl?: string | null;
+  dexId?: string | null;
+  baseToken: { symbol: string; address: string };
+  quoteToken: { symbol: string; address: string };
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  priceUsd?: number | null;
 };
 
 export type TokenPrice = {
@@ -22,11 +53,14 @@ export type TokenPrice = {
   volume24h?: number | null;
   provider: MarketDataProviderId;
   updatedAt: string;
-  sourceStatus?: MarketSourceStatus;
+  /** Cache/source semantics for this price entry. */
+  sourceStatus?: MarketDataSourceStatus | null;
   liquidityUsd?: number | null;
   pairUrl?: string | null;
-  riskLevel?: RiskLevel;
+  riskLevel?: TokenRiskLevel;
   riskFlagsJson?: string;
+  /** Parsed risk flags array (preferred over riskFlagsJson in UI). */
+  riskFlags?: TokenRiskFlag[];
   providerId?: MarketDataProviderId;
 };
 
@@ -44,15 +78,19 @@ export type TokenChart = {
   points: TokenChartPoint[];
   provider: MarketDataProviderId;
   updatedAt: string;
-  sourceStatus?: MarketSourceStatus;
+  sourceStatus?: MarketDataSourceStatus | null;
   providerId?: MarketDataProviderId;
 };
 
-export type ProviderHealth = {
+export type MarketProviderHealth = {
   providerId: MarketDataProviderId;
   healthy: boolean;
   latencyMs?: number;
+  checkedAt?: string;
 };
+
+/** @deprecated Use MarketProviderHealth */
+export type ProviderHealth = MarketProviderHealth;
 
 export type TokenDiscoveryResult = {
   chainId: number;
@@ -65,9 +103,9 @@ export type TokenDiscoveryResult = {
   marketCapUsd?: number | null;
   fdvUsd?: number | null;
   pairUrl?: string | null;
-  riskLevel: RiskLevel;
-  riskFlags: string[];
-  sourceStatus: MarketSourceStatus;
+  riskLevel: TokenRiskLevel;
+  riskFlags: TokenRiskFlag[];
+  sourceStatus: MarketDataSourceStatus;
   providerId: MarketDataProviderId;
 };
 

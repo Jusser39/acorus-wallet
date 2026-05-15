@@ -31,6 +31,13 @@ const optionalStringFromEnv = z.preprocess((value) => {
   return normalized === "" ? undefined : normalized;
 }, z.string().min(1).optional());
 
+// Canonical market provider modes (real/real_with_mock_fallback/mock).
+// Legacy aliases live/auto are accepted and mapped to "real".
+const marketProviderModeSchema = z
+  .enum(["mock", "real", "real_with_mock_fallback", "live", "auto"])
+  .transform((v) => (v === "live" || v === "auto" ? "real" : v) as "mock" | "real" | "real_with_mock_fallback")
+  .default("real");
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_HOST: z.string().default("0.0.0.0"),
@@ -46,10 +53,20 @@ const envSchema = z.object({
   NEXT_PUBLIC_ARBITRUM_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_OPTIMISM_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_BASE_RPC_URL: z.string().optional(),
-  MARKET_PROVIDER_MODE: z.enum(["mock", "live", "auto"]).default("auto"),
+
+  // Canonical name (preferred); legacy names kept for backward compat
+  MARKET_PROVIDER_MODE: marketProviderModeSchema,
+
   DEXSCREENER_BASE_URL: z.string().default("https://api.dexscreener.com"),
   COINGECKO_BASE_URL: z.string().default("https://api.coingecko.com/api/v3"),
   COINGECKO_API_KEY: optionalStringFromEnv,
+
+  // Canonical names (preferred)
+  MARKET_CACHE_TTL_SECONDS: z.coerce.number().int().positive().optional(),
+  MARKET_STALE_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
+  MARKET_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().optional(),
+
+  // Legacy names (backward compat – used when canonical not set)
   MARKET_PRICE_TTL_SEC: z.coerce.number().int().positive().default(60),
   MARKET_CHART_TTL_SEC: z.coerce.number().int().positive().default(300),
   MARKET_DISCOVERY_TTL_SEC: z.coerce.number().int().positive().default(300),
@@ -61,6 +78,16 @@ export type ApiEnv = z.infer<typeof envSchema>;
 
 export function readEnv(input: NodeJS.ProcessEnv = process.env): ApiEnv {
   return envSchema.parse(input);
+}
+
+/** Resolve canonical cache TTL (MARKET_CACHE_TTL_SECONDS beats legacy MARKET_PRICE_TTL_SEC). */
+export function resolveMarketCacheTtlSec(env: ApiEnv): number {
+  return env.MARKET_CACHE_TTL_SECONDS ?? env.MARKET_PRICE_TTL_SEC;
+}
+
+/** Resolve canonical rate-limit RPM (MARKET_RATE_LIMIT_PER_MINUTE beats legacy MARKET_RATE_LIMIT_RPM). */
+export function resolveMarketRateLimitRpm(env: ApiEnv): number {
+  return env.MARKET_RATE_LIMIT_PER_MINUTE ?? env.MARKET_RATE_LIMIT_RPM;
 }
 
 export function requireDatabaseUrl(env: Pick<ApiEnv, "DATABASE_URL">): string {

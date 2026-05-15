@@ -305,6 +305,12 @@ export type MarketPrice = {
   volume24h?: number | null;
   provider: string;
   updatedAt: string;
+  /** Cache/source semantics: cached | live | stale_cache | fallback_mock */
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
 };
 
 export type MarketChart = {
@@ -436,12 +442,12 @@ export type TokenDiscoveryResult = {
 export async function discoverToken(
   chainId: number,
   tokenAddress: string,
-): Promise<TokenDiscoveryResult> {
+): Promise<TokenDiscoveryResult | null> {
   const params = new URLSearchParams({
     chainId: String(chainId),
     tokenAddress,
   });
-  const response = await apiFetch<{ ok: true; discovery: TokenDiscoveryResult }>(
+  const response = await apiFetch<{ ok: true; discovery: TokenDiscoveryResult | null }>(
     `/api/market/discover-token?${params.toString()}`,
   );
   return response.discovery;

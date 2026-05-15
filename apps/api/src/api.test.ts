@@ -209,6 +209,86 @@ describe("api", () => {
     expect(response.json().items.some((item: { symbol: string }) => item.symbol === "USDT")).toBe(true);
   });
 
+  it("market prices returns sourceStatus on fresh cache", async () => {
+    // First call – no cache → live (mock mode) → sourceStatus fallback_mock or live
+    const res1 = await app.inject({
+      method: "GET",
+      url: "/api/market/prices?chainId=1&currency=USD&symbols=ETH",
+    });
+    expect(res1.statusCode).toBe(200);
+    const body1 = res1.json() as { ok: boolean; prices: Array<{ sourceStatus?: string }> };
+    expect(body1.ok).toBe(true);
+    expect(body1.prices.length).toBeGreaterThan(0);
+    expect(body1.prices[0]?.sourceStatus).toBeTruthy();
+
+    // Second call – should hit cache with sourceStatus: "cached"
+    const res2 = await app.inject({
+      method: "GET",
+      url: "/api/market/prices?chainId=1&currency=USD&symbols=ETH",
+    });
+    expect(res2.statusCode).toBe(200);
+    const body2 = res2.json() as { ok: boolean; prices: Array<{ sourceStatus?: string }> };
+    expect(body2.prices[0]?.sourceStatus).toBe("cached");
+  });
+
+  it("market prices returns empty array for no symbols", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/market/prices?chainId=1&currency=USD",
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ ok: true, prices: [] });
+  });
+
+  it("discover-token returns ok:true with null-or-object", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/market/discover-token?chainId=1&tokenAddress=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { ok: boolean; discovery: unknown };
+    expect(body.ok).toBe(true);
+    // discovery is either a valid object or null — never an error payload
+    if (body.discovery !== null) {
+      expect(body.discovery).toMatchObject({ chainId: 1, tokenAddress: expect.any(String) });
+    }
+  });
+
+  it("creates user token with enriched market fields", async () => {
+    const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
+    const userId = user.json().id as string;
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/user-tokens",
+      payload: {
+        userId,
+        chainId: 1,
+        tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        isCustom: true,
+        sourceStatus: "live",
+        liquidityUsd: 50000000,
+        volume24hUsd: 10000000,
+        marketCapUsd: 24000000000,
+        fdvUsd: 24000000000,
+        pairUrl: "https://dexscreener.com/ethereum/usdc",
+        riskLevel: "low",
+        riskFlagsJson: "[]",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { ok: boolean; token: Record<string, unknown> };
+    expect(body.ok).toBe(true);
+    expect(body.token.symbol).toBe("USDC");
+    expect(body.token.liquidityUsd).toBe(50000000);
+    expect(body.token.riskLevel).toBe("low");
+    expect(body.token.sourceStatus).toBe("live");
+  });
+
   it("stores onboarding progress", async () => {
     const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
     const userId = user.json().id as string;

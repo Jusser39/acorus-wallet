@@ -5,7 +5,7 @@ import type { AppStore } from "./store";
 import { MemoryStore } from "./memory-store";
 import { PrismaStore } from "./prisma-store";
 import { buildLoggerOptions, createLogger } from "./logger";
-import { readEnv, requireDatabaseUrl, type ApiEnv } from "./env";
+import { readEnv, requireDatabaseUrl, resolveMarketCacheTtlSec, type ApiEnv } from "./env";
 import {
   type ContactCreateInput,
   type ContactUpdateInput,
@@ -17,7 +17,7 @@ import {
   type WalletProfileCreateInput,
   type WalletProfileUpdateInput,
 } from "./store";
-import { createMarketDataProvider } from "./market/index.js";
+import { createMarketDataProvider, MockMarketDataProvider } from "./market/index.js";
 import { z } from "zod";
 
 const walletProfileCreateSchema = z.object({
@@ -398,6 +398,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   const marketProvider = createMarketDataProvider(env);
+  const mockFallback = new MockMarketDataProvider();
+  const cacheTtlSec = resolveMarketCacheTtlSec(env);
+  const staleTtlSec = env.MARKET_STALE_CACHE_TTL_SECONDS;
 
   // ---- User Tokens ----
   const fiatCurrencySchema = z.enum(["USD", "EUR", "RUB"]);
@@ -475,17 +478,6 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       ? query.tokenAddresses.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
 
-    const cached = await store.getMarketPrices({
-      chainId: query.chainId,
-      currency: query.currency as FiatCurrency,
-      symbols,
-      tokenAddresses,
-    });
-
-    if (cached.length > 0) {
-      return { ok: true, prices: cached };
-    }
-
     if (symbols.length === 0) {
       return { ok: true, prices: [] };
     }
@@ -497,13 +489,75 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       currency: query.currency as FiatCurrency,
     }));
 
-    const prices = await marketProvider.getPrices(requests);
+    const nowMs = Date.now();
+    const cacheTtlMs = cacheTtlSec * 1000;
+    const staleTtlMs = staleTtlSec * 1000;
 
-    for (const price of prices) {
-      await store.upsertMarketPrice(price);
+    // Step 1: read store cache
+    const cachedAll = await store.getMarketPrices({
+      chainId: query.chainId,
+      currency: query.currency as FiatCurrency,
+      symbols,
+      tokenAddresses,
+    });
+
+    const cachedBySymbol = new Map(
+      cachedAll.map((p) => [p.symbol.toUpperCase(), p]),
+    );
+
+    // Step 2: if ALL requested symbols have a fresh cache hit, return cached
+    const freshHits = symbols.filter((sym) => {
+      const cached = cachedBySymbol.get(sym.toUpperCase());
+      if (!cached) return false;
+      return nowMs - new Date(cached.updatedAt).getTime() < cacheTtlMs;
+    });
+
+    if (freshHits.length === symbols.length) {
+      const prices = symbols.map((sym) => ({
+        ...cachedBySymbol.get(sym.toUpperCase())!,
+        sourceStatus: "cached",
+      }));
+      return { ok: true, prices };
     }
 
-    return { ok: true, prices };
+    // Step 3: try live provider
+    try {
+      const livePrices = await marketProvider.getPrices(requests);
+      for (const price of livePrices) {
+        await store.upsertMarketPrice(price);
+      }
+      return {
+        ok: true,
+        prices: livePrices.map((p) => ({
+          ...p,
+          sourceStatus: p.sourceStatus ?? "live",
+        })),
+      };
+    } catch {
+      // Provider failed – fall through to stale cache or mock
+    }
+
+    // Step 4: stale cache fallback (within MARKET_STALE_CACHE_TTL_SECONDS)
+    const staleHits = symbols
+      .map((sym) => cachedBySymbol.get(sym.toUpperCase()))
+      .filter((p): p is NonNullable<typeof p> => {
+        if (!p) return false;
+        return nowMs - new Date(p.updatedAt).getTime() < staleTtlMs;
+      });
+
+    if (staleHits.length > 0) {
+      return {
+        ok: true,
+        prices: staleHits.map((p) => ({ ...p, sourceStatus: "stale_cache" })),
+      };
+    }
+
+    // Step 5: mock fallback
+    const mockPrices = await mockFallback.getPrices(requests);
+    return {
+      ok: true,
+      prices: mockPrices.map((p) => ({ ...p, sourceStatus: "fallback_mock" })),
+    };
   });
 
   // ---- Market Chart ----
@@ -552,31 +606,31 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       })
       .parse(request.query);
 
-    // Validate address doesn't look like a mnemonic or private key
     assertNoSensitiveFields({ tokenAddress: query.tokenAddress });
 
     if (!marketProvider.discoverToken) {
-      return {
-        ok: false,
-        error: "Token discovery not supported",
-      };
+      return { ok: true, discovery: null };
     }
 
-    const discovery = await marketProvider.discoverToken(
-      query.chainId,
-      query.tokenAddress,
-    );
+    try {
+      const raw = await marketProvider.discoverToken(
+        query.chainId,
+        query.tokenAddress,
+      );
 
-    return {
-      ok: true,
-      discovery: {
-        chainId: query.chainId,
-        tokenAddress: query.tokenAddress,
-        ...discovery,
-        sourceStatus: "live" as const,
-        providerId: marketProvider.id,
-      },
-    };
+      return {
+        ok: true,
+        discovery: {
+          chainId: query.chainId,
+          tokenAddress: query.tokenAddress,
+          ...raw,
+          sourceStatus: "live" as const,
+          providerId: marketProvider.id,
+        },
+      };
+    } catch {
+      return { ok: true, discovery: null };
+    }
   });
 
   return app;
