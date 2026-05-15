@@ -9,10 +9,17 @@ import type {
   AppStore,
   ContactCreateInput,
   ContactUpdateInput,
+  CreateUserTokenInput,
+  FiatCurrency,
+  GetMarketChartInput,
+  GetMarketPricesInput,
+  MarketChartDto,
+  MarketPriceDto,
   OnboardingProgressRecord,
   TransactionCreateInput,
   TransactionStatusUpdateInput,
   UserRecord,
+  UserTokenDto,
   WalletProfileCreateInput,
   WalletProfileUpdateInput,
 } from "./store";
@@ -24,6 +31,9 @@ export class MemoryStore implements AppStore {
   private readonly contacts = new Map<string, ContactRecord>();
   private readonly transactions = new Map<string, TransactionRecordItem>();
   private readonly onboarding = new Map<string, OnboardingProgressRecord>();
+  private readonly userTokens = new Map<string, UserTokenDto>();
+  private readonly marketPrices = new Map<string, MarketPriceDto>();
+  private readonly marketCharts = new Map<string, MarketChartDto>();
 
   async close(): Promise<void> {
     return;
@@ -269,5 +279,75 @@ export class MemoryStore implements AppStore {
 
     this.onboarding.set(key, record);
     return record;
+  }
+
+  async listUserTokens(userId: string, walletProfileId?: string): Promise<UserTokenDto[]> {
+    return [...this.userTokens.values()].filter(
+      (item) =>
+        item.userId === userId &&
+        (walletProfileId == null || item.walletProfileId === walletProfileId),
+    );
+  }
+
+  async createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto> {
+    const now = new Date().toISOString();
+    const record: UserTokenDto = {
+      id: crypto.randomUUID(),
+      userId: input.userId,
+      walletProfileId: input.walletProfileId ?? null,
+      chainId: input.chainId,
+      tokenAddress: input.tokenAddress,
+      symbol: input.symbol,
+      name: input.name,
+      decimals: input.decimals,
+      logoUrl: input.logoUrl ?? null,
+      isVerified: input.isVerified ?? false,
+      isCustom: input.isCustom ?? true,
+      isHidden: input.isHidden ?? false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.userTokens.set(record.id, record);
+    return record;
+  }
+
+  async updateUserTokenVisibility(id: string, isHidden: boolean): Promise<UserTokenDto> {
+    const current = this.userTokens.get(id);
+    if (!current) throw new Error("User token not found.");
+    const updated = { ...current, isHidden, updatedAt: new Date().toISOString() };
+    this.userTokens.set(id, updated);
+    return updated;
+  }
+
+  async deleteUserToken(id: string): Promise<void> {
+    this.userTokens.delete(id);
+  }
+
+  async getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]> {
+    return [...this.marketPrices.values()].filter(
+      (item) =>
+        item.chainId === input.chainId &&
+        item.currency === input.currency &&
+        (input.symbols == null ||
+          input.symbols.length === 0 ||
+          input.symbols.includes(item.symbol)),
+    );
+  }
+
+  async upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto> {
+    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}`;
+    this.marketPrices.set(key, input);
+    return input;
+  }
+
+  async getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null> {
+    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}:${input.range}`;
+    return this.marketCharts.get(key) ?? null;
+  }
+
+  async upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto> {
+    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}:${input.range}`;
+    this.marketCharts.set(key, input);
+    return input;
   }
 }

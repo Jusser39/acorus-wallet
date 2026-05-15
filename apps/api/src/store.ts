@@ -70,6 +70,78 @@ export interface TransactionStatusUpdateInput {
   confirmedAt?: string | null;
 }
 
+export type FiatCurrency = "USD" | "EUR" | "RUB";
+
+export interface UserTokenDto {
+  id: string;
+  userId: string;
+  walletProfileId?: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl?: string | null;
+  isVerified: boolean;
+  isCustom: boolean;
+  isHidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserTokenInput {
+  userId: string;
+  walletProfileId?: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl?: string | null;
+  isVerified?: boolean;
+  isCustom?: boolean;
+  isHidden?: boolean;
+}
+
+export interface MarketPriceDto {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  currency: FiatCurrency;
+  price: number;
+  change24h?: { value: number; percent: number } | null;
+  marketCap?: number | null;
+  volume24h?: number | null;
+  provider: string;
+  updatedAt: string;
+}
+
+export interface MarketChartDto {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  currency: FiatCurrency;
+  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  points: Array<{ timestamp: string; price: number }>;
+  provider: string;
+  updatedAt: string;
+}
+
+export interface GetMarketPricesInput {
+  chainId: number;
+  currency: FiatCurrency;
+  symbols?: string[];
+  tokenAddresses?: string[];
+}
+
+export interface GetMarketChartInput {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  currency: FiatCurrency;
+  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+}
+
 export interface AppStore {
   close(): Promise<void>;
   createAnonymousUser(): Promise<UserRecord>;
@@ -103,6 +175,14 @@ export interface AppStore {
     step: string,
     completed: boolean,
   ): Promise<OnboardingProgressRecord>;
+  listUserTokens(userId: string, walletProfileId?: string): Promise<UserTokenDto[]>;
+  createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto>;
+  updateUserTokenVisibility(id: string, isHidden: boolean): Promise<UserTokenDto>;
+  deleteUserToken(id: string): Promise<void>;
+  getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]>;
+  upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto>;
+  getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null>;
+  upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto>;
 }
 
 export function toExplorerUrl(chainId: number, hash: string): string | null {

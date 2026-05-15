@@ -9,10 +9,15 @@ import { readEnv, requireDatabaseUrl, type ApiEnv } from "./env";
 import {
   type ContactCreateInput,
   type ContactUpdateInput,
+  type CreateUserTokenInput,
+  type FiatCurrency,
+  type GetMarketChartInput,
+  type GetMarketPricesInput,
   type TransactionCreateInput,
   type WalletProfileCreateInput,
   type WalletProfileUpdateInput,
 } from "./store";
+import { createMarketDataProvider } from "./market/index.js";
 import { z } from "zod";
 
 const walletProfileCreateSchema = z.object({
@@ -390,6 +395,144 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     assertNoSensitiveFields(request.body);
     const body = onboardingProgressSchema.parse(request.body);
     return store.setOnboardingProgress(body.userId, body.step, body.completed);
+  });
+
+  const marketProvider = createMarketDataProvider();
+
+  // ---- User Tokens ----
+  const fiatCurrencySchema = z.enum(["USD", "EUR", "RUB"]);
+  const chartRangeSchema = z.enum(["1D", "7D", "1M", "3M", "1Y"]);
+
+  const createUserTokenSchema = z.object({
+    userId: z.string().min(1),
+    walletProfileId: z.string().min(1).nullable().optional(),
+    chainId: z.coerce.number().int().positive(),
+    tokenAddress: z.string().min(1),
+    symbol: z.string().min(1).max(24),
+    name: z.string().min(1).max(120),
+    decimals: z.coerce.number().int().min(0).max(36),
+    logoUrl: z.string().url().nullable().optional(),
+    isVerified: z.boolean().optional(),
+    isCustom: z.boolean().optional(),
+    isHidden: z.boolean().optional(),
+  });
+
+  app.get("/api/user-tokens", async (request) => {
+    const query = z
+      .object({
+        userId: z.string().min(1),
+        walletProfileId: z.string().min(1).optional(),
+      })
+      .parse(request.query);
+    const tokens = await store.listUserTokens(query.userId, query.walletProfileId);
+    return { ok: true, tokens };
+  });
+
+  app.post("/api/user-tokens", async (request) => {
+    assertNoSensitiveFields(request.body);
+    const input = createUserTokenSchema.parse(request.body);
+    const token = await store.createUserToken(input as CreateUserTokenInput);
+    return { ok: true, token };
+  });
+
+  app.patch("/api/user-tokens/:id/visibility", async (request) => {
+    assertNoSensitiveFields(request.body);
+    const params = z.object({ id: z.string().min(1) }).parse(request.params);
+    const body = z.object({ isHidden: z.boolean() }).parse(request.body);
+    const token = await store.updateUserTokenVisibility(params.id, body.isHidden);
+    return { ok: true, token };
+  });
+
+  app.delete("/api/user-tokens/:id", async (request, reply) => {
+    const params = z.object({ id: z.string().min(1) }).parse(request.params);
+    await store.deleteUserToken(params.id);
+    reply.code(204);
+  });
+
+  // ---- Market Prices ----
+  app.get("/api/market/prices", async (request) => {
+    const query = z
+      .object({
+        chainId: z.coerce.number().int().positive(),
+        currency: fiatCurrencySchema.default("USD"),
+        symbols: z.string().optional(),
+        tokenAddresses: z.string().optional(),
+      })
+      .parse(request.query);
+
+    const symbols = query.symbols
+      ? query.symbols.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+    const tokenAddresses = query.tokenAddresses
+      ? query.tokenAddresses.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    const cached = await store.getMarketPrices({
+      chainId: query.chainId,
+      currency: query.currency as FiatCurrency,
+      symbols,
+      tokenAddresses,
+    });
+
+    if (cached.length > 0) {
+      return { ok: true, prices: cached };
+    }
+
+    if (symbols.length === 0) {
+      return { ok: true, prices: [] };
+    }
+
+    const requests = symbols.map((symbol, index) => ({
+      chainId: query.chainId,
+      symbol,
+      tokenAddress: tokenAddresses[index] ?? null,
+      currency: query.currency as FiatCurrency,
+    }));
+
+    const prices = await marketProvider.getPrices(requests);
+
+    for (const price of prices) {
+      await store.upsertMarketPrice(price);
+    }
+
+    return { ok: true, prices };
+  });
+
+  // ---- Market Chart ----
+  app.get("/api/market/chart", async (request) => {
+    const query = z
+      .object({
+        chainId: z.coerce.number().int().positive(),
+        currency: fiatCurrencySchema.default("USD"),
+        symbol: z.string().min(1),
+        tokenAddress: z.string().optional(),
+        range: chartRangeSchema.default("7D"),
+      })
+      .parse(request.query);
+
+    const cached = await store.getMarketChart({
+      chainId: query.chainId,
+      tokenAddress: query.tokenAddress ?? null,
+      symbol: query.symbol,
+      currency: query.currency as FiatCurrency,
+      range: query.range as GetMarketChartInput["range"],
+    });
+
+    if (cached) {
+      return { ok: true, chart: cached };
+    }
+
+    const chart = await marketProvider.getChart({
+      chainId: query.chainId,
+      tokenAddress: query.tokenAddress ?? null,
+      symbol: query.symbol,
+      currency: query.currency as FiatCurrency,
+      range: query.range as GetMarketChartInput["range"],
+    });
+
+    await store.upsertMarketChart(chart);
+
+    return { ok: true, chart };
   });
 
   return app;

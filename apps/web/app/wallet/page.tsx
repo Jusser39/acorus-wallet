@@ -5,10 +5,12 @@ import { QRCodeSVG } from "qrcode.react";
 import { EVM_CHAINS } from "@acorus/shared";
 import Link from "next/link";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { updateWalletProfile } from "@/lib/api";
-import { loadWalletAssetSnapshot, type TokenBalanceView } from "@/lib/assets";
+import { updateWalletProfile, type FiatCurrency } from "@/lib/api";
+import { loadEvmPortfolioSummary, type PortfolioSummaryView } from "@/lib/portfolio";
 import { PRACTICE_ADDRESS, PRACTICE_LESSONS } from "@/lib/practice";
-import { formatAddress, formatAmount } from "@/lib/utils";
+import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
+import { AssetList } from "@/components/asset-list";
+import { formatAddress } from "@/lib/utils";
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
@@ -18,8 +20,8 @@ export default function WalletPage() {
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const lockWallet = useWalletStore((state) => state.lockWallet);
-  const [nativeBalance, setNativeBalance] = useState<string>("0");
-  const [tokenBalances, setTokenBalances] = useState<TokenBalanceView[]>([]);
+
+  const [portfolio, setPortfolio] = useState<PortfolioSummaryView | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,80 +31,62 @@ export default function WalletPage() {
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
   const isLocked = activeProfile?.type === "local" && !unlockedVault;
   const isViewOnly = activeProfile?.type === "view_only";
+  const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
 
   useEffect(() => {
     let active = true;
 
-    async function loadBalances() {
-      if (!activeProfile) {
-        return;
-      }
+    async function loadPortfolio() {
+      if (!activeProfile || !userId) return;
 
       setLoading(true);
       setError(null);
 
       try {
-        const snapshot = await loadWalletAssetSnapshot(activeProfile, selectedChainId);
-
-        if (!active) {
-          return;
-        }
-
-        setNativeBalance(snapshot.nativeBalance);
-        setTokenBalances(snapshot.tokens);
-      } catch (nextError) {
-        if (!active) {
-          return;
-        }
-
-        setError(
-          nextError instanceof Error ? nextError.message : "Не удалось получить балансы.",
+        const summary = await loadEvmPortfolioSummary(
+          activeProfile,
+          selectedChainId,
+          userId,
+          currency,
         );
-      } finally {
+        if (active) setPortfolio(summary);
+      } catch (err) {
         if (active) {
-          setLoading(false);
+          setError(err instanceof Error ? err.message : "Failed to load portfolio.");
         }
+      } finally {
+        if (active) setLoading(false);
       }
     }
 
-    void loadBalances();
-
-    return () => {
-      active = false;
-    };
-  }, [activeProfile, refreshNonce, selectedChainId]);
+    void loadPortfolio();
+    return () => { active = false; };
+  }, [activeProfile, selectedChainId, userId, refreshNonce, currency]);
 
   const chain = useMemo(
-    () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
+    () => EVM_CHAINS.find((c) => c.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
     [selectedChainId],
   );
 
   async function handleCopyAddress() {
     const value = activeProfile?.publicAddress ?? PRACTICE_ADDRESS;
-
     await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
   async function handleHiddenBalanceToggle() {
-    if (!activeProfile || !userId) {
-      return;
-    }
-
+    if (!activeProfile || !userId) return;
     setHiddenSaving(true);
     setError(null);
-
     try {
       const next = await updateWalletProfile(activeProfile.id, {
         userId,
         hiddenBalance: !hiddenBalance,
       });
       upsertProfile(next);
-    } catch (nextError) {
-      setError(
-        nextError instanceof Error ? nextError.message : "Не удалось обновить скрытие баланса.",
-      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update hidden balance.");
     } finally {
       setHiddenSaving(false);
     }
@@ -112,9 +96,9 @@ export default function WalletPage() {
     return (
       <section className="page">
         <div className="panel space-y-3">
-          <h1 className="text-2xl font-semibold">Нет активного кошелька</h1>
+          <h1 className="text-2xl font-semibold">No active wallet</h1>
           <p className="text-sm text-slate-300">
-            Создайте, импортируйте или добавьте view-only/practice wallet на главной странице.
+            Create, import or add a view-only/practice wallet on the home page.
           </p>
           <Link href="/" className="button-primary inline-flex">
             Go to onboarding
@@ -123,6 +107,9 @@ export default function WalletPage() {
       </section>
     );
   }
+
+  const nativeBalance = portfolio?.assets.find((a) => a.type === "native")?.balanceFormatted ?? "0";
+  const tokenAssets = portfolio?.assets.filter((a) => a.type !== "native") ?? [];
 
   return (
     <section className="page grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
@@ -142,41 +129,36 @@ export default function WalletPage() {
               <button type="button" className="button-secondary" onClick={() => void handleCopyAddress()}>
                 {copied ? "Copied" : "Copy address"}
               </button>
-              <Link href="/receive" className="button-secondary">
-                Receive
-              </Link>
+              <Link href="/receive" className="button-secondary">Receive</Link>
               {isViewOnly ? (
-                <button type="button" className="button-primary opacity-60" disabled>
-                  Send disabled
-                </button>
+                <button type="button" className="button-primary opacity-60" disabled>Send disabled</button>
               ) : (
-                <Link href="/send" className="button-primary">
-                  Send
-                </Link>
+                <Link href="/send" className="button-primary">Send</Link>
               )}
             </div>
           </div>
 
-          {activeProfile.type === "view_only" ? (
-            <div className="warning-box text-sm">
-              View-only: отправка невозможна, приватного ключа нет.
-            </div>
-          ) : null}
-
-          {activeProfile.type === "practice" ? (
+          {activeProfile.type === "view_only" && (
+            <div className="warning-box text-sm">View-only: sending disabled, no private key.</div>
+          )}
+          {activeProfile.type === "practice" && (
             <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm text-sky-100">
-              Practice mode — реальные деньги не используются.
+              Practice mode — no real funds used.
             </div>
-          ) : null}
-
-          {isLocked ? (
+          )}
+          {isLocked && (
             <div className="warning-box space-y-3 text-sm">
-              <p>Кошелек заблокирован. Для отправки и доступа к mnemonic сначала выполните unlock.</p>
-              <Link href="/unlock" className="button-primary inline-flex">
-                Unlock wallet
-              </Link>
+              <p>Wallet locked. Unlock to send or access mnemonic.</p>
+              <Link href="/unlock" className="button-primary inline-flex">Unlock wallet</Link>
             </div>
-          ) : null}
+          )}
+
+          <PortfolioSummaryCard
+            summary={portfolio}
+            loading={loading}
+            hidden={hiddenBalance}
+            currency={currency}
+          />
 
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
@@ -192,16 +174,14 @@ export default function WalletPage() {
                 </button>
               </div>
               <p className="mt-4 text-4xl font-semibold">
-                {hiddenBalance ? "••••" : `${formatAmount(nativeBalance)} ${chain.nativeSymbol}`}
+                {hiddenBalance ? "••••" : `${parseFloat(nativeBalance).toFixed(4)} ${chain.nativeSymbol}`}
               </p>
-              <p className="mt-3 text-sm text-slate-400">
-                Предпочитаемая валюта: {activeProfile.preferredCurrency}
-              </p>
+              <p className="mt-3 text-sm text-slate-400">Currency: {currency}</p>
             </div>
             <div className="panel flex flex-col items-center justify-center gap-3">
               <QRCodeSVG value={activeProfile.publicAddress} size={148} bgColor="transparent" fgColor="#ffffff" />
               <p className="text-center text-xs text-slate-300">
-                Receive: отправляйте только активы выбранной сети и проверяйте адрес.
+                Only send assets on the selected network.
               </p>
             </div>
           </div>
@@ -211,12 +191,10 @@ export default function WalletPage() {
               <span className="text-sm text-slate-300">Chain</span>
               <select
                 value={selectedChainId}
-                onChange={(event) => setSelectedChainId(Number(event.target.value))}
+                onChange={(e) => setSelectedChainId(Number(e.target.value))}
               >
-                {EVM_CHAINS.map((item) => (
-                  <option key={item.chainId} value={item.chainId}>
-                    {item.name}
-                  </option>
+                {EVM_CHAINS.map((c) => (
+                  <option key={c.chainId} value={c.chainId}>{c.name}</option>
                 ))}
               </select>
             </label>
@@ -224,44 +202,30 @@ export default function WalletPage() {
               type="button"
               className="button-secondary"
               disabled={loading}
-              onClick={() => setRefreshNonce((value) => value + 1)}
+              onClick={() => setRefreshNonce((n) => n + 1)}
             >
-              {loading ? "Refreshing..." : "Refresh balances"}
+              {loading ? "Refreshing…" : "Refresh"}
             </button>
           </div>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error && <p className="text-sm text-rose-300">{error}</p>}
         </div>
 
         <div className="panel space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Token balances</h2>
-            <Link href="/history" className="text-sm text-emerald-300">
-              Open history
-            </Link>
+            <h2 className="text-xl font-semibold">Assets</h2>
+            <div className="flex items-center gap-3">
+              <Link href="/tokens/add" className="text-sm text-emerald-300">+ Add token</Link>
+              <Link href="/history" className="text-sm text-emerald-300">History</Link>
+            </div>
           </div>
-          <div className="grid gap-3">
-            {tokenBalances.length ? (
-              tokenBalances.map((token) => (
-                <div
-                  key={token.tokenAddress}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{token.symbol}</p>
-                      <p className="text-sm text-slate-400">{token.name}</p>
-                    </div>
-                    <p className="text-lg font-semibold">
-                      {hiddenBalance ? "••••" : formatAmount(token.balance)}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-400">Для этой сети curated token list пока пуст или балансы равны нулю.</p>
-            )}
-          </div>
+          <AssetList
+            assets={tokenAssets}
+            hidden={hiddenBalance}
+            currency={currency}
+            chainId={selectedChainId}
+            loading={loading}
+          />
         </div>
       </div>
 
@@ -269,25 +233,16 @@ export default function WalletPage() {
         <div className="panel space-y-4">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
-            <Link href="/receive" className="button-secondary text-center">
-              Receive assets
-            </Link>
+            <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
             {isViewOnly ? (
               <div className="button-primary text-center opacity-60">Send unavailable</div>
             ) : (
-              <Link href="/send" className="button-primary text-center">
-                Send assets
-              </Link>
+              <Link href="/send" className="button-primary text-center">Send assets</Link>
             )}
-            <Link href="/history" className="button-secondary text-center">
-              Open history
-            </Link>
-            <Link href="/contacts" className="button-secondary text-center">
-              Manage contacts
-            </Link>
-            <Link href="/settings" className="button-secondary text-center">
-              Wallet settings
-            </Link>
+            <Link href="/history" className="button-secondary text-center">Open history</Link>
+            <Link href="/contacts" className="button-secondary text-center">Manage contacts</Link>
+            <Link href="/tokens/add" className="button-secondary text-center">Add custom token</Link>
+            <Link href="/settings" className="button-secondary text-center">Settings</Link>
             <button type="button" className="button-secondary text-center" onClick={() => lockWallet()}>
               Lock wallet
             </button>

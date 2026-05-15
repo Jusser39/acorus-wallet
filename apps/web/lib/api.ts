@@ -263,3 +263,138 @@ export async function setOnboardingProgress(
     body: JSON.stringify(input),
   });
 }
+
+// ---- User Tokens ----
+
+export type FiatCurrency = "USD" | "EUR" | "RUB";
+
+export type UserToken = {
+  id: string;
+  userId: string;
+  walletProfileId?: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl?: string | null;
+  isVerified: boolean;
+  isCustom: boolean;
+  isHidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MarketPrice = {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  currency: FiatCurrency;
+  price: number;
+  change24h?: { value: number; percent: number } | null;
+  marketCap?: number | null;
+  volume24h?: number | null;
+  provider: string;
+  updatedAt: string;
+};
+
+export type MarketChart = {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  currency: FiatCurrency;
+  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  points: Array<{ timestamp: string; price: number }>;
+  provider: string;
+  updatedAt: string;
+};
+
+export async function listUserTokens(input: {
+  userId: string;
+  walletProfileId?: string;
+}): Promise<UserToken[]> {
+  const params = new URLSearchParams({ userId: input.userId });
+  if (input.walletProfileId) params.set("walletProfileId", input.walletProfileId);
+  const response = await apiFetch<{ ok: true; tokens: UserToken[] }>(
+    `/api/user-tokens?${params.toString()}`,
+  );
+  return response.tokens;
+}
+
+export async function createUserToken(input: {
+  userId: string;
+  walletProfileId?: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl?: string | null;
+  isVerified?: boolean;
+  isCustom?: boolean;
+  isHidden?: boolean;
+}): Promise<UserToken> {
+  const response = await apiFetch<{ ok: true; token: UserToken }>("/api/user-tokens", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.token;
+}
+
+export async function updateUserTokenVisibility(
+  id: string,
+  isHidden: boolean,
+): Promise<UserToken> {
+  const response = await apiFetch<{ ok: true; token: UserToken }>(
+    `/api/user-tokens/${id}/visibility`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ isHidden }),
+    },
+  );
+  return response.token;
+}
+
+export async function deleteUserToken(id: string): Promise<void> {
+  await apiFetch<{ ok: true }>(`/api/user-tokens/${id}`, { method: "DELETE" });
+}
+
+export async function getMarketPrices(input: {
+  chainId: number;
+  currency: FiatCurrency;
+  symbols: string[];
+  tokenAddresses?: string[];
+}): Promise<MarketPrice[]> {
+  const params = new URLSearchParams({
+    chainId: String(input.chainId),
+    currency: input.currency,
+    symbols: input.symbols.join(","),
+  });
+  if (input.tokenAddresses?.length) {
+    params.set("tokenAddresses", input.tokenAddresses.join(","));
+  }
+  const response = await apiFetch<{ ok: true; prices: MarketPrice[] }>(
+    `/api/market/prices?${params.toString()}`,
+  );
+  return response.prices;
+}
+
+export async function getMarketChart(input: {
+  chainId: number;
+  currency: FiatCurrency;
+  symbol: string;
+  tokenAddress?: string | null;
+  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+}): Promise<MarketChart> {
+  const params = new URLSearchParams({
+    chainId: String(input.chainId),
+    currency: input.currency,
+    symbol: input.symbol,
+    range: input.range,
+  });
+  if (input.tokenAddress) params.set("tokenAddress", input.tokenAddress);
+  const response = await apiFetch<{ ok: true; chart: MarketChart }>(
+    `/api/market/chart?${params.toString()}`,
+  );
+  return response.chart;
+}

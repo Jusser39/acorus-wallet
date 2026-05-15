@@ -12,10 +12,17 @@ import type {
   AppStore,
   ContactCreateInput,
   ContactUpdateInput,
+  CreateUserTokenInput,
+  FiatCurrency,
+  GetMarketChartInput,
+  GetMarketPricesInput,
+  MarketChartDto,
+  MarketPriceDto,
   OnboardingProgressRecord,
   TransactionCreateInput,
   TransactionStatusUpdateInput,
   UserRecord,
+  UserTokenDto,
   WalletProfileCreateInput,
   WalletProfileUpdateInput,
 } from "./store";
@@ -86,6 +93,48 @@ type PrismaOnboardingShape = {
   step: string;
   completed: boolean;
   createdAt: Date;
+  updatedAt: Date;
+};
+
+type PrismaUserTokenShape = {
+  id: string;
+  userId: string;
+  walletProfileId: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl: string | null;
+  isVerified: boolean;
+  isCustom: boolean;
+  isHidden: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type PrismaMarketPriceCacheShape = {
+  chainId: number;
+  tokenAddress: string | null;
+  symbol: string;
+  currency: string;
+  price: number;
+  change24hValue: number | null;
+  change24hPercent: number | null;
+  marketCap: number | null;
+  volume24h: number | null;
+  provider: string;
+  updatedAt: Date;
+};
+
+type PrismaMarketChartCacheShape = {
+  chainId: number;
+  tokenAddress: string | null;
+  symbol: string;
+  currency: string;
+  range: string;
+  pointsJson: string;
+  provider: string;
   updatedAt: Date;
 };
 
@@ -466,5 +515,184 @@ export class PrismaStore implements AppStore {
     })) as PrismaOnboardingShape;
 
     return mapOnboarding(record);
+  }
+
+  async listUserTokens(userId: string, walletProfileId?: string): Promise<UserTokenDto[]> {
+    const items = await this.prisma.userToken.findMany({
+      where: {
+        userId,
+        ...(walletProfileId ? { walletProfileId } : {}),
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    return items.map((item) => this.toUserTokenDto(item as PrismaUserTokenShape));
+  }
+
+  async createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto> {
+    const item = await this.prisma.userToken.create({
+      data: {
+        userId: input.userId,
+        walletProfileId: input.walletProfileId ?? null,
+        chainId: input.chainId,
+        tokenAddress: input.tokenAddress,
+        symbol: input.symbol,
+        name: input.name,
+        decimals: input.decimals,
+        logoUrl: input.logoUrl ?? null,
+        isVerified: input.isVerified ?? false,
+        isCustom: input.isCustom ?? true,
+        isHidden: input.isHidden ?? false,
+      },
+    });
+    return this.toUserTokenDto(item as PrismaUserTokenShape);
+  }
+
+  async updateUserTokenVisibility(id: string, isHidden: boolean): Promise<UserTokenDto> {
+    const item = await this.prisma.userToken.update({
+      where: { id },
+      data: { isHidden },
+    });
+    return this.toUserTokenDto(item as PrismaUserTokenShape);
+  }
+
+  async deleteUserToken(id: string): Promise<void> {
+    await this.prisma.userToken.delete({ where: { id } });
+  }
+
+  async getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]> {
+    const items = await this.prisma.marketPriceCache.findMany({
+      where: {
+        chainId: input.chainId,
+        currency: input.currency,
+        ...(input.symbols?.length ? { symbol: { in: input.symbols } } : {}),
+      },
+    });
+    return items.map((item) => this.toMarketPriceDto(item as PrismaMarketPriceCacheShape));
+  }
+
+  async upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto> {
+    const item = await this.prisma.marketPriceCache.upsert({
+      where: {
+        chainId_tokenAddress_symbol_currency: {
+          chainId: input.chainId,
+          tokenAddress: input.tokenAddress ?? null,
+          symbol: input.symbol,
+          currency: input.currency,
+        },
+      },
+      update: {
+        price: input.price,
+        change24hValue: input.change24h?.value ?? null,
+        change24hPercent: input.change24h?.percent ?? null,
+        marketCap: input.marketCap ?? null,
+        volume24h: input.volume24h ?? null,
+        provider: input.provider,
+      },
+      create: {
+        chainId: input.chainId,
+        tokenAddress: input.tokenAddress ?? null,
+        symbol: input.symbol,
+        currency: input.currency,
+        price: input.price,
+        change24hValue: input.change24h?.value ?? null,
+        change24hPercent: input.change24h?.percent ?? null,
+        marketCap: input.marketCap ?? null,
+        volume24h: input.volume24h ?? null,
+        provider: input.provider,
+      },
+    });
+    return this.toMarketPriceDto(item as PrismaMarketPriceCacheShape);
+  }
+
+  async getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null> {
+    const item = await this.prisma.marketChartCache.findUnique({
+      where: {
+        chainId_tokenAddress_symbol_currency_range: {
+          chainId: input.chainId,
+          tokenAddress: input.tokenAddress ?? null,
+          symbol: input.symbol,
+          currency: input.currency,
+          range: input.range,
+        },
+      },
+    });
+    if (!item) return null;
+    return this.toMarketChartDto(item as PrismaMarketChartCacheShape);
+  }
+
+  async upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto> {
+    const pointsJson = JSON.stringify(input.points);
+    const item = await this.prisma.marketChartCache.upsert({
+      where: {
+        chainId_tokenAddress_symbol_currency_range: {
+          chainId: input.chainId,
+          tokenAddress: input.tokenAddress ?? null,
+          symbol: input.symbol,
+          currency: input.currency,
+          range: input.range,
+        },
+      },
+      update: { pointsJson, provider: input.provider },
+      create: {
+        chainId: input.chainId,
+        tokenAddress: input.tokenAddress ?? null,
+        symbol: input.symbol,
+        currency: input.currency,
+        range: input.range,
+        pointsJson,
+        provider: input.provider,
+      },
+    });
+    return this.toMarketChartDto(item as PrismaMarketChartCacheShape);
+  }
+
+  private toUserTokenDto(item: PrismaUserTokenShape): UserTokenDto {
+    return {
+      id: item.id,
+      userId: item.userId,
+      walletProfileId: item.walletProfileId,
+      chainId: item.chainId,
+      tokenAddress: item.tokenAddress,
+      symbol: item.symbol,
+      name: item.name,
+      decimals: item.decimals,
+      logoUrl: item.logoUrl,
+      isVerified: item.isVerified,
+      isCustom: item.isCustom,
+      isHidden: item.isHidden,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    };
+  }
+
+  private toMarketPriceDto(item: PrismaMarketPriceCacheShape): MarketPriceDto {
+    return {
+      chainId: item.chainId,
+      tokenAddress: item.tokenAddress,
+      symbol: item.symbol,
+      currency: item.currency as FiatCurrency,
+      price: item.price,
+      change24h:
+        item.change24hValue != null && item.change24hPercent != null
+          ? { value: item.change24hValue, percent: item.change24hPercent }
+          : null,
+      marketCap: item.marketCap,
+      volume24h: item.volume24h,
+      provider: item.provider,
+      updatedAt: item.updatedAt.toISOString(),
+    };
+  }
+
+  private toMarketChartDto(item: PrismaMarketChartCacheShape): MarketChartDto {
+    return {
+      chainId: item.chainId,
+      tokenAddress: item.tokenAddress,
+      symbol: item.symbol,
+      currency: item.currency as FiatCurrency,
+      range: item.range as MarketChartDto["range"],
+      points: JSON.parse(item.pointsJson) as Array<{ timestamp: string; price: number }>,
+      provider: item.provider,
+      updatedAt: item.updatedAt.toISOString(),
+    };
   }
 }
