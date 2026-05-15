@@ -94,9 +94,24 @@
 - This wave still keeps the non-custodial boundary unchanged: backend stores only public data and never receives mnemonic/private-key/passcode material
 - Commit hash: pending final commit
 
-## Real Market Provider + Token Discovery Wave
+## Real Market Provider Wave – Fix/Alignment (2026-05-XX)
 
-- Date: `2026-05-15`
+- Commit: `bcec215`
+- Status: **All 27 tests pass. pnpm build passes. VPS deployment pending (SSH auth issue).**
+- Key fixes vs. prior wave:
+  - `/api/market/prices` now implements proper 5-step cache-first logic with `sourceStatus` on every response
+  - `discover-token` now returns `{ ok: true, discovery: null }` on failure (no longer `ok: false`)
+  - `MARKET_PROVIDER_MODE` canonical values: `real|real_with_mock_fallback|mock`; legacy `live/auto` accepted
+  - Canonical env vars added: `MARKET_CACHE_TTL_SECONDS`, `MARKET_STALE_CACHE_TTL_SECONDS`, `MARKET_RATE_LIMIT_PER_MINUTE`
+  - `SimpleWindowRateLimiter` used inside `CompositeMarketDataProvider`
+  - Mock fallback prices tagged `sourceStatus: "fallback_mock"`
+  - `packages/shared`: added `RealMarketProviderId`, `MarketDataSourceStatus`, `TokenRiskLevel`, `TokenRiskFlag`, `DexPairInfo`, `MarketProviderHealth`
+  - `PortfolioAssetView` now carries `provider`, `sourceStatus`, `liquidityUsd`, `pairUrl`, `riskLevel`, `riskFlagsJson`
+  - `asset-list.tsx`: provider badge + risk badge + liquidity + glass UI
+  - Token detail page: full market stats grid, risk warning box, pair link, source badge
+  - `add/page.tsx`: removed `console.warn`
+  - 4 new API tests cover all new behaviors
+
 - Deployment: `http://85.239.59.199:8080`
 - Backend store remains `prisma`
 - Planning document: `docs/real_market_provider_token_discovery_plan.md`
