@@ -310,12 +310,14 @@ export default function WalletPage() {
                 {copied ? "Copied" : "Copy address"}
               </button>
               <Link href="/receive" className="button-secondary">Receive</Link>
-              {isViewOnly || !isEvm ? (
+              {isViewOnly ? (
                 <button type="button" className="button-primary opacity-60" disabled>
                   {sendAvailability.ctaLabel}
                 </button>
               ) : (
-                <Link href="/send" className="button-primary">Send</Link>
+                <Link href="/send" className="button-primary">
+                  {isEvm ? "Send" : "Send draft"}
+                </Link>
               )}
             </div>
           </div>
@@ -330,12 +332,12 @@ export default function WalletPage() {
           )}
             {isSolana && (
               <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 p-4 text-sm text-violet-100">
-                Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Real send stays disabled in this wave.
+                Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Use <strong>Send draft</strong> to preview a send — real broadcast coming in the next wave.
               </div>
             )}
             {isSkeletonFamily && (
               <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                {activeProfile.chainFamily} adapter is skeleton-only in this wave. Receive/explorer groundwork is ready, but balances and send are not implemented yet.
+                {activeProfile.chainFamily} adapter is skeleton-only in this wave. Use <strong>Send draft</strong> to preview — real broadcast not implemented yet.
               </div>
             )}
           {isLocked && (

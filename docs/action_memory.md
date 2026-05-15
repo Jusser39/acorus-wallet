@@ -100,6 +100,15 @@
 99. Built a fresh deploy archive for Wave 2, uploaded it to VPS `85.239.59.199`, rebuilt the live `web` stack, and verified `/health`, `/api/chains`, SOL price/chart endpoints, persistence after `restart api`, and the public multichain routes on `:8080`.
 100. Added `docs/universal_multichain_wallet_ui_plan.md` and `docs/universal_multichain_wallet_ui_report.md`, then updated `docs/project_memory.md` and `docs/action_memory.md` to record the completed wave, checks, rollout, and remaining limitations.
 101. Kept the non-custodial boundary unchanged throughout the wave: backend still never receives mnemonic/privateKey/passcode, EVM send remains the only enabled real send path, Solana send stays explicitly disabled, and Tron/BTC remain honest skeleton flows.
+102. Performed a read-only audit of Wave 3 artifacts (send-draft.ts, send-draft-preview.tsx, send/page.tsx, wallet-store, adapters) before starting Wave 4.
+103. Created `apps/web/lib/send-ui.ts` with `SendStep`, `SendAssetOption`, `SendNetworkOption`, `SendComposerState`, and helper functions `createSendAssetOptionId`, `getSendStatusLabel`, `canNetworkBroadcast`.
+104. Created `apps/web/lib/send-networks.ts` with `buildSendNetworkOptions()` and `findSendNetworkOption()` — EVM chains get `supported`, Solana gets `coming_soon`, Tron/UTXO get `skeleton`.
+105. Created `apps/web/lib/send-assets.ts` with `buildSendAssetOptions()` and `buildFallbackNativeAsset()` — handles both UniversalPortfolioView (has `family`) and PortfolioSummaryView (no `family` field) via `effectiveFamily` fallback.
+106. Created `apps/web/components/send-composer.tsx` — universal wizard component: network selector → asset selector → recipient → amount → createUniversalSendDraft → SendDraftPreview; shows amber warning for non-broadcast networks; provides EVM bridge link anchor.
+107. Updated `apps/web/app/send/page.tsx`: non-EVM early-return dead-end replaced with `<SendComposer>`; EVM profile path now shows `<SendComposer>` header + `#evm-send-form` anchor + original EVM form intact.
+108. Updated `apps/web/app/wallet/page.tsx`: send CTA now links to `/send` for non-EVM non-view_only profiles with label "Send draft"; Solana/skeleton info banners updated to mention send draft availability.
+109. Added 19 unit tests across `send-ui.test.ts`, `send-networks.test.ts`, `send-assets.test.ts`; all 49 web tests pass; `pnpm build` clean (18 routes, TypeScript strict).
+110. Built Wave 4 deploy tarball, uploaded to VPS `85.239.59.199`, ran `docker compose build api web`, `up -d api web nginx`, `prisma db push`; verified `/health`, `/api/chains`, `/send` (HTTP 200), and persistence after `restart api`.
 
 
 ## Commands run

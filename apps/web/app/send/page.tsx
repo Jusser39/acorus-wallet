@@ -22,7 +22,7 @@ import {
 } from "@/lib/api";
 import { loadWalletAssetSnapshot } from "@/lib/assets";
 import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
-import { getUnsupportedActionText } from "@/lib/universal-assets";
+import { SendComposer } from "@/components/send-composer";
 import { formatAddress, formatAmount } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -482,56 +482,35 @@ export default function SendPage() {
   }
 
   if (isSolanaProfile || isNonEvmFamily) {
-    const family = activeProfile!.chainFamily;
-    const label = getUnsupportedActionText(family);
-    const familyName = family.charAt(0).toUpperCase() + family.slice(1);
     return (
-      <section className="page grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="panel space-y-5">
-          <div>
-            <h1 className="text-3xl font-semibold">Send assets</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              {label}: {familyName} send is not available in this wave.
-            </p>
-          </div>
-
-          <div className="warning-box text-sm">
-            {family === "solana"
-              ? "Real Solana transactions will be added in the next wave after the receive/portfolio foundation is validated."
-              : `${familyName} send is not yet implemented. Receive and explorer groundwork is ready.`}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link href="/receive" className="button-primary">
-              Open receive
-            </Link>
-            <Link href="/history" className="button-secondary">
-              Open history
-            </Link>
-            <Link href="/wallet" className="button-secondary">
-              Back to wallet
-            </Link>
-          </div>
-        </div>
-
-        <aside className="panel space-y-4">
-          <h2 className="text-xl font-semibold">Current {familyName} scope</h2>
-          <ul className="space-y-3 text-sm text-slate-300">
-            <li>Receive address + QR enabled</li>
-            <li>{family === "solana" ? "SOL balance and SPL portfolio enabled" : "Balance: not yet implemented"}</li>
-            <li>View-only and practice profiles enabled</li>
-            <li>Real send intentionally disabled</li>
-          </ul>
-        </aside>
+      <section className="page">
+        <SendComposer
+          profile={activeProfile}
+          portfolio={null}
+          initialFamily={activeProfile.chainFamily}
+          initialChainId={activeProfile.chainFamily === "solana" ? 101 : undefined}
+        />
       </section>
     );
   }
 
   return (
-    <section className="page grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+    <section className="page space-y-8">
+      {/* Universal Send Composer — draft validation layer */}
+      <SendComposer
+        profile={activeProfile}
+        portfolio={null}
+        initialFamily="evm"
+        initialChainId={selectedChainId}
+        evmSendHref="#evm-send-form"
+      />
+
+      {/* EVM Send Form — real transaction broadcast */}
+      <div id="evm-send-form" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <div className="panel space-y-5">
         <div>
-          <h1 className="text-3xl font-semibold">Send assets</h1>
+          <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">EVM send · real transaction</p>
+          <h2 className="mt-2 text-2xl font-semibold">Send assets</h2>
           <p className="mt-2 text-sm text-slate-300">
             Проверьте сеть, адрес и сумму. Транзакции в блокчейне нельзя отменить.
           </p>
@@ -790,6 +769,7 @@ export default function SendPage() {
           </details>
         ) : null}
       </aside>
+      </div>
     </section>
   );
 }

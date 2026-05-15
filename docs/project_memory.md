@@ -323,3 +323,36 @@
   - persistence verification passes before and after `docker compose restart api`
   - public routes `/`, `/wallet`, `/send`, and `/receive` return HTTP 200
 - Next product step: Universal Send UI
+
+## Universal Send UI Wave (Wave 4) (2026-05-15)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_send_ui_plan.md`
+- Report: `docs/universal_send_ui_report.md`
+- New web/UI capabilities:
+  - `apps/web/lib/send-ui.ts` adds `SendStep`, `SendAssetOption`, `SendNetworkOption`, `SendComposerState`, `createSendAssetOptionId`, `getSendStatusLabel`, `canNetworkBroadcast`
+  - `apps/web/lib/send-networks.ts` adds `buildSendNetworkOptions()` and `findSendNetworkOption()` — maps EVM chains to `supported`, Solana to `coming_soon`, Tron/UTXO to `skeleton`
+  - `apps/web/lib/send-assets.ts` adds `buildSendAssetOptions()` and `buildFallbackNativeAsset()` — handles both `UniversalPortfolioView` and `PortfolioSummaryView`, falls back to native placeholder when portfolio is null
+  - `apps/web/components/send-composer.tsx` — single wizard: Network → Asset → Recipient → Amount → Draft → Preview; uses `createUniversalSendDraft()` and `SendDraftPreview`; shows amber warning for non-broadcast adapters; provides EVM bridge anchor for legacy EVM form
+- Updated product screens:
+  - `/send` (non-EVM profiles): old dead-end block replaced with `<SendComposer>` — honest draft validation visible, broadcast gate shows "coming soon/skeleton"
+  - `/send` (EVM profiles): `<SendComposer>` added as draft validation header above the existing EVM send form; `#evm-send-form` anchor allows bridge from composer to real send
+  - `/wallet`: send CTA enabled for non-EVM non-view_only profiles as "Send draft" link to `/send`; Solana/skeleton info banners updated to reference composer
+- Safety guarantee maintained:
+  - `canNetworkBroadcast()` prevents any send attempt for coming_soon/skeleton adapters
+  - Draft preview is not broadcast — no funds move from the universal composer
+  - Non-custodial boundary unchanged: backend never receives mnemonic/privateKey/passcode
+  - Old EVM send form NOT deleted — remains intact under `#evm-send-form` anchor
+- 19 new unit tests (send-ui, send-networks, send-assets)
+- All 49 web tests pass; build clean (18 routes)
+- VPS verified:
+  - `docker compose ps` shows healthy `api`, running `web`, `nginx`, `postgres`, `redis`
+  - `/health` passes on loopback and public `:8080`
+  - `/api/chains` still returns EVM, Solana, Tron skeleton, Bitcoin skeleton
+  - persistence verification passes after `docker compose restart api`
+  - public routes `/`, `/wallet`, `/send`, `/receive` return HTTP 200
+- Implementation commit: `feat: add universal send ui (Wave 4)` (pending)
+- Next product step: EVM Send through universal layer (Wave 5)
+
