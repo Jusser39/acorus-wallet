@@ -1,4 +1,4 @@
-export type ChainFamily = "evm" | "solana" | "tron";
+import type { ChainFamily, ChainId, TransactionStatus } from "./multichain";
 
 export type WalletProfileType = "local" | "view_only" | "practice";
 
@@ -7,8 +7,6 @@ export type PreferredCurrency = "USD" | "EUR" | "RUB";
 export type SendAssetType = "native" | "erc20";
 
 export type TransactionAssetType = "native" | "erc20" | "nft" | "practice";
-
-export type TransactionStatus = "pending" | "confirmed" | "failed" | "unknown";
 
 export type TransactionDirection = "in" | "out" | "self";
 
@@ -94,12 +92,15 @@ export interface SendAsset {
 }
 
 export interface ApiChainRecord {
-  chainId: number;
+  chainId: ChainId;
   family: ChainFamily;
   name: string;
   nativeSymbol: string;
   blockExplorerUrl: string;
+  rpcUrlEnv?: string;
   enabled: boolean;
+  isSkeleton?: boolean;
+  network?: string;
 }
 
 export interface OnboardingProgressRecord {

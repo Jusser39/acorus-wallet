@@ -84,12 +84,13 @@ export class SimpleWindowRateLimiter {
 }
 
 const BASE_USD_PRICES: Record<string, number> = {
+  BTC: 65000,
   ETH: 3200,
   BNB: 600,
   MATIC: 0.75,
   POL: 0.75,
   AVAX: 35,
-  SOL: 145,
+  SOL: 150,
   TRX: 0.12,
   USDT: 1,
   USDC: 1,

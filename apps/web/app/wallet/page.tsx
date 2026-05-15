@@ -17,6 +17,7 @@ import {
   type FiatCurrency,
 } from "@/lib/api";
 import {
+  loadUniversalPortfolioSummary,
   loadPortfolioSummary,
   type PortfolioAssetView,
   type PortfolioSummaryView,
@@ -51,7 +52,12 @@ export default function WalletPage() {
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
   const isLocked = activeProfile?.type === "local" && !unlockedVault;
   const isViewOnly = activeProfile?.type === "view_only";
+  const isEvm = activeProfile?.chainFamily === "evm";
   const isSolana = activeProfile?.chainFamily === "solana";
+  const isSkeletonFamily =
+    activeProfile?.chainFamily === "tron"
+    || activeProfile?.chainFamily === "utxo"
+    || activeProfile?.chainFamily === "ton";
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
 
   const availableChains = useMemo(
@@ -95,12 +101,35 @@ export default function WalletPage() {
       setError(null);
 
       try {
-        const summary = await loadPortfolioSummary(
-          activeProfile,
-          selectedChainId,
-          userId,
-          currency,
-        );
+        let summary: PortfolioSummaryView;
+
+        if (activeProfile.type === "practice") {
+          summary = await loadPortfolioSummary(
+            activeProfile,
+            selectedChainId,
+            userId,
+            currency,
+          );
+        } else if (isSolana) {
+          summary = await loadUniversalPortfolioSummary({
+            userId,
+            walletProfileId: activeProfile.id,
+            family: "solana",
+            chainId: 101,
+            address: activeProfile.publicAddress,
+            currency,
+          });
+        } else if (isSkeletonFamily) {
+          throw new Error(`${activeProfile.chainFamily}_portfolio_not_implemented`);
+        } else {
+          summary = await loadPortfolioSummary(
+            activeProfile,
+            selectedChainId,
+            userId,
+            currency,
+          );
+        }
+
         if (active) {
           setPortfolio(summary);
         }
@@ -119,7 +148,7 @@ export default function WalletPage() {
     return () => {
       active = false;
     };
-  }, [activeProfile, selectedChainId, userId, refreshNonce, currency]);
+  }, [activeProfile, selectedChainId, userId, refreshNonce, currency, isSkeletonFamily, isSolana]);
 
   async function handleCopyAddress() {
     if (!activeProfile) {
@@ -271,9 +300,9 @@ export default function WalletPage() {
                 {copied ? "Copied" : "Copy address"}
               </button>
               <Link href="/receive" className="button-secondary">Receive</Link>
-              {isViewOnly || isSolana ? (
+              {isViewOnly || !isEvm ? (
                 <button type="button" className="button-primary opacity-60" disabled>
-                  Send disabled
+                  {isSolana ? "Solana send coming soon" : "Send not implemented"}
                 </button>
               ) : (
                 <Link href="/send" className="button-primary">Send</Link>
@@ -289,11 +318,16 @@ export default function WalletPage() {
               Practice mode — no real funds used.
             </div>
           )}
-          {isSolana && (
-            <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 p-4 text-sm text-violet-100">
-              Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Real send stays disabled in this wave.
-            </div>
-          )}
+            {isSolana && (
+              <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 p-4 text-sm text-violet-100">
+                Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Real send stays disabled in this wave.
+              </div>
+            )}
+            {isSkeletonFamily && (
+              <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                {activeProfile.chainFamily} adapter is skeleton-only in this wave. Receive/explorer groundwork is ready, but balances and send are not implemented yet.
+              </div>
+            )}
           {isLocked && (
             <div className="warning-box space-y-3 text-sm">
               <p>Wallet locked. Unlock to create derived profiles or access mnemonic-backed actions.</p>
@@ -400,7 +434,7 @@ export default function WalletPage() {
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
-            {isViewOnly || isSolana ? (
+            {isViewOnly || !isEvm ? (
               <div className="button-primary text-center opacity-60">Send unavailable</div>
             ) : (
               <Link href="/send" className="button-primary text-center">Send assets</Link>

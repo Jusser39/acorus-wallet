@@ -29,11 +29,14 @@ const RANGE_TO_DAYS: Record<"1D" | "7D" | "1M" | "3M" | "1Y", string> = {
 
 // Major symbol to CoinGecko ID mappings
 const SYMBOL_TO_ID: Record<string, string> = {
+  BTC: "bitcoin",
   ETH: "ethereum",
   WETH: "ethereum",
   BNB: "binancecoin",
   MATIC: "matic-network",
   POL: "polygon-ecosystem-token",
+  SOL: "solana",
+  TRX: "tron",
   USDT: "tether",
   USDC: "usd-coin",
   DAI: "dai",

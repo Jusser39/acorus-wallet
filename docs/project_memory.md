@@ -42,7 +42,7 @@
 
 ## Constraints
 
-- Solana skeleton runtime is live; real Solana send/swap/NFT and Tron runtime are still not implemented
+- Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, swap, and NFT flows are still not implemented
 - No WalletConnect / real swap / NFT module yet
 - No backend seed storage, cloud seed backup, or custodial recovery
 
@@ -205,3 +205,39 @@
   - `/api/market/prices?chainId=101&currency=USD&symbols=SOL` returns Solana-compatible price data
   - `/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D` returns Solana-compatible chart data
 - Non-custodial boundary unchanged: mnemonic/private key/passcode never leave the client, and Solana signing stays out of the backend in this wave
+
+## Unified Multichain Asset Engine + Adapter Foundation Wave (2026-05-15)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/unified_multichain_asset_engine_plan.md`
+- Report: `docs/unified_multichain_asset_engine_report.md`
+- New shared architecture:
+  - `packages/shared/src/multichain.ts` adds `ChainRef`, `AssetRef`, `AssetBalance`, `ReceiveInfo`, universal transaction/send types, and swap quote types
+  - `packages/shared/src/chains.ts` now exposes `UNIVERSAL_CHAINS`, plus skeleton Tron and Bitcoin/UTXO chain configs alongside EVM and Solana
+  - `/api/chains` now returns the universal chain list while preserving the existing response shape
+- New wallet-core architecture:
+  - `ChainAdapter` interface and `ChainAdapterRegistry` added
+  - EVM logic now has an adapter wrapper over the existing send/balance/explorer helpers
+  - Solana foundation is exposed through a dedicated adapter wrapper
+  - Tron and Bitcoin/UTXO skeleton adapters were added with validate/receive/explorer support and explicit `not_implemented` balance paths
+  - swap quote interfaces were added without implementing any swap execution
+- New web foundation:
+  - universal receive helper added
+  - universal portfolio loader added for adapter-backed chains
+  - dashboard now branches safely by chain family without touching the existing EVM send path
+  - view-only validation now goes through the adapter registry for supported families
+  - token/asset helpers no longer lowercase Solana token ids
+- New market/runtime behavior:
+  - CoinGecko symbol mapping now includes `SOL`, `BTC`, and `TRX`
+  - mock market provider base prices now include `SOL=150`, `BTC=65000`, `TRX=0.12`
+  - root workspace `test/build` scripts now run sequentially to avoid a `tsup --clean` race in `wallet-core`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - `/api/chains` returns Solana plus skeleton `tron-mainnet` and `bitcoin-mainnet`
+  - `/api/market/prices?chainId=101&currency=USD&symbols=SOL` returns price data
+  - `/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D` returns chart data
+  - persistence verification passes after `docker compose restart api`
+- Local Docker compose regression remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable, so deployment verification stayed VPS-first
+- Non-custodial boundary unchanged: backend still never receives mnemonic/privateKey/passcode, Solana send remains disabled, and Tron/BTC adapters do not pretend to support real balances or sends

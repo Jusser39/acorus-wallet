@@ -1,6 +1,12 @@
 "use client";
 
-import { getCuratedTokens, type TokenMetadataItem, type WalletProfileRecord } from "@acorus/shared";
+import {
+  getChainById,
+  getCuratedTokens,
+  normalizeAddressForChain,
+  type TokenMetadataItem,
+  type WalletProfileRecord,
+} from "@acorus/shared";
 import { getErc20Balance, getNativeBalance } from "@acorus/wallet-core";
 import { formatUnits, parseUnits } from "viem";
 import { listTokens } from "./api";
@@ -25,7 +31,7 @@ function toFallbackTokens(chainId: number): TokenMetadataItem[] {
   const timestamp = new Date(0).toISOString();
 
   return getCuratedTokens(chainId).map((token) => ({
-    id: `${token.chainId}:${token.address.toLowerCase()}`,
+    id: `${token.chainId}:${normalizeAddressForChain(token.chainId, token.address)}`,
     chainId: token.chainId,
     tokenAddress: token.address,
     symbol: token.symbol,
@@ -42,6 +48,9 @@ export async function loadWalletAssetSnapshot(
   profile: Pick<WalletProfileRecord, "type" | "publicAddress">,
   chainId: number,
 ): Promise<WalletAssetSnapshot> {
+  const chain = getChainById(chainId);
+  const nativeDecimals = chain?.family === "solana" ? 9 : 18;
+
   if (profile.type === "practice") {
     const nativeBalance = getPracticeNativeBalance(chainId);
     const tokens = getPracticeTokens(chainId).map((token) => ({
@@ -55,7 +64,7 @@ export async function loadWalletAssetSnapshot(
 
     return {
       nativeBalance,
-      nativeBalanceRaw: parseUnits(nativeBalance, 18),
+      nativeBalanceRaw: parseUnits(nativeBalance, nativeDecimals),
       tokens,
     };
   }
@@ -84,7 +93,7 @@ export async function loadWalletAssetSnapshot(
   ]);
 
   return {
-    nativeBalance: formatUnits(nativeBalanceRaw, 18),
+    nativeBalance: formatUnits(nativeBalanceRaw, nativeDecimals),
     nativeBalanceRaw,
     tokens: tokenBalances,
   };

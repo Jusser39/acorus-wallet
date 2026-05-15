@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  createDefaultAdapterRegistry,
   deriveEvmAccountFromMnemonic,
-  deriveSolanaAccountFromMnemonic,
+  deriveSolanaAddressFromMnemonic,
   buildExplorerTxUrl,
   decryptVault,
   encryptVault,
@@ -68,12 +69,38 @@ describe("wallet-core", () => {
   it("derives a stable Solana address from mnemonic", () => {
     const mnemonic = "test test test test test test test test test test test junk";
 
-    const first = deriveSolanaAccountFromMnemonic({ mnemonic });
-    const second = deriveSolanaAccountFromMnemonic({ mnemonic });
+    const first = deriveSolanaAddressFromMnemonic({ mnemonic });
+    const second = deriveSolanaAddressFromMnemonic({ mnemonic });
 
     expect(first.publicAddress).toBe(second.publicAddress);
     expect(first.derivationPath).toBe("m/44'/501'/0'/0'");
     expect(isValidSolanaAddress(first.publicAddress)).toBe(true);
+  });
+
+  it("default adapter registry includes EVM and Solana adapters", () => {
+    const registry = createDefaultAdapterRegistry();
+
+    expect(registry.require({ family: "evm", chainId: 1 }).name).toBeTruthy();
+    expect(registry.require({ family: "solana", chainId: 101 }).name).toBe("Solana");
+  });
+
+  it("default adapter registry includes Tron and Bitcoin skeleton adapters", () => {
+    const registry = createDefaultAdapterRegistry();
+
+    expect(registry.require({ family: "tron", chainId: "tron-mainnet" }).capabilities.nativeBalance).toBe(false);
+    expect(registry.require({ family: "utxo", chainId: "bitcoin-mainnet" }).capabilities.nativeBalance).toBe(false);
+  });
+
+  it("Solana adapter receive info is safe", () => {
+    const registry = createDefaultAdapterRegistry();
+    const adapter = registry.require({ family: "solana", chainId: 101 });
+
+    const receive = adapter.getReceiveInfo({
+      address: "11111111111111111111111111111111",
+    });
+
+    expect(receive.warning).toContain("Solana");
+    expect(receive.qrValue).toBe("11111111111111111111111111111111");
   });
 
   it("rejects invalid Solana address", () => {

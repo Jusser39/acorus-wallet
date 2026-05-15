@@ -27,26 +27,6 @@ export interface WalletAdapter {
   ): Promise<string>;
 }
 
-export interface SwapQuoteInput {
-  chainId: number;
-  fromToken: string;
-  toToken: string;
-  amount: string;
-}
-
-export interface SwapQuote {
-  providerId: string;
-  amountIn: string;
-  amountOut: string;
-  routeSummary: string;
-}
-
-export interface SwapProvider {
-  id: string;
-  getQuote(input: SwapQuoteInput): Promise<SwapQuote>;
-  buildTransaction(quote: SwapQuote): Promise<unknown>;
-}
-
 export interface NftItem {
   id: string;
   chainId: number;

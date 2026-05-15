@@ -1,7 +1,6 @@
 import {
   CURATED_TOKENS,
-  EVM_CHAINS,
-  SOLANA_CHAINS,
+  UNIVERSAL_CHAINS,
   type ApiChainRecord,
   type ChainFamily,
   type ContactRecord,
@@ -239,9 +238,16 @@ export function toExplorerUrl(chainId: number, hash: string): string | null {
 }
 
 export function getChainsResponse(): ApiChainRecord[] {
-  return [...EVM_CHAINS, ...SOLANA_CHAINS].map((chain) => ({
-    ...chain,
-    enabled: true,
+  return UNIVERSAL_CHAINS.map((chain) => ({
+    chainId: chain.chainId,
+    family: chain.family,
+    name: chain.name,
+    nativeSymbol: chain.nativeSymbol,
+    blockExplorerUrl: chain.blockExplorerUrl,
+    rpcUrlEnv: chain.rpcUrlEnv,
+    enabled: chain.isEnabled,
+    isSkeleton: chain.isSkeleton,
+    network: chain.network,
   }));
 }
 

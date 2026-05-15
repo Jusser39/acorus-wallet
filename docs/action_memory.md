@@ -83,6 +83,16 @@
 82. Added regression coverage for Solana derivation/address validation plus API/web behaviors, then re-ran local validation: `pnpm --filter @acorus/shared build`, `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm build`, and `git diff --check`.
 83. Built a fresh working-tree deploy archive, uploaded it to VPS `85.239.59.199`, rebuilt the `api` and `web` Docker images, recreated the containers, and re-ran `npx prisma db push --schema prisma/schema.prisma` inside the API container.
 84. Verified the live rollout on VPS: `/health` passed on loopback and public `:8080`, `/api/chains` returned Solana `chainId: 101`, and Solana market endpoints for `prices` and `chart` responded successfully.
+85. Started the Unified Multichain Asset Engine + Adapter Foundation wave with a read-only audit across shared chain/types, wallet-core EVM/Solana helpers, web dashboard/send/receive/history/view-only files, API store/routes, Prisma schema, git state, and live VPS endpoints.
+86. Added `docs/unified_multichain_asset_engine_plan.md`, replaced the session plan with the new wave scope, and tracked the new multichain todos through SQL.
+87. Added shared multichain foundation: `packages/shared/src/multichain.ts`, universal chain configs for Solana/Tron/Bitcoin, broader chain id typing, and universal explorer/normalization helpers.
+88. Added wallet-core adapter foundation: `ChainAdapter`, `ChainAdapterRegistry`, EVM adapter wrapper, Solana adapter wrapper over the existing Solana module, Tron skeleton adapter, Bitcoin/UTXO skeleton adapter, and swap quote interfaces without swap execution.
+89. Updated API/web integration: `/api/chains` now returns universal chains, CoinGecko/mock market layers now recognize `SOL/BTC/TRX`, portfolio/receive/view-only helpers use the adapter registry foundation, and asset id helpers stop lowercasing Solana token ids.
+90. Kept the existing EVM send flow intact while making the dashboard branch safely by `chainFamily`; Solana uses the adapter-backed universal portfolio path and skeleton families stay clearly disabled.
+91. Ran local validation: `pnpm --filter @acorus/shared build`, `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm test`, `pnpm build`, and `git diff --check`.
+92. Fixed a root workspace reliability issue by changing root `pnpm test/build` scripts to sequential execution; this removed a `tsup --clean` race that was intermittently unlinking `packages/wallet-core/dist/index.js`.
+93. Checked local Docker compose config successfully, but `docker info` still fails because the local `dockerDesktopLinuxEngine` pipe is unavailable; compose build/up regression therefore remained VPS-only for this wave.
+94. Built a fresh working-tree deploy archive, uploaded it to VPS `85.239.59.199`, rebuilt `api` and `web`, recreated the containers, re-ran `npx prisma db push --schema prisma/schema.prisma`, and verified `/health`, `/api/chains`, SOL price/chart endpoints, and persistence verification after restart.
 
 
 ## Commands run
@@ -202,6 +212,29 @@
 - Remote `docker compose --env-file .env -f infra/docker-compose.yml exec -T api sh -lc "cd /app/apps/api && npx prisma db push --schema prisma/schema.prisma"`
 - `curl -fsS "http://127.0.0.1:8080/api/market/prices?chainId=101&currency=USD&symbols=SOL"`
 - `curl -fsS "http://127.0.0.1:8080/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D"`
+- `docker compose --env-file .env -f infra/docker-compose.yml config`
+- `docker info`
+- `git status --short`
+- `git --no-pager log --oneline -5`
+- `git branch --show-current`
+- `git diff --stat`
+- `pnpm --filter @acorus/shared build`
+- `pnpm --filter @acorus/wallet-core test`
+- `pnpm --filter @acorus/api test`
+- `pnpm --filter @acorus/web test`
+- `pnpm --filter @acorus/api build`
+- `pnpm --filter @acorus/web build`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+- `tar.exe -czf ... acorus-wallet`
+- Python `paramiko` upload to `/root/acorus-wallet-multichain-deploy.tar.gz`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml up -d api web nginx`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml exec -T api sh -lc "cd /app/apps/api && npx prisma db push --schema prisma/schema.prisma"`
+- Remote `BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml restart api`
+- Remote `CHECK_MODE=verify BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
 
 ## Current follow-up
 
@@ -211,6 +244,7 @@
 - Current product follow-up: the EVM Wallet UX + Send Flow wave is implemented and deployed; next product work can focus on browser-level E2E coverage or later chain families without relaxing the current non-custodial boundary
 - Current product follow-up: the Token Management + Real Charts wave is implemented and deployed; the next sensible step is a broader wallet feature wave such as Solana/Tron/NFT/swap or end-to-end mobile packaging, without relaxing the current non-custodial boundary
 - Current product follow-up: the Solana Wallet Skeleton wave is implemented and deployed; the next sensible Solana step is real send + transaction status/history enrichment, still without relaxing the current non-custodial boundary
+- Current product follow-up: the Unified Multichain Asset Engine + Adapter Foundation wave is implemented and deployed; the next sensible product step is to move universal receive/portfolio/token detail UI deeper into the adapter model or ship Solana Send MVP on top of this foundation
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types

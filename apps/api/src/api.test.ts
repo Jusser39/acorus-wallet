@@ -219,8 +219,28 @@ describe("api", () => {
     expect(response.json().items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ chainId: 101, family: "solana", nativeSymbol: "SOL" }),
+        expect.objectContaining({ chainId: "tron-mainnet", family: "tron", isSkeleton: true }),
+        expect.objectContaining({ chainId: "bitcoin-mainnet", family: "utxo", isSkeleton: true }),
       ]),
     );
+  });
+
+  it("market supports SOL prices and charts", async () => {
+    const priceResponse = await app.inject({
+      method: "GET",
+      url: "/api/market/prices?chainId=101&currency=USD&symbols=SOL",
+    });
+
+    expect(priceResponse.statusCode).toBe(200);
+    expect(priceResponse.json().prices.length).toBeGreaterThan(0);
+
+    const chartResponse = await app.inject({
+      method: "GET",
+      url: "/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D",
+    });
+
+    expect(chartResponse.statusCode).toBe(200);
+    expect(chartResponse.json().chart.points.length).toBeGreaterThan(0);
   });
 
   it("market prices returns sourceStatus on fresh cache", async () => {

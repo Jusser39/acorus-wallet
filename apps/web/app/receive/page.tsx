@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { getChainById, getChainsByFamily } from "@acorus/shared";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getPracticeAddress } from "@/lib/practice";
+import { getUniversalReceiveInfo } from "@/lib/receive";
 import { formatAddress } from "@/lib/utils";
 
 export default function ReceivePage() {
@@ -43,6 +44,14 @@ export default function ReceivePage() {
     activeProfile.type === "practice"
       ? getPracticeAddress(activeProfile.chainFamily)
       : activeProfile.publicAddress;
+  const receiveInfo =
+    activeProfile.type === "practice"
+      ? null
+      : getUniversalReceiveInfo({
+          family: activeProfile.chainFamily,
+          chainId: selectedChainId,
+          address,
+        });
 
   async function handleCopy() {
     await navigator.clipboard.writeText(address);
@@ -56,9 +65,8 @@ export default function ReceivePage() {
         <div>
           <h1 className="text-3xl font-semibold">Receive</h1>
           <p className="mt-2 text-sm text-slate-300">
-            {activeProfile.chainFamily === "solana"
-              ? "Используйте только Solana-compatible transfers и адрес текущего Solana профиля."
-              : "EVM-адрес один и тот же, но отправляйте только активы выбранной сети."}
+            {receiveInfo?.warning
+              ?? "Используйте только совместимые активы и адрес текущего активного профиля."}
           </p>
         </div>
 
@@ -83,13 +91,23 @@ export default function ReceivePage() {
         </div>
 
         <div className="warning-box text-sm">
-          Отправляйте только активы сети <strong>{chain?.name ?? "selected chain"}</strong>. Активы из другой сети
-          могут быть потеряны.
+          {receiveInfo?.warning
+            ?? <>Отправляйте только активы сети <strong>{chain?.name ?? "selected chain"}</strong>. Активы из другой сети могут быть потеряны.</>}
         </div>
 
         <button type="button" className="button-primary" onClick={() => void handleCopy()}>
           {copied ? "Copied" : "Copy address"}
         </button>
+        {receiveInfo?.explorerUrl ? (
+          <a
+            href={receiveInfo.explorerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-emerald-300"
+          >
+            Open in explorer
+          </a>
+        ) : null}
       </div>
 
       <aside className="panel flex flex-col items-center justify-center gap-4">

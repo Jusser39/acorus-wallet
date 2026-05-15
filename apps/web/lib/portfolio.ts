@@ -6,11 +6,15 @@ import {
   getChainById,
   getCuratedTokens,
   normalizeAddressForChain,
+  type AssetBalance,
+  type ChainFamily,
   type WalletProfileRecord,
 } from "@acorus/shared";
 import {
+  createDefaultAdapterRegistry,
   getErc20Balance,
   getNativeBalance,
+  getRpcUrl,
   getSolanaPortfolioBalances,
 } from "@acorus/wallet-core";
 import { formatUnits } from "viem";
@@ -57,6 +61,8 @@ type TokenCandidate = {
   isHidden: boolean;
   isCustom: boolean;
 };
+
+const adapterRegistry = createDefaultAdapterRegistry();
 
 function calcFiatValue(balance: string, price: number): number {
   const parsed = parseFloat(balance);
@@ -169,6 +175,141 @@ function calculateWeightedChange(assets: PortfolioAssetView[], totalValue: numbe
 
 export function getSolanaRpcUrl(): string {
   return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+}
+
+export function getRpcUrlForUniversalChain(input: {
+  family: ChainFamily;
+  chainId: number | string;
+}): string {
+  if (input.family === "solana") {
+    return getSolanaRpcUrl();
+  }
+
+  if (input.family === "evm" && typeof input.chainId === "number") {
+    return getRpcUrl(input.chainId);
+  }
+
+  return "";
+}
+
+function toPortfolioAssetView(input: {
+  asset: AssetBalance;
+  price?: MarketPrice;
+}): PortfolioAssetView {
+  const { asset, price } = input;
+  const fiatValue = price ? calcFiatValue(asset.balanceFormatted, price.price) : null;
+
+  return {
+    chainId: typeof asset.chainId === "number" ? asset.chainId : 0,
+    type: asset.type === "native" ? "native" : "erc20",
+    tokenAddress: asset.tokenAddress ?? null,
+    symbol: asset.symbol,
+    name: asset.name,
+    decimals: asset.decimals,
+    balanceFormatted: asset.balanceFormatted,
+    fiatValue,
+    change24hPercent: price?.change24h?.percent ?? null,
+    logoUrl: asset.logoUrl ?? null,
+    isVerified: asset.isVerified ?? false,
+    isHidden: false,
+    isCustom: false,
+    provider: price?.provider ?? null,
+    sourceStatus: price?.sourceStatus ?? null,
+    liquidityUsd: price?.liquidityUsd ?? null,
+    pairUrl: price?.pairUrl ?? null,
+    riskLevel: price?.riskLevel ?? null,
+    riskFlags: parseRiskFlags(price),
+    riskFlagsJson: price?.riskFlagsJson ?? null,
+  };
+}
+
+export async function loadUniversalPortfolioSummary(input: {
+  userId: string;
+  walletProfileId: string;
+  family: ChainFamily;
+  chainId: number | string;
+  address: string;
+  currency: FiatCurrency;
+}): Promise<PortfolioSummaryView> {
+  const adapter = adapterRegistry.require({
+    family: input.family,
+    chainId: input.chainId,
+  });
+
+  if (!adapter.capabilities.nativeBalance) {
+    throw new Error(`${input.family}_portfolio_not_implemented`);
+  }
+
+  const rpcUrl = getRpcUrlForUniversalChain({
+    family: input.family,
+    chainId: input.chainId,
+  });
+  const numericChainId = typeof input.chainId === "number" ? input.chainId : 0;
+
+  let userTokens: UserToken[] = [];
+  try {
+    userTokens = await listUserTokens({
+      userId: input.userId,
+      walletProfileId: input.walletProfileId,
+    });
+  } catch {
+    userTokens = [];
+  }
+
+  const hiddenTokenKeys = new Set(
+    userTokens
+      .filter((token) => token.chainId === numericChainId && token.isHidden)
+      .map((token) => tokenKey(numericChainId, token.tokenAddress)),
+  );
+
+  const [nativeBalance, tokenBalances] = await Promise.all([
+    adapter.getNativeBalance({
+      address: input.address,
+      rpcUrl,
+    }),
+    adapter.capabilities.tokenBalances
+      ? adapter.getTokenBalances({
+          address: input.address,
+          rpcUrl,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const assets = [
+    nativeBalance,
+    ...tokenBalances.filter((asset) => !hiddenTokenKeys.has(tokenKey(numericChainId, asset.tokenAddress))),
+  ];
+
+  let prices: MarketPrice[] = [];
+  try {
+    prices = await getMarketPrices({
+      chainId: numericChainId,
+      currency: input.currency,
+      symbols: assets.map((asset) => asset.symbol),
+      tokenAddresses: assets.map((asset) => asset.tokenAddress ?? ""),
+    });
+  } catch {
+    prices = [];
+  }
+
+  const priceMap = new Map(
+    prices.map((price) => [marketKey(numericChainId, price.symbol, price.tokenAddress), price]),
+  );
+  const portfolioAssets = assets.map((asset) =>
+    toPortfolioAssetView({
+      asset,
+      price: resolvePrice(priceMap, numericChainId, asset.symbol, asset.tokenAddress),
+    }),
+  );
+  const totalValue = portfolioAssets.reduce((sum, asset) => sum + (asset.fiatValue ?? 0), 0);
+
+  return {
+    currency: input.currency,
+    totalValue,
+    change24hPercent: calculateWeightedChange(portfolioAssets, totalValue),
+    assets: portfolioAssets,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export async function loadPortfolioSummary(

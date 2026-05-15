@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { isValidSolanaAddress } from "@acorus/wallet-core";
+import { createDefaultAdapterRegistry } from "@acorus/wallet-core";
 import { useRouter } from "next/navigation";
-import { getAddress, isAddress } from "viem";
+import { getAddress } from "viem";
 import { createWalletProfile } from "@/lib/api";
 import { useWalletStore } from "@/store/wallet-store";
+
+const registry = createDefaultAdapterRegistry();
 
 export default function ViewOnlyPage() {
   const router = useRouter();
@@ -24,7 +26,12 @@ export default function ViewOnlyPage() {
       return;
     }
 
-    if (chainFamily === "solana" ? !isValidSolanaAddress(address) : !isAddress(address)) {
+    const adapter = registry.get({
+      family: chainFamily,
+      chainId: chainFamily === "solana" ? 101 : 1,
+    });
+
+    if (!adapter?.validateAddress(address)) {
       setError(
         chainFamily === "solana"
           ? "Введите корректный Solana-адрес."

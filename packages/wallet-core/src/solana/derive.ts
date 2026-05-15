@@ -44,6 +44,13 @@ export function deriveSolanaAccountFromMnemonic(input: {
   };
 }
 
+export function deriveSolanaAddressFromMnemonic(input: {
+  mnemonic: string;
+  derivationPath?: string;
+}): SolanaAccount {
+  return deriveSolanaAccountFromMnemonic(input);
+}
+
 export function getSolanaAddressFromMnemonic(mnemonic: string): string {
   return deriveSolanaAccountFromMnemonic({ mnemonic }).publicAddress;
 }

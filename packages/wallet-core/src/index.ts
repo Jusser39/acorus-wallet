@@ -1,3 +1,4 @@
+export * from "./adapters";
 export * from "./evm/balance";
 export * from "./evm/client";
 export * from "./evm/erc20Abi";
@@ -13,6 +14,7 @@ export * from "./solana/client";
 export * from "./solana/derive";
 export * from "./solana/portfolio";
 export * from "./solana/tokens";
+export * from "./swap/types";
 export * from "./types";
 export * from "./vault";
 export * from "./wallet-adapter";

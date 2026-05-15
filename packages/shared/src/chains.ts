@@ -1,4 +1,4 @@
-import type { ChainFamily } from "./types";
+import type { ChainFamily, ChainId, ChainRef } from "./multichain";
 
 export type EvmChainConfig = {
   chainId: number;
@@ -19,10 +19,20 @@ export type SolanaChainConfig = {
   blockExplorerUrl: string;
 };
 
+export type UniversalChainConfig = ChainRef & {
+  rpcUrlEnv?: string;
+  blockExplorerUrl: string;
+  isEnabled: boolean;
+  isSkeleton?: boolean;
+  network?: "mainnet-beta" | "devnet" | "testnet";
+};
+
 export type SupportedChainConfig = EvmChainConfig | SolanaChainConfig;
 
 export const DEFAULT_EVM_CHAIN_ID = 1;
 export const DEFAULT_SOLANA_CHAIN_ID = 101;
+export const DEFAULT_TRON_CHAIN_ID = "tron-mainnet";
+export const DEFAULT_BITCOIN_CHAIN_ID = "bitcoin-mainnet";
 
 export const EVM_CHAINS: EvmChainConfig[] = [
   {
@@ -87,6 +97,52 @@ export const SOLANA_MAINNET_CHAIN: SolanaChainConfig = {
 
 export const SOLANA_CHAINS: SolanaChainConfig[] = [SOLANA_MAINNET_CHAIN];
 
+export const TRON_MAINNET_CHAIN: UniversalChainConfig = {
+  family: "tron",
+  chainId: DEFAULT_TRON_CHAIN_ID,
+  name: "Tron",
+  nativeSymbol: "TRX",
+  rpcUrlEnv: "NEXT_PUBLIC_TRON_RPC_URL",
+  blockExplorerUrl: "https://tronscan.org/#",
+  isEnabled: false,
+  isSkeleton: true,
+};
+
+export const BITCOIN_MAINNET_CHAIN: UniversalChainConfig = {
+  family: "utxo",
+  chainId: DEFAULT_BITCOIN_CHAIN_ID,
+  name: "Bitcoin",
+  nativeSymbol: "BTC",
+  rpcUrlEnv: "NEXT_PUBLIC_BITCOIN_RPC_URL",
+  blockExplorerUrl: "https://mempool.space",
+  isEnabled: false,
+  isSkeleton: true,
+};
+
+export const UNIVERSAL_CHAINS: UniversalChainConfig[] = [
+  ...EVM_CHAINS.map((chain) => ({
+    family: "evm" as const,
+    chainId: chain.chainId,
+    name: chain.name,
+    nativeSymbol: chain.nativeSymbol,
+    rpcUrlEnv: chain.rpcUrlEnv,
+    blockExplorerUrl: chain.blockExplorerUrl,
+    isEnabled: true,
+  })),
+  {
+    family: SOLANA_MAINNET_CHAIN.family,
+    chainId: SOLANA_MAINNET_CHAIN.chainId,
+    name: SOLANA_MAINNET_CHAIN.name,
+    nativeSymbol: SOLANA_MAINNET_CHAIN.nativeSymbol,
+    rpcUrlEnv: SOLANA_MAINNET_CHAIN.rpcUrlEnv,
+    blockExplorerUrl: SOLANA_MAINNET_CHAIN.blockExplorerUrl,
+    network: SOLANA_MAINNET_CHAIN.network,
+    isEnabled: true,
+  },
+  TRON_MAINNET_CHAIN,
+  BITCOIN_MAINNET_CHAIN,
+];
+
 export function getEvmChainConfig(chainId: number): EvmChainConfig {
   const chain = EVM_CHAINS.find((item) => item.chainId === chainId);
 
@@ -110,6 +166,24 @@ export function getSolanaChainConfig(chainId: number): SolanaChainConfig {
 export function getChainById(chainId: number): SupportedChainConfig | undefined {
   return EVM_CHAINS.find((item) => item.chainId === chainId)
     ?? SOLANA_CHAINS.find((item) => item.chainId === chainId);
+}
+
+export function getUniversalChain(input: {
+  family?: ChainFamily;
+  chainId: ChainId;
+}): UniversalChainConfig | undefined {
+  return UNIVERSAL_CHAINS.find((chain) =>
+    String(chain.chainId) === String(input.chainId)
+    && (!input.family || chain.family === input.family),
+  );
+}
+
+export function getEnabledUniversalChains(): UniversalChainConfig[] {
+  return UNIVERSAL_CHAINS.filter((chain) => chain.isEnabled);
+}
+
+export function getUniversalChainsByFamily(family: ChainFamily): UniversalChainConfig[] {
+  return UNIVERSAL_CHAINS.filter((chain) => chain.family === family);
 }
 
 export function getChainsByFamily(family: ChainFamily): SupportedChainConfig[] {
@@ -141,7 +215,7 @@ export function isSolanaChainId(chainId: number): boolean {
 }
 
 export function normalizeAddressForChain(
-  chainId: number,
+  chainId: ChainId,
   address?: string | null,
 ): string {
   const trimmed = (address ?? "").trim();
@@ -150,21 +224,36 @@ export function normalizeAddressForChain(
     return "";
   }
 
-  return isEvmChainId(chainId) ? trimmed.toLowerCase() : trimmed;
+  const chain =
+    typeof chainId === "number"
+      ? getChainById(chainId) ?? getUniversalChain({ chainId })
+      : getUniversalChain({ chainId });
+
+  return chain?.family === "evm" ? trimmed.toLowerCase() : trimmed;
 }
 
-export function getExplorerTxUrl(chainId: number, hash: string): string {
-  const chain = getChainById(chainId);
+export function getExplorerTxUrl(chainId: ChainId, hash: string): string {
+  const chain =
+    typeof chainId === "number"
+      ? getChainById(chainId) ?? getUniversalChain({ chainId })
+      : getUniversalChain({ chainId });
 
   if (!chain) {
     throw new Error(`Unsupported chain: ${chainId}`);
   }
 
+  if (chain.family === "tron") {
+    return `${chain.blockExplorerUrl}/transaction/${hash}`;
+  }
+
   return `${chain.blockExplorerUrl}/tx/${hash}`;
 }
 
-export function getExplorerAddressUrl(chainId: number, address: string): string {
-  const chain = getChainById(chainId);
+export function getExplorerAddressUrl(chainId: ChainId, address: string): string {
+  const chain =
+    typeof chainId === "number"
+      ? getChainById(chainId) ?? getUniversalChain({ chainId })
+      : getUniversalChain({ chainId });
 
   if (!chain) {
     throw new Error(`Unsupported chain: ${chainId}`);
@@ -172,6 +261,10 @@ export function getExplorerAddressUrl(chainId: number, address: string): string 
 
   if (chain.family === "solana") {
     return `${chain.blockExplorerUrl}/account/${address}`;
+  }
+
+  if (chain.family === "tron") {
+    return `${chain.blockExplorerUrl}/address/${address}`;
   }
 
   return `${chain.blockExplorerUrl}/address/${address}`;

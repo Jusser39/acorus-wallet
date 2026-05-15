@@ -10,9 +10,9 @@
     "dev": "pnpm --parallel --filter @acorus/api --filter @acorus/web dev",
     "dev:web": "pnpm --filter @acorus/web dev",
     "dev:api": "pnpm --filter @acorus/api dev",
-    "build": "pnpm -r build",
+    "build": "pnpm -r --workspace-concurrency=1 build",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --workspace-concurrency=1 test",
     "prisma:generate": "pnpm --filter @acorus/api prisma generate",
     "prisma:migrate:dev": "pnpm --filter @acorus/api prisma migrate dev"
   },
