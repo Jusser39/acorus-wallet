@@ -150,3 +150,19 @@
 - Add SSH key auth, disable password login after validation, and move to domain + HTTPS before any real-user or mainnet exposure
 - After domain setup, set `CORS_ORIGIN` explicitly and re-run the deployment/security audit
 - Current product follow-up: the EVM Wallet UX + Send Flow wave is implemented and deployed; next product work can focus on browser-level E2E coverage or later chain families without relaxing the current non-custodial boundary
+
+37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
+    - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
+    - Phase 2: Prisma schema — UserToken, MarketPriceCache, MarketChartCache models
+    - Phase 3: AppStore extended with 8 new methods (listUserTokens, createUserToken, updateUserTokenVisibility, deleteUserToken, getMarketPrices, upsertMarketPrice, getMarketChart, upsertMarketChart)
+    - Phase 4-5: MemoryStore + PrismaStore implementations; discovered Prisma null compound key bug, fixed with "" sentinel
+    - Phase 6: MockMarketDataProvider (deterministic pseudo-prices + sin-wave charts)
+    - Phase 7: API routes /api/user-tokens CRUD + /api/market/prices + /api/market/chart
+    - Phase 8: wallet-core evm/portfolio.ts, evm/token-metadata.ts
+    - Phase 9: Frontend api.ts extended with 6 new typed functions
+    - Phase 10: apps/web/lib/portfolio.ts — loadEvmPortfolioSummary (live + practice modes)
+    - Phase 11: PortfolioSummaryCard, AssetList, TokenChart components
+    - Phase 12: wallet/page.tsx rebuilt with portfolio summary + asset list + Add token link
+    - Phase 13: /tokens/[chainId]/[tokenAddress]/page.tsx — token detail + sparkline chart
+    - Phase 14: /tokens/add/page.tsx — add custom ERC-20 by contract address
+    - VPS: rebuilt API container, applied prisma db push (schema already in sync), confirmed all endpoints live

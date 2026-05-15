@@ -10,6 +10,12 @@
 - Root lint/test/build pass locally
 - VPS deployment is live at `http://85.239.59.199:8080`
 - Prisma/PostgreSQL persistence is live on VPS; API health reports `store: "prisma"`
+- EVM Token Details + Market Data + Portfolio UX wave deployed (2026-05-15)
+  - New models: UserToken, MarketPriceCache, MarketChartCache
+  - New routes: /api/user-tokens CRUD, /api/market/prices, /api/market/chart
+  - MockMarketDataProvider: pseudo-prices seeded by symbol, sin-wave chart generation
+  - Frontend: PortfolioSummaryCard, AssetList, TokenChart, /tokens/add, /tokens/[chainId]/[address]
+  - Prisma null sentinel fix: use "" for tokenAddress in compound unique key where clause
 - MemoryStore remains available only as a fallback when `ACORUS_ENABLE_PRISMA_STORE=false`
 
 ## Important decisions
