@@ -241,3 +241,41 @@
   - persistence verification passes after `docker compose restart api`
 - Local Docker compose regression remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable, so deployment verification stayed VPS-first
 - Non-custodial boundary unchanged: backend still never receives mnemonic/privateKey/passcode, Solana send remains disabled, and Tron/BTC adapters do not pretend to support real balances or sends
+
+## Universal Multichain Wallet UI Wave (2026-05-15)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_multichain_wallet_ui_plan.md`
+- Report: `docs/universal_multichain_wallet_ui_report.md`
+- New web/UI architecture:
+  - `apps/web/lib/universal-assets.ts` adds universal asset/portfolio view models and helper labels
+  - `apps/web/lib/universal-chains.ts` centralizes family defaults, UI-visible chains, and chain-family RPC resolution
+  - `apps/web/lib/universal-explorer.ts`, `apps/web/lib/receive.ts`, and `apps/web/lib/send-policy.ts` provide family-aware explorer, receive, and send policy helpers
+  - `apps/web/components/universal-badges.tsx` and `apps/web/components/asset-list.tsx` now surface chain family, asset type, source, and skeleton states
+- Updated product screens:
+  - `/wallet` branches by chain family while preserving the working EVM dashboard/send entry
+  - `/receive` now renders adapter-based receive info with family-aware warnings and explorer links
+  - `/send` keeps the existing EVM flow and shows explicit disabled states for non-EVM families
+  - `/history` now shows honest non-EVM indexing notices
+  - `/view-only` validates EVM, Solana, Tron, and Bitcoin addresses through the adapter registry
+  - `/tokens/[chainId]/[tokenAddress]` now handles `family`, `native`, and skeleton routes without crashing
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - `/api/chains` returns EVM, Solana, `tron-mainnet`, and `bitcoin-mainnet`
+  - `/api/market/prices?chainId=101&currency=USD&symbols=SOL` returns price data
+  - `/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D` returns chart data
+  - persistence verification passes after `docker compose restart api`
+  - public routes `/wallet`, `/receive`, `/send`, `/history`, `/tokens/manage`, and `/view-only` respond
+- Non-custodial boundary unchanged: backend still never receives mnemonic/privateKey/passcode, EVM send remains intact, Solana send stays disabled, and Tron/BTC remain explicit skeleton flows
+- Implementation commit: `066d3af`

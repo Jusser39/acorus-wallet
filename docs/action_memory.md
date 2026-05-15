@@ -93,6 +93,13 @@
 92. Fixed a root workspace reliability issue by changing root `pnpm test/build` scripts to sequential execution; this removed a `tsup --clean` race that was intermittently unlinking `packages/wallet-core/dist/index.js`.
 93. Checked local Docker compose config successfully, but `docker info` still fails because the local `dockerDesktopLinuxEngine` pipe is unavailable; compose build/up regression therefore remained VPS-only for this wave.
 94. Built a fresh working-tree deploy archive, uploaded it to VPS `85.239.59.199`, rebuilt `api` and `web`, recreated the containers, re-ran `npx prisma db push --schema prisma/schema.prisma`, and verified `/health`, `/api/chains`, SOL price/chart endpoints, and persistence verification after restart.
+95. Started the Universal Multichain Wallet UI wave by auditing the already-landed adapter-based UI changes against the multichain roadmap and confirming the implementation on a clean worktree at `066d3af`.
+96. Added and finalized the universal frontend helpers and UI wiring for asset models, chain helpers, explorer helpers, adapter-based receive info, portfolio branching, send policy, and badge rendering without touching the working EVM send flow.
+97. Added regression coverage for universal asset helpers and family-aware send availability, then fixed the strict TypeScript mismatch where the asset list treated a Solana SPL case as if it were part of the older EVM-only asset type union.
+98. Re-ran local validation for this wave: `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm test`, `pnpm build`, and `git diff --check`.
+99. Built a fresh deploy archive for Wave 2, uploaded it to VPS `85.239.59.199`, rebuilt the live `web` stack, and verified `/health`, `/api/chains`, SOL price/chart endpoints, persistence after `restart api`, and the public multichain routes on `:8080`.
+100. Added `docs/universal_multichain_wallet_ui_plan.md` and `docs/universal_multichain_wallet_ui_report.md`, then updated `docs/project_memory.md` and `docs/action_memory.md` to record the completed wave, checks, rollout, and remaining limitations.
+101. Kept the non-custodial boundary unchanged throughout the wave: backend still never receives mnemonic/privateKey/passcode, EVM send remains the only enabled real send path, Solana send stays explicitly disabled, and Tron/BTC remain honest skeleton flows.
 
 
 ## Commands run
@@ -245,6 +252,7 @@
 - Current product follow-up: the Token Management + Real Charts wave is implemented and deployed; the next sensible step is a broader wallet feature wave such as Solana/Tron/NFT/swap or end-to-end mobile packaging, without relaxing the current non-custodial boundary
 - Current product follow-up: the Solana Wallet Skeleton wave is implemented and deployed; the next sensible Solana step is real send + transaction status/history enrichment, still without relaxing the current non-custodial boundary
 - Current product follow-up: the Unified Multichain Asset Engine + Adapter Foundation wave is implemented and deployed; the next sensible product step is to move universal receive/portfolio/token detail UI deeper into the adapter model or ship Solana Send MVP on top of this foundation
+- Current product follow-up: the Universal Multichain Wallet UI wave is implemented and deployed; the next sensible product step is the Universal Send Draft Engine so all future send flows route through one multichain draft model before enabling additional networks.
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
