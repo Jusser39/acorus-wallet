@@ -571,11 +571,12 @@ export class PrismaStore implements AppStore {
   }
 
   async upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto> {
+    const tokenAddress = input.tokenAddress ?? "";
     const item = await this.prisma.marketPriceCache.upsert({
       where: {
         chainId_tokenAddress_symbol_currency: {
           chainId: input.chainId,
-          tokenAddress: input.tokenAddress ?? null,
+          tokenAddress,
           symbol: input.symbol,
           currency: input.currency,
         },
@@ -590,7 +591,7 @@ export class PrismaStore implements AppStore {
       },
       create: {
         chainId: input.chainId,
-        tokenAddress: input.tokenAddress ?? null,
+        tokenAddress,
         symbol: input.symbol,
         currency: input.currency,
         price: input.price,
@@ -605,11 +606,12 @@ export class PrismaStore implements AppStore {
   }
 
   async getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null> {
+    const tokenAddress = input.tokenAddress ?? "";
     const item = await this.prisma.marketChartCache.findUnique({
       where: {
         chainId_tokenAddress_symbol_currency_range: {
           chainId: input.chainId,
-          tokenAddress: input.tokenAddress ?? null,
+          tokenAddress,
           symbol: input.symbol,
           currency: input.currency,
           range: input.range,
@@ -622,11 +624,12 @@ export class PrismaStore implements AppStore {
 
   async upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto> {
     const pointsJson = JSON.stringify(input.points);
+    const tokenAddress = input.tokenAddress ?? "";
     const item = await this.prisma.marketChartCache.upsert({
       where: {
         chainId_tokenAddress_symbol_currency_range: {
           chainId: input.chainId,
-          tokenAddress: input.tokenAddress ?? null,
+          tokenAddress,
           symbol: input.symbol,
           currency: input.currency,
           range: input.range,
@@ -635,7 +638,7 @@ export class PrismaStore implements AppStore {
       update: { pointsJson, provider: input.provider },
       create: {
         chainId: input.chainId,
-        tokenAddress: input.tokenAddress ?? null,
+        tokenAddress,
         symbol: input.symbol,
         currency: input.currency,
         range: input.range,
@@ -668,7 +671,7 @@ export class PrismaStore implements AppStore {
   private toMarketPriceDto(item: PrismaMarketPriceCacheShape): MarketPriceDto {
     return {
       chainId: item.chainId,
-      tokenAddress: item.tokenAddress,
+      tokenAddress: item.tokenAddress || null,
       symbol: item.symbol,
       currency: item.currency as FiatCurrency,
       price: item.price,
@@ -686,7 +689,7 @@ export class PrismaStore implements AppStore {
   private toMarketChartDto(item: PrismaMarketChartCacheShape): MarketChartDto {
     return {
       chainId: item.chainId,
-      tokenAddress: item.tokenAddress,
+      tokenAddress: item.tokenAddress || null,
       symbol: item.symbol,
       currency: item.currency as FiatCurrency,
       range: item.range as MarketChartDto["range"],
