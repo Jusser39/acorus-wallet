@@ -211,9 +211,9 @@ CompositeMarketDataProvider
 ```
 
 **Provider Selection Logic:**
-1. `MARKET_PROVIDER_MODE=live` or `auto`: Use composite provider with live APIs
-2. `MARKET_PROVIDER_MODE=mock`: Use mock provider only
-3. On provider failure: Cascade to next provider, ultimately falling back to mock
+1. `MARKET_PROVIDER_MODE=real`: Use composite provider with live APIs
+2. `MARKET_PROVIDER_MODE=real_with_mock_fallback`: Use composite provider and fall back to mock on misses/failures
+3. `MARKET_PROVIDER_MODE=mock`: Use mock provider only
 
 ### New Backend Components
 
@@ -287,7 +287,7 @@ GET /api/market/discover-token?chainId=1&tokenAddress=0x...
 - Validates address format (0x + 40 hex chars)
 - Rejects addresses that look like mnemonics/private keys
 - Never logs addresses in combination with user identifiers
-- 30s TTL cache to limit external API calls
+- TTL cache + rate limiting limit external API calls without breaking the API surface
 
 #### Enhanced `/api/market/prices`
 
@@ -404,16 +404,35 @@ New `.env` variables:
 
 ```bash
 # Market Provider Configuration
-MARKET_PROVIDER_MODE=auto           # auto|live|mock (default: auto)
+MARKET_PROVIDER_MODE=real_with_mock_fallback
 DEXSCREENER_BASE_URL=https://api.dexscreener.com
 COINGECKO_BASE_URL=https://api.coingecko.com/api/v3
-COINGECKO_API_KEY=                  # Optional CoinGecko API key
-MARKET_PRICE_TTL_SEC=60             # Price cache TTL (default: 60)
-MARKET_CHART_TTL_SEC=300            # Chart cache TTL (default: 300)
-MARKET_DISCOVERY_TTL_SEC=300        # Token discovery cache TTL (default: 300)
-MARKET_HTTP_TIMEOUT_MS=8000         # HTTP timeout for market APIs (default: 8000)
-MARKET_RATE_LIMIT_RPM=30            # Rate limit requests per minute (default: 30)
+MARKET_CACHE_TTL_SECONDS=60
+MARKET_STALE_CACHE_TTL_SECONDS=3600
+MARKET_HTTP_TIMEOUT_MS=5000
+MARKET_RATE_LIMIT_PER_MINUTE=120
 ```
+
+## Final Rollout Verification
+
+- Local validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS deploy completed successfully on `http://85.239.59.199:8080`
+- `prisma db push` was confirmed from `/app/apps/api` inside the API container
+- Public verification:
+  - `/health` → `store: "prisma"`
+  - `/api/market/prices?chainId=1&currency=USD&symbols=ETH,USDT` → live CoinGecko data, then cached responses with `sourceStatus`
+  - `/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D` → working mock chart fallback
+  - `/api/market/discover-token?...USDC` → live DexScreener discovery with liquidity, volume, market cap/fdv, pair URL, and low risk
+- Persistence passed before and after `docker compose restart api`
 
 ## Testing
 

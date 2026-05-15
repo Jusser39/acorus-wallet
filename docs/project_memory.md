@@ -94,10 +94,12 @@
 - This wave still keeps the non-custodial boundary unchanged: backend stores only public data and never receives mnemonic/private-key/passcode material
 - Commit hash: pending final commit
 
-## Real Market Provider Wave – Fix/Alignment (2026-05-XX)
+## Real Market Provider Wave – Fix/Alignment (2026-05-15)
 
-- Commit: `bcec215`
-- Status: **All 27 tests pass. pnpm build passes. VPS deployment pending (SSH auth issue).**
+- Commits:
+  - `bcec215` — align Real Market Provider wave with spec
+  - `268a2d5` — update project/action memory for fix wave
+- Status: **All 27 tests pass. pnpm build passes. VPS deployment succeeded.**
 - Key fixes vs. prior wave:
   - `/api/market/prices` now implements proper 5-step cache-first logic with `sourceStatus` on every response
   - `discover-token` now returns `{ ok: true, discovery: null }` on failure (no longer `ok: false`)
@@ -117,7 +119,14 @@
 - Planning document: `docs/real_market_provider_token_discovery_plan.md`
 - Report: `docs/real_market_provider_token_discovery_report.md`
 - New market provider architecture: DexScreener (primary) → CoinGecko (fallback) → Mock (final fallback)
-- New env vars: `MARKET_PROVIDER_MODE`, `DEXSCREENER_BASE_URL`, `COINGECKO_BASE_URL`, `COINGECKO_API_KEY`, `MARKET_PRICE_TTL_SEC`, `MARKET_CHART_TTL_SEC`, `MARKET_DISCOVERY_TTL_SEC`, `MARKET_HTTP_TIMEOUT_MS`, `MARKET_RATE_LIMIT_RPM`
+- Canonical env vars:
+  - `MARKET_PROVIDER_MODE` with `real | real_with_mock_fallback | mock`
+  - `MARKET_CACHE_TTL_SECONDS`
+  - `MARKET_STALE_CACHE_TTL_SECONDS`
+  - `DEXSCREENER_BASE_URL`
+  - `COINGECKO_BASE_URL`
+  - `MARKET_HTTP_TIMEOUT_MS`
+  - `MARKET_RATE_LIMIT_PER_MINUTE`
 - New endpoint: `GET /api/market/discover-token?chainId=&tokenAddress=`
   - Returns live data from DexScreener/CoinGecko with risk assessment
   - Validated: address must be 0x + 40 hex chars, rejects mnemonic-like inputs
@@ -125,5 +134,11 @@
 - Frontend: preview-first token add flow with risk warnings, provider/risk badges in asset list
 - Infrastructure: `http.ts` (timeout wrapper), `rate-limit.ts` (30 RPM token bucket), `cache.ts` (in-memory TTL)
 - Non-custodial boundary unchanged: discover-token accepts only chainId + tokenAddress
-- VPS verified: `/health` (prisma), `/api/market/prices` (mock fallback), `/api/market/chart` (mock fallback), `/api/market/discover-token` (live DexScreener for USDC returning real liquidity/volume data)
-- Commit hash: 194eebd
+- VPS verified:
+  - `/health` returns `store: "prisma"`
+  - `/api/market/prices?chainId=1&currency=USD&symbols=ETH,USDT` returns live CoinGecko prices on cache miss, then cached responses with `sourceStatus`
+  - `/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D` works and remains mock chart fallback in MVP
+  - `/api/market/discover-token` returns live DexScreener discovery for USDC with liquidity/volume/risk data
+  - `scripts/check-persistence.sh` passes before and after `restart api`
+  - `prisma db push` confirmed from `/app/apps/api` inside the API container
+- Public URL remains `http://85.239.59.199:8080`

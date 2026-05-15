@@ -50,6 +50,12 @@
 46. Repaired the VPS database password drift by aligning the `postgres` role password with the active `.env`, verified direct network access, removed/recreated the stale `acorus-api` container, and completed the rollout.
 47. Revalidated VPS health and persistence after rollout: `/health` and `/api/chains` passed on both loopback and public `:8080`, `scripts/check-persistence.sh` passed creation and `CHECK_MODE=verify` after `restart api`, and public HTML fetches succeeded for `/`, `/send`, `/receive`, `/view-only`, and `/practice`.
 48. Added `docs/evm_wallet_ux_send_flow_report.md` and updated project memory for the completed EVM Wallet UX + Send Flow wave.
+49. Implemented the Real Market Provider + Token Discovery wave: live DexScreener/CoinGecko providers, composite fallback, token discovery endpoint, enriched user-token metadata, provider/risk UI, and updated docs.
+50. Ran follow-up alignment fixes so the wave matches the requested contract: canonical market env vars, rate-limit usage, cache-first `/api/market/prices`, discovery null-safe behavior, provider/risk badges, and richer token details warnings.
+51. Built a fresh deploy archive, uploaded it to the VPS via Paramiko, rebuilt `api` and `web`, and brought the live stack back up on `:8080`.
+52. Verified live VPS responses for `/health`, `/api/market/prices`, `/api/market/chart`, and `/api/market/discover-token`; confirmed CoinGecko live price responses and DexScreener live discovery for USDC.
+53. Re-ran `scripts/check-persistence.sh` before and after `docker compose restart api`; persistence verification passed.
+54. Corrected the Prisma post-deploy command path and confirmed `npx prisma db push --schema prisma/schema.prisma` from `/app/apps/api` reports the database already in sync.
 49. Implemented Real Market Provider + Token Discovery wave: DexScreener + CoinGecko composite provider, `/api/market/discover-token` endpoint, enriched Prisma schema (MarketPriceCache + UserToken), in-memory TTL cache, rate limiter, HTTP timeout wrapper, preview-first `/tokens/add` flow with risk assessment.
 50. Deployed Real Market Provider wave to VPS: rebuilt api/web Docker images, ran `prisma db push` (already in sync), restarted services, verified all endpoints live — `/health`, `/api/market/prices`, `/api/market/chart`, `/api/market/discover-token` (DexScreener live data for USDC: liquidity $45M, volume $10M, risk=low).
 52. Fixed gaps in Real Market Provider wave: proper cache-first logic, `sourceStatus` values (`cached|live|stale_cache|fallback_mock`), `SimpleWindowRateLimiter` in composite, `discover-token` returns null on failure, canonical env vars, shared type aliases, UI badges for provider/risk/liquidity, token detail market stats, glass UI polish. All 27 tests pass. Commit: bcec215. VPS redeploy blocked by SSH auth change (password auth disabled per hardening); manual redeploy via VPS console required.
@@ -123,6 +129,16 @@
 - `curl -fsS http://127.0.0.1:8080/health`
 - `curl -fsS http://127.0.0.1:8080/api/chains`
 - `curl -fsS http://85.239.59.199:8080/health`
+- `git archive --format=tar.gz --output ... HEAD`
+- Python `paramiko` upload to `/tmp/real-market-deploy.tar.gz`
+- Remote `tar -xzf /tmp/real-market-deploy.tar.gz -C /opt/acorus-wallet`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml up -d api web nginx`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml exec -T api sh -lc "cd /app/apps/api && npx prisma db push --schema prisma/schema.prisma"`
+- `curl -fsS "http://127.0.0.1:8080/api/market/prices?chainId=1&currency=USD&symbols=ETH,USDT"`
+- `curl -fsS "http://127.0.0.1:8080/api/market/discover-token?chainId=1&tokenAddress=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"`
+- `curl -fsS "http://85.239.59.199:8080/api/market/prices?chainId=1&currency=USD&symbols=ETH,USDT"`
+- `curl -fsS "http://85.239.59.199:8080/api/market/discover-token?chainId=1&tokenAddress=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"`
 - `pnpm --filter @acorus/wallet-core test`
 - `pnpm --filter @acorus/api test`
 - `pnpm --filter @acorus/web test`
@@ -154,6 +170,7 @@
 - Add SSH key auth, disable password login after validation, and move to domain + HTTPS before any real-user or mainnet exposure
 - After domain setup, set `CORS_ORIGIN` explicitly and re-run the deployment/security audit
 - Current product follow-up: the EVM Wallet UX + Send Flow wave is implemented and deployed; next product work can focus on browser-level E2E coverage or later chain families without relaxing the current non-custodial boundary
+- Current product follow-up: the Real Market Provider + Token Discovery wave is now implemented, aligned, and deployed; the next sensible step is a real historical chart source plus hide/unhide token management on the wallet screens
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
