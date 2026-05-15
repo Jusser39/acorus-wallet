@@ -1,4 +1,4 @@
-import type { ReceiveInfo } from "@acorus/shared";
+import type { ReceiveInfo, SendDraft } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { notImplemented } from "./types";
 
@@ -24,7 +24,7 @@ export function createBitcoinAdapter(): ChainAdapter {
       nativeBalance: false,
       tokenBalances: false,
       receive: true,
-      sendDraft: false,
+      sendDraft: true,
       broadcast: false,
       history: false,
       swap: false,
@@ -59,6 +59,33 @@ export function createBitcoinAdapter(): ChainAdapter {
 
     buildExplorerTxUrl(txHash: string): string {
       return `https://mempool.space/tx/${txHash}`;
+    },
+
+    async createSendDraft(input): Promise<SendDraft> {
+      return {
+        family: "utxo",
+        chainId,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        normalizedToAddress: input.toAddress,
+        asset: input.asset,
+        amountRaw: input.amountRaw ?? "0",
+        amountFormatted: input.amountFormatted ?? "0",
+        supportStatus: "skeleton",
+        feeEstimate: null,
+        issues: [
+          {
+            code: "bitcoin_send_not_implemented",
+            severity: "error",
+            message: "Bitcoin sending is not implemented yet.",
+          },
+        ],
+        warnings: [],
+        errors: ["Bitcoin sending is not implemented yet."],
+        canProceed: false,
+        canBroadcast: false,
+        createdAt: new Date().toISOString(),
+      };
     },
   };
 }

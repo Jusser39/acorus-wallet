@@ -279,3 +279,47 @@
   - public routes `/wallet`, `/receive`, `/send`, `/history`, `/tokens/manage`, and `/view-only` respond
 - Non-custodial boundary unchanged: backend still never receives mnemonic/privateKey/passcode, EVM send remains intact, Solana send stays disabled, and Tron/BTC remain explicit skeleton flows
 - Implementation commit: `066d3af`
+
+## Universal Send Draft Engine Wave (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_send_draft_engine_plan.md`
+- Report: `docs/universal_send_draft_engine_report.md`
+- New shared/core capabilities:
+  - `packages/shared/src/multichain.ts` now includes `SendSupportStatus`, `SendValidationIssue`, `FeeEstimate`, and the expanded `SendDraftInput` / `SendDraft` model
+  - `packages/wallet-core/src/send/amount.ts` adds decimal parsing, raw formatting, normalization, and raw amount comparison helpers
+  - `packages/wallet-core/src/send/validation.ts` adds reusable issue creation, warning/error splitting, and balance validation helpers
+  - `packages/wallet-core/src/send/draft-engine.ts` adds `SendDraftEngine`, which normalizes amount input, validates addresses, checks balance availability, and delegates family-specific draft shaping to adapters
+- Adapter behavior added:
+  - EVM adapters now expose `createSendDraft()` with supported native/ERC-20 draft output and draft-level gas placeholders
+  - Solana adapter now returns a `coming_soon` validation/preview draft without broadcast support
+  - Tron and Bitcoin adapters now return explicit `skeleton` drafts instead of pretending send is available
+- New frontend capabilities:
+  - `apps/web/lib/send-draft.ts` exposes `createUniversalSendDraft()` for family-aware draft creation
+  - `apps/web/components/send-draft-preview.tsx` provides a reusable preview card for the future Universal Send UI wave
+  - `apps/web/lib/universal-chains.ts` now fails soft when an EVM RPC URL is absent, so draft creation can still work in test/fallback contexts
+- Existing UX preserved:
+  - `/send` still uses the old working EVM send flow and was not rewritten in this wave
+  - Solana/Tron/BTC real sending remains disabled
+  - backend request boundaries for mnemonic/privateKey/passcode remain unchanged
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- Local Docker note:
+  - local Docker regression remains blocked because `dockerDesktopLinuxEngine` is unavailable on this workstation
+- VPS verified:
+  - `docker compose ... ps` shows healthy `api`, `postgres`, `redis`, and running `web`/`nginx`
+  - `/health` passes on loopback and public `:8080`
+  - `/api/chains` still returns EVM, Solana, Tron skeleton, and Bitcoin skeleton items
+  - persistence verification passes before and after `docker compose restart api`
+  - public routes `/`, `/wallet`, `/send`, and `/receive` return HTTP 200
+- Next product step: Universal Send UI

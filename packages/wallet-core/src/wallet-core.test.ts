@@ -4,13 +4,16 @@ import {
   deriveEvmAccountFromMnemonic,
   deriveSolanaAddressFromMnemonic,
   buildExplorerTxUrl,
+  formatRawAmount,
   decryptVault,
   encryptVault,
   generateWalletMnemonic,
   parseEncryptedVault,
+  parseDecimalAmountToRaw,
   getEvmAddressFromMnemonic,
   getRpcUrl,
   isValidSolanaAddress,
+  SendDraftEngine,
   validateWalletMnemonic,
 } from "./index";
 import type { WalletVaultPlaintext } from "./types";
@@ -166,5 +169,266 @@ describe("wallet-core", () => {
         createdAt: "2026-01-01T00:00:00.000Z",
       }),
     ).toThrow("Unsupported vault version.");
+  });
+
+  it("parses and formats decimal amounts", () => {
+    expect(
+      parseDecimalAmountToRaw({
+        amountFormatted: "1.23",
+        decimals: 6,
+      }),
+    ).toBe("1230000");
+
+    expect(
+      formatRawAmount({
+        amountRaw: "1230000",
+        decimals: 6,
+      }),
+    ).toBe("1.23");
+  });
+
+  it("creates EVM native send draft", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "evm",
+      chainId: 1,
+      fromAddress: "0x0000000000000000000000000000000000000000",
+      toAddress: "0x0000000000000000000000000000000000000001",
+      asset: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "0.01",
+      balance: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+        balanceRaw: "1000000000000000000",
+        balanceFormatted: "1",
+      },
+    });
+
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canProceed).toBe(true);
+    expect(draft.canBroadcast).toBe(true);
+    expect(draft.amountRaw).toBe("10000000000000000");
+  });
+
+  it("creates EVM ERC-20 send draft with gas warning", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "evm",
+      chainId: 1,
+      fromAddress: "0x0000000000000000000000000000000000000000",
+      toAddress: "0x0000000000000000000000000000000000000001",
+      asset: {
+        family: "evm",
+        chainId: 1,
+        type: "erc20",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        tokenAddress: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        isVerified: true,
+      },
+      amountFormatted: "12.5",
+      balance: {
+        family: "evm",
+        chainId: 1,
+        type: "erc20",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        tokenAddress: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        isVerified: true,
+        balanceRaw: "50000000",
+        balanceFormatted: "50",
+      },
+    });
+
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.warnings).toContain("Token transfers require native coin for gas.");
+    expect(draft.feeEstimate?.gasLimit).toBe("65000");
+  });
+
+  it("blocks draft with invalid EVM recipient", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "evm",
+      chainId: 1,
+      fromAddress: "0x0000000000000000000000000000000000000000",
+      toAddress: "invalid",
+      asset: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "0.01",
+      balance: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+        balanceRaw: "1000000000000000000",
+        balanceFormatted: "1",
+      },
+    });
+
+    expect(draft.canProceed).toBe(false);
+    expect(draft.errors.some((item) => item.includes("Invalid recipient"))).toBe(true);
+  });
+
+  it("blocks draft with insufficient balance", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "evm",
+      chainId: 1,
+      fromAddress: "0x0000000000000000000000000000000000000000",
+      toAddress: "0x0000000000000000000000000000000000000001",
+      asset: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "2",
+      balance: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+        balanceRaw: "1000000000000000000",
+        balanceFormatted: "1",
+      },
+    });
+
+    expect(draft.canProceed).toBe(false);
+    expect(draft.errors.some((item) => item.includes("Insufficient balance"))).toBe(true);
+  });
+
+  it("returns coming soon draft for Solana", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "solana",
+      chainId: 101,
+      fromAddress: "11111111111111111111111111111111",
+      toAddress: "11111111111111111111111111111111",
+      asset: {
+        family: "solana",
+        chainId: 101,
+        type: "native",
+        symbol: "SOL",
+        name: "Solana",
+        decimals: 9,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "0.1",
+      balance: {
+        family: "solana",
+        chainId: 101,
+        type: "native",
+        symbol: "SOL",
+        name: "Solana",
+        decimals: 9,
+        tokenAddress: null,
+        isVerified: true,
+        balanceRaw: "1000000000",
+        balanceFormatted: "1",
+      },
+    });
+
+    expect(draft.supportStatus).toBe("coming_soon");
+    expect(draft.canBroadcast).toBe(false);
+  });
+
+  it("returns skeleton draft for Tron", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "tron",
+      chainId: "tron-mainnet",
+      fromAddress: "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
+      toAddress: "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
+      asset: {
+        family: "tron",
+        chainId: "tron-mainnet",
+        type: "native",
+        symbol: "TRX",
+        name: "Tron",
+        decimals: 6,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "1",
+    });
+
+    expect(draft.supportStatus).toBe("skeleton");
+    expect(draft.canBroadcast).toBe(false);
+  });
+
+  it("returns skeleton draft for Bitcoin", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendDraftEngine(registry);
+
+    const draft = await engine.createDraft({
+      family: "utxo",
+      chainId: "bitcoin-mainnet",
+      fromAddress: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+      toAddress: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+      asset: {
+        family: "utxo",
+        chainId: "bitcoin-mainnet",
+        type: "utxo",
+        symbol: "BTC",
+        name: "Bitcoin",
+        decimals: 8,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "1",
+    });
+
+    expect(draft.supportStatus).toBe("skeleton");
+    expect(draft.canBroadcast).toBe(false);
   });
 });

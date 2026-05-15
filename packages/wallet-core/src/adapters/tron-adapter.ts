@@ -1,4 +1,4 @@
-import type { ReceiveInfo } from "@acorus/shared";
+import type { ReceiveInfo, SendDraft } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { notImplemented } from "./types";
 
@@ -24,7 +24,7 @@ export function createTronAdapter(): ChainAdapter {
       nativeBalance: false,
       tokenBalances: false,
       receive: true,
-      sendDraft: false,
+      sendDraft: true,
       broadcast: false,
       history: false,
       swap: false,
@@ -59,6 +59,33 @@ export function createTronAdapter(): ChainAdapter {
 
     buildExplorerTxUrl(txHash: string): string {
       return `https://tronscan.org/#/transaction/${txHash}`;
+    },
+
+    async createSendDraft(input): Promise<SendDraft> {
+      return {
+        family: "tron",
+        chainId,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        normalizedToAddress: input.toAddress,
+        asset: input.asset,
+        amountRaw: input.amountRaw ?? "0",
+        amountFormatted: input.amountFormatted ?? "0",
+        supportStatus: "skeleton",
+        feeEstimate: null,
+        issues: [
+          {
+            code: "tron_send_not_implemented",
+            severity: "error",
+            message: "Tron sending is not implemented yet.",
+          },
+        ],
+        warnings: [],
+        errors: ["Tron sending is not implemented yet."],
+        canProceed: false,
+        canBroadcast: false,
+        createdAt: new Date().toISOString(),
+      };
     },
   };
 }

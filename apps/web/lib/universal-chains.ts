@@ -55,7 +55,11 @@ export function getRpcUrlForUniversalChain(input: {
     return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
   }
   if (input.family === "evm" && typeof input.chainId === "number") {
-    return getRpcUrl(input.chainId);
+    try {
+      return getRpcUrl(input.chainId);
+    } catch {
+      return "";
+    }
   }
   return "";
 }

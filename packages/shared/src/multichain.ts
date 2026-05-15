@@ -77,13 +77,43 @@ export type UniversalTransactionRecord = {
   confirmedAt?: string | null;
 };
 
+export type SendSupportStatus =
+  | "supported"
+  | "unsupported"
+  | "coming_soon"
+  | "skeleton"
+  | "insufficient_data";
+
+export type SendValidationIssueSeverity =
+  | "info"
+  | "warning"
+  | "error";
+
+export type SendValidationIssue = {
+  code: string;
+  severity: SendValidationIssueSeverity;
+  message: string;
+};
+
+export type FeeEstimate = {
+  feeAsset: AssetRef;
+  feeRaw?: string | null;
+  feeFormatted?: string | null;
+  gasLimit?: string | null;
+  gasPrice?: string | null;
+  maxFeePerGas?: string | null;
+  maxPriorityFeePerGas?: string | null;
+  source: "live" | "estimated" | "fallback" | "unavailable";
+};
+
 export type SendDraftInput = {
   family: ChainFamily;
   chainId: ChainId;
   fromAddress: string;
   toAddress: string;
   asset: AssetRef;
-  amountRaw: string;
+  amountRaw?: string;
+  amountFormatted?: string;
 };
 
 export type SendDraft = {
@@ -91,11 +121,18 @@ export type SendDraft = {
   chainId: ChainId;
   fromAddress: string;
   toAddress: string;
+  normalizedToAddress?: string | null;
   asset: AssetRef;
   amountRaw: string;
-  estimatedFeeRaw?: string | null;
+  amountFormatted: string;
+  supportStatus: SendSupportStatus;
+  feeEstimate?: FeeEstimate | null;
+  issues: SendValidationIssue[];
   warnings: string[];
+  errors: string[];
+  canProceed: boolean;
   canBroadcast: boolean;
+  createdAt: string;
 };
 
 export type BroadcastInput = {

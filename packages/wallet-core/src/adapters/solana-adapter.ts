@@ -1,4 +1,4 @@
-import type { AssetBalance, DerivedAccount, ReceiveInfo } from "@acorus/shared";
+import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft } from "@acorus/shared";
 import { getCuratedTokens } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import {
@@ -30,7 +30,7 @@ export function createSolanaAdapter(): ChainAdapter {
       nativeBalance: true,
       tokenBalances: true,
       receive: true,
-      sendDraft: false,
+      sendDraft: true,
       broadcast: false,
       history: false,
       swap: false,
@@ -119,6 +119,48 @@ export function createSolanaAdapter(): ChainAdapter {
 
     buildExplorerTxUrl(txHash: string): string {
       return `https://solscan.io/tx/${txHash}`;
+    },
+
+    async createSendDraft(input): Promise<SendDraft> {
+      return {
+        family: "solana",
+        chainId,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        normalizedToAddress: input.toAddress,
+        asset: input.asset,
+        amountRaw: input.amountRaw ?? "0",
+        amountFormatted: input.amountFormatted ?? "0",
+        supportStatus: "coming_soon",
+        feeEstimate: {
+          feeAsset: {
+            family: "solana",
+            chainId,
+            type: "native",
+            symbol: "SOL",
+            name: "Solana",
+            decimals: 9,
+            tokenAddress: null,
+            isVerified: true,
+          },
+          feeRaw: null,
+          feeFormatted: null,
+          source: "unavailable",
+        },
+        issues: [
+          {
+            code: "solana_send_coming_soon",
+            severity: "warning",
+            message:
+              "Solana send is not enabled yet. This draft is for validation/preview only.",
+          },
+        ],
+        warnings: ["Solana send is coming soon."],
+        errors: [],
+        canProceed: false,
+        canBroadcast: false,
+        createdAt: new Date().toISOString(),
+      };
     },
   };
 }

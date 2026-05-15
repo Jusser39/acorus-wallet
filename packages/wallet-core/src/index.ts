@@ -9,6 +9,7 @@ export * from "./evm/status";
 export * from "./evm/token-metadata";
 export * from "./mnemonic";
 export * from "./practice";
+export * from "./send";
 export * from "./solana/balance";
 export * from "./solana/client";
 export * from "./solana/derive";

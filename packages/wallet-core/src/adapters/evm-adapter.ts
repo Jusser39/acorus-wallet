@@ -1,7 +1,7 @@
 import type { Address } from "viem";
-import { formatUnits, isAddress } from "viem";
+import { formatUnits, getAddress, isAddress } from "viem";
 import { EVM_CHAINS, getChainById, getCuratedTokens } from "@acorus/shared";
-import type { AssetBalance, DerivedAccount, ReceiveInfo } from "@acorus/shared";
+import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { getEvmAddressFromMnemonic } from "../mnemonic";
 import { getErc20Balance, getNativeBalance } from "../evm/balance";
@@ -33,8 +33,8 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
       nativeBalance: true,
       tokenBalances: true,
       receive: true,
-      sendDraft: false,
-      broadcast: false,
+      sendDraft: true,
+      broadcast: true,
       history: true,
       swap: false,
     },
@@ -119,6 +119,52 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
 
     buildExplorerTxUrl(txHash: string): string {
       return buildExplorerTxUrl(chainId, txHash);
+    },
+
+    async createSendDraft(input): Promise<SendDraft> {
+      const isNative = input.asset.type === "native";
+      const normalizedToAddress = isAddress(input.toAddress)
+        ? getAddress(input.toAddress)
+        : input.toAddress;
+
+      return {
+        family: "evm",
+        chainId,
+        fromAddress: input.fromAddress,
+        toAddress: input.toAddress,
+        normalizedToAddress,
+        asset: input.asset,
+        amountRaw: input.amountRaw ?? "0",
+        amountFormatted: input.amountFormatted ?? "0",
+        supportStatus: "supported",
+        feeEstimate: {
+          feeAsset: {
+            family: "evm",
+            chainId,
+            type: "native",
+            symbol: chain.nativeSymbol,
+            name: chain.name,
+            decimals: 18,
+            tokenAddress: null,
+            isVerified: true,
+          },
+          feeRaw: null,
+          feeFormatted: null,
+          gasLimit: isNative ? "21000" : "65000",
+          gasPrice: null,
+          maxFeePerGas: null,
+          maxPriorityFeePerGas: null,
+          source: "estimated",
+        },
+        issues: [],
+        warnings: isNative
+          ? []
+          : ["Token transfers require native coin for gas."],
+        errors: [],
+        canProceed: true,
+        canBroadcast: true,
+        createdAt: new Date().toISOString(),
+      };
     },
   };
 }

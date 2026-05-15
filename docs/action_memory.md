@@ -253,6 +253,7 @@
 - Current product follow-up: the Solana Wallet Skeleton wave is implemented and deployed; the next sensible Solana step is real send + transaction status/history enrichment, still without relaxing the current non-custodial boundary
 - Current product follow-up: the Unified Multichain Asset Engine + Adapter Foundation wave is implemented and deployed; the next sensible product step is to move universal receive/portfolio/token detail UI deeper into the adapter model or ship Solana Send MVP on top of this foundation
 - Current product follow-up: the Universal Multichain Wallet UI wave is implemented and deployed; the next sensible product step is the Universal Send Draft Engine so all future send flows route through one multichain draft model before enabling additional networks.
+- Current product follow-up: the Universal Send Draft Engine wave is implemented and deployed; the next sensible product step is Universal Send UI so the existing EVM send review flow and future non-EVM flows can share one preview/review foundation.
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
@@ -269,3 +270,16 @@
     - Phase 13: /tokens/[chainId]/[tokenAddress]/page.tsx — token detail + sparkline chart
     - Phase 14: /tokens/add/page.tsx — add custom ERC-20 by contract address
     - VPS: rebuilt API container, applied prisma db push (schema already in sync), confirmed all endpoints live
+95. Started the Universal Send Draft Engine wave with a read-only audit across shared multichain types, wallet-core adapters and EVM send helpers, the existing web send flow, session plan state, and current git/deploy status on a clean worktree at `9abaa10`.
+96. Expanded the shared multichain send model with support status, validation issue, fee estimate, and richer send draft fields while keeping the existing import surface stable for the rest of the monorepo.
+97. Added wallet-core send foundations: `send/amount.ts`, `send/validation.ts`, `send/draft-engine.ts`, and `send/index.ts`, then exported them through `packages/wallet-core/src/index.ts`.
+98. Extended the adapter layer with `createSendDraft()` support across EVM, Solana, Tron, and Bitcoin so the engine can return `supported`, `coming_soon`, or `skeleton` drafts without broadcasting any transaction.
+99. Added frontend draft foundations with `apps/web/lib/send-draft.ts` and `apps/web/components/send-draft-preview.tsx`, while deliberately leaving the old `/send` EVM page flow intact and not wiring real non-EVM send UX in this wave.
+100. Added regression coverage for amount normalization, EVM native/ERC-20 drafts, invalid recipient, insufficient balance, Solana coming-soon draft, Tron skeleton draft, Bitcoin skeleton draft, and the frontend `createUniversalSendDraft()` service.
+101. Hit two implementation follow-ups during validation: fixed a web vitest import-resolution issue by switching `send-draft.ts` to a relative import, and made `getRpcUrlForUniversalChain()` fail-soft for missing EVM RPC env so draft creation still works in test/fallback contexts.
+102. Re-ran local validation successfully: `pnpm --filter @acorus/shared build`, `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm test`, `pnpm build`, and `git diff --check`.
+103. Confirmed local Docker regression is still workstation-blocked (`dockerDesktopLinuxEngine` unavailable), so compose regression remained VPS-only for this wave as well.
+104. Built a fresh working-tree archive, uploaded it to VPS `85.239.59.199`, rebuilt the `api` and `web` Docker images, restarted `api/web/nginx`, and re-ran `npx prisma db push --schema prisma/schema.prisma` inside the API container.
+105. Verified live rollout on VPS: `docker compose ... ps`, loopback/public `/health`, `/api/chains`, persistence creation + verify, persistence verify after `restart api`, and public HTTP 200 on `/`, `/wallet`, `/send`, and `/receive`.
+106. Added `docs/universal_send_draft_engine_plan.md` and `docs/universal_send_draft_engine_report.md`, then updated `docs/project_memory.md`, `docs/action_memory.md`, and the session plan to record the completed wave, checks, rollout, non-scope, and next step.
+107. Kept the non-custodial boundary and product scope unchanged: no backend seed/privateKey/passcode handling, no Solana real send, no Tron/BTC real send, no swap, and no rewrite of the working EVM send transaction path.
