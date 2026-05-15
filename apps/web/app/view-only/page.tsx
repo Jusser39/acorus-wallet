@@ -15,7 +15,7 @@ export default function ViewOnlyPage() {
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const [walletName, setWalletName] = useState("View-only wallet");
-  const [chainFamily, setChainFamily] = useState<"evm" | "solana">("evm");
+  const [chainFamily, setChainFamily] = useState<"evm" | "solana" | "tron">("evm");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,16 +26,22 @@ export default function ViewOnlyPage() {
       return;
     }
 
+    const chainId =
+      chainFamily === "solana" ? 101
+      : chainFamily === "tron" ? "tron-mainnet"
+      : 1;
     const adapter = registry.get({
       family: chainFamily,
-      chainId: chainFamily === "solana" ? 101 : 1,
+      chainId,
     });
 
     if (!adapter?.validateAddress(address)) {
       setError(
         chainFamily === "solana"
-          ? "Введите корректный Solana-адрес."
-          : "Введите корректный EVM-адрес.",
+          ? "Введите корректный Solana-адрес (Base58)."
+          : chainFamily === "tron"
+            ? "Введите корректный Tron-адрес (начинается с T)."
+            : "Введите корректный EVM-адрес (0x...).",
       );
       return;
     }
@@ -48,7 +54,7 @@ export default function ViewOnlyPage() {
         userId,
         name: walletName,
         type: "view_only",
-        publicAddress: chainFamily === "solana" ? address.trim() : getAddress(address),
+        publicAddress: chainFamily === "evm" ? getAddress(address) : address.trim(),
         chainFamily,
       });
 
@@ -80,10 +86,11 @@ export default function ViewOnlyPage() {
           <span className="text-sm text-slate-300">Chain family</span>
           <select
             value={chainFamily}
-            onChange={(event) => setChainFamily(event.target.value as "evm" | "solana")}
+            onChange={(event) => setChainFamily(event.target.value as "evm" | "solana" | "tron")}
           >
-            <option value="evm">EVM</option>
+            <option value="evm">EVM (Ethereum, BSC, Polygon…)</option>
             <option value="solana">Solana</option>
+            <option value="tron">Tron (skeleton)</option>
           </select>
         </label>
         <label className="space-y-2">
@@ -91,7 +98,7 @@ export default function ViewOnlyPage() {
           <input
             value={address}
             onChange={(event) => setAddress(event.target.value)}
-            placeholder={chainFamily === "solana" ? "Base58 address" : "0x..."}
+            placeholder={chainFamily === "solana" ? "Base58 address" : chainFamily === "tron" ? "T..." : "0x..."}
           />
         </label>
 

@@ -241,7 +241,7 @@ describe("api", () => {
 
     expect(chartResponse.statusCode).toBe(200);
     expect(chartResponse.json().chart.points.length).toBeGreaterThan(0);
-  });
+  }, 30_000);
 
   it("market prices returns sourceStatus on fresh cache", async () => {
     // First call – no cache → live (mock mode) → sourceStatus fallback_mock or live

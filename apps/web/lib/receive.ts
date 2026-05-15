@@ -17,3 +17,7 @@ export function getUniversalReceiveInfo(input: {
     address: input.address,
   });
 }
+
+export function canReceiveOnFamily(family: ChainFamily): boolean {
+  return family === "evm" || family === "solana" || family === "tron" || family === "utxo";
+}

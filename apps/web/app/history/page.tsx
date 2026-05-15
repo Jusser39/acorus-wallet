@@ -16,7 +16,12 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isSkeletonChainFamily =
+    activeProfile?.chainFamily === "tron"
+    || activeProfile?.chainFamily === "utxo"
+    || activeProfile?.chainFamily === "ton";
   const isSolana = activeProfile?.chainFamily === "solana";
+  const isNonEvmHistory = isSolana || isSkeletonChainFamily;
 
   useEffect(() => {
     if (!activeProfile || !userId) {
@@ -55,7 +60,7 @@ export default function HistoryPage() {
   }, [activeProfile, userId]);
 
   async function handleRefreshStatuses() {
-    if (!userId || isSolana) {
+    if (!userId || isNonEvmHistory) {
       return;
     }
 
@@ -89,12 +94,14 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-3xl font-semibold">Transaction history</h1>
           <p className="mt-2 text-sm text-slate-300">
-            {isSolana
-              ? "Solana history is read-only in this wave. Existing records remain visible, but status refresh is intentionally disabled."
-              : "История хранится как публичные tx records без seed/private key."}
+            {isSkeletonChainFamily
+              ? `${activeProfile?.chainFamily ?? "This chain"} history is not implemented yet. Send transactions are not available.`
+              : isSolana
+                ? "Solana history is read-only in this wave. Existing records remain visible, but status refresh is intentionally disabled."
+                : "История хранится как публичные tx records без seed/private key."}
           </p>
         </div>
-        {!isSolana ? (
+        {!isNonEvmHistory ? (
           <button type="button" className="button-primary" onClick={() => void handleRefreshStatuses()}>
             Refresh pending
           </button>

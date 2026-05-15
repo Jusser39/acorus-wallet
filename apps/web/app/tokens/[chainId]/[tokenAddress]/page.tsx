@@ -2,6 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import {
   getMarketChart,
@@ -14,6 +15,9 @@ import {
 } from "@/lib/api";
 import { TokenChart } from "@/components/token-chart";
 import { getChainById, getCuratedTokens, normalizeAddressForChain } from "@acorus/shared";
+import { getUniversalTokenExplorerUrl } from "@/lib/universal-explorer";
+import { getChainFamilyLabel, isSkeletonFamily } from "@/lib/universal-assets";
+import type { ChainFamily } from "@acorus/shared";
 
 const RANGES: ChartRange[] = ["1D", "7D", "1M", "3M", "1Y"];
 
@@ -93,12 +97,21 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const resolvedParams = "then" in params ? use(params as Promise<PageParams>) : params;
   const chainId = Number(resolvedParams.chainId);
   const tokenAddress = resolvedParams.tokenAddress;
+  const searchParams = useSearchParams();
+  const familyParam = (searchParams?.get("family") ?? "evm") as ChainFamily;
+  const symbolParam = searchParams?.get("symbol") ?? undefined;
+  const isNativeToken = tokenAddress === "native";
+  const family = familyParam;
+  const isSkeleton = isSkeletonFamily(family);
+  const familyLabel = getChainFamilyLabel(family);
 
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
 
-  const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() => findCuratedToken(chainId, tokenAddress));
+  const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() =>
+    isNativeToken || isSkeleton ? null : findCuratedToken(chainId, tokenAddress),
+  );
   const [price, setPrice] = useState<MarketPrice | null>(null);
   const [chart, setChart] = useState<MarketChart | null>(null);
   const [range, setRange] = useState<ChartRange>("7D");
@@ -106,15 +119,31 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const [loadingChart, setLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const chain = useMemo(
-    () => getChainById(chainId),
-    [chainId],
+  const chain = useMemo(() => getChainById(chainId), [chainId]);
+  const explorerTokenUrl = useMemo(
+    () =>
+      isNativeToken
+        ? null
+        : getUniversalTokenExplorerUrl({ family, chainId, tokenAddress }),
+    [family, chainId, tokenAddress, isNativeToken],
   );
 
   useEffect(() => {
     let active = true;
 
     async function hydrateTokenMeta() {
+      if (isNativeToken) {
+        const chainName = chain?.name ?? `Chain ${chainId}`;
+        const nativeSym = chain?.nativeSymbol ?? symbolParam ?? "TOKEN";
+        if (active) setTokenMeta({ symbol: nativeSym, name: chainName });
+        return;
+      }
+
+      if (isSkeleton) {
+        if (active && symbolParam) setTokenMeta({ symbol: symbolParam, name: symbolParam });
+        return;
+      }
+
       const curated = findCuratedToken(chainId, tokenAddress);
       if (active && curated) {
         setTokenMeta(curated);
@@ -136,10 +165,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         );
 
         if (active && match) {
-          setTokenMeta({
-            symbol: match.symbol,
-            name: match.name,
-          });
+          setTokenMeta({ symbol: match.symbol, name: match.name });
         }
       } catch {
         // non-fatal
@@ -150,7 +176,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [activeProfile?.id, chainId, tokenAddress, userId]);
+  }, [activeProfile?.id, chainId, chain, tokenAddress, userId, isNativeToken, isSkeleton, symbolParam]);
 
   const resolvedSymbol = tokenMeta?.symbol ?? "TOKEN";
   const resolvedName = tokenMeta?.name ?? price?.symbol ?? "Token";
@@ -159,6 +185,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     let active = true;
 
     async function loadPrice() {
+      if (isSkeleton) return;
       setLoadingPrice(true);
       setError(null);
 
@@ -188,12 +215,13 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [chainId, currency, resolvedSymbol, tokenAddress]);
+  }, [chainId, currency, resolvedSymbol, tokenAddress, isSkeleton]);
 
   useEffect(() => {
     let active = true;
 
     async function loadChart() {
+      if (isSkeleton) return;
       setLoadingChart(true);
 
       try {
@@ -223,7 +251,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [chainId, currency, range, resolvedSymbol, tokenAddress]);
+  }, [chainId, currency, range, resolvedSymbol, tokenAddress, isSkeleton]);
 
   const riskFlags = parseRiskFlags(price);
   const riskLevel = price?.riskLevel;
@@ -242,10 +270,29 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
       <div className="panel space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs text-slate-400">{chain?.name ?? `Chain ${chainId}`}</p>
+            <p className="text-xs text-slate-400">
+              {chain?.name ?? `Chain ${chainId}`}
+              {family !== "evm" && (
+                <span className="ml-2 inline-flex rounded-full border border-violet-500/30 bg-violet-500/20 px-1.5 py-0.5 text-[10px] text-violet-300">
+                  {familyLabel}
+                </span>
+              )}
+            </p>
             <h1 className="mt-1 text-2xl font-semibold">{resolvedName}</h1>
             <p className="mt-1 text-sm text-slate-300">{resolvedSymbol}</p>
-            <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
+            {!isNativeToken && (
+              <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
+            )}
+            {explorerTokenUrl && (
+              <a
+                href={explorerTokenUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-200"
+              >
+                View on explorer ↗
+              </a>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             {priceBadge ? (
@@ -260,6 +307,12 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         </div>
 
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+
+        {isSkeleton && (
+          <div className="rounded-xl border border-amber-700/40 bg-amber-900/20 p-3 text-sm text-amber-300">
+            ⚠ {familyLabel} is skeleton-only in this wave. Price data and charts are not available.
+          </div>
+        )}
 
         {isHighRisk ? (
           <div className="rounded-xl border border-amber-700/40 bg-amber-900/20 p-3 space-y-1">
@@ -383,12 +436,18 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         </div>
 
         <div className="flex gap-3">
-          <Link
-            href={`/send?token=${encodeURIComponent(tokenAddress)}&chainId=${chainId}`}
-            className="button-primary flex-1 text-center"
-          >
-            Send
-          </Link>
+          {family === "evm" && !isNativeToken ? (
+            <Link
+              href={`/send?token=${encodeURIComponent(tokenAddress)}&chainId=${chainId}`}
+              className="button-primary flex-1 text-center"
+            >
+              Send
+            </Link>
+          ) : (
+            <button type="button" className="button-primary flex-1 opacity-60" disabled>
+              {isNativeToken ? "Send native →" : "Send unavailable"}
+            </button>
+          )}
           <Link href="/receive" className="button-secondary flex-1 text-center">
             Receive
           </Link>

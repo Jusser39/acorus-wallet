@@ -4,12 +4,14 @@ import { normalizeAddressForChain } from "@acorus/shared";
 import Link from "next/link";
 import type { PortfolioAssetView } from "@/lib/portfolio";
 import type { FiatCurrency } from "@/lib/api";
+import { ChainFamilyBadge } from "@/components/universal-badges";
 
 interface Props {
   assets: PortfolioAssetView[];
   hidden: boolean;
   currency: FiatCurrency;
   chainId: number;
+  chainFamily?: string;
   loading?: boolean;
   onHideToken?: (asset: PortfolioAssetView) => void;
   busyTokenKey?: string | null;
@@ -111,6 +113,7 @@ export function AssetList({
   hidden,
   currency,
   chainId,
+  chainFamily,
   loading,
   onHideToken,
   busyTokenKey,
@@ -139,10 +142,14 @@ export function AssetList({
     <div className="space-y-2">
       {assets.map((asset) => {
         const key = asset.tokenAddress ?? `native-${asset.symbol}`;
+        const isErc20WithAddress = asset.type === "erc20" && asset.tokenAddress;
+        const isSplWithAddress = chainFamily === "solana" && asset.tokenAddress && asset.type !== "native";
         const detailHref =
-          asset.type === "erc20" && asset.tokenAddress
+          isErc20WithAddress
             ? `/tokens/${chainId}/${asset.tokenAddress}`
-            : null;
+            : isSplWithAddress
+              ? `/tokens/${chainId}/${asset.tokenAddress}?family=solana&symbol=${encodeURIComponent(asset.symbol)}`
+              : null;
         const isBusy = busyTokenKey === tokenActionKey(asset);
 
         return (
@@ -161,6 +168,9 @@ export function AssetList({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="truncate text-sm font-semibold">{asset.symbol}</p>
+                          {chainFamily && chainFamily !== "evm" && (
+                            <ChainFamilyBadge family={chainFamily as import("@acorus/shared").ChainFamily} />
+                          )}
                           <ProviderBadge provider={asset.provider} sourceStatus={asset.sourceStatus} />
                           <RiskBadge riskLevel={asset.riskLevel} />
                           {asset.isCustom ? (
@@ -184,6 +194,9 @@ export function AssetList({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-sm font-semibold">{asset.symbol}</p>
+                        {chainFamily && chainFamily !== "evm" && (
+                          <ChainFamilyBadge family={chainFamily as import("@acorus/shared").ChainFamily} />
+                        )}
                         <ProviderBadge provider={asset.provider} sourceStatus={asset.sourceStatus} />
                         <RiskBadge riskLevel={asset.riskLevel} />
                       </div>
@@ -208,7 +221,7 @@ export function AssetList({
                       Details
                     </Link>
                   ) : null}
-                  {onHideToken && asset.type === "erc20" && asset.tokenAddress ? (
+                  {onHideToken && asset.type === "erc20" && asset.tokenAddress && (!chainFamily || chainFamily === "evm") ? (
                     <button
                       type="button"
                       disabled={isBusy}

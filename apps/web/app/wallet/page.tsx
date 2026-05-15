@@ -27,6 +27,7 @@ import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
 import { AssetList } from "@/components/asset-list";
 import { formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
+import { getSendAvailability } from "@/lib/send-policy";
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
@@ -59,6 +60,15 @@ export default function WalletPage() {
     || activeProfile?.chainFamily === "utxo"
     || activeProfile?.chainFamily === "ton";
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
+
+  const sendAvailability = activeProfile
+    ? getSendAvailability({
+        profileType: activeProfile.type,
+        chainFamily: activeProfile.chainFamily,
+        isUnlocked: Boolean(unlockedVault),
+        safetyMode: useWalletStore.getState().safetyMode,
+      })
+    : { canSend: false, ctaLabel: "Send unavailable" };
 
   const availableChains = useMemo(
     () => (activeProfile ? getChainsByFamily(activeProfile.chainFamily) : []),
@@ -302,7 +312,7 @@ export default function WalletPage() {
               <Link href="/receive" className="button-secondary">Receive</Link>
               {isViewOnly || !isEvm ? (
                 <button type="button" className="button-primary opacity-60" disabled>
-                  {isSolana ? "Solana send coming soon" : "Send not implemented"}
+                  {sendAvailability.ctaLabel}
                 </button>
               ) : (
                 <Link href="/send" className="button-primary">Send</Link>
@@ -422,6 +432,7 @@ export default function WalletPage() {
             hidden={hiddenBalance}
             currency={currency}
             chainId={selectedChainId}
+            chainFamily={activeProfile?.chainFamily}
             loading={loading}
             onHideToken={(asset) => void handleHideToken(asset)}
             busyTokenKey={busyTokenKey}
@@ -435,7 +446,7 @@ export default function WalletPage() {
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
             {isViewOnly || !isEvm ? (
-              <div className="button-primary text-center opacity-60">Send unavailable</div>
+              <div className="button-primary text-center opacity-60">{sendAvailability.ctaLabel}</div>
             ) : (
               <Link href="/send" className="button-primary text-center">Send assets</Link>
             )}

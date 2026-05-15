@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { loadWalletAssetSnapshot } from "@/lib/assets";
 import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
+import { getUnsupportedActionText } from "@/lib/universal-assets";
 import { formatAddress, formatAmount } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -99,6 +100,11 @@ export default function SendPage() {
   const safetyBlocked = activeProfile
     ? isSafetyModeBlockingRealSend(activeProfile.type, safetyMode)
     : false;
+  const isNonEvmFamily =
+    activeProfile?.chainFamily === "solana"
+    || activeProfile?.chainFamily === "tron"
+    || activeProfile?.chainFamily === "utxo"
+    || activeProfile?.chainFamily === "ton";
 
   useEffect(() => {
     if (!userId) {
@@ -475,19 +481,24 @@ export default function SendPage() {
     );
   }
 
-  if (isSolanaProfile) {
+  if (isSolanaProfile || isNonEvmFamily) {
+    const family = activeProfile!.chainFamily;
+    const label = getUnsupportedActionText(family);
+    const familyName = family.charAt(0).toUpperCase() + family.slice(1);
     return (
       <section className="page grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="panel space-y-5">
           <div>
             <h1 className="text-3xl font-semibold">Send assets</h1>
             <p className="mt-2 text-sm text-slate-300">
-              Solana send stays disabled in this skeleton wave. Receive, balances, SPL assets and read-only history are already available.
+              {label}: {familyName} send is not available in this wave.
             </p>
           </div>
 
           <div className="warning-box text-sm">
-            Real Solana transactions will be added in a separate wave after the receive/portfolio/view-only foundation is validated.
+            {family === "solana"
+              ? "Real Solana transactions will be added in the next wave after the receive/portfolio foundation is validated."
+              : `${familyName} send is not yet implemented. Receive and explorer groundwork is ready.`}
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -504,10 +515,10 @@ export default function SendPage() {
         </div>
 
         <aside className="panel space-y-4">
-          <h2 className="text-xl font-semibold">Current Solana scope</h2>
+          <h2 className="text-xl font-semibold">Current {familyName} scope</h2>
           <ul className="space-y-3 text-sm text-slate-300">
             <li>Receive address + QR enabled</li>
-            <li>SOL balance and SPL portfolio enabled</li>
+            <li>{family === "solana" ? "SOL balance and SPL portfolio enabled" : "Balance: not yet implemented"}</li>
             <li>View-only and practice profiles enabled</li>
             <li>Real send intentionally disabled</li>
           </ul>
