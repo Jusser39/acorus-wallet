@@ -25,6 +25,16 @@
 21. Switched VPS `.env` to `ACORUS_ENABLE_PRISMA_STORE=true` without exposing or replacing the existing Postgres secret.
 22. Hit a Linux runtime blocker caused by CRLF line endings in `scripts/docker/api-entrypoint.sh` (`bash\\r`), normalized shell scripts to LF, and added `.gitattributes` with `*.sh text eol=lf`.
 23. Rebuilt the VPS stack, confirmed `/health` reports `store: "prisma"`, and verified that wallet profiles, contacts, transactions, and onboarding progress survive `docker compose restart api`.
+24. Performed a read-only hardening audit across local git state, tracked files, VPS compose state, masked env values, and Docker logs without printing live secrets.
+25. Verified the exact compromised root password is absent from both the current worktree and git history, while `.env` remains untracked and secret hits in tracked files are limited to safe placeholders/docs/test coverage.
+26. Expanded API logger redaction for `DATABASE_URL`, `POSTGRES_PASSWORD`, `authorization`, `cookie`, and `set-cookie`-style fields, then extended logger tests accordingly.
+27. Hardened API error handling so parser/validation failures return sanitized client errors instead of leaking raw internal messages, and added regression coverage for empty JSON body handling.
+28. Added optional `CORS_ORIGIN` env support with safe empty-value parsing, preserving permissive fallback only for the current IP-based dev-public deployment.
+29. Fixed the frontend anonymous-user bootstrap flow by avoiding `Content-Type: application/json` on body-less requests, which removed the public `POST /api/users/anonymous` failure path.
+30. Upgraded `scripts/check-persistence.sh` to write `tmp/persistence-check.json` and support `CHECK_MODE=verify` for post-restart validation of the same created records.
+31. Added `scripts/backup-postgres.sh` and guarded `scripts/restore-postgres.sh`, then ran a real backup on the VPS into `/opt/acorus-wallet/backups/postgres`.
+32. Rebuilt `api` and `web` on the VPS, confirmed local/public health at `:8080`, re-ran full persistence creation + verification, restarted `api`, and re-verified the same wallet/contact/transaction/onboarding ids after restart.
+33. Added `docs/security_audit_report.md` and `docs/deployment_hardening.md`, and updated project memory for the security hardening wave.
 
 ## Commands run
 
@@ -53,8 +63,53 @@
 - `docker compose --env-file .env.example -f infra/docker-compose.yml config`
 - `BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
 - `docker compose --env-file .env -f infra/docker-compose.yml restart api`
+- `git status --short`
+- `git --no-pager log --oneline -5`
+- `git branch --show-current`
+- `git diff --stat`
+- `git ls-files`
+- `git --no-pager grep -n -i "password"`
+- `git --no-pager grep -n -i "DATABASE_URL"`
+- `git --no-pager grep -n -i "POSTGRES_PASSWORD"`
+- `git --no-pager grep -n -i "mnemonic"`
+- `git --no-pager grep -n -i "seed phrase"`
+- `git --no-pager grep -n -i "seedPhrase"`
+- `git --no-pager grep -n -i "privateKey"`
+- `git --no-pager grep -n -i "passcode"`
+- `git --no-pager grep -n -i "BEGIN OPENSSH"`
+- `git --no-pager grep -n -i "token"`
+- `git --no-pager grep -n -i "secret"`
+- `git --no-pager log --all --stat -- .env`
+- `git --no-pager log --all -S"POSTGRES_PASSWORD" --source --all`
+- `git --no-pager log --all -S"DATABASE_URL" --source --all`
+- `git --no-pager log --all -S"privateKey" --source --all`
+- `git --no-pager log --all -S"mnemonic" --source --all`
+- `git --no-pager log --all -S"passcode" --source --all`
+- `pnpm --filter @acorus/api test`
+- `pnpm --filter @acorus/api build`
+- `pnpm --filter @acorus/web build`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @acorus/api prisma:generate`
+- `bash -n scripts/check-persistence.sh`
+- `bash -n scripts/docker/api-entrypoint.sh`
+- `bash -n scripts/backup-postgres.sh`
+- `bash -n scripts/restore-postgres.sh`
+- `git diff --check`
+- `docker compose --env-file .env -f infra/docker-compose.yml config`
+- `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- `docker compose --env-file .env -f infra/docker-compose.yml up -d postgres redis api web nginx`
+- `docker compose --env-file .env -f infra/docker-compose.yml ps`
+- `docker compose --env-file .env -f infra/docker-compose.yml logs --tail=... api nginx web`
+- `curl -fsS http://127.0.0.1:8080/health`
+- `curl -fsS http://127.0.0.1:8080/api/chains`
+- `curl -fsS http://85.239.59.199:8080/health`
+- `curl -fsS http://85.239.59.199:8080/api/chains`
+- `CHECK_MODE=verify BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
+- `bash scripts/backup-postgres.sh`
 
 ## Current follow-up
 
-- Keep Prisma/Postgres as the default VPS runtime and monitor real user flows against the persisted tables
-- Decide whether to reserve a dedicated domain or reverse proxy path instead of raw IP:port access
+- Keep Prisma/Postgres as the default VPS runtime, but rotate the compromised root password before treating the server as trusted again
+- Add SSH key auth, disable password login after validation, and move to domain + HTTPS before any real-user or mainnet exposure
+- After domain setup, set `CORS_ORIGIN` explicitly and re-run the deployment/security audit

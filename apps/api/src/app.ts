@@ -74,6 +74,27 @@ export interface BuildAppOptions {
   logger?: FastifyBaseLogger | boolean;
 }
 
+function resolveCorsOrigin(env: ApiEnv): true | string[] {
+  if (!env.CORS_ORIGIN) {
+    return true;
+  }
+
+  const origins = env.CORS_ORIGIN.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return origins.length > 0 ? origins : true;
+}
+
+function getStatusCode(error: unknown): number | null {
+  if (typeof error !== "object" || error === null || !("statusCode" in error)) {
+    return null;
+  }
+
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+  return typeof statusCode === "number" ? statusCode : null;
+}
+
 export function resolveStore(env: ApiEnv): AppStore {
   if (env.ACORUS_ENABLE_PRISMA_STORE) {
     requireDatabaseUrl(env);
@@ -91,17 +112,35 @@ function normalizeError(error: unknown): { statusCode: number; message: string }
     };
   }
 
+  const statusCode = getStatusCode(error);
+
+  if (statusCode !== null) {
+    if (statusCode === 404) {
+      return {
+        statusCode,
+        message: "not_found",
+      };
+    }
+
+    if (statusCode >= 400 && statusCode < 500) {
+      return {
+        statusCode,
+        message: "bad_request",
+      };
+    }
+  }
+
   if (error instanceof Error) {
     if (error.message.toLowerCase().includes("not found")) {
       return {
         statusCode: 404,
-        message: error.message,
+        message: "not_found",
       };
     }
 
     return {
       statusCode: 500,
-      message: error.message,
+      message: "internal_error",
     };
   }
 
@@ -123,7 +162,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   );
   const store = options.store ?? resolveStore(env);
 
-  app.register(cors, { origin: true });
+  app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
     await store.close();
   });

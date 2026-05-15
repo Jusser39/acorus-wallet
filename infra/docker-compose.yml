@@ -41,6 +41,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       ACORUS_ENABLE_PRISMA_STORE: ${ACORUS_ENABLE_PRISMA_STORE:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
       NEXT_PUBLIC_ETH_RPC_URL: ${NEXT_PUBLIC_ETH_RPC_URL:-https://ethereum-rpc.publicnode.com}
       NEXT_PUBLIC_BSC_RPC_URL: ${NEXT_PUBLIC_BSC_RPC_URL:-https://bsc-rpc.publicnode.com}
       NEXT_PUBLIC_POLYGON_RPC_URL: ${NEXT_PUBLIC_POLYGON_RPC_URL:-https://polygon-bor-rpc.publicnode.com}

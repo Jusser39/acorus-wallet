@@ -30,3 +30,18 @@
 - No Solana/Tron runtime yet
 - No WalletConnect / real swap / NFT module yet
 - No backend seed storage, cloud seed backup, or custodial recovery
+
+## Security hardening wave
+
+- Date: `2026-05-15`
+- Current public URL remains `http://85.239.59.199:8080`
+- Port `8080` remains intentional because port `80` is occupied on the VPS
+- Backend store remains `prisma`
+- Passed checks: git secret scan, docs scan, VPS docker log scan, logger redaction audit, API route audit, API test/build, root test/build, Prisma generate, shell syntax checks, VPS health checks, VPS persistence create+verify across `restart api`, PostgreSQL backup smoke run
+- Added documents: `docs/security_audit_report.md`, `docs/deployment_hardening.md`
+- Added scripts: `scripts/backup-postgres.sh`, `scripts/restore-postgres.sh`
+- `scripts/check-persistence.sh` now writes `tmp/persistence-check.json` so the same created entities can be revalidated after restart
+- Remaining risks: root password must be rotated manually, SSH key auth and password-login disablement are still manual follow-up steps, HTTP-only IP deployment is not suitable for real production, local Docker regression is still blocked until the local Docker engine is running
+- Root password rotation is required before treating the VPS as trusted again
+- HTTPS is required before any real-user or mainnet launch
+- Next step: provision domain + HTTPS, then lock down `CORS_ORIGIN` and SSH access before the next product wave

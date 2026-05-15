@@ -37,6 +37,21 @@ describe("api", () => {
     expect(response.json().id).toBeTruthy();
   });
 
+  it("does not leak parser errors for empty json bodies", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/users/anonymous",
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: "bad_request",
+    });
+  });
+
   it("creates wallet profile with public address", async () => {
     const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
     const userId = user.json().id as string;

@@ -22,6 +22,15 @@ const boolFromEnv = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+const optionalStringFromEnv = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim();
+  return normalized === "" ? undefined : normalized;
+}, z.string().min(1).optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_HOST: z.string().default("0.0.0.0"),
@@ -30,6 +39,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   ACORUS_ENABLE_PRISMA_STORE: boolFromEnv.default(false),
   LOG_LEVEL: z.string().default("info"),
+  CORS_ORIGIN: optionalStringFromEnv,
   NEXT_PUBLIC_ETH_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_BSC_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_POLYGON_RPC_URL: z.string().optional(),
