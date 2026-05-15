@@ -50,6 +50,9 @@
 46. Repaired the VPS database password drift by aligning the `postgres` role password with the active `.env`, verified direct network access, removed/recreated the stale `acorus-api` container, and completed the rollout.
 47. Revalidated VPS health and persistence after rollout: `/health` and `/api/chains` passed on both loopback and public `:8080`, `scripts/check-persistence.sh` passed creation and `CHECK_MODE=verify` after `restart api`, and public HTML fetches succeeded for `/`, `/send`, `/receive`, `/view-only`, and `/practice`.
 48. Added `docs/evm_wallet_ux_send_flow_report.md` and updated project memory for the completed EVM Wallet UX + Send Flow wave.
+49. Implemented Real Market Provider + Token Discovery wave: DexScreener + CoinGecko composite provider, `/api/market/discover-token` endpoint, enriched Prisma schema (MarketPriceCache + UserToken), in-memory TTL cache, rate limiter, HTTP timeout wrapper, preview-first `/tokens/add` flow with risk assessment.
+50. Deployed Real Market Provider wave to VPS: rebuilt api/web Docker images, ran `prisma db push` (already in sync), restarted services, verified all endpoints live — `/health`, `/api/market/prices`, `/api/market/chart`, `/api/market/discover-token` (DexScreener live data for USDC: liquidity $45M, volume $10M, risk=low).
+51. Updated `docs/project_memory.md` and `docs/action_memory.md` for the Real Market Provider wave. Commit: 194eebd.
 
 ## Commands run
 

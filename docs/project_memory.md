@@ -93,3 +93,22 @@
 - VPS rollout succeeded after repairing a drift between the persisted PostgreSQL password and the current `.env` placeholder password, then recreating the `api` container
 - This wave still keeps the non-custodial boundary unchanged: backend stores only public data and never receives mnemonic/private-key/passcode material
 - Commit hash: pending final commit
+
+## Real Market Provider + Token Discovery Wave
+
+- Date: `2026-05-15`
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/real_market_provider_token_discovery_plan.md`
+- Report: `docs/real_market_provider_token_discovery_report.md`
+- New market provider architecture: DexScreener (primary) → CoinGecko (fallback) → Mock (final fallback)
+- New env vars: `MARKET_PROVIDER_MODE`, `DEXSCREENER_BASE_URL`, `COINGECKO_BASE_URL`, `COINGECKO_API_KEY`, `MARKET_PRICE_TTL_SEC`, `MARKET_CHART_TTL_SEC`, `MARKET_DISCOVERY_TTL_SEC`, `MARKET_HTTP_TIMEOUT_MS`, `MARKET_RATE_LIMIT_RPM`
+- New endpoint: `GET /api/market/discover-token?chainId=&tokenAddress=`
+  - Returns live data from DexScreener/CoinGecko with risk assessment
+  - Validated: address must be 0x + 40 hex chars, rejects mnemonic-like inputs
+- Prisma schema enriched: `MarketPriceCache` (+sourceStatus, liquidityUsd, pairUrl, riskLevel, riskFlagsJson), `UserToken` (+sourceStatus, liquidityUsd, volume24hUsd, marketCapUsd, fdvUsd, pairUrl, riskLevel, riskFlagsJson, lastMarketSyncAt)
+- Frontend: preview-first token add flow with risk warnings, provider/risk badges in asset list
+- Infrastructure: `http.ts` (timeout wrapper), `rate-limit.ts` (30 RPM token bucket), `cache.ts` (in-memory TTL)
+- Non-custodial boundary unchanged: discover-token accepts only chainId + tokenAddress
+- VPS verified: `/health` (prisma), `/api/market/prices` (mock fallback), `/api/market/chart` (mock fallback), `/api/market/discover-token` (live DexScreener for USDC returning real liquidity/volume data)
+- Commit hash: 194eebd
