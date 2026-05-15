@@ -117,6 +117,28 @@ export default function AddTokenPage() {
     );
   }
 
+  if (activeProfile.chainFamily === "solana") {
+    return (
+      <section className="page max-w-lg mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Link href="/wallet" className="text-sm text-slate-400 hover:text-white">← Wallet</Link>
+          <span className="text-slate-600">/</span>
+          <span className="text-sm text-slate-300">Add token</span>
+        </div>
+
+        <div className="panel space-y-5">
+          <h1 className="text-2xl font-semibold">Custom SPL token import</h1>
+          <p className="text-sm text-slate-400">
+            Solana skeleton currently supports curated SPL balances and token details basics. Manual custom SPL import will be added in a later wave.
+          </p>
+          <Link href="/tokens/manage" className="button-primary inline-flex items-center justify-center">
+            Open token management
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="page max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">

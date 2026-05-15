@@ -1,4 +1,5 @@
 import {
+  normalizeAddressForChain,
   type ContactRecord,
   type TokenMetadataItem,
   type TransactionRecordItem,
@@ -24,6 +25,10 @@ import type {
   WalletProfileUpdateInput,
 } from "./store";
 import { getChainsResponse, getCuratedTokenItems, toExplorerUrl } from "./store";
+
+function normalizeTokenAddress(chainId: number, tokenAddress: string): string {
+  return normalizeAddressForChain(chainId, tokenAddress);
+}
 
 export class MemoryStore implements AppStore {
   private readonly users = new Map<string, UserRecord>();
@@ -190,7 +195,7 @@ export class MemoryStore implements AppStore {
       submittedAt: input.submittedAt ?? now,
       confirmedAt: input.confirmedAt ?? null,
       rawStatus: input.rawStatus ?? null,
-      explorerUrl: input.hash.startsWith("0x") ? toExplorerUrl(input.chainId, input.hash) : null,
+      explorerUrl: input.assetType === "practice" ? null : toExplorerUrl(input.chainId, input.hash),
       createdAt: now,
       updatedAt: now,
     };
@@ -291,12 +296,13 @@ export class MemoryStore implements AppStore {
 
   async createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto> {
     const now = new Date().toISOString();
+    const tokenAddress = normalizeTokenAddress(input.chainId, input.tokenAddress);
     const record: UserTokenDto = {
       id: crypto.randomUUID(),
       userId: input.userId,
       walletProfileId: input.walletProfileId ?? null,
       chainId: input.chainId,
-      tokenAddress: input.tokenAddress,
+      tokenAddress,
       symbol: input.symbol,
       name: input.name,
       decimals: input.decimals,
@@ -311,6 +317,7 @@ export class MemoryStore implements AppStore {
       fdvUsd: input.fdvUsd ?? null,
       pairUrl: input.pairUrl ?? null,
       riskLevel: input.riskLevel ?? null,
+      riskFlags: input.riskFlags ?? [],
       riskFlagsJson: input.riskFlagsJson ?? null,
       lastMarketSyncAt: input.sourceStatus ? now : null,
       createdAt: now,
@@ -329,7 +336,100 @@ export class MemoryStore implements AppStore {
   }
 
   async deleteUserToken(id: string): Promise<void> {
+    const current = this.userTokens.get(id);
+    if (!current) {
+      throw new Error("User token not found.");
+    }
+    if (!current.isCustom) {
+      throw new Error("custom_token_delete_only");
+    }
     this.userTokens.delete(id);
+  }
+
+  async hideToken(input: {
+    userId: string;
+    walletProfileId?: string | null;
+    chainId: number;
+    tokenAddress: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    isCustom?: boolean;
+  }): Promise<UserTokenDto> {
+    const normalized = normalizeTokenAddress(input.chainId, input.tokenAddress);
+    const existing = [...this.userTokens.values()].find(
+      (token) =>
+        token.userId === input.userId &&
+        token.chainId === input.chainId &&
+        normalizeTokenAddress(token.chainId, token.tokenAddress) === normalized,
+    );
+
+    if (existing) {
+      const updated: UserTokenDto = {
+        ...existing,
+        isHidden: true,
+        updatedAt: new Date().toISOString(),
+      };
+      this.userTokens.set(existing.id, updated);
+      return updated;
+    }
+
+    const now = new Date().toISOString();
+    const token: UserTokenDto = {
+      id: crypto.randomUUID(),
+      userId: input.userId,
+      walletProfileId: input.walletProfileId ?? null,
+      chainId: input.chainId,
+      tokenAddress: normalized,
+      symbol: input.symbol,
+      name: input.name,
+      decimals: input.decimals,
+      logoUrl: null,
+      isVerified: false,
+      isCustom: input.isCustom ?? false,
+      isHidden: true,
+      sourceStatus: null,
+      liquidityUsd: null,
+      volume24hUsd: null,
+      marketCapUsd: null,
+      fdvUsd: null,
+      pairUrl: null,
+      riskLevel: "unknown",
+      riskFlags: [],
+      riskFlagsJson: "[]",
+      lastMarketSyncAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.userTokens.set(token.id, token);
+    return token;
+  }
+
+  async unhideToken(input: {
+    userId: string;
+    chainId: number;
+    tokenAddress: string;
+  }): Promise<UserTokenDto | null> {
+    const normalized = normalizeTokenAddress(input.chainId, input.tokenAddress);
+    const existing = [...this.userTokens.values()].find(
+      (token) =>
+        token.userId === input.userId &&
+        token.chainId === input.chainId &&
+        normalizeTokenAddress(token.chainId, token.tokenAddress) === normalized,
+    );
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated: UserTokenDto = {
+      ...existing,
+      isHidden: false,
+      updatedAt: new Date().toISOString(),
+    };
+    this.userTokens.set(existing.id, updated);
+    return updated;
   }
 
   async getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]> {
@@ -344,18 +444,18 @@ export class MemoryStore implements AppStore {
   }
 
   async upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto> {
-    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}`;
+    const key = `${input.chainId}:${normalizeAddressForChain(input.chainId, input.tokenAddress)}:${input.symbol}:${input.currency}`;
     this.marketPrices.set(key, input);
     return input;
   }
 
   async getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null> {
-    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}:${input.range}`;
+    const key = `${input.chainId}:${normalizeAddressForChain(input.chainId, input.tokenAddress)}:${input.symbol}:${input.currency}:${input.range}`;
     return this.marketCharts.get(key) ?? null;
   }
 
   async upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto> {
-    const key = `${input.chainId}:${input.tokenAddress ?? ""}:${input.symbol}:${input.currency}:${input.range}`;
+    const key = `${input.chainId}:${normalizeAddressForChain(input.chainId, input.tokenAddress)}:${input.symbol}:${input.currency}:${input.range}`;
     this.marketCharts.set(key, input);
     return input;
   }

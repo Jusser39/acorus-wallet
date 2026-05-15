@@ -2,23 +2,41 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { EVM_CHAINS } from "@acorus/shared";
 import Link from "next/link";
-import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { updateWalletProfile, type FiatCurrency } from "@/lib/api";
-import { loadEvmPortfolioSummary, type PortfolioSummaryView } from "@/lib/portfolio";
-import { PRACTICE_ADDRESS, PRACTICE_LESSONS } from "@/lib/practice";
+import { deriveSolanaAccountFromMnemonic } from "@acorus/wallet-core";
+import {
+  getChainById,
+  getChainsByFamily,
+  getDefaultChainIdForFamily,
+  normalizeAddressForChain,
+} from "@acorus/shared";
+import {
+  createWalletProfile,
+  hideUserToken,
+  updateWalletProfile,
+  type FiatCurrency,
+} from "@/lib/api";
+import {
+  loadPortfolioSummary,
+  type PortfolioAssetView,
+  type PortfolioSummaryView,
+} from "@/lib/portfolio";
+import { getPracticeAddress, PRACTICE_LESSONS } from "@/lib/practice";
 import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
 import { AssetList } from "@/components/asset-list";
 import { formatAddress } from "@/lib/utils";
+import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
+  const profiles = useWalletStore((state) => state.profiles);
   const selectedChainId = useWalletStore((state) => state.selectedChainId);
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
+  const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
+  const setWalletError = useWalletStore((state) => state.setError);
   const lockWallet = useWalletStore((state) => state.lockWallet);
 
   const [portfolio, setPortfolio] = useState<PortfolioSummaryView | null>(null);
@@ -27,58 +45,104 @@ export default function WalletPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [hiddenSaving, setHiddenSaving] = useState(false);
+  const [busyTokenKey, setBusyTokenKey] = useState<string | null>(null);
+  const [addingSolana, setAddingSolana] = useState(false);
 
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
   const isLocked = activeProfile?.type === "local" && !unlockedVault;
   const isViewOnly = activeProfile?.type === "view_only";
+  const isSolana = activeProfile?.chainFamily === "solana";
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
+
+  const availableChains = useMemo(
+    () => (activeProfile ? getChainsByFamily(activeProfile.chainFamily) : []),
+    [activeProfile],
+  );
+
+  const chain = useMemo(
+    () => (
+      getChainById(selectedChainId)
+      ?? availableChains[0]
+      ?? getChainById(getDefaultChainIdForFamily("evm"))
+    ),
+    [availableChains, selectedChainId],
+  );
+
+  const hasSolanaLocalProfile = useMemo(
+    () =>
+      profiles.some(
+        (profile) => profile.chainFamily === "solana" && profile.type === "local",
+      ),
+    [profiles],
+  );
+
+  const canCreateSolanaProfile = Boolean(
+    activeProfile?.chainFamily === "evm"
+      && activeProfile?.type === "local"
+      && unlockedVault
+      && !hasSolanaLocalProfile,
+  );
 
   useEffect(() => {
     let active = true;
 
     async function loadPortfolio() {
-      if (!activeProfile || !userId) return;
+      if (!activeProfile || !userId) {
+        return;
+      }
 
       setLoading(true);
       setError(null);
 
       try {
-        const summary = await loadEvmPortfolioSummary(
+        const summary = await loadPortfolioSummary(
           activeProfile,
           selectedChainId,
           userId,
           currency,
         );
-        if (active) setPortfolio(summary);
+        if (active) {
+          setPortfolio(summary);
+        }
       } catch (err) {
         if (active) {
           setError(err instanceof Error ? err.message : "Failed to load portfolio.");
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     void loadPortfolio();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [activeProfile, selectedChainId, userId, refreshNonce, currency]);
 
-  const chain = useMemo(
-    () => EVM_CHAINS.find((c) => c.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
-    [selectedChainId],
-  );
-
   async function handleCopyAddress() {
-    const value = activeProfile?.publicAddress ?? PRACTICE_ADDRESS;
+    if (!activeProfile) {
+      return;
+    }
+
+    const value =
+      activeProfile.type === "practice"
+        ? getPracticeAddress(activeProfile.chainFamily)
+        : activeProfile.publicAddress;
     await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
   async function handleHiddenBalanceToggle() {
-    if (!activeProfile || !userId) return;
+    if (!activeProfile || !userId) {
+      return;
+    }
+
     setHiddenSaving(true);
     setError(null);
+
     try {
       const next = await updateWalletProfile(activeProfile.id, {
         userId,
@@ -89,6 +153,79 @@ export default function WalletPage() {
       setError(err instanceof Error ? err.message : "Failed to update hidden balance.");
     } finally {
       setHiddenSaving(false);
+    }
+  }
+
+  async function handleHideToken(asset: PortfolioAssetView) {
+    if (!activeProfile || !userId || !asset.tokenAddress) {
+      return;
+    }
+
+    setBusyTokenKey(
+      `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`,
+    );
+    setError(null);
+
+    try {
+      await hideUserToken({
+        userId,
+        walletProfileId: activeProfile.id,
+        chainId: selectedChainId,
+        tokenAddress: asset.tokenAddress,
+        symbol: asset.symbol,
+        name: asset.name,
+        decimals: asset.decimals,
+        isCustom: asset.isCustom,
+      });
+      setRefreshNonce((value) => value + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to hide token.");
+    } finally {
+      setBusyTokenKey(null);
+    }
+  }
+
+  async function handleAddSolanaProfile() {
+    if (!userId || !unlockedVault) {
+      setError("Unlock the local vault before adding a Solana profile.");
+      return;
+    }
+
+    setAddingSolana(true);
+    setError(null);
+
+    try {
+      const account = deriveSolanaAccountFromMnemonic({
+        mnemonic: unlockedVault.mnemonic,
+      });
+
+      const existing = profiles.find(
+        (profile) =>
+          profile.chainFamily === "solana"
+          && profile.type === "local"
+          && profile.publicAddress === account.publicAddress,
+      );
+
+      if (existing) {
+        setActiveProfileId(existing.id);
+        return;
+      }
+
+      const profile = await createWalletProfile({
+        userId,
+        name: `${activeProfile?.name ?? "Wallet"} · Solana`,
+        type: "local",
+        publicAddress: account.publicAddress,
+        chainFamily: "solana",
+      });
+
+      upsertProfile(profile);
+      setActiveProfileId(profile.id);
+      setWalletError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add a Solana profile.");
+    } finally {
+      setAddingSolana(false);
     }
   }
 
@@ -108,8 +245,12 @@ export default function WalletPage() {
     );
   }
 
-  const nativeBalance = portfolio?.assets.find((a) => a.type === "native")?.balanceFormatted ?? "0";
-  const tokenAssets = portfolio?.assets.filter((a) => a.type !== "native") ?? [];
+  const walletAddress =
+    activeProfile.type === "practice"
+      ? getPracticeAddress(activeProfile.chainFamily)
+      : activeProfile.publicAddress;
+  const nativeBalance = portfolio?.assets.find((asset) => asset.type === "native")?.balanceFormatted ?? "0";
+  const tokenAssets = portfolio?.assets.filter((asset) => asset.type !== "native") ?? [];
 
   return (
     <section className="page grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
@@ -118,7 +259,7 @@ export default function WalletPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-emerald-300">
-                {activeProfile.type.replace("_", " ")}
+                {activeProfile.type.replace("_", " ")} · {activeProfile.chainFamily}
               </p>
               <h1 className="mt-2 text-3xl font-semibold">{activeProfile.name}</h1>
               <p className="mt-2 text-sm text-slate-300">
@@ -130,8 +271,10 @@ export default function WalletPage() {
                 {copied ? "Copied" : "Copy address"}
               </button>
               <Link href="/receive" className="button-secondary">Receive</Link>
-              {isViewOnly ? (
-                <button type="button" className="button-primary opacity-60" disabled>Send disabled</button>
+              {isViewOnly || isSolana ? (
+                <button type="button" className="button-primary opacity-60" disabled>
+                  Send disabled
+                </button>
               ) : (
                 <Link href="/send" className="button-primary">Send</Link>
               )}
@@ -146,10 +289,30 @@ export default function WalletPage() {
               Practice mode — no real funds used.
             </div>
           )}
+          {isSolana && (
+            <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 p-4 text-sm text-violet-100">
+              Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Real send stays disabled in this wave.
+            </div>
+          )}
           {isLocked && (
             <div className="warning-box space-y-3 text-sm">
-              <p>Wallet locked. Unlock to send or access mnemonic.</p>
+              <p>Wallet locked. Unlock to create derived profiles or access mnemonic-backed actions.</p>
               <Link href="/unlock" className="button-primary inline-flex">Unlock wallet</Link>
+            </div>
+          )}
+          {canCreateSolanaProfile && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>Add the Solana sibling profile derived from the same local mnemonic.</span>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={addingSolana}
+                  onClick={() => void handleAddSolanaProfile()}
+                >
+                  {addingSolana ? "Adding…" : "Add Solana profile"}
+                </button>
+              </div>
             </div>
           )}
 
@@ -163,7 +326,7 @@ export default function WalletPage() {
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <p className="text-sm text-slate-400">Native balance · {chain.name}</p>
+                <p className="text-sm text-slate-400">Native balance · {chain?.name ?? `Chain ${selectedChainId}`}</p>
                 <button
                   type="button"
                   className="text-sm text-emerald-300"
@@ -174,14 +337,14 @@ export default function WalletPage() {
                 </button>
               </div>
               <p className="mt-4 text-4xl font-semibold">
-                {hiddenBalance ? "••••" : `${parseFloat(nativeBalance).toFixed(4)} ${chain.nativeSymbol}`}
+                {hiddenBalance ? "••••" : `${parseFloat(nativeBalance).toFixed(4)} ${chain?.nativeSymbol ?? ""}`}
               </p>
               <p className="mt-3 text-sm text-slate-400">Currency: {currency}</p>
             </div>
             <div className="panel flex flex-col items-center justify-center gap-3">
-              <QRCodeSVG value={activeProfile.publicAddress} size={148} bgColor="transparent" fgColor="#ffffff" />
+              <QRCodeSVG value={walletAddress} size={148} bgColor="transparent" fgColor="#ffffff" />
               <p className="text-center text-xs text-slate-300">
-                Only send assets on the selected network.
+                {isSolana ? "Receive only on Solana-compatible routes." : "Only send assets on the selected network."}
               </p>
             </div>
           </div>
@@ -191,10 +354,10 @@ export default function WalletPage() {
               <span className="text-sm text-slate-300">Chain</span>
               <select
                 value={selectedChainId}
-                onChange={(e) => setSelectedChainId(Number(e.target.value))}
+                onChange={(event) => setSelectedChainId(Number(event.target.value))}
               >
-                {EVM_CHAINS.map((c) => (
-                  <option key={c.chainId} value={c.chainId}>{c.name}</option>
+                {availableChains.map((item) => (
+                  <option key={item.chainId} value={item.chainId}>{item.name}</option>
                 ))}
               </select>
             </label>
@@ -202,20 +365,21 @@ export default function WalletPage() {
               type="button"
               className="button-secondary"
               disabled={loading}
-              onClick={() => setRefreshNonce((n) => n + 1)}
+              onClick={() => setRefreshNonce((value) => value + 1)}
             >
               {loading ? "Refreshing…" : "Refresh"}
             </button>
           </div>
 
-          {error && <p className="text-sm text-rose-300">{error}</p>}
+          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         </div>
 
         <div className="panel space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Assets</h2>
             <div className="flex items-center gap-3">
-              <Link href="/tokens/add" className="text-sm text-emerald-300">+ Add token</Link>
+              {!isSolana ? <Link href="/tokens/add" className="text-sm text-emerald-300">+ Add token</Link> : null}
+              <Link href="/tokens/manage" className="text-sm text-emerald-300">Manage</Link>
               <Link href="/history" className="text-sm text-emerald-300">History</Link>
             </div>
           </div>
@@ -225,6 +389,8 @@ export default function WalletPage() {
             currency={currency}
             chainId={selectedChainId}
             loading={loading}
+            onHideToken={(asset) => void handleHideToken(asset)}
+            busyTokenKey={busyTokenKey}
           />
         </div>
       </div>
@@ -234,14 +400,17 @@ export default function WalletPage() {
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
-            {isViewOnly ? (
+            {isViewOnly || isSolana ? (
               <div className="button-primary text-center opacity-60">Send unavailable</div>
             ) : (
               <Link href="/send" className="button-primary text-center">Send assets</Link>
             )}
             <Link href="/history" className="button-secondary text-center">Open history</Link>
             <Link href="/contacts" className="button-secondary text-center">Manage contacts</Link>
-            <Link href="/tokens/add" className="button-secondary text-center">Add custom token</Link>
+            {!isSolana ? (
+              <Link href="/tokens/add" className="button-secondary text-center">Add custom token</Link>
+            ) : null}
+            <Link href="/tokens/manage" className="button-secondary text-center">Manage tokens</Link>
             <Link href="/settings" className="button-secondary text-center">Settings</Link>
             <button type="button" className="button-secondary text-center" onClick={() => lockWallet()}>
               Lock wallet

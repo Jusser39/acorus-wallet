@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { EVM_CHAINS } from "@acorus/shared";
+import { getChainById } from "@acorus/shared";
 import { listTransactions, updateTransactionStatus } from "@/lib/api";
 import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -15,6 +15,8 @@ export default function HistoryPage() {
   const [items, setItems] = useState<TransactionRecordItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isSolana = activeProfile?.chainFamily === "solana";
 
   useEffect(() => {
     if (!activeProfile || !userId) {
@@ -53,7 +55,7 @@ export default function HistoryPage() {
   }, [activeProfile, userId]);
 
   async function handleRefreshStatuses() {
-    if (!userId) {
+    if (!userId || isSolana) {
       return;
     }
 
@@ -71,7 +73,9 @@ export default function HistoryPage() {
   }
 
   async function handleRefreshSingle(item: TransactionRecordItem) {
-    if (!userId || item.assetType === "practice") {
+    const chain = getChainById(item.chainId);
+
+    if (!userId || item.assetType === "practice" || chain?.family !== "evm") {
       return;
     }
 
@@ -85,12 +89,16 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-3xl font-semibold">Transaction history</h1>
           <p className="mt-2 text-sm text-slate-300">
-            История хранится как публичные tx records без seed/private key.
+            {isSolana
+              ? "Solana history is read-only in this wave. Existing records remain visible, but status refresh is intentionally disabled."
+              : "История хранится как публичные tx records без seed/private key."}
           </p>
         </div>
-        <button type="button" className="button-primary" onClick={() => void handleRefreshStatuses()}>
-          Refresh pending
-        </button>
+        {!isSolana ? (
+          <button type="button" className="button-primary" onClick={() => void handleRefreshStatuses()}>
+            Refresh pending
+          </button>
+        ) : null}
       </div>
 
       {loading ? <p className="text-sm text-slate-400">Loading history...</p> : null}
@@ -98,57 +106,66 @@ export default function HistoryPage() {
 
       <div className="grid gap-4">
         {items.length ? (
-          items.map((item) => (
-            <div key={item.id} className="panel space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium">
-                    {item.direction.toUpperCase()} · {item.symbol} · {item.amount}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {formatAddress(item.from)} → {formatAddress(item.to)}
-                  </p>
+          items.map((item) => {
+            const chain = getChainById(item.chainId);
+            const canRefresh = item.assetType !== "practice" && chain?.family === "evm";
+
+            return (
+              <div key={item.id} className="panel space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">
+                      {item.direction.toUpperCase()} · {item.symbol} · {item.amount}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {formatAddress(item.from)} → {formatAddress(item.to)}
+                    </p>
+                  </div>
+                  <StatusBadge status={item.status} />
                 </div>
-                <StatusBadge status={item.status} />
-              </div>
-              <div className="grid gap-2 text-sm text-slate-300">
-                <p>
-                  Network: {EVM_CHAINS.find((chain) => chain.chainId === item.chainId)?.name ?? item.chainId}
-                </p>
-                <p>Submitted: {new Date(item.submittedAt).toLocaleString("ru-RU")}</p>
-                {item.confirmedAt ? (
-                  <p>Confirmed: {new Date(item.confirmedAt).toLocaleString("ru-RU")}</p>
-                ) : null}
-                <div className="flex flex-wrap items-center gap-4">
-                  <span>Hash: {formatAddress(item.hash)}</span>
-                  {item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash) ? (
-                    <Link
-                      href={item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash)!}
-                      target="_blank"
-                      className="text-emerald-300"
-                    >
-                      Explorer
-                    </Link>
+                <div className="grid gap-2 text-sm text-slate-300">
+                  <p>
+                    Network: {chain?.name ?? item.chainId}
+                  </p>
+                  <p>Submitted: {new Date(item.submittedAt).toLocaleString("ru-RU")}</p>
+                  {item.confirmedAt ? (
+                    <p>Confirmed: {new Date(item.confirmedAt).toLocaleString("ru-RU")}</p>
                   ) : null}
-                  {item.assetType !== "practice" ? (
-                    <button
-                      type="button"
-                      className="text-emerald-300"
-                      onClick={() => void handleRefreshSingle(item)}
-                    >
-                      Refresh status
-                    </button>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-4">
+                    <span>Hash: {formatAddress(item.hash)}</span>
+                    {item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash) ? (
+                      <Link
+                        href={item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash)!}
+                        target="_blank"
+                        className="text-emerald-300"
+                      >
+                        Explorer
+                      </Link>
+                    ) : null}
+                    {canRefresh ? (
+                      <button
+                        type="button"
+                        className="text-emerald-300"
+                        onClick={() => void handleRefreshSingle(item)}
+                      >
+                        Refresh status
+                      </button>
+                    ) : null}
+                  </div>
+                  {item.rawStatus ? <p className="text-slate-400">Raw status: {item.rawStatus}</p> : null}
                 </div>
-                {item.rawStatus ? <p className="text-slate-400">Raw status: {item.rawStatus}</p> : null}
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                  {item.assetType}
+                </div>
               </div>
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                {item.assetType}
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
-          <div className="panel text-sm text-slate-400">Пока нет транзакций.</div>
+          <div className="panel text-sm text-slate-400">
+            {isSolana
+              ? "Solana history is ready for future records, but this skeleton wave does not create real Solana transactions yet."
+              : "Пока нет транзакций."}
+          </div>
         )}
       </div>
     </section>

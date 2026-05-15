@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { clearEncryptedVault } from "@/lib/storage";
 import { updateWalletProfile } from "@/lib/api";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -140,6 +141,9 @@ export default function SettingsPage() {
         <button type="button" className="button-primary" disabled={!canSave} onClick={() => void handleSave()}>
           Save settings
         </button>
+        <Link href="/tokens/manage" className="button-secondary inline-flex items-center justify-center">
+          Manage tokens
+        </Link>
       </div>
 
       <aside className="space-y-6">

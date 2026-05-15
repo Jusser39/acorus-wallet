@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { EVM_CHAINS } from "@acorus/shared";
+import { getChainById, getChainsByFamily } from "@acorus/shared";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { PRACTICE_ADDRESS } from "@/lib/practice";
+import { getPracticeAddress } from "@/lib/practice";
 import { formatAddress } from "@/lib/utils";
 
 export default function ReceivePage() {
@@ -14,9 +14,13 @@ export default function ReceivePage() {
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
   const [copied, setCopied] = useState(false);
 
+  const availableChains = useMemo(
+    () => (activeProfile ? getChainsByFamily(activeProfile.chainFamily) : []),
+    [activeProfile],
+  );
   const chain = useMemo(
-    () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
-    [selectedChainId],
+    () => getChainById(selectedChainId) ?? availableChains[0] ?? null,
+    [availableChains, selectedChainId],
   );
 
   if (!activeProfile) {
@@ -36,7 +40,9 @@ export default function ReceivePage() {
   }
 
   const address =
-    activeProfile.type === "practice" ? PRACTICE_ADDRESS : activeProfile.publicAddress;
+    activeProfile.type === "practice"
+      ? getPracticeAddress(activeProfile.chainFamily)
+      : activeProfile.publicAddress;
 
   async function handleCopy() {
     await navigator.clipboard.writeText(address);
@@ -50,7 +56,9 @@ export default function ReceivePage() {
         <div>
           <h1 className="text-3xl font-semibold">Receive</h1>
           <p className="mt-2 text-sm text-slate-300">
-            EVM-адрес один и тот же, но отправляйте только активы выбранной сети.
+            {activeProfile.chainFamily === "solana"
+              ? "Используйте только Solana-compatible transfers и адрес текущего Solana профиля."
+              : "EVM-адрес один и тот же, но отправляйте только активы выбранной сети."}
           </p>
         </div>
 
@@ -60,7 +68,7 @@ export default function ReceivePage() {
             value={selectedChainId}
             onChange={(event) => setSelectedChainId(Number(event.target.value))}
           >
-            {EVM_CHAINS.map((item) => (
+            {availableChains.map((item) => (
               <option key={item.chainId} value={item.chainId}>
                 {item.name}
               </option>
@@ -75,7 +83,7 @@ export default function ReceivePage() {
         </div>
 
         <div className="warning-box text-sm">
-          Отправляйте только активы сети <strong>{chain.name}</strong>. Активы из другой сети
+          Отправляйте только активы сети <strong>{chain?.name ?? "selected chain"}</strong>. Активы из другой сети
           могут быть потеряны.
         </div>
 
@@ -87,7 +95,7 @@ export default function ReceivePage() {
       <aside className="panel flex flex-col items-center justify-center gap-4">
         <QRCodeSVG value={address} size={220} bgColor="transparent" fgColor="#ffffff" />
         <p className="text-center text-sm text-slate-300">
-          Receive on {chain.name} · {activeProfile.type.replace("_", " ")}
+          Receive on {chain?.name ?? "selected chain"} · {activeProfile.type.replace("_", " ")}
         </p>
       </aside>
     </section>

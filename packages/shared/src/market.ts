@@ -16,7 +16,10 @@ export type MarketDataSourceStatus =
   | MarketSourceStatus
   | "cached"
   | "stale_cache"
-  | "fallback_mock";
+  | "fallback_mock"
+  | "unavailable";
+
+export type ChartRange = "1D" | "7D" | "1M" | "3M" | "1Y";
 
 export type RiskLevel = "low" | "medium" | "high" | "unknown";
 
@@ -74,7 +77,7 @@ export type TokenChart = {
   tokenAddress?: string | null;
   symbol: string;
   currency: FiatCurrency;
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: ChartRange;
   points: TokenChartPoint[];
   provider: MarketDataProviderId;
   updatedAt: string;

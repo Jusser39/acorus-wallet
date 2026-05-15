@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import type {
+import {
   ContactRecord,
+  normalizeAddressForChain,
   PreferredCurrency,
   TokenMetadataItem,
   TransactionRecordItem,
@@ -133,6 +134,11 @@ type PrismaMarketPriceCacheShape = {
   marketCap: number | null;
   volume24h: number | null;
   provider: string;
+  sourceStatus: string | null;
+  liquidityUsd: number | null;
+  pairUrl: string | null;
+  riskLevel: string | null;
+  riskFlagsJson: string | null;
   updatedAt: Date;
 };
 
@@ -149,6 +155,33 @@ type PrismaMarketChartCacheShape = {
 
 function toIso(value: Date | null): string | null {
   return value ? value.toISOString() : null;
+}
+
+function normalizeTokenAddress(chainId: number, tokenAddress: string): string {
+  return normalizeAddressForChain(chainId, tokenAddress);
+}
+
+function parseRiskFlags(value: string | null | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function stringifyRiskFlags(flags: string[] | undefined, raw?: string | null): string | null {
+  if (flags && flags.length > 0) {
+    return JSON.stringify(flags);
+  }
+  if (raw != null) {
+    return raw;
+  }
+  return null;
 }
 
 function mapWalletProfile(record: PrismaWalletProfileShape): WalletProfileRecord {
@@ -389,7 +422,7 @@ export class PrismaStore implements AppStore {
         submittedAt: input.submittedAt ? new Date(input.submittedAt) : new Date(),
         confirmedAt: input.confirmedAt ? new Date(input.confirmedAt) : null,
         rawStatus: input.rawStatus ?? null,
-        explorerUrl: input.hash.startsWith("0x") ? toExplorerUrl(input.chainId, input.hash) : null,
+        explorerUrl: input.assetType === "practice" ? null : toExplorerUrl(input.chainId, input.hash),
       },
     })) as PrismaTransactionShape;
 
@@ -538,12 +571,13 @@ export class PrismaStore implements AppStore {
   }
 
   async createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto> {
+    const riskFlagsJson = stringifyRiskFlags(input.riskFlags, input.riskFlagsJson);
     const item = await this.prisma.userToken.create({
       data: {
         userId: input.userId,
         walletProfileId: input.walletProfileId ?? null,
         chainId: input.chainId,
-        tokenAddress: input.tokenAddress,
+        tokenAddress: normalizeTokenAddress(input.chainId, input.tokenAddress),
         symbol: input.symbol,
         name: input.name,
         decimals: input.decimals,
@@ -558,7 +592,7 @@ export class PrismaStore implements AppStore {
         fdvUsd: input.fdvUsd ?? null,
         pairUrl: input.pairUrl ?? null,
         riskLevel: input.riskLevel ?? null,
-        riskFlagsJson: input.riskFlagsJson ?? null,
+        riskFlagsJson,
         lastMarketSyncAt: input.sourceStatus ? new Date() : null,
       },
     });
@@ -574,7 +608,92 @@ export class PrismaStore implements AppStore {
   }
 
   async deleteUserToken(id: string): Promise<void> {
+    const existing = await this.prisma.userToken.findUnique({ where: { id } });
+    if (!existing) {
+      throw new Error("User token not found.");
+    }
+    if (!existing.isCustom) {
+      throw new Error("custom_token_delete_only");
+    }
     await this.prisma.userToken.delete({ where: { id } });
+  }
+
+  async hideToken(input: {
+    userId: string;
+    walletProfileId?: string | null;
+    chainId: number;
+    tokenAddress: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    isCustom?: boolean;
+  }): Promise<UserTokenDto> {
+    const normalized = normalizeTokenAddress(input.chainId, input.tokenAddress);
+    const row = await this.prisma.userToken.upsert({
+      where: {
+        userId_chainId_tokenAddress: {
+          userId: input.userId,
+          chainId: input.chainId,
+          tokenAddress: normalized,
+        },
+      },
+      update: {
+        isHidden: true,
+        walletProfileId: input.walletProfileId ?? undefined,
+      },
+      create: {
+        userId: input.userId,
+        walletProfileId: input.walletProfileId ?? null,
+        chainId: input.chainId,
+        tokenAddress: normalized,
+        symbol: input.symbol,
+        name: input.name,
+        decimals: input.decimals,
+        logoUrl: null,
+        isVerified: false,
+        isCustom: input.isCustom ?? false,
+        isHidden: true,
+        sourceStatus: null,
+        liquidityUsd: null,
+        volume24hUsd: null,
+        marketCapUsd: null,
+        fdvUsd: null,
+        pairUrl: null,
+        riskLevel: "unknown",
+        riskFlagsJson: null,
+        lastMarketSyncAt: null,
+      },
+    });
+
+    return this.toUserTokenDto(row as PrismaUserTokenShape);
+  }
+
+  async unhideToken(input: {
+    userId: string;
+    chainId: number;
+    tokenAddress: string;
+  }): Promise<UserTokenDto | null> {
+    const normalized = normalizeTokenAddress(input.chainId, input.tokenAddress);
+    const existing = await this.prisma.userToken.findUnique({
+      where: {
+        userId_chainId_tokenAddress: {
+          userId: input.userId,
+          chainId: input.chainId,
+          tokenAddress: normalized,
+        },
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    const row = await this.prisma.userToken.update({
+      where: { id: existing.id },
+      data: { isHidden: false },
+    });
+
+    return this.toUserTokenDto(row as PrismaUserTokenShape);
   }
 
   async getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]> {
@@ -589,7 +708,7 @@ export class PrismaStore implements AppStore {
   }
 
   async upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto> {
-    const tokenAddress = input.tokenAddress ?? "";
+    const tokenAddress = normalizeAddressForChain(input.chainId, input.tokenAddress);
     const item = await this.prisma.marketPriceCache.upsert({
       where: {
         chainId_tokenAddress_symbol_currency: {
@@ -606,6 +725,11 @@ export class PrismaStore implements AppStore {
         marketCap: input.marketCap ?? null,
         volume24h: input.volume24h ?? null,
         provider: input.provider,
+        sourceStatus: input.sourceStatus ?? null,
+        liquidityUsd: input.liquidityUsd ?? null,
+        pairUrl: input.pairUrl ?? null,
+        riskLevel: input.riskLevel ?? null,
+        riskFlagsJson: stringifyRiskFlags(input.riskFlags, input.riskFlagsJson) ?? "[]",
       },
       create: {
         chainId: input.chainId,
@@ -618,13 +742,18 @@ export class PrismaStore implements AppStore {
         marketCap: input.marketCap ?? null,
         volume24h: input.volume24h ?? null,
         provider: input.provider,
+        sourceStatus: input.sourceStatus ?? null,
+        liquidityUsd: input.liquidityUsd ?? null,
+        pairUrl: input.pairUrl ?? null,
+        riskLevel: input.riskLevel ?? null,
+        riskFlagsJson: stringifyRiskFlags(input.riskFlags, input.riskFlagsJson) ?? "[]",
       },
     });
     return this.toMarketPriceDto(item as PrismaMarketPriceCacheShape);
   }
 
   async getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null> {
-    const tokenAddress = input.tokenAddress ?? "";
+    const tokenAddress = normalizeAddressForChain(input.chainId, input.tokenAddress);
     const item = await this.prisma.marketChartCache.findUnique({
       where: {
         chainId_tokenAddress_symbol_currency_range: {
@@ -642,7 +771,7 @@ export class PrismaStore implements AppStore {
 
   async upsertMarketChart(input: MarketChartDto): Promise<MarketChartDto> {
     const pointsJson = JSON.stringify(input.points);
-    const tokenAddress = input.tokenAddress ?? "";
+    const tokenAddress = normalizeAddressForChain(input.chainId, input.tokenAddress);
     const item = await this.prisma.marketChartCache.upsert({
       where: {
         chainId_tokenAddress_symbol_currency_range: {
@@ -688,6 +817,7 @@ export class PrismaStore implements AppStore {
       fdvUsd: item.fdvUsd,
       pairUrl: item.pairUrl,
       riskLevel: item.riskLevel,
+      riskFlags: parseRiskFlags(item.riskFlagsJson),
       riskFlagsJson: item.riskFlagsJson,
       lastMarketSyncAt: toIso(item.lastMarketSyncAt),
       createdAt: item.createdAt.toISOString(),
@@ -709,6 +839,12 @@ export class PrismaStore implements AppStore {
       marketCap: item.marketCap,
       volume24h: item.volume24h,
       provider: item.provider,
+      sourceStatus: item.sourceStatus,
+      liquidityUsd: item.liquidityUsd,
+      pairUrl: item.pairUrl,
+      riskLevel: item.riskLevel as UserTokenDto["riskLevel"],
+      riskFlags: parseRiskFlags(item.riskFlagsJson),
+      riskFlagsJson: item.riskFlagsJson,
       updatedAt: item.updatedAt.toISOString(),
     };
   }
@@ -722,6 +858,7 @@ export class PrismaStore implements AppStore {
       range: item.range as MarketChartDto["range"],
       points: JSON.parse(item.pointsJson) as Array<{ timestamp: string; price: number }>,
       provider: item.provider,
+      sourceStatus: null,
       updatedAt: item.updatedAt.toISOString(),
     };
   }

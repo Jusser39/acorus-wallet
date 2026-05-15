@@ -209,6 +209,20 @@ describe("api", () => {
     expect(response.json().items.some((item: { symbol: string }) => item.symbol === "USDT")).toBe(true);
   });
 
+  it("returns chains endpoint with solana support", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/chains",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ chainId: 101, family: "solana", nativeSymbol: "SOL" }),
+      ]),
+    );
+  });
+
   it("market prices returns sourceStatus on fresh cache", async () => {
     // First call – no cache → live (mock mode) → sourceStatus fallback_mock or live
     const res1 = await app.inject({
@@ -238,6 +252,32 @@ describe("api", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ ok: true, prices: [] });
+  });
+
+  it("market chart returns cache-first sourceStatus", async () => {
+    const first = await app.inject({
+      method: "GET",
+      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D",
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      ok: true,
+      chart: {
+        sourceStatus: expect.any(String),
+      },
+    });
+
+    const second = await app.inject({
+      method: "GET",
+      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D",
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toMatchObject({
+      ok: true,
+      chart: {
+        sourceStatus: "cached",
+      },
+    });
   });
 
   it("discover-token returns ok:true with null-or-object", async () => {
@@ -289,6 +329,52 @@ describe("api", () => {
     expect(body.token.sourceStatus).toBe("live");
   });
 
+  it("supports hide and unhide token overrides", async () => {
+    const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
+    const userId = user.json().id as string;
+
+    const hide = await app.inject({
+      method: "POST",
+      url: "/api/user-tokens/hide",
+      payload: {
+        userId,
+        chainId: 1,
+        tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        isCustom: false,
+      },
+    });
+
+    expect(hide.statusCode).toBe(200);
+    expect(hide.json()).toMatchObject({
+      ok: true,
+      token: {
+        isHidden: true,
+        tokenAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      },
+    });
+
+    const unhide = await app.inject({
+      method: "POST",
+      url: "/api/user-tokens/unhide",
+      payload: {
+        userId,
+        chainId: 1,
+        tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      },
+    });
+
+    expect(unhide.statusCode).toBe(200);
+    expect(unhide.json()).toMatchObject({
+      ok: true,
+      token: {
+        isHidden: false,
+      },
+    });
+  });
+
   it("stores onboarding progress", async () => {
     const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
     const userId = user.json().id as string;
@@ -310,5 +396,33 @@ describe("api", () => {
     expect(created.statusCode).toBe(200);
     expect(created.json().step).toBe("practice_intro");
     expect(listed.json().items).toHaveLength(1);
+  });
+
+  it("preserves case-sensitive solana token addresses", async () => {
+    const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
+    const userId = user.json().id as string;
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/user-tokens",
+      payload: {
+        userId,
+        chainId: 101,
+        tokenAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        isCustom: true,
+      },
+    });
+
+    expect(created.statusCode).toBe(200);
+    expect(created.json()).toMatchObject({
+      ok: true,
+      token: {
+        chainId: 101,
+        tokenAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      },
+    });
   });
 });

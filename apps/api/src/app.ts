@@ -6,6 +6,7 @@ import { MemoryStore } from "./memory-store";
 import { PrismaStore } from "./prisma-store";
 import { buildLoggerOptions, createLogger } from "./logger";
 import { readEnv, requireDatabaseUrl, resolveMarketCacheTtlSec, type ApiEnv } from "./env";
+import { normalizeAddressForChain } from "@acorus/shared";
 import {
   type ContactCreateInput,
   type ContactUpdateInput,
@@ -135,6 +136,13 @@ function normalizeError(error: unknown): { statusCode: number; message: string }
     };
   }
 
+  if (error instanceof Error && error.message === "custom_token_delete_only") {
+    return {
+      statusCode: 400,
+      message: "bad_request",
+    };
+  }
+
   const statusCode = getStatusCode(error);
 
   if (statusCode !== null) {
@@ -211,6 +219,31 @@ function assertNoSensitiveFields(value: unknown): void {
   if (findSensitiveField(value)) {
     throw new Error("sensitive_fields_forbidden");
   }
+}
+
+function rejectSensitiveBody(value: unknown): void {
+  assertNoSensitiveFields(value);
+}
+
+function normalizeTokenAddress(chainId: number, tokenAddress?: string | null): string | null {
+  const normalized = normalizeAddressForChain(chainId, tokenAddress);
+  return normalized || null;
+}
+
+function marketRequestKey(input: {
+  chainId: number;
+  symbol: string;
+  tokenAddress?: string | null;
+}): string {
+  return `${normalizeTokenAddress(input.chainId, input.tokenAddress) ?? ""}:${input.symbol.toUpperCase()}`;
+}
+
+function isFresh(updatedAt: string, ttlSeconds: number): boolean {
+  return Date.now() - new Date(updatedAt).getTime() < ttlSeconds * 1000;
+}
+
+function isStaleButUsable(updatedAt: string, ttlSeconds: number): boolean {
+  return Date.now() - new Date(updatedAt).getTime() < ttlSeconds * 1000;
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -425,7 +458,25 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     fdvUsd: z.number().nullable().optional(),
     pairUrl: z.string().nullable().optional(),
     riskLevel: z.string().nullable().optional(),
+    riskFlags: z.array(z.string()).optional(),
     riskFlagsJson: z.string().nullable().optional(),
+  });
+
+  const hideTokenSchema = z.object({
+    userId: z.string().min(1),
+    walletProfileId: z.string().min(1).nullable().optional(),
+    chainId: z.coerce.number().int().positive(),
+    tokenAddress: z.string().min(1),
+    symbol: z.string().min(1),
+    name: z.string().min(1),
+    decimals: z.coerce.number().int().min(0).max(36),
+    isCustom: z.boolean().optional(),
+  });
+
+  const unhideTokenSchema = z.object({
+    userId: z.string().min(1),
+    chainId: z.coerce.number().int().positive(),
+    tokenAddress: z.string().min(1),
   });
 
   app.get("/api/user-tokens", async (request) => {
@@ -440,9 +491,23 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.post("/api/user-tokens", async (request) => {
-    assertNoSensitiveFields(request.body);
+    rejectSensitiveBody(request.body);
     const input = createUserTokenSchema.parse(request.body);
     const token = await store.createUserToken(input as CreateUserTokenInput);
+    return { ok: true, token };
+  });
+
+  app.post("/api/user-tokens/hide", async (request) => {
+    rejectSensitiveBody(request.body);
+    const input = hideTokenSchema.parse(request.body);
+    const token = await store.hideToken(input);
+    return { ok: true, token };
+  });
+
+  app.post("/api/user-tokens/unhide", async (request) => {
+    rejectSensitiveBody(request.body);
+    const input = unhideTokenSchema.parse(request.body);
+    const token = await store.unhideToken(input);
     return { ok: true, token };
   });
 
@@ -475,7 +540,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       ? query.symbols.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
     const tokenAddresses = query.tokenAddresses
-      ? query.tokenAddresses.split(",").map((s) => s.trim()).filter(Boolean)
+      ? query.tokenAddresses.split(",").map((s) => s.trim())
       : [];
 
     if (symbols.length === 0) {
@@ -485,13 +550,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     const requests = symbols.map((symbol, index) => ({
       chainId: query.chainId,
       symbol,
-      tokenAddress: tokenAddresses[index] ?? null,
+      tokenAddress: normalizeTokenAddress(query.chainId, tokenAddresses[index] ?? null),
       currency: query.currency as FiatCurrency,
     }));
-
-    const nowMs = Date.now();
-    const cacheTtlMs = cacheTtlSec * 1000;
-    const staleTtlMs = staleTtlSec * 1000;
 
     // Step 1: read store cache
     const cachedAll = await store.getMarketPrices({
@@ -501,22 +562,19 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       tokenAddresses,
     });
 
-    const cachedBySymbol = new Map(
-      cachedAll.map((p) => [p.symbol.toUpperCase(), p]),
-    );
+    const cachedByKey = new Map(cachedAll.map((price) => [marketRequestKey(price), price]));
 
     // Step 2: if ALL requested symbols have a fresh cache hit, return cached
-    const freshHits = symbols.filter((sym) => {
-      const cached = cachedBySymbol.get(sym.toUpperCase());
-      if (!cached) return false;
-      return nowMs - new Date(cached.updatedAt).getTime() < cacheTtlMs;
+    const freshPrices = requests.map((marketRequest) => {
+      const cached = cachedByKey.get(marketRequestKey(marketRequest));
+      if (!cached || !isFresh(cached.updatedAt, cacheTtlSec)) {
+        return null;
+      }
+      return { ...cached, sourceStatus: "cached" };
     });
 
-    if (freshHits.length === symbols.length) {
-      const prices = symbols.map((sym) => ({
-        ...cachedBySymbol.get(sym.toUpperCase())!,
-        sourceStatus: "cached",
-      }));
+    if (freshPrices.every(Boolean)) {
+      const prices = freshPrices.filter((price): price is NonNullable<typeof price> => Boolean(price));
       return { ok: true, prices };
     }
 
@@ -538,17 +596,18 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }
 
     // Step 4: stale cache fallback (within MARKET_STALE_CACHE_TTL_SECONDS)
-    const staleHits = symbols
-      .map((sym) => cachedBySymbol.get(sym.toUpperCase()))
-      .filter((p): p is NonNullable<typeof p> => {
-        if (!p) return false;
-        return nowMs - new Date(p.updatedAt).getTime() < staleTtlMs;
-      });
+    const stalePrices = requests.map((marketRequest) => {
+      const cached = cachedByKey.get(marketRequestKey(marketRequest));
+      if (!cached || !isStaleButUsable(cached.updatedAt, staleTtlSec)) {
+        return null;
+      }
+      return { ...cached, sourceStatus: "stale_cache" };
+    });
 
-    if (staleHits.length > 0) {
+    if (stalePrices.every(Boolean)) {
       return {
         ok: true,
-        prices: staleHits.map((p) => ({ ...p, sourceStatus: "stale_cache" })),
+        prices: stalePrices.filter((price): price is NonNullable<typeof price> => Boolean(price)),
       };
     }
 
@@ -572,29 +631,57 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       })
       .parse(request.query);
 
-    const cached = await store.getMarketChart({
+    const chartInput = {
       chainId: query.chainId,
-      tokenAddress: query.tokenAddress ?? null,
+      tokenAddress: normalizeTokenAddress(query.chainId, query.tokenAddress ?? null),
       symbol: query.symbol,
       currency: query.currency as FiatCurrency,
       range: query.range as GetMarketChartInput["range"],
-    });
+    };
 
-    if (cached) {
-      return { ok: true, chart: cached };
+    const cached = await store.getMarketChart(chartInput);
+
+    if (cached && isFresh(cached.updatedAt, cacheTtlSec)) {
+      return {
+        ok: true,
+        chart: {
+          ...cached,
+          sourceStatus: "cached",
+        },
+      };
     }
 
-    const chart = await marketProvider.getChart({
-      chainId: query.chainId,
-      tokenAddress: query.tokenAddress ?? null,
-      symbol: query.symbol,
-      currency: query.currency as FiatCurrency,
-      range: query.range as GetMarketChartInput["range"],
-    });
+    try {
+      const chart = await marketProvider.getChart(chartInput);
+      await store.upsertMarketChart(chart);
+      return {
+        ok: true,
+        chart: {
+          ...chart,
+          sourceStatus: chart.sourceStatus ?? (chart.provider === "mock" ? "fallback_mock" : "live"),
+        },
+      };
+    } catch {
+      if (cached && isStaleButUsable(cached.updatedAt, staleTtlSec)) {
+        return {
+          ok: true,
+          chart: {
+            ...cached,
+            sourceStatus: "stale_cache",
+          },
+        };
+      }
 
-    await store.upsertMarketChart(chart);
-
-    return { ok: true, chart };
+      const fallback = await mockFallback.getChart(chartInput);
+      await store.upsertMarketChart(fallback);
+      return {
+        ok: true,
+        chart: {
+          ...fallback,
+          sourceStatus: "fallback_mock",
+        },
+      };
+    }
   });
 
   // ---- Token Discovery ----

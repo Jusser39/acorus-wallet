@@ -267,6 +267,7 @@ export async function setOnboardingProgress(
 // ---- User Tokens ----
 
 export type FiatCurrency = "USD" | "EUR" | "RUB";
+export type ChartRange = "1D" | "7D" | "1M" | "3M" | "1Y";
 
 export type UserToken = {
   id: string;
@@ -288,6 +289,7 @@ export type UserToken = {
   fdvUsd?: number | null;
   pairUrl?: string | null;
   riskLevel?: string | null;
+  riskFlags?: string[];
   riskFlagsJson?: string | null;
   lastMarketSyncAt?: string | null;
   createdAt: string;
@@ -310,6 +312,7 @@ export type MarketPrice = {
   liquidityUsd?: number | null;
   pairUrl?: string | null;
   riskLevel?: string | null;
+  riskFlags?: string[];
   riskFlagsJson?: string | null;
 };
 
@@ -318,9 +321,10 @@ export type MarketChart = {
   tokenAddress?: string | null;
   symbol: string;
   currency: FiatCurrency;
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: ChartRange;
   points: Array<{ timestamp: string; price: number }>;
   provider: string;
+  sourceStatus?: string | null;
   updatedAt: string;
 };
 
@@ -355,6 +359,7 @@ export async function createUserToken(input: {
   fdvUsd?: number | null;
   pairUrl?: string | null;
   riskLevel?: string | null;
+  riskFlags?: string[];
   riskFlagsJson?: string | null;
 }): Promise<UserToken> {
   const response = await apiFetch<{ ok: true; token: UserToken }>("/api/user-tokens", {
@@ -378,6 +383,35 @@ export async function updateUserTokenVisibility(
   return response.token;
 }
 
+export async function hideUserToken(input: {
+  userId: string;
+  walletProfileId?: string | null;
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  isCustom?: boolean;
+}): Promise<UserToken> {
+  const response = await apiFetch<{ ok: true; token: UserToken }>("/api/user-tokens/hide", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.token;
+}
+
+export async function unhideUserToken(input: {
+  userId: string;
+  chainId: number;
+  tokenAddress: string;
+}): Promise<UserToken | null> {
+  const response = await apiFetch<{ ok: true; token: UserToken | null }>("/api/user-tokens/unhide", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.token;
+}
+
 export async function deleteUserToken(id: string): Promise<void> {
   await apiFetch<{ ok: true }>(`/api/user-tokens/${id}`, { method: "DELETE" });
 }
@@ -386,7 +420,7 @@ export async function getMarketPrices(input: {
   chainId: number;
   currency: FiatCurrency;
   symbols: string[];
-  tokenAddresses?: string[];
+  tokenAddresses?: Array<string | null | undefined>;
 }): Promise<MarketPrice[]> {
   const params = new URLSearchParams({
     chainId: String(input.chainId),
@@ -394,7 +428,7 @@ export async function getMarketPrices(input: {
     symbols: input.symbols.join(","),
   });
   if (input.tokenAddresses?.length) {
-    params.set("tokenAddresses", input.tokenAddresses.join(","));
+    params.set("tokenAddresses", input.tokenAddresses.map((item) => item ?? "").join(","));
   }
   const response = await apiFetch<{ ok: true; prices: MarketPrice[] }>(
     `/api/market/prices?${params.toString()}`,
@@ -407,7 +441,7 @@ export async function getMarketChart(input: {
   currency: FiatCurrency;
   symbol: string;
   tokenAddress?: string | null;
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: ChartRange;
 }): Promise<MarketChart> {
   const params = new URLSearchParams({
     chainId: String(input.chainId),

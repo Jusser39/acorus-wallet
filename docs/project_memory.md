@@ -16,6 +16,15 @@
   - MockMarketDataProvider: pseudo-prices seeded by symbol, sin-wave chart generation
   - Frontend: PortfolioSummaryCard, AssetList, TokenChart, /tokens/add, /tokens/[chainId]/[address]
   - Prisma null sentinel fix: use "" for tokenAddress in compound unique key where clause
+- Token Management + Real Charts wave deployed (2026-05-15)
+  - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
+  - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
+  - CoinGecko historical charts are now live for supported major symbols
+  - Mock chart fallback remains in place for unsupported/custom tokens
+  - Wallet dashboard can hide tokens directly
+  - New `/tokens/manage` page supports search/filter, hide/unhide, and delete custom token
+  - Curated token visibility overrides now work through user token records
+  - Token detail page now shows real chart ranges, provider/source badges, and richer market context
 - MemoryStore remains available only as a fallback when `ACORUS_ENABLE_PRISMA_STORE=false`
 
 ## Important decisions
@@ -33,7 +42,7 @@
 
 ## Constraints
 
-- No Solana/Tron runtime yet
+- Solana skeleton runtime is live; real Solana send/swap/NFT and Tron runtime are still not implemented
 - No WalletConnect / real swap / NFT module yet
 - No backend seed storage, cloud seed backup, or custodial recovery
 
@@ -142,3 +151,57 @@
   - `scripts/check-persistence.sh` passes before and after `restart api`
   - `prisma db push` confirmed from `/app/apps/api` inside the API container
 - Public URL remains `http://85.239.59.199:8080`
+
+## Token Management + Real Charts Wave (2026-05-15)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/token_management_real_charts_plan.md`
+- Report: `docs/token_management_real_charts_report.md`
+- New backend capabilities:
+  - `hideToken` / `unhideToken` in MemoryStore and PrismaStore
+  - custom-token-only delete guard
+  - chart cache-first API behavior with source statuses
+  - CoinGecko historical chart provider for supported mapped symbols
+- New frontend capabilities:
+  - dashboard token hide action
+  - `/tokens/manage` with search/filter and visibility controls
+  - curated token visibility overrides
+  - token details range selector and chart/provider badges
+- VPS verified:
+  - `/health` returns `store: "prisma"`
+  - `/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=1D` returns `provider: "coingecko"`
+  - `/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=1M` returns `provider: "coingecko"`
+  - persistence verification passed before and after `docker compose restart api`
+- Rollout note:
+  - immediate verify after restart briefly returned `502` during warm-up
+  - retry after a short delay passed cleanly
+- Non-custodial boundary unchanged
+
+## Solana Wallet Skeleton Wave (2026-05-15)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/solana_wallet_skeleton_plan.md`
+- New shared/core capabilities:
+  - Solana chain config added alongside the existing EVM registry
+  - same-mnemonic Solana derivation added in `wallet-core`
+  - Solana native balance, SPL balance, and portfolio helpers added
+  - chain-aware address normalization introduced so Solana base58 addresses and mint ids are not lowercased
+- New web/product capabilities:
+  - create/import flows now support an EVM vault plus sibling Solana profile
+  - Solana receive, QR/copy, view-only, practice mode, portfolio summary, and asset list are live
+  - wallet navigation now supports profile switching across chain families
+  - Solana history is read-only/skeleton and Solana send remains intentionally disabled in this wave
+- New API/store capabilities:
+  - `/api/chains` now returns Solana
+  - transaction explorer URLs and token normalization are chain-family aware
+  - Prisma/Memory store logic preserves case-sensitive Solana token addresses
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - `/api/chains` returns Solana `chainId: 101`
+  - `/api/market/prices?chainId=101&currency=USD&symbols=SOL` returns Solana-compatible price data
+  - `/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D` returns Solana-compatible chart data
+- Non-custodial boundary unchanged: mnemonic/private key/passcode never leave the client, and Solana signing stays out of the backend in this wave

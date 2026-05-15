@@ -19,18 +19,30 @@ const COINGECKO_PLATFORM_MAP: Record<number, string> = {
   43114: "avalanche",
 };
 
+const RANGE_TO_DAYS: Record<"1D" | "7D" | "1M" | "3M" | "1Y", string> = {
+  "1D": "1",
+  "7D": "7",
+  "1M": "30",
+  "3M": "90",
+  "1Y": "365",
+};
+
 // Major symbol to CoinGecko ID mappings
 const SYMBOL_TO_ID: Record<string, string> = {
   ETH: "ethereum",
-  WETH: "weth",
+  WETH: "ethereum",
   BNB: "binancecoin",
   MATIC: "matic-network",
-  POL: "matic-network",
+  POL: "polygon-ecosystem-token",
   USDT: "tether",
   USDC: "usd-coin",
   DAI: "dai",
   AVAX: "avalanche-2",
 };
+
+function coingeckoCurrency(currency: string): string {
+  return currency.toLowerCase();
+}
 
 interface CoinGeckoSimplePriceResponse {
   [id: string]: {
@@ -134,26 +146,16 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
   async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
     const cgId = SYMBOL_TO_ID[request.symbol.toUpperCase()];
     if (!cgId) {
-      throw new Error("Symbol not found in CoinGecko");
+      throw new Error("coingecko_chart_symbol_unsupported");
     }
 
     await this.rateLimiter.acquire();
-
-    const now = Date.now();
-    const ranges: Record<string, { from: number; to: number }> = {
-      "1D": { from: now - 24 * 60 * 60 * 1000, to: now },
-      "7D": { from: now - 7 * 24 * 60 * 60 * 1000, to: now },
-      "1M": { from: now - 30 * 24 * 60 * 60 * 1000, to: now },
-      "3M": { from: now - 90 * 24 * 60 * 60 * 1000, to: now },
-      "1Y": { from: now - 365 * 24 * 60 * 60 * 1000, to: now },
-    };
-
-    const range = ranges[request.range];
-    if (!range) {
-      throw new Error("Invalid range");
-    }
-
-    const url = `${this.baseUrl}/coins/${cgId}/market_chart/range?vs_currency=usd&from=${Math.floor(range.from / 1000)}&to=${Math.floor(range.to / 1000)}`;
+    const days = RANGE_TO_DAYS[request.range];
+    const currency = coingeckoCurrency(request.currency);
+    const url =
+      `${this.baseUrl}/coins/${encodeURIComponent(cgId)}/market_chart` +
+      `?vs_currency=${encodeURIComponent(currency)}` +
+      `&days=${encodeURIComponent(days)}`;
 
     const response = await httpGet<CoinGeckoMarketChartResponse>(
       url,
@@ -166,6 +168,10 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       price: Number(price.toFixed(4)),
     }));
 
+    if (points.length === 0) {
+      throw new Error("coingecko_chart_empty");
+    }
+
     return {
       chainId: request.chainId,
       tokenAddress: request.tokenAddress ?? null,
@@ -174,6 +180,7 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       range: request.range,
       points,
       provider: this.id,
+      sourceStatus: "live",
       updatedAt: new Date().toISOString(),
     };
   }

@@ -70,6 +70,7 @@ export default function SendPage() {
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const isSolanaProfile = activeProfile?.chainFamily === "solana";
 
   const chain = useMemo(
     () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
@@ -93,7 +94,7 @@ export default function SendPage() {
         };
   const isUnlocked = Boolean(unlockedVault);
   const canSend = activeProfile
-    ? canWalletSend(activeProfile.type, isUnlocked)
+    ? !isSolanaProfile && canWalletSend(activeProfile.type, isUnlocked)
     : false;
   const safetyBlocked = activeProfile
     ? isSafetyModeBlockingRealSend(activeProfile.type, safetyMode)
@@ -105,12 +106,18 @@ export default function SendPage() {
     }
 
     void listContacts(userId)
-      .then((items) => setContacts(items))
+      .then((items) =>
+        setContacts(
+          items.filter((item) =>
+            activeProfile ? item.chainFamily === activeProfile.chainFamily : true,
+          ),
+        ),
+      )
       .catch(() => setContacts([]));
-  }, [userId]);
+  }, [activeProfile, userId]);
 
   useEffect(() => {
-    if (!activeProfile) {
+    if (!activeProfile || isSolanaProfile) {
       return;
     }
 
@@ -148,7 +155,7 @@ export default function SendPage() {
     return () => {
       active = false;
     };
-  }, [activeProfile, selectedChainId]);
+  }, [activeProfile, isSolanaProfile, selectedChainId]);
 
   useEffect(() => {
     if (assetKey !== "native" && !selectedToken) {
@@ -464,6 +471,47 @@ export default function SendPage() {
             Back to onboarding
           </Link>
         </div>
+      </section>
+    );
+  }
+
+  if (isSolanaProfile) {
+    return (
+      <section className="page grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="panel space-y-5">
+          <div>
+            <h1 className="text-3xl font-semibold">Send assets</h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Solana send stays disabled in this skeleton wave. Receive, balances, SPL assets and read-only history are already available.
+            </p>
+          </div>
+
+          <div className="warning-box text-sm">
+            Real Solana transactions will be added in a separate wave after the receive/portfolio/view-only foundation is validated.
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link href="/receive" className="button-primary">
+              Open receive
+            </Link>
+            <Link href="/history" className="button-secondary">
+              Open history
+            </Link>
+            <Link href="/wallet" className="button-secondary">
+              Back to wallet
+            </Link>
+          </div>
+        </div>
+
+        <aside className="panel space-y-4">
+          <h2 className="text-xl font-semibold">Current Solana scope</h2>
+          <ul className="space-y-3 text-sm text-slate-300">
+            <li>Receive address + QR enabled</li>
+            <li>SOL balance and SPL portfolio enabled</li>
+            <li>View-only and practice profiles enabled</li>
+            <li>Real send intentionally disabled</li>
+          </ul>
+        </aside>
       </section>
     );
   }

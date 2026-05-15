@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   encryptVault,
   getEvmAddressFromMnemonic,
+  getSolanaAddressFromMnemonic,
   validateWalletMnemonic,
 } from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
@@ -18,6 +19,7 @@ export default function ImportWalletPage() {
   const unlockVault = useWalletStore((state) => state.unlockVault);
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
+  const setWalletError = useWalletStore((state) => state.setError);
   const [walletName, setWalletName] = useState("Imported wallet");
   const [mnemonic, setMnemonic] = useState("");
   const [passcode, setPasscode] = useState("");
@@ -53,25 +55,42 @@ export default function ImportWalletPage() {
 
     try {
       const evmAddress = getEvmAddressFromMnemonic(normalized);
+      const solanaAddress = getSolanaAddressFromMnemonic(normalized);
       const plaintext = {
         mnemonic: normalized,
         evmAddress,
         createdAt: new Date().toISOString(),
       };
       const encrypted = await encryptVault(plaintext, passcode);
-      const profile = await createWalletProfile({
+      const evmProfile = await createWalletProfile({
         userId,
         name: walletName,
         type: "local",
         publicAddress: evmAddress,
         chainFamily: "evm",
       });
+      let solanaProfile = null;
+
+      try {
+        solanaProfile = await createWalletProfile({
+          userId,
+          name: `${walletName} · Solana`,
+          type: "local",
+          publicAddress: solanaAddress,
+          chainFamily: "solana",
+        });
+      } catch {
+        setWalletError("EVM vault imported, but Solana profile could not be added automatically yet.");
+      }
 
       saveEncryptedVault(encrypted);
       setEncryptedVault(encrypted);
       unlockVault(plaintext);
-      upsertProfile(profile);
-      setActiveProfileId(profile.id);
+      if (solanaProfile) {
+        upsertProfile(solanaProfile);
+      }
+      upsertProfile(evmProfile);
+      setActiveProfileId(evmProfile.id);
       setMnemonic("");
       setPasscode("");
       setConfirmPasscode("");
@@ -89,7 +108,7 @@ export default function ImportWalletPage() {
         <div>
           <h1 className="text-3xl font-semibold">Import wallet</h1>
           <p className="mt-2 text-sm text-slate-300">
-            Seed phrase валидируется, шифруется локально и сразу очищается из формы после сохранения.
+            Seed phrase валидируется, локально шифруется и используется для EVM + Solana derivation без отправки на backend.
           </p>
         </div>
 

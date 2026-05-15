@@ -60,6 +60,30 @@
 50. Deployed Real Market Provider wave to VPS: rebuilt api/web Docker images, ran `prisma db push` (already in sync), restarted services, verified all endpoints live — `/health`, `/api/market/prices`, `/api/market/chart`, `/api/market/discover-token` (DexScreener live data for USDC: liquidity $45M, volume $10M, risk=low).
 52. Fixed gaps in Real Market Provider wave: proper cache-first logic, `sourceStatus` values (`cached|live|stale_cache|fallback_mock`), `SimpleWindowRateLimiter` in composite, `discover-token` returns null on failure, canonical env vars, shared type aliases, UI badges for provider/risk/liquidity, token detail market stats, glass UI polish. All 27 tests pass. Commit: bcec215. VPS redeploy blocked by SSH auth change (password auth disabled per hardening); manual redeploy via VPS console required.
 
+62. Started the Token Management + Real Charts wave with a read-only audit across backend store/provider/chart files, wallet/token frontend screens, docs memory, and live VPS market endpoints.
+63. Added `docs/token_management_real_charts_plan.md` and updated the session plan/todo state for the new wave.
+64. Extended shared/api/store types for chart ranges, chart source statuses, parsed risk flags, and token visibility operations.
+65. Implemented `hideToken` / `unhideToken` in `MemoryStore` and `PrismaStore`, normalized token addresses on user-token creation, and restricted delete to custom tokens only.
+66. Upgraded `/api/market/chart` to cache-first behavior with `cached`, `live`, `stale_cache`, and `fallback_mock` semantics.
+67. Switched live chart fetches to CoinGecko historical data for supported major symbols while preserving mock chart fallback through the composite provider.
+68. Updated the web API client, wallet portfolio merge logic, dashboard asset list, token details screen, and settings/wallet navigation to support hide/unhide management.
+69. Added the new `/tokens/manage` page with chain selection, search, filters, hide/unhide actions, and delete custom token controls.
+70. Added regression coverage for chart cache-first behavior, hide/unhide overrides, and same-origin hide-token API calls.
+71. Re-ran local validation: `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm test`, `pnpm build`, and `git diff --check`.
+72. Built a fresh working-tree archive, uploaded it to VPS `85.239.59.199`, rebuilt `api` and `web`, restarted the stack, and re-applied `prisma db push`.
+73. Verified live VPS responses for `/health` plus CoinGecko-backed chart endpoints for `ETH` on `1D` and `1M` ranges.
+74. Ran persistence creation before restart and verification after restart; the first immediate post-restart verify hit a transient `502`, and the retry after warm-up passed cleanly.
+75. Added `docs/token_management_real_charts_report.md` and updated project memory for the completed wave.
+76. Started the Solana Wallet Skeleton wave with a read-only audit across shared chain/token types, wallet-core vault/mnemonic helpers, web wallet routes/store helpers, API store/runtime files, Prisma schema, git state, and live VPS health endpoints.
+77. Added `docs/solana_wallet_skeleton_plan.md`, updated the session plan, and recorded the Solana implementation todos for deps/shared-core/web/api/tests/deploy/docs/commit.
+78. Added Solana dependencies in `@acorus/wallet-core`, then implemented a dedicated Solana module for derivation, address validation, RPC connection, native SOL balance, SPL token balances, and portfolio aggregation.
+79. Extended shared chain/token foundations with Solana chain config, curated Solana token metadata, generic explorer helpers, and chain-aware address normalization so Solana case-sensitive addresses/mints are preserved.
+80. Updated API/store behavior so `/api/chains` includes Solana, explorer links are chain-family aware, and MemoryStore/PrismaStore stop lowercasing Solana token addresses while keeping EVM normalization unchanged.
+81. Reworked the web wallet runtime for chain-family awareness: profile switching, Solana portfolio loading, Solana receive, Solana view-only, Solana practice mode, create/import sibling profile support, Solana token details/manage screens, and explicit send-disabled/history-read-only guards for this wave.
+82. Added regression coverage for Solana derivation/address validation plus API/web behaviors, then re-ran local validation: `pnpm --filter @acorus/shared build`, `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web build`, `pnpm build`, and `git diff --check`.
+83. Built a fresh working-tree deploy archive, uploaded it to VPS `85.239.59.199`, rebuilt the `api` and `web` Docker images, recreated the containers, and re-ran `npx prisma db push --schema prisma/schema.prisma` inside the API container.
+84. Verified the live rollout on VPS: `/health` passed on loopback and public `:8080`, `/api/chains` returned Solana `chainId: 101`, and Solana market endpoints for `prices` and `chart` responded successfully.
+
 
 ## Commands run
 
@@ -163,6 +187,21 @@
 - `curl -fsS http://127.0.0.1:8080/health`
 - `curl -fsS http://127.0.0.1:8080/api/chains`
 - `curl -fsS http://85.239.59.199:8080/health`
+- `pnpm --filter @acorus/shared build`
+- `pnpm --filter @acorus/wallet-core add @solana/web3.js @solana/spl-token ed25519-hd-key tweetnacl`
+- `pnpm --filter @acorus/wallet-core test`
+- `pnpm --filter @acorus/api test`
+- `pnpm --filter @acorus/web test`
+- `pnpm --filter @acorus/api build`
+- `pnpm --filter @acorus/web build`
+- `pnpm build`
+- `tar.exe -czf ... acorus-wallet`
+- Python `paramiko` upload to `/root/acorus-wallet-solana-deploy.tar.gz`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml up -d api web nginx`
+- Remote `docker compose --env-file .env -f infra/docker-compose.yml exec -T api sh -lc "cd /app/apps/api && npx prisma db push --schema prisma/schema.prisma"`
+- `curl -fsS "http://127.0.0.1:8080/api/market/prices?chainId=101&currency=USD&symbols=SOL"`
+- `curl -fsS "http://127.0.0.1:8080/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D"`
 
 ## Current follow-up
 
@@ -170,7 +209,8 @@
 - Add SSH key auth, disable password login after validation, and move to domain + HTTPS before any real-user or mainnet exposure
 - After domain setup, set `CORS_ORIGIN` explicitly and re-run the deployment/security audit
 - Current product follow-up: the EVM Wallet UX + Send Flow wave is implemented and deployed; next product work can focus on browser-level E2E coverage or later chain families without relaxing the current non-custodial boundary
-- Current product follow-up: the Real Market Provider + Token Discovery wave is now implemented, aligned, and deployed; the next sensible step is a real historical chart source plus hide/unhide token management on the wallet screens
+- Current product follow-up: the Token Management + Real Charts wave is implemented and deployed; the next sensible step is a broader wallet feature wave such as Solana/Tron/NFT/swap or end-to-end mobile packaging, without relaxing the current non-custodial boundary
+- Current product follow-up: the Solana Wallet Skeleton wave is implemented and deployed; the next sensible Solana step is real send + transaction status/history enrichment, still without relaxing the current non-custodial boundary
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types

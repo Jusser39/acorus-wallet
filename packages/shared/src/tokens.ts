@@ -90,6 +90,33 @@ export const CURATED_TOKENS: CuratedToken[] = [
     logoUrl: null,
     verified: true,
   },
+  {
+    chainId: 101,
+    address: "Es9vMFrzaCERmJfrF4H2FYD4KCo6b7mLK6fJd6FLy1i",
+    symbol: "USDT",
+    name: "Tether USD",
+    decimals: 6,
+    logoUrl: null,
+    verified: true,
+  },
+  {
+    chainId: 101,
+    address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    logoUrl: null,
+    verified: true,
+  },
+  {
+    chainId: 101,
+    address: "So11111111111111111111111111111111111111112",
+    symbol: "WSOL",
+    name: "Wrapped SOL",
+    decimals: 9,
+    logoUrl: null,
+    verified: true,
+  },
 ];
 
 export function getCuratedTokens(chainId: number): CuratedToken[] {

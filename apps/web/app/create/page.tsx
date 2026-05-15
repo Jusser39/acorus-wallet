@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { encryptVault, generateWalletMnemonic, getEvmAddressFromMnemonic } from "@acorus/wallet-core";
+import {
+  encryptVault,
+  generateWalletMnemonic,
+  getEvmAddressFromMnemonic,
+  getSolanaAddressFromMnemonic,
+} from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
 import { saveEncryptedVault } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
@@ -15,6 +20,7 @@ export default function CreateWalletPage() {
   const unlockVault = useWalletStore((state) => state.unlockVault);
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
+  const setWalletError = useWalletStore((state) => state.setError);
   const [mnemonic, setMnemonic] = useState(() => generateWalletMnemonic());
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
@@ -51,25 +57,42 @@ export default function CreateWalletPage() {
 
     try {
       const evmAddress = getEvmAddressFromMnemonic(mnemonic);
+      const solanaAddress = getSolanaAddressFromMnemonic(mnemonic);
       const plaintext = {
         mnemonic,
         evmAddress,
         createdAt: new Date().toISOString(),
       };
       const encrypted = await encryptVault(plaintext, passcode);
-      const profile = await createWalletProfile({
+      const evmProfile = await createWalletProfile({
         userId,
         name: walletName,
         type: "local",
         publicAddress: evmAddress,
         chainFamily: "evm",
       });
+      let solanaProfile = null;
+
+      try {
+        solanaProfile = await createWalletProfile({
+          userId,
+          name: `${walletName} · Solana`,
+          type: "local",
+          publicAddress: solanaAddress,
+          chainFamily: "solana",
+        });
+      } catch {
+        setWalletError("EVM vault created, but Solana profile could not be added automatically yet.");
+      }
 
       saveEncryptedVault(encrypted);
       setEncryptedVault(encrypted);
       unlockVault(plaintext);
-      upsertProfile(profile);
-      setActiveProfileId(profile.id);
+      if (solanaProfile) {
+        upsertProfile(solanaProfile);
+      }
+      upsertProfile(evmProfile);
+      setActiveProfileId(evmProfile.id);
       setMnemonic("");
       setPasscode("");
       setConfirmPasscode("");
@@ -87,7 +110,7 @@ export default function CreateWalletPage() {
         <div>
           <h1 className="text-3xl font-semibold">Create wallet</h1>
           <p className="mt-2 text-sm text-slate-300">
-            Seed phrase создается только в браузере и шифруется локально. Backend ее не получает.
+            Seed phrase создается только в браузере, локально шифруется и используется для EVM + Solana адресов. Backend ее не получает.
           </p>
         </div>
 

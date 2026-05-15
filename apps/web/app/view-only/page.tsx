@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isValidSolanaAddress } from "@acorus/wallet-core";
 import { useRouter } from "next/navigation";
 import { getAddress, isAddress } from "viem";
 import { createWalletProfile } from "@/lib/api";
@@ -12,6 +13,7 @@ export default function ViewOnlyPage() {
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const [walletName, setWalletName] = useState("View-only wallet");
+  const [chainFamily, setChainFamily] = useState<"evm" | "solana">("evm");
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +24,12 @@ export default function ViewOnlyPage() {
       return;
     }
 
-    if (!isAddress(address)) {
-      setError("Введите корректный EVM-адрес.");
+    if (chainFamily === "solana" ? !isValidSolanaAddress(address) : !isAddress(address)) {
+      setError(
+        chainFamily === "solana"
+          ? "Введите корректный Solana-адрес."
+          : "Введите корректный EVM-адрес.",
+      );
       return;
     }
 
@@ -35,8 +41,8 @@ export default function ViewOnlyPage() {
         userId,
         name: walletName,
         type: "view_only",
-        publicAddress: getAddress(address),
-        chainFamily: "evm",
+        publicAddress: chainFamily === "solana" ? address.trim() : getAddress(address),
+        chainFamily,
       });
 
       upsertProfile(profile);
@@ -64,8 +70,22 @@ export default function ViewOnlyPage() {
           <input value={walletName} onChange={(event) => setWalletName(event.target.value)} />
         </label>
         <label className="space-y-2">
+          <span className="text-sm text-slate-300">Chain family</span>
+          <select
+            value={chainFamily}
+            onChange={(event) => setChainFamily(event.target.value as "evm" | "solana")}
+          >
+            <option value="evm">EVM</option>
+            <option value="solana">Solana</option>
+          </select>
+        </label>
+        <label className="space-y-2">
           <span className="text-sm text-slate-300">Public address</span>
-          <input value={address} onChange={(event) => setAddress(event.target.value)} />
+          <input
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            placeholder={chainFamily === "solana" ? "Base58 address" : "0x..."}
+          />
         </label>
 
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PRACTICE_LESSONS, PRACTICE_ADDRESS } from "@/lib/practice";
+import { PRACTICE_LESSONS, getPracticeAddress } from "@/lib/practice";
 import { createWalletProfile, getOnboardingProgress, setOnboardingProgress } from "@/lib/api";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
@@ -13,6 +13,7 @@ export default function PracticePage() {
   const activeProfile = useActiveProfile();
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
+  const [chainFamily, setChainFamily] = useState<"evm" | "solana">("evm");
   const [progressCount, setProgressCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -36,10 +37,10 @@ export default function PracticePage() {
     try {
       const profile = await createWalletProfile({
         userId,
-        name: "Practice wallet",
+        name: chainFamily === "solana" ? "Practice Solana wallet" : "Practice wallet",
         type: "practice",
-        publicAddress: PRACTICE_ADDRESS,
-        chainFamily: "evm",
+        publicAddress: getPracticeAddress(chainFamily),
+        chainFamily,
       });
 
       await setOnboardingProgress({
@@ -70,6 +71,17 @@ export default function PracticePage() {
           </p>
         </div>
 
+        <label className="space-y-2">
+          <span className="text-sm text-slate-300">Chain family</span>
+          <select
+            value={chainFamily}
+            onChange={(event) => setChainFamily(event.target.value as "evm" | "solana")}
+          >
+            <option value="evm">EVM</option>
+            <option value="solana">Solana</option>
+          </select>
+        </label>
+
         <div className="grid gap-3">
           {PRACTICE_LESSONS.map((lesson) => (
             <div key={lesson.id} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
@@ -88,9 +100,15 @@ export default function PracticePage() {
           >
             {loading ? "Creating..." : "Create practice wallet"}
           </button>
-          <Link href="/send" className="button-secondary">
-            Open fake send flow
-          </Link>
+          {chainFamily === "evm" ? (
+            <Link href="/send" className="button-secondary">
+              Open fake send flow
+            </Link>
+          ) : (
+            <Link href="/wallet" className="button-secondary">
+              Open Solana practice portfolio
+            </Link>
+          )}
         </div>
       </div>
 

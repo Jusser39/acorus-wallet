@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveEvmAccountFromMnemonic,
+  deriveSolanaAccountFromMnemonic,
   buildExplorerTxUrl,
   decryptVault,
   encryptVault,
@@ -8,6 +9,7 @@ import {
   parseEncryptedVault,
   getEvmAddressFromMnemonic,
   getRpcUrl,
+  isValidSolanaAddress,
   validateWalletMnemonic,
 } from "./index";
 import type { WalletVaultPlaintext } from "./types";
@@ -63,6 +65,21 @@ describe("wallet-core", () => {
     ).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
   });
 
+  it("derives a stable Solana address from mnemonic", () => {
+    const mnemonic = "test test test test test test test test test test test junk";
+
+    const first = deriveSolanaAccountFromMnemonic({ mnemonic });
+    const second = deriveSolanaAccountFromMnemonic({ mnemonic });
+
+    expect(first.publicAddress).toBe(second.publicAddress);
+    expect(first.derivationPath).toBe("m/44'/501'/0'/0'");
+    expect(isValidSolanaAddress(first.publicAddress)).toBe(true);
+  });
+
+  it("rejects invalid Solana address", () => {
+    expect(isValidSolanaAddress("not-a-solana-address")).toBe(false);
+  });
+
   it("does not leak mnemonic in encrypted payload", async () => {
     const mnemonic = "test test test test test test test test test test test junk";
     const encrypted = await encryptVault(
@@ -85,6 +102,7 @@ describe("wallet-core", () => {
       NEXT_PUBLIC_ARBITRUM_RPC_URL: "https://example.com/arbitrum",
       NEXT_PUBLIC_OPTIMISM_RPC_URL: "https://example.com/optimism",
       NEXT_PUBLIC_BASE_RPC_URL: "https://example.com/base",
+      NEXT_PUBLIC_SOLANA_RPC_URL: "https://example.com/solana",
     };
 
     expect(getRpcUrl(1, env)).toBe("https://example.com/eth");
@@ -103,6 +121,9 @@ describe("wallet-core", () => {
       ),
     ).toBe(
       "https://etherscan.io/tx/0x1111111111111111111111111111111111111111111111111111111111111111",
+    );
+    expect(buildExplorerTxUrl(101, "solana-signature")).toBe(
+      "https://solscan.io/tx/solana-signature",
     );
   });
 

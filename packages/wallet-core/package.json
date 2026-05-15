@@ -21,7 +21,11 @@
   },
   "dependencies": {
     "@acorus/shared": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
     "bip39": "^3.1.0",
+    "ed25519-hd-key": "^2.0.0",
+    "tweetnacl": "^1.0.3",
     "viem": "^2.49.0",
     "zod": "^4.4.3"
   }

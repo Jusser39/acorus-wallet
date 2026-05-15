@@ -1,9 +1,30 @@
 "use client";
 
 import { clearSensitiveMemoryBestEffort, type EncryptedVaultV1, type WalletVaultPlaintext } from "@acorus/wallet-core";
-import type { WalletProfileRecord } from "@acorus/shared";
+import {
+  getDefaultChainIdForFamily,
+  isEvmChainId,
+  type WalletProfileRecord,
+} from "@acorus/shared";
 import { create } from "zustand";
 import { clearSessionDecryptedState } from "../lib/storage";
+
+function resolveChainIdForProfile(
+  profile: WalletProfileRecord | null | undefined,
+  currentChainId: number,
+): number {
+  if (!profile) {
+    return currentChainId;
+  }
+
+  if (profile.chainFamily === "solana") {
+    return getDefaultChainIdForFamily("solana");
+  }
+
+  return isEvmChainId(currentChainId)
+    ? currentChainId
+    : getDefaultChainIdForFamily("evm");
+}
 
 interface WalletState {
   isBootstrapped: boolean;
@@ -85,18 +106,34 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       activeId && profiles.some((item) => item.id === activeId)
         ? activeId
         : profiles[0]?.id ?? null;
+    const activeProfile =
+      profiles.find((item) => item.id === nextActiveId) ?? null;
 
-    set({ profiles, activeProfileId: nextActiveId });
+    set({
+      profiles,
+      activeProfileId: nextActiveId,
+      selectedChainId: resolveChainIdForProfile(activeProfile, get().selectedChainId),
+    });
   },
   upsertProfile(profile) {
     const current = get().profiles.filter((item) => item.id !== profile.id);
+    const profiles = [profile, ...current];
+    const activeProfileId = get().activeProfileId ?? profile.id;
+    const activeProfile =
+      profiles.find((item) => item.id === activeProfileId) ?? profile;
+
     set({
-      profiles: [profile, ...current],
-      activeProfileId: get().activeProfileId ?? profile.id,
+      profiles,
+      activeProfileId,
+      selectedChainId: resolveChainIdForProfile(activeProfile, get().selectedChainId),
     });
   },
   setActiveProfileId(id) {
-    set({ activeProfileId: id });
+    const profile = get().profiles.find((item) => item.id === id) ?? null;
+    set({
+      activeProfileId: id,
+      selectedChainId: resolveChainIdForProfile(profile, get().selectedChainId),
+    });
   },
   setSelectedChainId(chainId) {
     set({ selectedChainId: chainId });
@@ -127,6 +164,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       encryptedVault: null,
       unlockedVault: null,
       activeProfileId: null,
+      selectedChainId: getDefaultChainIdForFamily("evm"),
       lastHiddenAt: null,
       lastUnlockedAt: null,
       lastActivityAt: null,

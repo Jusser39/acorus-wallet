@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isValidSolanaAddress } from "@acorus/wallet-core";
 import { getAddress, isAddress } from "viem";
 import { formatAddress } from "@/lib/utils";
 import {
@@ -9,11 +10,12 @@ import {
   listContacts,
   updateContact,
 } from "@/lib/api";
-import { useWalletStore } from "@/store/wallet-store";
+import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import type { ContactRecord } from "@acorus/shared";
 
 export default function ContactsPage() {
   const userId = useWalletStore((state) => state.userId);
+  const activeProfile = useActiveProfile();
   const [items, setItems] = useState<ContactRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -53,8 +55,14 @@ export default function ContactsPage() {
       return;
     }
 
-    if (!isAddress(address)) {
-      setError("Введите корректный EVM-адрес.");
+    const chainFamily = activeProfile?.chainFamily ?? "evm";
+
+    if (chainFamily === "solana" ? !isValidSolanaAddress(address) : !isAddress(address)) {
+      setError(
+        chainFamily === "solana"
+          ? "Введите корректный Solana-адрес."
+          : "Введите корректный EVM-адрес.",
+      );
       return;
     }
 
@@ -62,7 +70,8 @@ export default function ContactsPage() {
     setError(null);
     setMessage(null);
 
-    const normalizedAddress = getAddress(address);
+    const normalizedAddress =
+      chainFamily === "solana" ? address.trim() : getAddress(address);
 
     try {
       if (editingId) {
@@ -70,7 +79,7 @@ export default function ContactsPage() {
           userId,
           name,
           address: normalizedAddress,
-          chainFamily: "evm",
+          chainFamily,
           note: note || null,
         });
         setMessage("Контакт обновлен.");
@@ -79,7 +88,7 @@ export default function ContactsPage() {
           userId,
           name,
           address: normalizedAddress,
-          chainFamily: "evm",
+          chainFamily,
           note: note || null,
         });
         setMessage("Контакт добавлен.");
@@ -113,7 +122,7 @@ export default function ContactsPage() {
           <input
             value={address}
             onChange={(event) => setAddress(event.target.value)}
-            placeholder="0x..."
+            placeholder={activeProfile?.chainFamily === "solana" ? "Base58 address" : "0x..."}
           />
         </label>
         <label className="space-y-2">

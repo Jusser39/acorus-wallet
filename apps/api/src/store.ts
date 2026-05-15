@@ -1,6 +1,7 @@
 import {
   CURATED_TOKENS,
   EVM_CHAINS,
+  SOLANA_CHAINS,
   type ApiChainRecord,
   type ChainFamily,
   type ContactRecord,
@@ -10,8 +11,9 @@ import {
   type TransactionRecordItem,
   type WalletProfileRecord,
   type WalletProfileType,
+  getExplorerTxUrl,
+  normalizeAddressForChain,
 } from "@acorus/shared";
-import { getEvmChainConfig } from "@acorus/shared";
 
 export interface UserRecord {
   id: string;
@@ -71,6 +73,8 @@ export interface TransactionStatusUpdateInput {
 }
 
 export type FiatCurrency = "USD" | "EUR" | "RUB";
+export type ChartRange = "1D" | "7D" | "1M" | "3M" | "1Y";
+export type TokenRiskLevel = "low" | "medium" | "high" | "unknown";
 
 export interface UserTokenDto {
   id: string;
@@ -91,7 +95,8 @@ export interface UserTokenDto {
   marketCapUsd?: number | null;
   fdvUsd?: number | null;
   pairUrl?: string | null;
-  riskLevel?: string | null;
+  riskLevel?: TokenRiskLevel | null;
+  riskFlags?: string[];
   riskFlagsJson?: string | null;
   lastMarketSyncAt?: string | null;
   createdAt: string;
@@ -116,7 +121,8 @@ export interface CreateUserTokenInput {
   marketCapUsd?: number | null;
   fdvUsd?: number | null;
   pairUrl?: string | null;
-  riskLevel?: string | null;
+  riskLevel?: TokenRiskLevel | null;
+  riskFlags?: string[];
   riskFlagsJson?: string | null;
 }
 
@@ -131,8 +137,12 @@ export interface MarketPriceDto {
   volume24h?: number | null;
   provider: string;
   updatedAt: string;
-  /** Populated at the API response layer to communicate cache semantics. */
   sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: TokenRiskLevel | null;
+  riskFlags?: string[];
+  riskFlagsJson?: string | null;
 }
 
 export interface MarketChartDto {
@@ -140,9 +150,10 @@ export interface MarketChartDto {
   tokenAddress?: string | null;
   symbol: string;
   currency: FiatCurrency;
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: ChartRange;
   points: Array<{ timestamp: string; price: number }>;
   provider: string;
+  sourceStatus?: string | null;
   updatedAt: string;
 }
 
@@ -158,7 +169,7 @@ export interface GetMarketChartInput {
   tokenAddress?: string | null;
   symbol: string;
   currency: FiatCurrency;
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: ChartRange;
 }
 
 export interface AppStore {
@@ -198,6 +209,21 @@ export interface AppStore {
   createUserToken(input: CreateUserTokenInput): Promise<UserTokenDto>;
   updateUserTokenVisibility(id: string, isHidden: boolean): Promise<UserTokenDto>;
   deleteUserToken(id: string): Promise<void>;
+  hideToken(input: {
+    userId: string;
+    walletProfileId?: string | null;
+    chainId: number;
+    tokenAddress: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    isCustom?: boolean;
+  }): Promise<UserTokenDto>;
+  unhideToken(input: {
+    userId: string;
+    chainId: number;
+    tokenAddress: string;
+  }): Promise<UserTokenDto | null>;
   getMarketPrices(input: GetMarketPricesInput): Promise<MarketPriceDto[]>;
   upsertMarketPrice(input: MarketPriceDto): Promise<MarketPriceDto>;
   getMarketChart(input: GetMarketChartInput): Promise<MarketChartDto | null>;
@@ -206,16 +232,15 @@ export interface AppStore {
 
 export function toExplorerUrl(chainId: number, hash: string): string | null {
   try {
-    return `${getEvmChainConfig(chainId).blockExplorerUrl}/tx/${hash}`;
+    return getExplorerTxUrl(chainId, hash);
   } catch {
     return null;
   }
 }
 
 export function getChainsResponse(): ApiChainRecord[] {
-  return EVM_CHAINS.map((chain) => ({
+  return [...EVM_CHAINS, ...SOLANA_CHAINS].map((chain) => ({
     ...chain,
-    family: "evm" as const,
     enabled: true,
   }));
 }
@@ -227,7 +252,7 @@ export function getCuratedTokenItems(chainId?: number): TokenMetadataItem[] {
       : CURATED_TOKENS;
 
   return items.map((token) => ({
-    id: `${token.chainId}:${token.address.toLowerCase()}`,
+    id: `${token.chainId}:${normalizeAddressForChain(token.chainId, token.address)}`,
     chainId: token.chainId,
     tokenAddress: token.address,
     symbol: token.symbol,

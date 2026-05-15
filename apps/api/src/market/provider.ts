@@ -71,6 +71,16 @@ export class SimpleWindowRateLimiter {
 
     this.requests.push(Date.now());
   }
+
+  take(): boolean {
+    const now = Date.now();
+    this.requests = this.requests.filter((ts) => now - ts < this.windowMs);
+    if (this.requests.length >= this.rpm) {
+      return false;
+    }
+    this.requests.push(now);
+    return true;
+  }
 }
 
 const BASE_USD_PRICES: Record<string, number> = {
@@ -166,6 +176,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
       range: request.range,
       points,
       provider: this.id,
+      sourceStatus: "fallback_mock",
       updatedAt: new Date().toISOString(),
     };
   }
@@ -238,16 +249,37 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   }
 
   async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
+    const buildMockFallback = async (): Promise<MarketChartDto> => {
+      const chart = await this.mockProvider.getChart(request);
+      return {
+        ...chart,
+        provider: "mock",
+        sourceStatus: "fallback_mock",
+      };
+    };
+
+    if (!this.rateLimiter.take()) {
+      return buildMockFallback();
+    }
+
     for (const provider of this.providers) {
-      try {
-        await this.rateLimiter.acquire();
-        return await provider.getChart(request);
-      } catch {
+      if (provider.id !== "coingecko") {
         continue;
+      }
+
+      try {
+        const chart = await provider.getChart(request);
+        return {
+          ...chart,
+          provider: "coingecko",
+          sourceStatus: "live",
+        };
+      } catch {
+        return buildMockFallback();
       }
     }
 
-    return this.mockProvider.getChart(request);
+    return buildMockFallback();
   }
 
   async discoverToken(

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAnonymousUser } from "./api";
+import { createAnonymousUser, hideUserToken } from "./api";
 
 describe("api client", () => {
   afterEach(() => {
@@ -20,6 +20,34 @@ describe("api client", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/users/anonymous",
+      expect.objectContaining({
+        method: "POST",
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("posts hide token requests to the same-origin API", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true, token: { id: "token-1" } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await hideUserToken({
+      userId: "user-1",
+      chainId: 1,
+      tokenAddress: "0x1234",
+      symbol: "TEST",
+      name: "Test Token",
+      decimals: 18,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/user-tokens/hide",
       expect.objectContaining({
         method: "POST",
         cache: "no-store",

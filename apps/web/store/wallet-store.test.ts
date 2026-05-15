@@ -33,4 +33,23 @@ describe("wallet store", () => {
     expect(useWalletStore.getState().unlockedVault).toBeNull();
     expect(useWalletStore.getState().lastActivityAt).toBeNull();
   });
+
+  it("switches selected chain when activating a solana profile", () => {
+    useWalletStore.getState().setProfiles([
+      {
+        id: "profile-sol",
+        userId: "user-1",
+        name: "Solana Wallet",
+        type: "local",
+        publicAddress: "11111111111111111111111111111111",
+        chainFamily: "solana",
+        hiddenBalance: false,
+        preferredCurrency: "USD",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    expect(useWalletStore.getState().selectedChainId).toBe(101);
+  });
 });
