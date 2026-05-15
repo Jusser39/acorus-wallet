@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   clearEncryptedVault,
+  clearSessionDecryptedState,
+  hasVault,
   loadEncryptedVault,
   loadLocalSettings,
   loadUserId,
@@ -26,10 +28,12 @@ describe("storage helpers", () => {
     });
 
     expect(loadEncryptedVault()?.ciphertextBase64).toBe("cipher");
+    expect(hasVault()).toBe(true);
     expect(window.localStorage.getItem("acorus.encryptedVault")).toContain("cipher");
 
     clearEncryptedVault();
     expect(loadEncryptedVault()).toBeNull();
+    expect(hasVault()).toBe(false);
   });
 
   it("persists user id and settings", () => {
@@ -41,5 +45,32 @@ describe("storage helpers", () => {
       autoLockMinutes: 15,
       safetyMode: false,
     });
+  });
+
+  it("clears any legacy decrypted session keys", () => {
+    window.localStorage.setItem("acorus.session.mnemonic", "test");
+    window.localStorage.setItem("acorus.session.passcode", "123456");
+
+    clearSessionDecryptedState();
+
+    expect(window.localStorage.getItem("acorus.session.mnemonic")).toBeNull();
+    expect(window.localStorage.getItem("acorus.session.passcode")).toBeNull();
+  });
+
+  it("rejects unsupported vault versions", () => {
+    window.localStorage.setItem(
+      "acorus.encryptedVault",
+      JSON.stringify({
+        version: 2,
+        kdf: "pbkdf2-sha256",
+        iterations: 1,
+        saltBase64: "salt",
+        ivBase64: "iv",
+        ciphertextBase64: "cipher",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      }),
+    );
+
+    expect(() => loadEncryptedVault()).toThrow("Unsupported vault version.");
   });
 });

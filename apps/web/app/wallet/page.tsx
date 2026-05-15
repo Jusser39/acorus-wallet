@@ -2,36 +2,33 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { EVM_CHAINS, getCuratedTokens } from "@acorus/shared";
-import { getErc20Balance, getNativeBalance } from "@acorus/wallet-core";
-import { formatUnits } from "viem";
+import { EVM_CHAINS } from "@acorus/shared";
 import Link from "next/link";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { fetchTokens } from "@/lib/api";
-import { PRACTICE_ADDRESS, PRACTICE_LESSONS, getPracticeNativeBalance, getPracticeTokens } from "@/lib/practice";
+import { updateWalletProfile } from "@/lib/api";
+import { loadWalletAssetSnapshot, type TokenBalanceView } from "@/lib/assets";
+import { PRACTICE_ADDRESS, PRACTICE_LESSONS } from "@/lib/practice";
 import { formatAddress, formatAmount } from "@/lib/utils";
-
-type TokenBalanceView = {
-  address: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-  balance: string;
-};
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
+  const userId = useWalletStore((state) => state.userId);
   const selectedChainId = useWalletStore((state) => state.selectedChainId);
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
+  const upsertProfile = useWalletStore((state) => state.upsertProfile);
+  const lockWallet = useWalletStore((state) => state.lockWallet);
   const [nativeBalance, setNativeBalance] = useState<string>("0");
   const [tokenBalances, setTokenBalances] = useState<TokenBalanceView[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [hiddenSaving, setHiddenSaving] = useState(false);
 
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
   const isLocked = activeProfile?.type === "local" && !unlockedVault;
+  const isViewOnly = activeProfile?.type === "view_only";
 
   useEffect(() => {
     let active = true;
@@ -45,65 +42,14 @@ export default function WalletPage() {
       setError(null);
 
       try {
-        if (activeProfile.type === "practice") {
-          if (!active) {
-            return;
-          }
-
-          setNativeBalance(getPracticeNativeBalance(selectedChainId));
-          setTokenBalances(
-            getPracticeTokens(selectedChainId).map((token) => ({
-              address: token.tokenAddress,
-              symbol: token.symbol,
-              name: token.name,
-              decimals: token.decimals,
-              balance: token.balance,
-            })),
-          );
-          return;
-        }
-
-        const tokens = await fetchTokens(selectedChainId).catch(() =>
-          getCuratedTokens(selectedChainId).map((token) => ({
-            id: `${token.chainId}:${token.address.toLowerCase()}`,
-            chainId: token.chainId,
-            tokenAddress: token.address,
-            symbol: token.symbol,
-            name: token.name,
-            decimals: token.decimals,
-            logoUrl: token.logoUrl,
-            isVerified: token.verified,
-            createdAt: new Date(0).toISOString(),
-            updatedAt: new Date(0).toISOString(),
-          })),
-        );
-        const [nativeRaw, tokenRaw] = await Promise.all([
-          getNativeBalance(activeProfile.publicAddress as `0x${string}`, selectedChainId),
-          Promise.all(
-            tokens.map(async (token) => {
-              const rawBalance = await getErc20Balance(
-                token.tokenAddress as `0x${string}`,
-                activeProfile.publicAddress as `0x${string}`,
-                selectedChainId,
-              );
-
-              return {
-                address: token.tokenAddress,
-                symbol: token.symbol,
-                name: token.name,
-                decimals: token.decimals,
-                balance: formatUnits(rawBalance, token.decimals),
-              };
-            }),
-          ),
-        ]);
+        const snapshot = await loadWalletAssetSnapshot(activeProfile, selectedChainId);
 
         if (!active) {
           return;
         }
 
-        setNativeBalance(formatUnits(nativeRaw, 18));
-        setTokenBalances(tokenRaw);
+        setNativeBalance(snapshot.nativeBalance);
+        setTokenBalances(snapshot.tokens);
       } catch (nextError) {
         if (!active) {
           return;
@@ -124,7 +70,7 @@ export default function WalletPage() {
     return () => {
       active = false;
     };
-  }, [activeProfile, selectedChainId]);
+  }, [activeProfile, refreshNonce, selectedChainId]);
 
   const chain = useMemo(
     () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
@@ -137,6 +83,29 @@ export default function WalletPage() {
     await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function handleHiddenBalanceToggle() {
+    if (!activeProfile || !userId) {
+      return;
+    }
+
+    setHiddenSaving(true);
+    setError(null);
+
+    try {
+      const next = await updateWalletProfile(activeProfile.id, {
+        userId,
+        hiddenBalance: !hiddenBalance,
+      });
+      upsertProfile(next);
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error ? nextError.message : "Не удалось обновить скрытие баланса.",
+      );
+    } finally {
+      setHiddenSaving(false);
+    }
   }
 
   if (!activeProfile) {
@@ -173,9 +142,18 @@ export default function WalletPage() {
               <button type="button" className="button-secondary" onClick={() => void handleCopyAddress()}>
                 {copied ? "Copied" : "Copy address"}
               </button>
-              <Link href="/send" className="button-primary">
-                Send
+              <Link href="/receive" className="button-secondary">
+                Receive
               </Link>
+              {isViewOnly ? (
+                <button type="button" className="button-primary opacity-60" disabled>
+                  Send disabled
+                </button>
+              ) : (
+                <Link href="/send" className="button-primary">
+                  Send
+                </Link>
+              )}
             </div>
           </div>
 
@@ -202,7 +180,17 @@ export default function WalletPage() {
 
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
-              <p className="text-sm text-slate-400">Native balance · {chain.name}</p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <p className="text-sm text-slate-400">Native balance · {chain.name}</p>
+                <button
+                  type="button"
+                  className="text-sm text-emerald-300"
+                  disabled={hiddenSaving}
+                  onClick={() => void handleHiddenBalanceToggle()}
+                >
+                  {hiddenBalance ? "Show balance" : "Hide balance"}
+                </button>
+              </div>
               <p className="mt-4 text-4xl font-semibold">
                 {hiddenBalance ? "••••" : `${formatAmount(nativeBalance)} ${chain.nativeSymbol}`}
               </p>
@@ -218,22 +206,31 @@ export default function WalletPage() {
             </div>
           </div>
 
-          <label className="space-y-2">
-            <span className="text-sm text-slate-300">Chain</span>
-            <select
-              value={selectedChainId}
-              onChange={(event) => setSelectedChainId(Number(event.target.value))}
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-[220px] flex-1 space-y-2">
+              <span className="text-sm text-slate-300">Chain</span>
+              <select
+                value={selectedChainId}
+                onChange={(event) => setSelectedChainId(Number(event.target.value))}
+              >
+                {EVM_CHAINS.map((item) => (
+                  <option key={item.chainId} value={item.chainId}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={loading}
+              onClick={() => setRefreshNonce((value) => value + 1)}
             >
-              {EVM_CHAINS.map((item) => (
-                <option key={item.chainId} value={item.chainId}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              {loading ? "Refreshing..." : "Refresh balances"}
+            </button>
+          </div>
 
           {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-          {loading ? <p className="text-sm text-slate-400">Refreshing balances...</p> : null}
         </div>
 
         <div className="panel space-y-4">
@@ -246,7 +243,10 @@ export default function WalletPage() {
           <div className="grid gap-3">
             {tokenBalances.length ? (
               tokenBalances.map((token) => (
-                <div key={token.address} className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <div
+                  key={token.tokenAddress}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-medium">{token.symbol}</p>
@@ -269,8 +269,18 @@ export default function WalletPage() {
         <div className="panel space-y-4">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
-            <Link href="/send" className="button-primary text-center">
-              Send assets
+            <Link href="/receive" className="button-secondary text-center">
+              Receive assets
+            </Link>
+            {isViewOnly ? (
+              <div className="button-primary text-center opacity-60">Send unavailable</div>
+            ) : (
+              <Link href="/send" className="button-primary text-center">
+                Send assets
+              </Link>
+            )}
+            <Link href="/history" className="button-secondary text-center">
+              Open history
             </Link>
             <Link href="/contacts" className="button-secondary text-center">
               Manage contacts
@@ -278,6 +288,9 @@ export default function WalletPage() {
             <Link href="/settings" className="button-secondary text-center">
               Wallet settings
             </Link>
+            <button type="button" className="button-secondary text-center" onClick={() => lockWallet()}>
+              Lock wallet
+            </button>
           </div>
         </div>
 

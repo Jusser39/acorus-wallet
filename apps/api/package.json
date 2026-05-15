@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "prebuild": "pnpm --filter @acorus/shared build && pnpm --filter @acorus/wallet-core build",
     "build": "tsup src/server.ts src/app.ts --format esm --clean",
     "start:prod": "node dist/server.js",
     "lint": "tsc --noEmit -p tsconfig.json",
+    "pretest": "pnpm --filter @acorus/shared build && pnpm --filter @acorus/wallet-core build",
     "test": "vitest run",
     "prisma": "prisma --schema prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",

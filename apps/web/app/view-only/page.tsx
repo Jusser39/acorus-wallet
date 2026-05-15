@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getAddress, isAddress } from "viem";
 import { createWalletProfile } from "@/lib/api";
 import { useWalletStore } from "@/store/wallet-store";
 
@@ -12,6 +13,7 @@ export default function ViewOnlyPage() {
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const [walletName, setWalletName] = useState("View-only wallet");
   const [address, setAddress] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate() {
@@ -20,17 +22,33 @@ export default function ViewOnlyPage() {
       return;
     }
 
-    const profile = await createWalletProfile({
-      userId,
-      name: walletName,
-      type: "view_only",
-      publicAddress: address,
-      chainFamily: "evm",
-    });
+    if (!isAddress(address)) {
+      setError("Введите корректный EVM-адрес.");
+      return;
+    }
 
-    upsertProfile(profile);
-    setActiveProfileId(profile.id);
-    router.push("/wallet");
+    setLoading(true);
+    setError(null);
+
+    try {
+      const profile = await createWalletProfile({
+        userId,
+        name: walletName,
+        type: "view_only",
+        publicAddress: getAddress(address),
+        chainFamily: "evm",
+      });
+
+      upsertProfile(profile);
+      setActiveProfileId(profile.id);
+      router.push("/wallet");
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error ? nextError.message : "Не удалось создать view-only wallet.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -52,8 +70,13 @@ export default function ViewOnlyPage() {
 
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
-        <button type="button" className="button-primary" onClick={() => void handleCreate()}>
-          Save view-only wallet
+        <button
+          type="button"
+          className="button-primary"
+          disabled={loading}
+          onClick={() => void handleCreate()}
+        >
+          {loading ? "Saving..." : "Save view-only wallet"}
         </button>
       </div>
 

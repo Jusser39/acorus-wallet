@@ -3,20 +3,39 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ContactRecord, SendAsset, TransactionRecordItem } from "@acorus/shared";
+import { EVM_CHAINS } from "@acorus/shared";
 import {
+  assertAddress,
+  buildExplorerTxUrl,
   createPracticeTransaction,
-  estimateErc20TransferGas,
-  estimateNativeTransferGas,
+  estimateErc20TransferFee,
+  estimateNativeTransferFee,
   sendErc20Transaction,
   sendNativeTransaction,
 } from "@acorus/wallet-core";
-import { EVM_CHAINS } from "@acorus/shared";
 import { formatUnits, parseUnits } from "viem";
-import { createTransaction, fetchContacts, fetchTokens } from "@/lib/api";
-import { getPracticeTokens } from "@/lib/practice";
+import {
+  createTransaction,
+  listContacts,
+  updateTransactionStatus,
+} from "@/lib/api";
+import { loadWalletAssetSnapshot } from "@/lib/assets";
+import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
+import { formatAddress, formatAmount } from "@/lib/utils";
+import { StatusBadge } from "@/components/status-badge";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
-type SendStage = "form" | "review" | "result";
+type SendStage = "form" | "estimating" | "review" | "submitted" | "error";
+
+type ReviewState = {
+  asset: SendAsset;
+  amountDisplay: string;
+  recipient: string;
+  estimatedFeeDisplay: string;
+  estimatedFeeWei: bigint;
+  gasLimit: bigint;
+};
 
 export default function SendPage() {
   const router = useRouter();
@@ -26,24 +45,67 @@ export default function SendPage() {
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const safetyMode = useWalletStore((state) => state.safetyMode);
-  const [contacts, setContacts] = useState<Array<{ id: string; name: string; address: string }>>([]);
-  const [tokens, setTokens] = useState<Array<{ tokenAddress: string; symbol: string; name: string; decimals: number }>>([]);
+  const [contacts, setContacts] = useState<ContactRecord[]>([]);
+  const [nativeBalance, setNativeBalance] = useState("0");
+  const [nativeBalanceRaw, setNativeBalanceRaw] = useState(0n);
+  const [tokens, setTokens] = useState<
+    Array<{
+      tokenAddress: string;
+      symbol: string;
+      name: string;
+      decimals: number;
+      balance: string;
+      balanceRaw: bigint;
+    }>
+  >([]);
   const [assetKey, setAssetKey] = useState("native");
+  const [selectedContactId, setSelectedContactId] = useState("");
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const [gasEstimate, setGasEstimate] = useState<string | null>(null);
   const [stage, setStage] = useState<SendStage>("form");
-  const [resultHash, setResultHash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [review, setReview] = useState<ReviewState | null>(null);
+  const [submittedRecord, setSubmittedRecord] = useState<TransactionRecordItem | null>(null);
+  const [mainnetConfirmed, setMainnetConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+
+  const chain = useMemo(
+    () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
+    [selectedChainId],
+  );
+  const selectedToken = tokens.find((token) => token.tokenAddress === assetKey) ?? null;
+  const selectedAsset: SendAsset =
+    assetKey === "native"
+      ? {
+          type: "native",
+          chainId: selectedChainId,
+          symbol: chain.nativeSymbol,
+          decimals: 18,
+        }
+      : {
+          type: "erc20",
+          chainId: selectedChainId,
+          symbol: selectedToken?.symbol ?? "TOKEN",
+          tokenAddress: selectedToken?.tokenAddress ?? null,
+          decimals: selectedToken?.decimals ?? 18,
+        };
+  const isUnlocked = Boolean(unlockedVault);
+  const canSend = activeProfile
+    ? canWalletSend(activeProfile.type, isUnlocked)
+    : false;
+  const safetyBlocked = activeProfile
+    ? isSafetyModeBlockingRealSend(activeProfile.type, safetyMode)
+    : false;
 
   useEffect(() => {
     if (!userId) {
       return;
     }
 
-    void fetchContacts(userId)
-      .then((items) => setContacts(items.map((item) => ({ id: item.id, name: item.name, address: item.address }))))
+    void listContacts(userId)
+      .then((items) => setContacts(items))
       .catch(() => setContacts([]));
   }, [userId]);
 
@@ -54,145 +116,271 @@ export default function SendPage() {
 
     let active = true;
 
-    void (async () => {
-      if (activeProfile.type === "practice") {
-        if (active) {
-          setTokens(
-            getPracticeTokens(selectedChainId).map((token) => ({
-              tokenAddress: token.tokenAddress,
-              symbol: token.symbol,
-              name: token.name,
-              decimals: token.decimals,
-            })),
-          );
-        }
-        return;
-      }
+    setAssetsLoading(true);
+    setError(null);
 
-      try {
-        const items = await fetchTokens(selectedChainId);
-
+    void loadWalletAssetSnapshot(activeProfile, selectedChainId)
+      .then((snapshot) => {
         if (!active) {
           return;
         }
 
-        setTokens(
-          items.map((token) => ({
-            tokenAddress: token.tokenAddress,
-            symbol: token.symbol,
-            name: token.name,
-            decimals: token.decimals,
-          })),
-        );
-      } catch {
-        if (active) {
-          setTokens([]);
+        setNativeBalance(snapshot.nativeBalance);
+        setNativeBalanceRaw(snapshot.nativeBalanceRaw);
+        setTokens(snapshot.tokens);
+      })
+      .catch((nextError) => {
+        if (!active) {
+          return;
         }
-      }
-    })();
+
+        setTokens([]);
+        setError(
+          nextError instanceof Error ? nextError.message : "Не удалось загрузить балансы.",
+        );
+      })
+      .finally(() => {
+        if (active) {
+          setAssetsLoading(false);
+        }
+      });
 
     return () => {
       active = false;
     };
   }, [activeProfile, selectedChainId]);
 
-  const chain = useMemo(
-    () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
-    [selectedChainId],
-  );
-  const selectedToken = tokens.find((token) => token.tokenAddress === assetKey) ?? null;
-
-  async function handleReview() {
-    if (!activeProfile || !userId) {
-      setError("Активный кошелек или user context не найдены.");
-      return;
+  useEffect(() => {
+    if (assetKey !== "native" && !selectedToken) {
+      setAssetKey("native");
     }
+  }, [assetKey, selectedToken]);
 
-    if (!recipient || !amount) {
-      setError("Заполните адрес и сумму.");
-      return;
-    }
-
-    if (activeProfile.type === "view_only") {
-      setError("View-only wallet не может отправлять транзакции.");
-      return;
-    }
-
-    if (activeProfile.type === "local" && !unlockedVault) {
-      setError("Перед отправкой сначала выполните unlock.");
-      return;
-    }
-
-    setLoading(true);
+  function resetFlow() {
+    setStage("form");
+    setReview(null);
+    setSubmittedRecord(null);
+    setMainnetConfirmed(false);
     setError(null);
+    setErrorDetails(null);
+  }
+
+  function setRecipientFromContact(contactId: string) {
+    setSelectedContactId(contactId);
+    const contact = contacts.find((item) => item.id === contactId);
+
+    if (contact) {
+      setRecipient(contact.address);
+      resetFlow();
+    }
+  }
+
+  function validateDraft() {
+    if (!activeProfile || !userId) {
+      throw new Error("Активный кошелек или пользовательский контекст не найдены.");
+    }
+
+    if (!canSend) {
+      if (activeProfile.type === "view_only") {
+        throw new Error("View-only wallet не может отправлять транзакции.");
+      }
+
+      throw new Error("Перед отправкой сначала разблокируйте кошелек.");
+    }
+
+    const normalizedRecipient = assertAddress(recipient.trim());
+
+    if (!amount.trim()) {
+      throw new Error("Введите сумму отправки.");
+    }
+
+    const amountUnits = parseUnits(amount, selectedAsset.decimals);
+
+    if (amountUnits <= 0n) {
+      throw new Error("Сумма должна быть больше нуля.");
+    }
+
+    if (selectedAsset.type === "native" && amountUnits > nativeBalanceRaw) {
+      throw new Error("Недостаточно native balance для выбранной суммы.");
+    }
+
+    if (selectedAsset.type === "erc20") {
+      if (!selectedToken || !selectedAsset.tokenAddress) {
+        throw new Error("Выберите доступный ERC-20 актив.");
+      }
+
+      if (amountUnits > selectedToken.balanceRaw) {
+        throw new Error("Недостаточно токенов для выбранной суммы.");
+      }
+    }
+
+    return {
+      activeProfile,
+      userId,
+      recipient: normalizedRecipient,
+      amountUnits,
+    };
+  }
+
+  async function handleUseMax() {
+    if (!activeProfile) {
+      return;
+    }
+
+    setError(null);
+    setErrorDetails(null);
 
     try {
+      if (selectedAsset.type === "erc20" && selectedToken) {
+        setAmount(selectedToken.balance);
+        resetFlow();
+        return;
+      }
+
       if (activeProfile.type === "practice") {
-        setGasEstimate("Practice mode: simulated");
+        setAmount(nativeBalance);
+        resetFlow();
+        return;
+      }
+
+      const recipientAddress = assertAddress(recipient.trim());
+      const feeEstimate = await estimateNativeTransferFee({
+        from: assertAddress(activeProfile.publicAddress),
+        to: recipientAddress,
+        value: 0n,
+        chainId: selectedChainId,
+      });
+      const maxWei = nativeBalanceRaw - feeEstimate.estimatedFeeWei;
+
+      if (maxWei <= 0n) {
+        throw new Error("Недостаточно native balance даже на network fee.");
+      }
+
+      setAmount(formatUnits(maxWei, 18));
+      resetFlow();
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Не удалось рассчитать безопасный Max для native token.",
+      );
+    }
+  }
+
+  async function handleReview() {
+    setLoading(true);
+    setError(null);
+    setErrorDetails(null);
+    setStage("estimating");
+
+    try {
+      const draft = validateDraft();
+
+      if (draft.activeProfile.type === "practice") {
+        setReview({
+          asset: selectedAsset,
+          amountDisplay: amount,
+          recipient: draft.recipient,
+          estimatedFeeDisplay: "Practice mode · simulated",
+          estimatedFeeWei: 0n,
+          gasLimit: 0n,
+        });
         setStage("review");
         return;
       }
 
-      if (assetKey === "native") {
-        const gas = await estimateNativeTransferGas({
-          from: activeProfile.publicAddress as `0x${string}`,
-          to: recipient as `0x${string}`,
-          value: parseUnits(amount, 18),
+      if (selectedAsset.type === "native") {
+        const fee = await estimateNativeTransferFee({
+          from: assertAddress(draft.activeProfile.publicAddress),
+          to: draft.recipient,
+          value: draft.amountUnits,
           chainId: selectedChainId,
         });
 
-        setGasEstimate(`${formatUnits(gas, 18)} ${chain.nativeSymbol}`);
-      } else if (selectedToken) {
-        const gas = await estimateErc20TransferGas({
-          from: activeProfile.publicAddress as `0x${string}`,
-          to: recipient as `0x${string}`,
-          tokenAddress: selectedToken.tokenAddress as `0x${string}`,
-          amountUnits: parseUnits(amount, selectedToken.decimals),
+        if (draft.amountUnits + fee.estimatedFeeWei > nativeBalanceRaw) {
+          throw new Error("Недостаточно native balance с учетом network fee.");
+        }
+
+        setReview({
+          asset: selectedAsset,
+          amountDisplay: amount,
+          recipient: draft.recipient,
+          estimatedFeeDisplay: `${formatUnits(fee.estimatedFeeWei, 18)} ${chain.nativeSymbol}`,
+          estimatedFeeWei: fee.estimatedFeeWei,
+          gasLimit: fee.gasLimit,
+        });
+      } else {
+        const fee = await estimateErc20TransferFee({
+          from: assertAddress(draft.activeProfile.publicAddress),
+          to: draft.recipient,
+          tokenAddress: assertAddress(selectedAsset.tokenAddress ?? ""),
+          amountUnits: draft.amountUnits,
           chainId: selectedChainId,
         });
 
-        setGasEstimate(`${formatUnits(gas, 18)} ${chain.nativeSymbol}`);
+        if (fee.estimatedFeeWei > nativeBalanceRaw) {
+          throw new Error("Недостаточно native balance для оплаты gas.");
+        }
+
+        setReview({
+          asset: selectedAsset,
+          amountDisplay: amount,
+          recipient: draft.recipient,
+          estimatedFeeDisplay: `${formatUnits(fee.estimatedFeeWei, 18)} ${chain.nativeSymbol}`,
+          estimatedFeeWei: fee.estimatedFeeWei,
+          gasLimit: fee.gasLimit,
+        });
       }
 
       setStage("review");
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось оценить gas.");
+      setStage("error");
+      setError(
+        nextError instanceof Error ? nextError.message : "Не удалось подготовить review.",
+      );
+      setErrorDetails(nextError instanceof Error ? nextError.message : null);
     } finally {
       setLoading(false);
     }
   }
 
   async function handleSend() {
-    if (!activeProfile || !userId) {
-      return;
-    }
-
-    if (activeProfile.type === "local" && (!unlockedVault || safetyMode)) {
-      setError(
-        safetyMode
-          ? "Safety mode включен. Выключите его в Settings перед mainnet send."
-          : "Перед отправкой сначала выполните unlock.",
-      );
+    if (!review) {
       return;
     }
 
     setLoading(true);
     setError(null);
+    setErrorDetails(null);
 
     try {
-      if (activeProfile.type === "practice") {
+      const draft = validateDraft();
+
+      if (draft.activeProfile.type === "local") {
+        if (safetyBlocked) {
+          throw new Error(
+            "Safety mode включен. Отключите его в Settings, чтобы разрешить реальный mainnet send.",
+          );
+        }
+
+        if (!mainnetConfirmed) {
+          throw new Error("Подтвердите, что понимаете отправку реальных средств.");
+        }
+      }
+
+      if (draft.activeProfile.type === "practice") {
         const fakeTx = createPracticeTransaction({
-          symbol: assetKey === "native" ? chain.nativeSymbol : selectedToken?.symbol ?? "TOKEN",
+          symbol: review.asset.symbol,
           amount,
-          to: recipient,
+          to: review.recipient,
         });
         const record = await createTransaction({
-          userId,
-          walletProfileId: activeProfile.id,
+          userId: draft.userId,
+          walletProfileId: draft.activeProfile.id,
           chainId: selectedChainId,
           hash: fakeTx.id,
-          from: activeProfile.publicAddress,
-          to: recipient,
+          from: draft.activeProfile.publicAddress,
+          to: review.recipient,
           assetType: "practice",
           symbol: fakeTx.symbol,
           amount,
@@ -202,47 +390,66 @@ export default function SendPage() {
           confirmedAt: fakeTx.createdAt,
         });
 
-        setResultHash(record.hash);
-        setStage("result");
+        setSubmittedRecord(record);
+        setStage("submitted");
         return;
       }
 
       const hash =
-        assetKey === "native"
+        review.asset.type === "native"
           ? await sendNativeTransaction({
               mnemonic: unlockedVault!.mnemonic,
               chainId: selectedChainId,
-              to: recipient as `0x${string}`,
-              amountWei: parseUnits(amount, 18),
+              to: review.recipient as `0x${string}`,
+              amountWei: draft.amountUnits,
             })
           : await sendErc20Transaction({
               mnemonic: unlockedVault!.mnemonic,
               chainId: selectedChainId,
-              tokenAddress: selectedToken!.tokenAddress as `0x${string}`,
-              to: recipient as `0x${string}`,
-              amountUnits: parseUnits(amount, selectedToken!.decimals),
+              tokenAddress: review.asset.tokenAddress as `0x${string}`,
+              to: review.recipient as `0x${string}`,
+              amountUnits: draft.amountUnits,
             });
 
-      await createTransaction({
-        userId,
-        walletProfileId: activeProfile.id,
+      const record = await createTransaction({
+        userId: draft.userId,
+        walletProfileId: draft.activeProfile.id,
         chainId: selectedChainId,
         hash,
-        from: activeProfile.publicAddress,
-        to: recipient,
-        assetType: assetKey === "native" ? "native" : "erc20",
-        tokenAddress: assetKey === "native" ? null : selectedToken?.tokenAddress ?? null,
-        symbol: assetKey === "native" ? chain.nativeSymbol : selectedToken?.symbol ?? "TOKEN",
+        from: draft.activeProfile.publicAddress,
+        to: review.recipient,
+        assetType: review.asset.type === "native" ? "native" : "erc20",
+        tokenAddress: review.asset.type === "native" ? null : review.asset.tokenAddress ?? null,
+        symbol: review.asset.symbol,
         amount,
         status: "pending",
         direction: "out",
         submittedAt: new Date().toISOString(),
       });
 
-      setResultHash(hash);
-      setStage("result");
+      setSubmittedRecord(record);
+      setStage("submitted");
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Не удалось отправить транзакцию.");
+      setStage("error");
+      setError(
+        nextError instanceof Error ? nextError.message : "Не удалось отправить транзакцию.",
+      );
+      setErrorDetails(nextError instanceof Error ? nextError.message : null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRefreshSubmittedStatus() {
+    if (!submittedRecord || !userId || submittedRecord.assetType === "practice") {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const next = await updateTransactionStatus(submittedRecord.id, userId);
+      setSubmittedRecord(next);
     } finally {
       setLoading(false);
     }
@@ -261,59 +468,77 @@ export default function SendPage() {
     );
   }
 
-  if (activeProfile.type === "view_only") {
-    return (
-      <section className="page">
-        <div className="panel space-y-4">
-          <h1 className="text-2xl font-semibold">View-only wallet</h1>
-          <p className="text-sm text-slate-300">
-            Отправка невозможна, потому что приватного ключа в этом профиле нет.
-          </p>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section className="page grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <div className="panel space-y-5">
         <div>
           <h1 className="text-3xl font-semibold">Send assets</h1>
           <p className="mt-2 text-sm text-slate-300">
-            Перед отправкой проверяйте сеть, адрес и сумму. ERC-20 на неправильной сети может быть потерян.
+            Проверьте сеть, адрес и сумму. Транзакции в блокчейне нельзя отменить.
           </p>
         </div>
 
-        {activeProfile.type === "local" && !unlockedVault ? (
+        {!canSend ? (
           <div className="warning-box space-y-3 text-sm">
-            <p>Кошелек заблокирован. Отправка без unlock невозможна.</p>
-            <Link href="/unlock" className="button-primary inline-flex">
-              Unlock wallet
-            </Link>
+            <p>
+              {activeProfile.type === "view_only"
+                ? "View-only wallet не может отправлять транзакции."
+                : "Кошелек заблокирован. Перед отправкой сначала выполните unlock."}
+            </p>
+            {activeProfile.type === "local" ? (
+              <Link href="/unlock" className="button-primary inline-flex">
+                Unlock wallet
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
-        <label className="space-y-2">
-          <span className="text-sm text-slate-300">Chain</span>
-          <select
-            value={selectedChainId}
-            onChange={(event) => setSelectedChainId(Number(event.target.value))}
-          >
-            {EVM_CHAINS.map((item) => (
-              <option key={item.chainId} value={item.chainId}>
-                {item.name}
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Chain</span>
+            <select
+              value={selectedChainId}
+              onChange={(event) => {
+                setSelectedChainId(Number(event.target.value));
+                resetFlow();
+              }}
+            >
+              {EVM_CHAINS.map((item) => (
+                <option key={item.chainId} value={item.chainId}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Asset</span>
+            <select
+              value={assetKey}
+              onChange={(event) => {
+                setAssetKey(event.target.value);
+                resetFlow();
+              }}
+            >
+              <option value="native">
+                Native · {chain.nativeSymbol} · {formatAmount(nativeBalance)}
               </option>
-            ))}
-          </select>
-        </label>
+              {tokens.map((token) => (
+                <option key={token.tokenAddress} value={token.tokenAddress}>
+                  {token.symbol} · {formatAmount(token.balance)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Asset</span>
-          <select value={assetKey} onChange={(event) => setAssetKey(event.target.value)}>
-            <option value="native">Native · {chain.nativeSymbol}</option>
-            {tokens.map((token) => (
-              <option key={token.tokenAddress} value={token.tokenAddress}>
-                {token.symbol} · {token.name}
+          <span className="text-sm text-slate-300">Select contact</span>
+          <select value={selectedContactId} onChange={(event) => setRecipientFromContact(event.target.value)}>
+            <option value="">Choose contact</option>
+            {contacts.map((contact) => (
+              <option key={contact.id} value={contact.id}>
+                {contact.name} · {formatAddress(contact.address)}
               </option>
             ))}
           </select>
@@ -323,46 +548,64 @@ export default function SendPage() {
           <span className="text-sm text-slate-300">Recipient</span>
           <input
             value={recipient}
-            onChange={(event) => setRecipient(event.target.value)}
+            onChange={(event) => {
+              setRecipient(event.target.value);
+              setSelectedContactId("");
+              resetFlow();
+            }}
             placeholder="0x..."
           />
         </label>
 
-        <label className="space-y-2">
-          <span className="text-sm text-slate-300">Contact book</span>
-          <select
-            value=""
-            onChange={(event) => {
-              if (event.target.value) {
-                setRecipient(event.target.value);
-              }
-            }}
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Amount</span>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={amount}
+              onChange={(event) => {
+                setAmount(event.target.value);
+                resetFlow();
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={assetsLoading}
+            onClick={() => void handleUseMax()}
           >
-            <option value="">Select contact</option>
-            {contacts.map((contact) => (
-              <option key={contact.id} value={contact.address}>
-                {contact.name} · {contact.address}
-              </option>
-            ))}
-          </select>
-        </label>
+            Max
+          </button>
+        </div>
 
-        <label className="space-y-2">
-          <span className="text-sm text-slate-300">Amount</span>
-          <input
-            type="number"
-            min="0"
-            step="any"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-          />
-        </label>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+          <p>
+            Available:{" "}
+            {selectedAsset.type === "native"
+              ? `${formatAmount(nativeBalance)} ${chain.nativeSymbol}`
+              : `${formatAmount(selectedToken?.balance ?? "0")} ${selectedToken?.symbol ?? "TOKEN"}`}
+          </p>
+          {selectedAsset.type === "native" && activeProfile.type !== "practice" ? (
+            <p className="mt-2 text-slate-400">
+              Для native Max нужен корректный recipient, чтобы вычесть network fee.
+            </p>
+          ) : null}
+        </div>
 
+        {assetsLoading ? <p className="text-sm text-slate-400">Loading balances...</p> : null}
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
         <div className="flex flex-wrap gap-3">
-          <button type="button" className="button-primary" disabled={loading} onClick={() => void handleReview()}>
-            {loading ? "Preparing..." : "Review send"}
+          <button
+            type="button"
+            className="button-primary"
+            disabled={loading || assetsLoading || !canSend}
+            onClick={() => void handleReview()}
+          >
+            {stage === "estimating" || loading ? "Estimating..." : "Review send"}
           </button>
           <button type="button" className="button-secondary" onClick={() => router.push("/wallet")}>
             Cancel
@@ -372,42 +615,105 @@ export default function SendPage() {
 
       <aside className="panel space-y-5">
         <h2 className="text-xl font-semibold">Review</h2>
-        <div className="space-y-3 text-sm text-slate-300">
-          <p>Stage: {stage}</p>
-          <p>Network: {chain.name}</p>
-          <p>
-            Asset: {assetKey === "native" ? chain.nativeSymbol : selectedToken?.symbol ?? "Token"}
-          </p>
-          <p>Recipient: {recipient || "—"}</p>
-          <p>Amount: {amount || "—"}</p>
-          <p>Estimated gas: {gasEstimate ?? "—"}</p>
+        <div className="grid gap-3 text-sm text-slate-300">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">Stage</p>
+            <p className="mt-2 font-medium">{stage}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">Network</p>
+            <p className="mt-2 font-medium">{chain.name}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">From</p>
+            <p className="mt-2 font-medium break-all">{activeProfile.publicAddress}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">To</p>
+            <p className="mt-2 font-medium break-all">
+              {(review?.recipient ?? recipient) || "—"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">Asset</p>
+            <p className="mt-2 font-medium">
+              {review?.asset.symbol ?? selectedAsset.symbol} ·{" "}
+              {(review?.amountDisplay ?? amount) || "—"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <p className="text-slate-400">Estimated network fee</p>
+            <p className="mt-2 font-medium">{review?.estimatedFeeDisplay ?? "—"}</p>
+            {review?.gasLimit ? (
+              <p className="mt-2 text-xs text-slate-400">Gas limit: {review.gasLimit.toString()}</p>
+            ) : null}
+          </div>
         </div>
 
-        {activeProfile.type === "local" ? (
-          <div className="warning-box text-sm">
-            Вы отправляете реальные средства. Проверьте сеть, адрес и сумму.
-            {safetyMode ? " Safety mode сейчас включен и блокирует mainnet send." : ""}
+        {activeProfile.type === "practice" ? (
+          <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm text-sky-100">
+            Practice mode: отправка полностью симулируется и не создаёт real-chain transaction.
           </div>
         ) : (
-          <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm text-sky-100">
-            Practice mode: отправка полностью симулируется.
+          <div className="warning-box text-sm">
+            Проверьте сеть и адрес. Транзакции в блокчейне нельзя отменить.
+            {safetyBlocked ? " Safety mode сейчас блокирует реальный send." : ""}
           </div>
         )}
+
+        {activeProfile.type === "local" ? (
+          <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              checked={mainnetConfirmed}
+              onChange={(event) => setMainnetConfirmed(event.target.checked)}
+              className="mt-1 h-4 w-4"
+              disabled={safetyBlocked}
+            />
+            <span>Я понимаю, что отправляю реальные средства в mainnet.</span>
+          </label>
+        ) : null}
 
         <button
           type="button"
           className="button-primary w-full"
-          disabled={stage !== "review" || loading}
+          disabled={
+            stage !== "review" ||
+            loading ||
+            (activeProfile.type === "local" && (safetyBlocked || !mainnetConfirmed))
+          }
           onClick={() => void handleSend()}
         >
           {loading ? "Sending..." : "Final confirm"}
         </button>
 
-        {stage === "result" && resultHash ? (
+        {stage === "submitted" && submittedRecord ? (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-            <p className="font-medium">Transaction submitted</p>
-            <p className="mt-2 break-all">{resultHash}</p>
-            <div className="mt-4 flex gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-medium">Transaction submitted</p>
+              <StatusBadge status={submittedRecord.status} />
+            </div>
+            <p className="mt-3 break-all">{submittedRecord.hash}</p>
+            {submittedRecord.assetType !== "practice" ? (
+              <Link
+                href={submittedRecord.explorerUrl ?? buildExplorerTxUrl(selectedChainId, submittedRecord.hash)}
+                target="_blank"
+                className="mt-3 inline-flex text-emerald-200 underline underline-offset-4"
+              >
+                Open explorer
+              </Link>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-3">
+              {submittedRecord.assetType !== "practice" ? (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={loading}
+                  onClick={() => void handleRefreshSubmittedStatus()}
+                >
+                  Refresh status
+                </button>
+              ) : null}
               <Link href="/history" className="button-secondary">
                 Open history
               </Link>
@@ -416,6 +722,13 @@ export default function SendPage() {
               </Link>
             </div>
           </div>
+        ) : null}
+
+        {stage === "error" && errorDetails ? (
+          <details className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+            <summary className="cursor-pointer text-white">Error details</summary>
+            <p className="mt-3 break-words">{errorDetails}</p>
+          </details>
         ) : null}
       </aside>
     </section>

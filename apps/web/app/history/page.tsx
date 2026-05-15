@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchTransactions, refreshTransactionStatus } from "@/lib/api";
-import { getExplorerTxUrl } from "@/lib/utils";
+import { EVM_CHAINS } from "@acorus/shared";
+import { listTransactions, updateTransactionStatus } from "@/lib/api";
+import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { StatusBadge } from "@/components/status-badge";
 import type { TransactionRecordItem } from "@acorus/shared";
@@ -13,6 +14,7 @@ export default function HistoryPage() {
   const userId = useWalletStore((state) => state.userId);
   const [items, setItems] = useState<TransactionRecordItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeProfile || !userId) {
@@ -23,14 +25,26 @@ export default function HistoryPage() {
 
     void (async () => {
       setLoading(true);
-      const response = await fetchTransactions(userId, activeProfile.id);
+      setError(null);
+      try {
+        const response = await listTransactions(userId, activeProfile.id);
 
-      if (!active) {
-        return;
+        if (!active) {
+          return;
+        }
+
+        setItems(response);
+      } catch (nextError) {
+        if (!active) {
+          return;
+        }
+
+        setError(nextError instanceof Error ? nextError.message : "Не удалось загрузить историю.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-
-      setItems(response);
-      setLoading(false);
     })();
 
     return () => {
@@ -43,11 +57,26 @@ export default function HistoryPage() {
       return;
     }
 
+    setLoading(true);
     const refreshed = await Promise.all(
-      items.map((item) => refreshTransactionStatus(item.id, userId).catch(() => item)),
+      items.map((item) =>
+        item.status === "pending" || item.status === "unknown"
+          ? updateTransactionStatus(item.id, userId).catch(() => item)
+          : Promise.resolve(item),
+      ),
     );
 
     setItems(refreshed);
+    setLoading(false);
+  }
+
+  async function handleRefreshSingle(item: TransactionRecordItem) {
+    if (!userId || item.assetType === "practice") {
+      return;
+    }
+
+    const next = await updateTransactionStatus(item.id, userId).catch(() => item);
+    setItems((current) => current.map((entry) => (entry.id === item.id ? next : entry)));
   }
 
   return (
@@ -60,11 +89,12 @@ export default function HistoryPage() {
           </p>
         </div>
         <button type="button" className="button-primary" onClick={() => void handleRefreshStatuses()}>
-          Refresh statuses
+          Refresh pending
         </button>
       </div>
 
       {loading ? <p className="text-sm text-slate-400">Loading history...</p> : null}
+      {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
       <div className="grid gap-4">
         {items.length ? (
@@ -76,22 +106,44 @@ export default function HistoryPage() {
                     {item.direction.toUpperCase()} · {item.symbol} · {item.amount}
                   </p>
                   <p className="mt-1 text-sm text-slate-400">
-                    {item.from} → {item.to}
+                    {formatAddress(item.from)} → {formatAddress(item.to)}
                   </p>
                 </div>
                 <StatusBadge status={item.status} />
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-slate-300">
-                <span>Hash: {item.hash}</span>
-                {getExplorerTxUrl(item.chainId, item.hash) ? (
-                  <Link
-                    href={getExplorerTxUrl(item.chainId, item.hash)!}
-                    target="_blank"
-                    className="text-emerald-300"
-                  >
-                    Explorer
-                  </Link>
+              <div className="grid gap-2 text-sm text-slate-300">
+                <p>
+                  Network: {EVM_CHAINS.find((chain) => chain.chainId === item.chainId)?.name ?? item.chainId}
+                </p>
+                <p>Submitted: {new Date(item.submittedAt).toLocaleString("ru-RU")}</p>
+                {item.confirmedAt ? (
+                  <p>Confirmed: {new Date(item.confirmedAt).toLocaleString("ru-RU")}</p>
                 ) : null}
+                <div className="flex flex-wrap items-center gap-4">
+                  <span>Hash: {formatAddress(item.hash)}</span>
+                  {item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash) ? (
+                    <Link
+                      href={item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash)!}
+                      target="_blank"
+                      className="text-emerald-300"
+                    >
+                      Explorer
+                    </Link>
+                  ) : null}
+                  {item.assetType !== "practice" ? (
+                    <button
+                      type="button"
+                      className="text-emerald-300"
+                      onClick={() => void handleRefreshSingle(item)}
+                    >
+                      Refresh status
+                    </button>
+                  ) : null}
+                </div>
+                {item.rawStatus ? <p className="text-slate-400">Raw status: {item.rawStatus}</p> : null}
+              </div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                {item.assetType}
               </div>
             </div>
           ))

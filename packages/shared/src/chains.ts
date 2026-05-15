@@ -60,3 +60,11 @@ export function getEvmChainConfig(chainId: number): EvmChainConfig {
 
   return chain;
 }
+
+export function getExplorerTxUrl(chainId: number, hash: string): string {
+  return `${getEvmChainConfig(chainId).blockExplorerUrl}/tx/${hash}`;
+}
+
+export function getExplorerAddressUrl(chainId: number, address: string): string {
+  return `${getEvmChainConfig(chainId).blockExplorerUrl}/address/${address}`;
+}

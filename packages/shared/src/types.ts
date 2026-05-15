@@ -4,6 +4,8 @@ export type WalletProfileType = "local" | "view_only" | "practice";
 
 export type PreferredCurrency = "USD" | "EUR" | "RUB";
 
+export type SendAssetType = "native" | "erc20";
+
 export type TransactionAssetType = "native" | "erc20" | "nft" | "practice";
 
 export type TransactionStatus = "pending" | "confirmed" | "failed" | "unknown";
@@ -44,7 +46,7 @@ export interface WalletProfileRecord {
   updatedAt: string;
 }
 
-export interface TransactionRecordItem {
+export interface TransactionRecord {
   id: string;
   userId: string;
   walletProfileId: string;
@@ -66,7 +68,9 @@ export interface TransactionRecordItem {
   updatedAt: string;
 }
 
-export interface TokenMetadataItem {
+export type TransactionRecordItem = TransactionRecord;
+
+export interface TokenMetadata {
   id: string;
   chainId: number;
   tokenAddress: string;
@@ -75,6 +79,34 @@ export interface TokenMetadataItem {
   decimals: number;
   logoUrl: string | null;
   isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TokenMetadataItem = TokenMetadata;
+
+export interface SendAsset {
+  type: SendAssetType;
+  chainId: number;
+  symbol: string;
+  tokenAddress?: string | null;
+  decimals: number;
+}
+
+export interface ApiChainRecord {
+  chainId: number;
+  family: ChainFamily;
+  name: string;
+  nativeSymbol: string;
+  blockExplorerUrl: string;
+  enabled: boolean;
+}
+
+export interface OnboardingProgressRecord {
+  id: string;
+  userId: string;
+  step: string;
+  completed: boolean;
   createdAt: string;
   updatedAt: string;
 }

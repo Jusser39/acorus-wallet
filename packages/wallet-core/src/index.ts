@@ -1,6 +1,7 @@
 export * from "./evm/balance";
 export * from "./evm/client";
 export * from "./evm/erc20Abi";
+export * from "./evm/explorer";
 export * from "./evm/send";
 export * from "./evm/status";
 export * from "./mnemonic";

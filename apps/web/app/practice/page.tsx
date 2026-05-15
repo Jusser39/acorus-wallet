@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PRACTICE_LESSONS, PRACTICE_ADDRESS } from "@/lib/practice";
-import { createWalletProfile } from "@/lib/api";
+import { createWalletProfile, getOnboardingProgress, setOnboardingProgress } from "@/lib/api";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
 export default function PracticePage() {
@@ -12,23 +13,48 @@ export default function PracticePage() {
   const activeProfile = useActiveProfile();
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
+  const [progressCount, setProgressCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    void getOnboardingProgress(userId)
+      .then((items) => setProgressCount(items.filter((item) => item.completed).length))
+      .catch(() => setProgressCount(0));
+  }, [userId]);
 
   async function handleCreatePracticeWallet() {
     if (!userId) {
       return;
     }
 
-    const profile = await createWalletProfile({
-      userId,
-      name: "Practice wallet",
-      type: "practice",
-      publicAddress: PRACTICE_ADDRESS,
-      chainFamily: "evm",
-    });
+    setLoading(true);
 
-    upsertProfile(profile);
-    setActiveProfileId(profile.id);
-    router.push("/wallet");
+    try {
+      const profile = await createWalletProfile({
+        userId,
+        name: "Practice wallet",
+        type: "practice",
+        publicAddress: PRACTICE_ADDRESS,
+        chainFamily: "evm",
+      });
+
+      await setOnboardingProgress({
+        userId,
+        step: "practice_wallet_created",
+        completed: true,
+      }).catch(() => undefined);
+
+      upsertProfile(profile);
+      setActiveProfileId(profile.id);
+      setProgressCount((current) => Math.max(current, 1));
+      router.push("/wallet");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -38,6 +64,9 @@ export default function PracticePage() {
           <h1 className="text-3xl font-semibold">Practice wallet</h1>
           <p className="mt-2 text-sm text-sky-100">
             Practice mode — реальные деньги не используются. Настоящий private key и seed здесь не создаются.
+          </p>
+          <p className="mt-3 text-sm text-slate-300">
+            Completed onboarding steps: {progressCount}
           </p>
         </div>
 
@@ -51,8 +80,13 @@ export default function PracticePage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button type="button" className="button-primary" onClick={() => void handleCreatePracticeWallet()}>
-            Create practice wallet
+          <button
+            type="button"
+            className="button-primary"
+            disabled={loading}
+            onClick={() => void handleCreatePracticeWallet()}
+          >
+            {loading ? "Creating..." : "Create practice wallet"}
           </button>
           <Link href="/send" className="button-secondary">
             Open fake send flow

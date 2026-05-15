@@ -22,17 +22,27 @@ export function AppBootstrap() {
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const setSafetyMode = useWalletStore((state) => state.setSafetyMode);
   const setAutoLockMinutes = useWalletStore((state) => state.setAutoLockMinutes);
+  const setError = useWalletStore((state) => state.setError);
+  const markActivity = useWalletStore((state) => state.markActivity);
   const autoLockMinutes = useWalletStore((state) => state.autoLockMinutes);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const lockWallet = useWalletStore((state) => state.lockWallet);
   const lastHiddenAt = useWalletStore((state) => state.lastHiddenAt);
+  const lastActivityAt = useWalletStore((state) => state.lastActivityAt);
   const setLastHiddenAt = useWalletStore((state) => state.setLastHiddenAt);
 
   useEffect(() => {
     let active = true;
 
     async function bootstrap() {
-      const storedVault = loadEncryptedVault();
+      let storedVault = null;
+
+      try {
+        storedVault = loadEncryptedVault();
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Unable to read local vault.");
+      }
+
       const storedSettings = loadLocalSettings();
       const storedActiveProfileId = loadActiveProfileId();
       const existingUserId = loadUserId();
@@ -64,6 +74,7 @@ export function AppBootstrap() {
     }
 
     bootstrap().catch(() => {
+      setError("Wallet bootstrap failed.");
       setBootstrapped(true);
     });
 
@@ -77,6 +88,7 @@ export function AppBootstrap() {
     setEncryptedVault,
     setProfiles,
     setSafetyMode,
+    setError,
     setUserId,
   ]);
 
@@ -100,6 +112,47 @@ export function AppBootstrap() {
   }, []);
 
   useEffect(() => {
+    if (!unlockedVault) {
+      return;
+    }
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "click",
+      "keydown",
+      "mousemove",
+      "pointerdown",
+      "touchstart",
+    ];
+    const handleActivity = () => markActivity();
+
+    for (const eventName of activityEvents) {
+      window.addEventListener(eventName, handleActivity, { passive: true });
+    }
+
+    return () => {
+      for (const eventName of activityEvents) {
+        window.removeEventListener(eventName, handleActivity);
+      }
+    };
+  }, [markActivity, unlockedVault]);
+
+  useEffect(() => {
+    if (!unlockedVault || !lastActivityAt) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      const idleMs = Date.now() - (useWalletStore.getState().lastActivityAt ?? Date.now());
+
+      if (idleMs >= useWalletStore.getState().autoLockMinutes * 60_000) {
+        lockWallet();
+      }
+    }, 15_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [lastActivityAt, lockWallet, unlockedVault]);
+
+  useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         setLastHiddenAt(Date.now());
@@ -113,6 +166,8 @@ export function AppBootstrap() {
         Date.now() - lastHiddenAt > autoLockMinutes * 60_000
       ) {
         lockWallet();
+      } else if (document.visibilityState === "visible" && unlockedVault) {
+        markActivity();
       }
 
       setLastHiddenAt(null);
@@ -120,7 +175,7 @@ export function AppBootstrap() {
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [autoLockMinutes, lastHiddenAt, lockWallet, setLastHiddenAt, unlockedVault]);
+  }, [autoLockMinutes, lastHiddenAt, lockWallet, markActivity, setLastHiddenAt, unlockedVault]);
 
   return <ServiceWorkerRegister />;
 }

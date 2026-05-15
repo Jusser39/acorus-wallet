@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "pnpm --filter @acorus/shared build && pnpm --filter @acorus/wallet-core build",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "pretest": "pnpm --filter @acorus/shared build && pnpm --filter @acorus/wallet-core build",
     "test": "vitest run"
   },
   "dependencies": {

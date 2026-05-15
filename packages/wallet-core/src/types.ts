@@ -97,6 +97,12 @@ export interface EstimateErc20TransferParams {
   env?: Record<string, string | undefined>;
 }
 
+export interface EvmFeeEstimate {
+  gasLimit: bigint;
+  gasPrice: bigint;
+  estimatedFeeWei: bigint;
+}
+
 export interface PracticeTransaction {
   id: string;
   symbol: string;

@@ -1,32 +1,41 @@
 import type {
+  ApiChainRecord,
+  ChainFamily,
   ContactRecord,
+  OnboardingProgressRecord,
+  PreferredCurrency,
+  TokenMetadata,
   TokenMetadataItem,
+  TransactionAssetType,
+  TransactionDirection,
   TransactionRecordItem,
+  TransactionStatus,
   WalletProfileRecord,
+  WalletProfileType,
 } from "@acorus/shared";
 
 export interface WalletProfileCreateInput {
   userId: string;
   name: string;
-  type: "local" | "view_only" | "practice";
+  type: WalletProfileType;
   publicAddress: string;
-  chainFamily: "evm" | "solana" | "tron";
+  chainFamily: ChainFamily;
   hiddenBalance?: boolean;
-  preferredCurrency?: "USD" | "EUR" | "RUB";
+  preferredCurrency?: PreferredCurrency;
 }
 
 export interface WalletProfileUpdateInput {
   userId: string;
   name?: string;
   hiddenBalance?: boolean;
-  preferredCurrency?: "USD" | "EUR" | "RUB";
+  preferredCurrency?: PreferredCurrency;
 }
 
 export interface ContactCreateInput {
   userId: string;
   name: string;
   address: string;
-  chainFamily: "evm" | "solana" | "tron";
+  chainFamily: ChainFamily;
   note?: string | null;
 }
 
@@ -39,18 +48,48 @@ export interface TransactionCreateInput {
   hash: string;
   from: string;
   to: string;
-  assetType: "native" | "erc20" | "nft" | "practice";
+  assetType: TransactionAssetType;
   tokenAddress?: string | null;
   symbol: string;
   amount: string;
-  status: "pending" | "confirmed" | "failed" | "unknown";
-  direction: "in" | "out" | "self";
+  status: TransactionStatus;
+  direction: TransactionDirection;
   submittedAt: string;
   confirmedAt?: string | null;
   rawStatus?: string | null;
 }
 
+export interface OnboardingProgressInput {
+  userId: string;
+  step: string;
+  completed: boolean;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+
+type ApiErrorPayload = {
+  error?: string;
+  message?: string;
+};
+
+function getApiErrorMessage(status: number, payload: ApiErrorPayload | null): string {
+  const code = payload?.error ?? payload?.message;
+
+  switch (code) {
+    case "validation_error":
+      return "API validation failed.";
+    case "not_found":
+      return "Requested record was not found.";
+    case "sensitive_fields_forbidden":
+      return "Sensitive fields are not accepted by the API.";
+    case "bad_request":
+      return "The API rejected this request.";
+    case "internal_error":
+      return "The API failed to process the request.";
+    default:
+      return `API request failed (${status}).`;
+  }
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -69,7 +108,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null;
+    throw new Error(getApiErrorMessage(response.status, payload));
   }
 
   if (response.status === 204) {
@@ -83,7 +123,7 @@ export async function createAnonymousUser(): Promise<{ id: string }> {
   return apiFetch("/api/users/anonymous", { method: "POST" });
 }
 
-export async function fetchWalletProfiles(
+export async function listWalletProfiles(
   userId: string,
 ): Promise<WalletProfileRecord[]> {
   const response = await apiFetch<{ items: WalletProfileRecord[] }>(
@@ -91,6 +131,8 @@ export async function fetchWalletProfiles(
   );
   return response.items;
 }
+
+export const fetchWalletProfiles = listWalletProfiles;
 
 export async function createWalletProfile(
   input: WalletProfileCreateInput,
@@ -117,12 +159,14 @@ export async function deleteWalletProfile(id: string, userId: string): Promise<v
   });
 }
 
-export async function fetchContacts(userId: string): Promise<ContactRecord[]> {
+export async function listContacts(userId: string): Promise<ContactRecord[]> {
   const response = await apiFetch<{ items: ContactRecord[] }>(
     `/api/contacts?userId=${encodeURIComponent(userId)}`,
   );
   return response.items;
 }
+
+export const fetchContacts = listContacts;
 
 export async function createContact(
   input: ContactCreateInput,
@@ -149,7 +193,7 @@ export async function deleteContact(id: string, userId: string): Promise<void> {
   });
 }
 
-export async function fetchTransactions(
+export async function listTransactions(
   userId: string,
   walletProfileId?: string,
 ): Promise<TransactionRecordItem[]> {
@@ -165,6 +209,8 @@ export async function fetchTransactions(
   return response.items;
 }
 
+export const fetchTransactions = listTransactions;
+
 export async function createTransaction(
   input: TransactionCreateInput,
 ): Promise<TransactionRecordItem> {
@@ -174,7 +220,7 @@ export async function createTransaction(
   });
 }
 
-export async function refreshTransactionStatus(
+export async function updateTransactionStatus(
   id: string,
   userId: string,
 ): Promise<TransactionRecordItem> {
@@ -184,9 +230,36 @@ export async function refreshTransactionStatus(
   });
 }
 
-export async function fetchTokens(chainId: number): Promise<TokenMetadataItem[]> {
+export const refreshTransactionStatus = updateTransactionStatus;
+
+export async function listChains(): Promise<ApiChainRecord[]> {
+  const response = await apiFetch<{ items: ApiChainRecord[] }>("/api/chains");
+  return response.items;
+}
+
+export async function listTokens(chainId: number): Promise<TokenMetadata[]> {
   const response = await apiFetch<{ items: TokenMetadataItem[] }>(
     `/api/tokens?chainId=${chainId}`,
   );
   return response.items;
+}
+
+export const fetchTokens = listTokens;
+
+export async function getOnboardingProgress(
+  userId: string,
+): Promise<OnboardingProgressRecord[]> {
+  const response = await apiFetch<{ items: OnboardingProgressRecord[] }>(
+    `/api/onboarding-progress?userId=${encodeURIComponent(userId)}`,
+  );
+  return response.items;
+}
+
+export async function setOnboardingProgress(
+  input: OnboardingProgressInput,
+): Promise<OnboardingProgressRecord> {
+  return apiFetch("/api/onboarding-progress", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }

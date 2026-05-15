@@ -37,6 +37,21 @@ describe("api", () => {
     expect(response.json().id).toBeTruthy();
   });
 
+  it("rejects sensitive fields on anonymous user route", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/users/anonymous",
+      payload: {
+        mnemonic: "test test test test test test test test test test test junk",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: "sensitive_fields_forbidden",
+    });
+  });
+
   it("does not leak parser errors for empty json bodies", async () => {
     const response = await app.inject({
       method: "POST",
@@ -71,6 +86,28 @@ describe("api", () => {
     expect(response.json().publicAddress).toBe(
       "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     );
+  });
+
+  it("rejects sensitive fields on wallet profile creation", async () => {
+    const user = await app.inject({ method: "POST", url: "/api/users/anonymous" });
+    const userId = user.json().id as string;
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/wallet-profiles",
+      payload: {
+        userId,
+        name: "Main wallet",
+        type: "local",
+        publicAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        chainFamily: "evm",
+        privateKey: "0xdeadbeef",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: "sensitive_fields_forbidden",
+    });
   });
 
   it("supports contacts CRUD", async () => {

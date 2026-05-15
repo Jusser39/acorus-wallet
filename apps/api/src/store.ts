@@ -1,8 +1,10 @@
 import {
   CURATED_TOKENS,
   EVM_CHAINS,
+  type ApiChainRecord,
   type ChainFamily,
   type ContactRecord,
+  type OnboardingProgressRecord,
   type PreferredCurrency,
   type TokenMetadataItem,
   type TransactionRecordItem,
@@ -15,15 +17,6 @@ export interface UserRecord {
   id: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ApiChainRecord {
-  chainId: number;
-  family: ChainFamily;
-  name: string;
-  nativeSymbol: string;
-  blockExplorerUrl: string;
-  enabled: boolean;
 }
 
 export interface WalletProfileCreateInput {
@@ -75,15 +68,6 @@ export interface TransactionStatusUpdateInput {
   status: "pending" | "confirmed" | "failed" | "unknown";
   rawStatus?: string | null;
   confirmedAt?: string | null;
-}
-
-export interface OnboardingProgressRecord {
-  id: string;
-  userId: string;
-  step: string;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface AppStore {

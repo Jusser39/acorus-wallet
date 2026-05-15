@@ -8,6 +8,7 @@ import { formatAddress } from "@/lib/utils";
 const navItems = [
   { href: "/wallet", label: "Wallet" },
   { href: "/send", label: "Send" },
+  { href: "/receive", label: "Receive" },
   { href: "/history", label: "History" },
   { href: "/contacts", label: "Contacts" },
   { href: "/settings", label: "Settings" },
@@ -18,6 +19,8 @@ export function WalletNav() {
   const pathname = usePathname();
   const activeProfile = useActiveProfile();
   const lockWallet = useWalletStore((state) => state.lockWallet);
+  const error = useWalletStore((state) => state.error);
+  const setError = useWalletStore((state) => state.setError);
 
   return (
     <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
@@ -29,7 +32,8 @@ export function WalletNav() {
           <div className="flex items-center gap-3 text-sm text-slate-300">
             {activeProfile ? (
               <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1">
-                {activeProfile.name} · {formatAddress(activeProfile.publicAddress)}
+                {activeProfile.name} · {activeProfile.type.replace("_", " ")} ·{" "}
+                {formatAddress(activeProfile.publicAddress)}
               </span>
             ) : (
               <span className="rounded-full border border-slate-700 px-3 py-1">
@@ -63,6 +67,18 @@ export function WalletNav() {
             );
           })}
         </nav>
+        {error ? (
+          <div className="warning-box flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span>{error}</span>
+            <button
+              type="button"
+              className="rounded-full border border-rose-300/30 px-3 py-1 text-rose-100"
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

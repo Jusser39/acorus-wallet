@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { decryptVault } from "@acorus/wallet-core";
-import { loadEncryptedVault } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
 
 export default function UnlockPage() {
   const router = useRouter();
-  const encryptedVault = useWalletStore((state) => state.encryptedVault) ?? loadEncryptedVault();
+  const encryptedVault = useWalletStore((state) => state.encryptedVault);
+  const bootstrapError = useWalletStore((state) => state.error);
   const unlockVault = useWalletStore((state) => state.unlockVault);
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,12 +54,19 @@ export default function UnlockPage() {
           />
         </label>
 
+        {!encryptedVault ? (
+          <div className="warning-box text-sm">
+            {bootstrapError ??
+              "Encrypted vault не найден. Сначала создайте или импортируйте кошелек на этом устройстве."}
+          </div>
+        ) : null}
+
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
         <button
           type="button"
           className="button-primary"
-          disabled={loading}
+          disabled={loading || !encryptedVault}
           onClick={() => void handleUnlock()}
         >
           {loading ? "Unlocking..." : "Unlock"}

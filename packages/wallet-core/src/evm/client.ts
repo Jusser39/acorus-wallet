@@ -8,7 +8,7 @@ import {
   polygon,
 } from "viem/chains";
 import { createPublicClient, createWalletClient, http } from "viem";
-import { mnemonicToAccount } from "viem/accounts";
+import { deriveEvmAccountFromMnemonic } from "../mnemonic";
 
 const VIEM_CHAIN_MAP = {
   1: mainnet,
@@ -58,7 +58,7 @@ export function createEvmWalletClient(
   chainId: number,
   env?: Record<string, string | undefined>,
 ) {
-  const account = mnemonicToAccount(mnemonic.trim().toLowerCase());
+  const account = deriveEvmAccountFromMnemonic(mnemonic);
 
   return createWalletClient({
     account,

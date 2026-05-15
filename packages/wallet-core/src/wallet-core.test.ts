@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveEvmAccountFromMnemonic,
+  buildExplorerTxUrl,
   decryptVault,
   encryptVault,
   generateWalletMnemonic,
+  parseEncryptedVault,
   getEvmAddressFromMnemonic,
   getRpcUrl,
   validateWalletMnemonic,
@@ -29,6 +32,10 @@ describe("wallet-core", () => {
     expect(decrypted).toEqual(plaintext);
   });
 
+  it("rejects invalid mnemonic phrases", () => {
+    expect(validateWalletMnemonic("hello world")).toBe(false);
+  });
+
   it("fails on wrong passcode", async () => {
     const plaintext: WalletVaultPlaintext = {
       mnemonic: "test test test test test test test test test test test junk",
@@ -48,6 +55,11 @@ describe("wallet-core", () => {
       getEvmAddressFromMnemonic(
         "test test test test test test test test test test test junk",
       ),
+    ).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+    expect(
+      deriveEvmAccountFromMnemonic(
+        "test test test test test test test test test test test junk",
+      ).address,
     ).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
   });
 
@@ -81,5 +93,30 @@ describe("wallet-core", () => {
     expect(getRpcUrl(42161, env)).toBe("https://example.com/arbitrum");
     expect(getRpcUrl(10, env)).toBe("https://example.com/optimism");
     expect(getRpcUrl(8453, env)).toBe("https://example.com/base");
+  });
+
+  it("builds explorer links from chain config", () => {
+    expect(
+      buildExplorerTxUrl(
+        1,
+        "0x1111111111111111111111111111111111111111111111111111111111111111",
+      ),
+    ).toBe(
+      "https://etherscan.io/tx/0x1111111111111111111111111111111111111111111111111111111111111111",
+    );
+  });
+
+  it("rejects unsupported vault versions", () => {
+    expect(() =>
+      parseEncryptedVault({
+        version: 2,
+        kdf: "pbkdf2-sha256",
+        iterations: 1,
+        saltBase64: "salt",
+        ivBase64: "iv",
+        ciphertextBase64: "cipher",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      }),
+    ).toThrow("Unsupported vault version.");
   });
 });

@@ -13,8 +13,10 @@
     }
   },
   "scripts": {
+    "prebuild": "pnpm --filter @acorus/shared build",
     "build": "tsup src/index.ts --format esm --clean",
     "lint": "tsc --noEmit -p tsconfig.json",
+    "pretest": "pnpm --filter @acorus/shared build",
     "test": "vitest run"
   },
   "dependencies": {

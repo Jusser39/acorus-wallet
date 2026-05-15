@@ -35,6 +35,21 @@
 31. Added `scripts/backup-postgres.sh` and guarded `scripts/restore-postgres.sh`, then ran a real backup on the VPS into `/opt/acorus-wallet/backups/postgres`.
 32. Rebuilt `api` and `web` on the VPS, confirmed local/public health at `:8080`, re-ran full persistence creation + verification, restarted `api`, and re-verified the same wallet/contact/transaction/onboarding ids after restart.
 33. Added `docs/security_audit_report.md` and `docs/deployment_hardening.md`, and updated project memory for the security hardening wave.
+34. Started the product wave for `EVM Wallet UX + Send Flow` with a read-only audit across current web routes, wallet-core helpers, Zustand wallet session, API persistence shape, and VPS health.
+35. Confirmed the current frontend already contains create/import/unlock/wallet/send/history/contacts/settings/view-only/practice routes, but identified product gaps: no dedicated receive route, import lacks confirm-passcode UX, send flow is still skeleton-grade, contacts do not validate EVM addresses, and view-only creation does not validate address input.
+36. Added `docs/evm_wallet_ux_send_flow_plan.md` with scope, flows, wallet states, security boundaries, testing plan, and deployment plan for the next implementation steps.
+37. Extended shared and wallet-core foundations with send asset types, explorer helpers, fee-estimate helpers, version-aware vault parsing, stronger address validation, and extra unit coverage.
+38. Upgraded frontend session/storage behavior with explicit vault parsing, legacy decrypted-session cleanup, inactivity autolock, hidden-tab autolock, and wallet-level error surfacing.
+39. Expanded the web API client with typed chains/tokens/onboarding helpers and friendlier API error parsing.
+40. Added product UX improvements across `/receive`, `/wallet`, `/send`, `/history`, `/contacts`, `/settings`, `/view-only`, and `/practice`, including view-only send blocking, receive QR flow, contact validation, multi-step send review/final confirmation, explorer links, status refresh, safety-mode UX, and practice onboarding persistence.
+41. Hardened backend request boundaries by rejecting sensitive fields such as `mnemonic`, `privateKey`, and `passcode` on API write routes, then added regression coverage.
+42. Added web-side tests for same-origin API paths, send-policy guards, storage helpers, and wallet-store lock cleanup, and added package prebuild/pretest hooks so filtered builds/tests use fresh workspace package artifacts.
+43. Re-ran local validation: wallet-core/api/web tests, api/web builds, root `pnpm test`, root `pnpm build`, and `git diff --check`.
+44. Confirmed local `docker compose --env-file .env -f infra/docker-compose.yml config`, then attempted full local compose build/up again; it remains blocked by the workstation environment because `dockerDesktopLinuxEngine` is unavailable.
+45. Built a fresh source archive, uploaded it to the VPS, extracted it into `/opt/acorus-wallet`, rebuilt the stack, and found a rollout blocker where `api` failed Prisma auth because the persisted PostgreSQL password no longer matched the current `.env` placeholder password.
+46. Repaired the VPS database password drift by aligning the `postgres` role password with the active `.env`, verified direct network access, removed/recreated the stale `acorus-api` container, and completed the rollout.
+47. Revalidated VPS health and persistence after rollout: `/health` and `/api/chains` passed on both loopback and public `:8080`, `scripts/check-persistence.sh` passed creation and `CHECK_MODE=verify` after `restart api`, and public HTML fetches succeeded for `/`, `/send`, `/receive`, `/view-only`, and `/practice`.
+48. Added `docs/evm_wallet_ux_send_flow_report.md` and updated project memory for the completed EVM Wallet UX + Send Flow wave.
 
 ## Commands run
 
@@ -104,12 +119,34 @@
 - `curl -fsS http://127.0.0.1:8080/health`
 - `curl -fsS http://127.0.0.1:8080/api/chains`
 - `curl -fsS http://85.239.59.199:8080/health`
+- `pnpm --filter @acorus/wallet-core test`
+- `pnpm --filter @acorus/api test`
+- `pnpm --filter @acorus/web test`
+- `pnpm --filter @acorus/api build`
+- `pnpm --filter @acorus/web build`
+- `pnpm test`
+- `pnpm build`
+- `docker compose --env-file .env -f infra/docker-compose.yml config`
+- `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- `docker compose --env-file .env -f infra/docker-compose.yml up -d postgres redis api web nginx`
+- `tar.exe -czf ... acorus-wallet`
+- Python `paramiko` upload to `/root/acorus-wallet-deploy.tar.gz`
+- Remote `docker compose ... rm -sf api && docker compose ... up -d api nginx`
+- Remote `docker exec -u postgres acorus-postgres psql -d acorus_wallet -c "ALTER USER postgres WITH PASSWORD '...'"` to realign the persisted role password with `.env`
+- Remote `BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
+- Remote `CHECK_MODE=verify BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
+- Public route fetches for `/`, `/send`, `/receive`, `/view-only`, `/practice`
 - `curl -fsS http://85.239.59.199:8080/api/chains`
 - `CHECK_MODE=verify BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh`
 - `bash scripts/backup-postgres.sh`
+- `docker compose --env-file .env -f infra/docker-compose.yml ps`
+- `curl -fsS http://127.0.0.1:8080/health`
+- `curl -fsS http://127.0.0.1:8080/api/chains`
+- `curl -fsS http://85.239.59.199:8080/health`
 
 ## Current follow-up
 
 - Keep Prisma/Postgres as the default VPS runtime, but rotate the compromised root password before treating the server as trusted again
 - Add SSH key auth, disable password login after validation, and move to domain + HTTPS before any real-user or mainnet exposure
 - After domain setup, set `CORS_ORIGIN` explicitly and re-run the deployment/security audit
+- Current product follow-up: the EVM Wallet UX + Send Flow wave is implemented and deployed; next product work can focus on browser-level E2E coverage or later chain families without relaxing the current non-custodial boundary

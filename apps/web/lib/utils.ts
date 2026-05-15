@@ -1,4 +1,4 @@
-import { getEvmChainConfig } from "@acorus/shared";
+import { getExplorerTxUrl as getSharedExplorerTxUrl } from "@acorus/shared";
 
 export function formatAddress(value: string): string {
   if (value.length <= 12) {
@@ -25,7 +25,7 @@ export function formatAmount(
 
 export function getExplorerTxUrl(chainId: number, hash: string): string | null {
   try {
-    return `${getEvmChainConfig(chainId).blockExplorerUrl}/tx/${hash}`;
+    return getSharedExplorerTxUrl(chainId, hash);
   } catch {
     return null;
   }

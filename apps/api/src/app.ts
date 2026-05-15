@@ -68,6 +68,17 @@ const onboardingProgressSchema = z.object({
   completed: z.boolean(),
 });
 
+const SENSITIVE_FIELD_NAMES = new Set([
+  "mnemonic",
+  "seed",
+  "seedphrase",
+  "privatekey",
+  "passcode",
+  "password",
+  "signature",
+  "rawtransaction",
+]);
+
 export interface BuildAppOptions {
   env?: ApiEnv;
   store?: AppStore;
@@ -112,6 +123,13 @@ function normalizeError(error: unknown): { statusCode: number; message: string }
     };
   }
 
+  if (error instanceof Error && error.message === "sensitive_fields_forbidden") {
+    return {
+      statusCode: 400,
+      message: "sensitive_fields_forbidden",
+    };
+  }
+
   const statusCode = getStatusCode(error);
 
   if (statusCode !== null) {
@@ -148,6 +166,46 @@ function normalizeError(error: unknown): { statusCode: number; message: string }
     statusCode: 500,
     message: "internal_error",
   };
+}
+
+function findSensitiveField(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = findSensitiveField(item);
+
+      if (nested) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+
+    if (SENSITIVE_FIELD_NAMES.has(normalizedKey)) {
+      return key;
+    }
+
+    const nested = findSensitiveField(nestedValue);
+
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function assertNoSensitiveFields(value: unknown): void {
+  if (findSensitiveField(value)) {
+    throw new Error("sensitive_fields_forbidden");
+  }
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -189,7 +247,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     time: new Date().toISOString(),
   }));
 
-  app.post("/api/users/anonymous", async () => store.createAnonymousUser());
+  app.post("/api/users/anonymous", async (request) => {
+    assertNoSensitiveFields(request.body);
+    return store.createAnonymousUser();
+  });
 
   app.get("/api/chains", async () => ({
     items: await store.listChains(),
@@ -222,6 +283,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.post("/api/wallet-profiles", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = walletProfileCreateSchema.parse(request.body);
     return store.createWalletProfile(body as WalletProfileCreateInput);
   });
@@ -234,6 +296,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.patch("/api/wallet-profiles/:id", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = walletProfileUpdateSchema.parse(request.body);
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     return store.updateWalletProfile(params.id, body as WalletProfileUpdateInput);
@@ -247,6 +310,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.post("/api/contacts", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = contactSchema.parse(request.body);
     return store.createContact(body as ContactCreateInput);
   });
@@ -259,6 +323,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.patch("/api/contacts/:id", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = contactSchema.parse(request.body);
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     return store.updateContact(params.id, body as ContactUpdateInput);
@@ -272,6 +337,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.post("/api/transactions", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = transactionCreateSchema.parse(request.body);
     return store.createTransaction(body as TransactionCreateInput);
   });
@@ -290,6 +356,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.patch("/api/transactions/:id/status", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = transactionStatusSchema.parse(request.body);
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     const record = await store.getTransaction(params.id, body.userId);
@@ -320,6 +387,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.post("/api/onboarding-progress", async (request) => {
+    assertNoSensitiveFields(request.body);
     const body = onboardingProgressSchema.parse(request.body);
     return store.setOnboardingProgress(body.userId, body.step, body.completed);
   });

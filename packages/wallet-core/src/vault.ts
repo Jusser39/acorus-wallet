@@ -72,11 +72,24 @@ export async function encryptVault(
   };
 }
 
+export function parseEncryptedVault(vault: unknown): EncryptedVaultV1 {
+  if (
+    typeof vault === "object" &&
+    vault !== null &&
+    "version" in vault &&
+    (vault as { version?: unknown }).version !== 1
+  ) {
+    throw new Error("Unsupported vault version.");
+  }
+
+  return encryptedVaultSchema.parse(vault);
+}
+
 export async function decryptVault(
   vault: EncryptedVaultV1,
   passcode: string,
 ): Promise<WalletVaultPlaintext> {
-  const parsed = encryptedVaultSchema.parse(vault);
+  const parsed = parseEncryptedVault(vault);
   const salt = base64ToBytes(parsed.saltBase64);
   const iv = base64ToBytes(parsed.ivBase64);
   const ciphertext = base64ToBytes(parsed.ciphertextBase64);

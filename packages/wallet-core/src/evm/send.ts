@@ -1,14 +1,30 @@
 import type { Address, Hash } from "viem";
-import { encodeFunctionData } from "viem";
-import { mnemonicToAccount } from "viem/accounts";
+import { encodeFunctionData, getAddress, isAddress } from "viem";
 import { createEvmPublicClient, createEvmWalletClient } from "./client";
 import { ERC20_ABI } from "./erc20Abi";
 import type {
+  EvmFeeEstimate,
   EstimateErc20TransferParams,
   EstimateNativeTransferParams,
   SendErc20Params,
   SendNativeParams,
 } from "../types";
+import { deriveEvmAccountFromMnemonic } from "../mnemonic";
+
+async function buildFeeEstimate(
+  chainId: number,
+  env: Record<string, string | undefined> | undefined,
+  estimateGas: () => Promise<bigint>,
+): Promise<EvmFeeEstimate> {
+  const client = createEvmPublicClient(chainId, env);
+  const [gasLimit, gasPrice] = await Promise.all([estimateGas(), client.getGasPrice()]);
+
+  return {
+    gasLimit,
+    gasPrice,
+    estimatedFeeWei: gasLimit * gasPrice,
+  };
+}
 
 export async function estimateNativeTransferGas(
   params: EstimateNativeTransferParams,
@@ -20,6 +36,14 @@ export async function estimateNativeTransferGas(
     to: params.to,
     value: params.value,
   });
+}
+
+export async function estimateNativeTransferFee(
+  params: EstimateNativeTransferParams,
+): Promise<EvmFeeEstimate> {
+  return buildFeeEstimate(params.chainId, params.env, () =>
+    estimateNativeTransferGas(params),
+  );
 }
 
 export async function estimateErc20TransferGas(
@@ -38,6 +62,14 @@ export async function estimateErc20TransferGas(
   });
 }
 
+export async function estimateErc20TransferFee(
+  params: EstimateErc20TransferParams,
+): Promise<EvmFeeEstimate> {
+  return buildFeeEstimate(params.chainId, params.env, () =>
+    estimateErc20TransferGas(params),
+  );
+}
+
 export async function sendNativeTransaction(
   params: SendNativeParams,
 ): Promise<Hash> {
@@ -54,7 +86,7 @@ export async function sendNativeTransaction(
 export async function sendErc20Transaction(
   params: SendErc20Params,
 ): Promise<Hash> {
-  const account = mnemonicToAccount(params.mnemonic.trim().toLowerCase());
+  const account = deriveEvmAccountFromMnemonic(params.mnemonic);
   const publicClient = createEvmPublicClient(params.chainId, params.env);
   const walletClient = createEvmWalletClient(
     params.mnemonic,
@@ -73,9 +105,9 @@ export async function sendErc20Transaction(
 }
 
 export function assertAddress(value: string): Address {
-  if (!/^0x[a-fA-F0-9]{40}$/.test(value)) {
+  if (!isAddress(value)) {
     throw new Error("Invalid EVM address.");
   }
 
-  return value as Address;
+  return getAddress(value);
 }

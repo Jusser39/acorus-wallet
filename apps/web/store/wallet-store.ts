@@ -3,6 +3,7 @@
 import { clearSensitiveMemoryBestEffort, type EncryptedVaultV1, type WalletVaultPlaintext } from "@acorus/wallet-core";
 import type { WalletProfileRecord } from "@acorus/shared";
 import { create } from "zustand";
+import { clearSessionDecryptedState } from "../lib/storage";
 
 interface WalletState {
   isBootstrapped: boolean;
@@ -15,6 +16,9 @@ interface WalletState {
   safetyMode: boolean;
   autoLockMinutes: number;
   lastHiddenAt: number | null;
+   lastUnlockedAt: number | null;
+   lastActivityAt: number | null;
+   error: string | null;
   setBootstrapped(value: boolean): void;
   setUserId(userId: string | null): void;
   setEncryptedVault(vault: EncryptedVaultV1 | null): void;
@@ -27,6 +31,8 @@ interface WalletState {
   setSafetyMode(value: boolean): void;
   setAutoLockMinutes(value: number): void;
   setLastHiddenAt(value: number | null): void;
+   markActivity(): void;
+   setError(message: string | null): void;
   clearWalletState(): void;
 }
 
@@ -41,6 +47,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   safetyMode: true,
   autoLockMinutes: 10,
   lastHiddenAt: null,
+  lastUnlockedAt: null,
+  lastActivityAt: null,
+  error: null,
   setBootstrapped(value) {
     set({ isBootstrapped: value });
   },
@@ -51,12 +60,24 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ encryptedVault: vault });
   },
   unlockVault(vault) {
-    set({ unlockedVault: vault });
+    const now = Date.now();
+    set({
+      unlockedVault: vault,
+      lastUnlockedAt: now,
+      lastActivityAt: now,
+      error: null,
+    });
   },
   lockWallet() {
     const current = get().unlockedVault;
-    clearSensitiveMemoryBestEffort(current ? { ...current } : null);
-    set({ unlockedVault: null, lastHiddenAt: null });
+    clearSensitiveMemoryBestEffort(current);
+    clearSessionDecryptedState();
+    set({
+      unlockedVault: null,
+      lastHiddenAt: null,
+      lastUnlockedAt: null,
+      lastActivityAt: null,
+    });
   },
   setProfiles(profiles) {
     const activeId = get().activeProfileId;
@@ -89,11 +110,27 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   setLastHiddenAt(value) {
     set({ lastHiddenAt: value });
   },
+  markActivity() {
+    if (!get().unlockedVault) {
+      return;
+    }
+
+    set({ lastActivityAt: Date.now() });
+  },
+  setError(message) {
+    set({ error: message });
+  },
   clearWalletState() {
+    clearSensitiveMemoryBestEffort(get().unlockedVault);
+    clearSessionDecryptedState();
     set({
       encryptedVault: null,
       unlockedVault: null,
       activeProfileId: null,
+      lastHiddenAt: null,
+      lastUnlockedAt: null,
+      lastActivityAt: null,
+      error: null,
     });
   },
 }));

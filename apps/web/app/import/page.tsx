@@ -21,6 +21,7 @@ export default function ImportWalletPage() {
   const [walletName, setWalletName] = useState("Imported wallet");
   const [mnemonic, setMnemonic] = useState("");
   const [passcode, setPasscode] = useState("");
+  const [confirmPasscode, setConfirmPasscode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +40,11 @@ export default function ImportWalletPage() {
 
     if (passcode.length < 4) {
       setError("Passcode должен быть минимум 4 символа.");
+      return;
+    }
+
+    if (passcode !== confirmPasscode) {
+      setError("Passcode и подтверждение не совпадают.");
       return;
     }
 
@@ -67,6 +73,8 @@ export default function ImportWalletPage() {
       upsertProfile(profile);
       setActiveProfileId(profile.id);
       setMnemonic("");
+      setPasscode("");
+      setConfirmPasscode("");
       router.push("/wallet");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось импортировать кошелек.");
@@ -100,14 +108,24 @@ export default function ImportWalletPage() {
           />
         </label>
 
-        <label className="space-y-2">
-          <span className="text-sm text-slate-300">Passcode</span>
-          <input
-            type="password"
-            value={passcode}
-            onChange={(event) => setPasscode(event.target.value)}
-          />
-        </label>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Passcode</span>
+            <input
+              type="password"
+              value={passcode}
+              onChange={(event) => setPasscode(event.target.value)}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-300">Confirm passcode</span>
+            <input
+              type="password"
+              value={confirmPasscode}
+              onChange={(event) => setConfirmPasscode(event.target.value)}
+            />
+          </label>
+        </div>
 
         <div className="warning-box text-sm leading-6">
           Перед импортом проверьте, что вы на доверенном устройстве и никто не видит seed phrase.

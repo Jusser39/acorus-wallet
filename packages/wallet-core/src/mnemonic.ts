@@ -10,6 +10,10 @@ export function validateWalletMnemonic(mnemonic: string): boolean {
   return validateMnemonic(mnemonic.trim().toLowerCase());
 }
 
+export function deriveEvmAccountFromMnemonic(mnemonic: string) {
+  return mnemonicToAccount(mnemonic.trim().toLowerCase());
+}
+
 export function getEvmAddressFromMnemonic(mnemonic: string): Address {
-  return mnemonicToAccount(mnemonic.trim().toLowerCase()).address;
+  return deriveEvmAccountFromMnemonic(mnemonic).address;
 }

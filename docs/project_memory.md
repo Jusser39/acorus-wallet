@@ -45,3 +45,45 @@
 - Root password rotation is required before treating the VPS as trusted again
 - HTTPS is required before any real-user or mainnet launch
 - Next step: provision domain + HTTPS, then lock down `CORS_ORIGIN` and SSH access before the next product wave
+
+## EVM Wallet UX + Send Flow Wave
+
+- Date: `2026-05-15`
+- Current deployment for this wave remains `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document added at `docs/evm_wallet_ux_send_flow_plan.md`
+- Final report added at `docs/evm_wallet_ux_send_flow_report.md`
+- Implemented routes/screens now include dedicated `/receive` in addition to landing, create, import, unlock, wallet, send, history, contacts, settings, view-only, and practice
+- Frontend improvements shipped:
+  - import now requires confirm-passcode
+  - local vault parsing is version-aware
+  - unsupported/corrupted vault state surfaces safely in the UI
+  - inactivity autolock and hidden-tab autolock are active
+  - wallet nav exposes receive and surfaces bootstrap/storage errors
+  - dashboard can refresh balances, toggle hidden balance, and disables send for view-only
+  - receive, contacts, send, history, settings, view-only, and practice flows were upgraded
+- Wallet-core improvements shipped:
+  - stable EVM account derivation helper
+  - explorer URL builders
+  - native/ERC-20 fee estimation helpers
+  - stronger EVM address validation
+  - explicit unsupported-vault-version handling
+- Backend/API improvements shipped:
+  - typed web client methods for chains/tokens/onboarding progress
+  - backend rejection of sensitive request fields such as mnemonic/privateKey/passcode
+  - workspace package prebuild/pretest hooks so filtered package commands use fresh shared artifacts
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `docker compose --env-file .env -f infra/docker-compose.yml config`
+  - VPS health + persistence create/verify + restart verify
+- Local Docker compose build/up regression remains environment-blocked on this workstation because `dockerDesktopLinuxEngine` is unavailable
+- VPS rollout succeeded after repairing a drift between the persisted PostgreSQL password and the current `.env` placeholder password, then recreating the `api` container
+- This wave still keeps the non-custodial boundary unchanged: backend stores only public data and never receives mnemonic/private-key/passcode material
+- Commit hash: pending final commit
