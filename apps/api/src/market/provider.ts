@@ -1,4 +1,7 @@
 import type { FiatCurrency, MarketChartDto, MarketPriceDto } from "../store.js";
+import type { ApiEnv } from "../env.js";
+import { DexscreenerMarketDataProvider } from "./dexscreener-provider.js";
+import { CoinGeckoMarketDataProvider } from "./coingecko-provider.js";
 
 export type MarketPriceRequest = {
   chainId: number;
@@ -15,6 +18,22 @@ export interface MarketDataProvider {
   id: string;
   getPrices(requests: MarketPriceRequest[]): Promise<MarketPriceDto[]>;
   getChart(request: MarketChartRequest): Promise<MarketChartDto>;
+  discoverToken?(
+    chainId: number,
+    tokenAddress: string,
+  ): Promise<{
+    symbol: string;
+    name: string;
+    decimals: number;
+    liquidityUsd?: number | null;
+    volume24hUsd?: number | null;
+    marketCapUsd?: number | null;
+    fdvUsd?: number | null;
+    pairUrl?: string | null;
+    riskLevel: "low" | "medium" | "high" | "unknown";
+    riskFlags: string[];
+  }>;
+  healthCheck?(): Promise<boolean>;
 }
 
 const BASE_USD_PRICES: Record<string, number> = {
@@ -112,8 +131,149 @@ export class MockMarketDataProvider implements MarketDataProvider {
       updatedAt: new Date().toISOString(),
     };
   }
+
+  async discoverToken(
+    _chainId: number,
+    _tokenAddress: string,
+  ): Promise<{
+    symbol: string;
+    name: string;
+    decimals: number;
+    liquidityUsd?: number | null;
+    volume24hUsd?: number | null;
+    marketCapUsd?: number | null;
+    fdvUsd?: number | null;
+    pairUrl?: string | null;
+    riskLevel: "low" | "medium" | "high" | "unknown";
+    riskFlags: string[];
+  }> {
+    return {
+      symbol: "MOCK",
+      name: "Mock Token",
+      decimals: 18,
+      liquidityUsd: null,
+      volume24hUsd: null,
+      marketCapUsd: null,
+      fdvUsd: null,
+      pairUrl: null,
+      riskLevel: "unknown",
+      riskFlags: ["mock_price"],
+    };
+  }
 }
 
-export function createMarketDataProvider(): MarketDataProvider {
+export class CompositeMarketDataProvider implements MarketDataProvider {
+  id = "composite";
+  private readonly providers: MarketDataProvider[];
+  private readonly mockProvider: MockMarketDataProvider;
+
+  constructor(providers: MarketDataProvider[]) {
+    this.providers = providers;
+    this.mockProvider = new MockMarketDataProvider();
+  }
+
+  async getPrices(requests: MarketPriceRequest[]): Promise<MarketPriceDto[]> {
+    const results: MarketPriceDto[] = [];
+    const remaining = [...requests];
+
+    for (const provider of this.providers) {
+      if (remaining.length === 0) break;
+
+      try {
+        const providerResults = await provider.getPrices(remaining);
+        results.push(...providerResults);
+
+        // Remove fulfilled requests
+        const fulfilledSymbols = new Set(providerResults.map((r) => r.symbol));
+        const newRemaining = remaining.filter((r) => !fulfilledSymbols.has(r.symbol));
+        if (newRemaining.length === remaining.length) {
+          // No progress, try next provider
+          continue;
+        }
+        remaining.length = 0;
+        remaining.push(...newRemaining);
+      } catch (error) {
+        // Try next provider
+        continue;
+      }
+    }
+
+    // Fallback to mock for remaining requests
+    if (remaining.length > 0) {
+      const mockResults = await this.mockProvider.getPrices(remaining);
+      results.push(...mockResults);
+    }
+
+    return results;
+  }
+
+  async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
+    for (const provider of this.providers) {
+      try {
+        return await provider.getChart(request);
+      } catch (error) {
+        // Try next provider
+        continue;
+      }
+    }
+
+    // Fallback to mock
+    return this.mockProvider.getChart(request);
+  }
+
+  async discoverToken(
+    chainId: number,
+    tokenAddress: string,
+  ): Promise<{
+    symbol: string;
+    name: string;
+    decimals: number;
+    liquidityUsd?: number | null;
+    volume24hUsd?: number | null;
+    marketCapUsd?: number | null;
+    fdvUsd?: number | null;
+    pairUrl?: string | null;
+    riskLevel: "low" | "medium" | "high" | "unknown";
+    riskFlags: string[];
+  }> {
+    for (const provider of this.providers) {
+      if (provider.discoverToken) {
+        try {
+          return await provider.discoverToken(chainId, tokenAddress);
+        } catch (error) {
+          // Try next provider
+          continue;
+        }
+      }
+    }
+
+    // Fallback to mock
+    return this.mockProvider.discoverToken(chainId, tokenAddress);
+  }
+}
+
+export function createMarketDataProvider(env?: ApiEnv): MarketDataProvider {
+  if (!env) {
+    return new MockMarketDataProvider();
+  }
+
+  const mode = env.MARKET_PROVIDER_MODE;
+
+  if (mode === "mock") {
+    return new MockMarketDataProvider();
+  }
+
+  if (mode === "live" || mode === "auto") {
+    const providers: MarketDataProvider[] = [];
+
+    // Add DexScreener first (best for ERC20 tokens)
+    providers.push(new DexscreenerMarketDataProvider(env));
+
+    // Add CoinGecko second (good for major tokens)
+    providers.push(new CoinGeckoMarketDataProvider(env));
+
+    return new CompositeMarketDataProvider(providers);
+  }
+
   return new MockMarketDataProvider();
 }

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { createUserToken } from "@/lib/api";
+import { createUserToken, discoverToken, type TokenDiscoveryResult } from "@/lib/api";
 import { EVM_CHAINS } from "@acorus/shared";
 import { isAddress } from "viem";
+import { readErc20TokenMetadata } from "@acorus/wallet-core";
 
 export default function AddTokenPage() {
   const router = useRouter();
@@ -16,13 +17,11 @@ export default function AddTokenPage() {
 
   const [chainId, setChainId] = useState(selectedChainId);
   const [tokenAddress, setTokenAddress] = useState("");
-  const [symbol, setSymbol] = useState("");
-  const [name, setName] = useState("");
-  const [decimals, setDecimals] = useState("18");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<TokenDiscoveryResult | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handlePreview(e: React.FormEvent) {
     e.preventDefault();
     if (!userId || !activeProfile) return;
 
@@ -30,19 +29,53 @@ export default function AddTokenPage() {
       setError("Invalid token address.");
       return;
     }
-    if (!symbol.trim()) {
-      setError("Symbol is required.");
-      return;
+
+    setLoading(true);
+    setError(null);
+    setPreview(null);
+
+    try {
+      // First, try to read on-chain metadata
+      const onchainMeta = await readErc20TokenMetadata(
+        tokenAddress as `0x${string}`,
+        chainId,
+        process.env,
+      );
+
+      // Then, try to discover market data
+      let discovery: TokenDiscoveryResult | null = null;
+      try {
+        discovery = await discoverToken(chainId, tokenAddress);
+      } catch (err) {
+        // Market discovery is optional, continue with on-chain data only
+        console.warn("Market discovery failed:", err);
+      }
+
+      setPreview({
+        chainId,
+        tokenAddress,
+        symbol: discovery?.symbol ?? onchainMeta.symbol,
+        name: discovery?.name ?? onchainMeta.name,
+        decimals: discovery?.decimals ?? onchainMeta.decimals,
+        liquidityUsd: discovery?.liquidityUsd ?? null,
+        volume24hUsd: discovery?.volume24hUsd ?? null,
+        marketCapUsd: discovery?.marketCapUsd ?? null,
+        fdvUsd: discovery?.fdvUsd ?? null,
+        pairUrl: discovery?.pairUrl ?? null,
+        riskLevel: discovery?.riskLevel ?? "unknown",
+        riskFlags: discovery?.riskFlags ?? [],
+        sourceStatus: discovery?.sourceStatus ?? "mock",
+        providerId: discovery?.providerId ?? "onchain",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to read token metadata.");
+    } finally {
+      setLoading(false);
     }
-    if (!name.trim()) {
-      setError("Name is required.");
-      return;
-    }
-    const dec = parseInt(decimals, 10);
-    if (isNaN(dec) || dec < 0 || dec > 36) {
-      setError("Decimals must be 0–36.");
-      return;
-    }
+  }
+
+  async function handleAddToken() {
+    if (!userId || !activeProfile || !preview) return;
 
     setLoading(true);
     setError(null);
@@ -51,12 +84,20 @@ export default function AddTokenPage() {
       await createUserToken({
         userId,
         walletProfileId: activeProfile.id,
-        chainId,
-        tokenAddress,
-        symbol: symbol.trim().toUpperCase(),
-        name: name.trim(),
-        decimals: dec,
+        chainId: preview.chainId,
+        tokenAddress: preview.tokenAddress,
+        symbol: preview.symbol,
+        name: preview.name,
+        decimals: preview.decimals,
         isCustom: true,
+        sourceStatus: preview.sourceStatus,
+        liquidityUsd: preview.liquidityUsd,
+        volume24hUsd: preview.volume24hUsd,
+        marketCapUsd: preview.marketCapUsd,
+        fdvUsd: preview.fdvUsd,
+        pairUrl: preview.pairUrl,
+        riskLevel: preview.riskLevel,
+        riskFlagsJson: JSON.stringify(preview.riskFlags),
       });
       router.push("/wallet");
     } catch (err) {
@@ -88,81 +129,159 @@ export default function AddTokenPage() {
       <div className="panel space-y-6">
         <h1 className="text-2xl font-semibold">Add custom token</h1>
         <p className="text-sm text-slate-400">
-          Add any ERC-20 token by contract address. The token will appear in your asset list.
+          Add any ERC-20 token by contract address. We'll fetch token details and market data automatically.
         </p>
 
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Network</span>
-            <select value={chainId} onChange={(e) => setChainId(Number(e.target.value))}>
-              {EVM_CHAINS.map((c) => (
-                <option key={c.chainId} value={c.chainId}>{c.name}</option>
-              ))}
-            </select>
-          </label>
+        {!preview ? (
+          <form onSubmit={(e) => void handlePreview(e)} className="space-y-4">
+            <label className="block space-y-2">
+              <span className="text-sm text-slate-300">Network</span>
+              <select
+                value={chainId}
+                onChange={(e) => setChainId(Number(e.target.value))}
+                className="w-full"
+              >
+                {EVM_CHAINS.map((c) => (
+                  <option key={c.chainId} value={c.chainId}>{c.name}</option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Contract address</span>
-            <input
-              type="text"
-              value={tokenAddress}
-              onChange={(e) => setTokenAddress(e.target.value.trim())}
-              placeholder="0x..."
-              className="w-full"
-              required
-            />
-          </label>
+            <label className="block space-y-2">
+              <span className="text-sm text-slate-300">Contract address</span>
+              <input
+                type="text"
+                value={tokenAddress}
+                onChange={(e) => setTokenAddress(e.target.value.trim())}
+                placeholder="0x..."
+                className="w-full"
+                required
+              />
+            </label>
 
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Symbol</span>
-            <input
-              type="text"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              placeholder="USDT"
-              maxLength={24}
-              className="w-full"
-              required
-            />
-          </label>
+            {error && <p className="text-sm text-rose-300">{error}</p>}
 
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tether USD"
-              maxLength={120}
-              className="w-full"
-              required
-            />
-          </label>
+            <div className="flex gap-3">
+              <button type="submit" className="button-primary flex-1" disabled={loading}>
+                {loading ? "Loading…" : "Preview token"}
+              </button>
+              <Link href="/wallet" className="button-secondary flex-1 text-center">
+                Cancel
+              </Link>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-6">
+            <div className="panel bg-slate-800/50 space-y-4">
+              <h2 className="text-lg font-medium">Token Preview</h2>
 
-          <label className="block space-y-2">
-            <span className="text-sm text-slate-300">Decimals</span>
-            <input
-              type="number"
-              value={decimals}
-              onChange={(e) => setDecimals(e.target.value)}
-              min={0}
-              max={36}
-              className="w-full"
-              required
-            />
-          </label>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-400">Symbol</p>
+                  <p className="font-medium">{preview.symbol}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Name</p>
+                  <p className="font-medium">{preview.name}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Decimals</p>
+                  <p className="font-medium">{preview.decimals}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Risk Level</p>
+                  <p className={`font-medium ${
+                    preview.riskLevel === "low" ? "text-green-400" :
+                    preview.riskLevel === "medium" ? "text-yellow-400" :
+                    preview.riskLevel === "high" ? "text-rose-400" :
+                    "text-slate-400"
+                  }`}>
+                    {preview.riskLevel.toUpperCase()}
+                  </p>
+                </div>
+              </div>
 
-          {error && <p className="text-sm text-rose-300">{error}</p>}
+              {preview.liquidityUsd && (
+                <div className="text-sm">
+                  <p className="text-slate-400">Liquidity</p>
+                  <p className="font-medium">${preview.liquidityUsd.toLocaleString()}</p>
+                </div>
+              )}
 
-          <div className="flex gap-3">
-            <button type="submit" className="button-primary flex-1" disabled={loading}>
-              {loading ? "Adding…" : "Add token"}
-            </button>
-            <Link href="/wallet" className="button-secondary flex-1 text-center">
-              Cancel
-            </Link>
+              {preview.volume24hUsd && (
+                <div className="text-sm">
+                  <p className="text-slate-400">24h Volume</p>
+                  <p className="font-medium">${preview.volume24hUsd.toLocaleString()}</p>
+                </div>
+              )}
+
+              {preview.marketCapUsd && (
+                <div className="text-sm">
+                  <p className="text-slate-400">Market Cap</p>
+                  <p className="font-medium">${preview.marketCapUsd.toLocaleString()}</p>
+                </div>
+              )}
+
+              {preview.pairUrl && (
+                <div className="text-sm">
+                  <a
+                    href={preview.pairUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:underline"
+                  >
+                    View on {preview.providerId}
+                  </a>
+                </div>
+              )}
+
+              {preview.riskFlags.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-slate-400">Risk Flags:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {preview.riskFlags.map((flag) => (
+                      <span
+                        key={flag}
+                        className="px-2 py-1 text-xs rounded bg-slate-700 text-slate-300"
+                      >
+                        {flag.replace(/_/g, " ")}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {(preview.riskLevel === "medium" || preview.riskLevel === "high") && (
+              <div className="panel bg-rose-900/20 border border-rose-700/30 space-y-2">
+                <h3 className="text-sm font-medium text-rose-300">⚠️ Warning</h3>
+                <p className="text-sm text-slate-300">
+                  This token has been flagged with {preview.riskLevel} risk. Please verify the token contract
+                  and be cautious when trading.
+                </p>
+              </div>
+            )}
+
+            {error && <p className="text-sm text-rose-300">{error}</p>}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => void handleAddToken()}
+                className="button-primary flex-1"
+                disabled={loading}
+              >
+                {loading ? "Adding…" : "Add token"}
+              </button>
+              <button
+                onClick={() => { setPreview(null); setError(null); }}
+                className="button-secondary flex-1"
+                disabled={loading}
+              >
+                Back
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </div>
     </section>
   );

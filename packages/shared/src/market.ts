@@ -2,6 +2,10 @@ export type FiatCurrency = "USD" | "EUR" | "RUB";
 
 export type MarketDataProviderId = "mock" | "coingecko" | "dexscreener" | "manual";
 
+export type MarketSourceStatus = "live" | "stale" | "mock" | "error";
+
+export type RiskLevel = "low" | "medium" | "high" | "unknown";
+
 export type PriceChange = {
   value: number;
   percent: number;
@@ -18,6 +22,12 @@ export type TokenPrice = {
   volume24h?: number | null;
   provider: MarketDataProviderId;
   updatedAt: string;
+  sourceStatus?: MarketSourceStatus;
+  liquidityUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: RiskLevel;
+  riskFlagsJson?: string;
+  providerId?: MarketDataProviderId;
 };
 
 export type TokenChartPoint = {
@@ -34,6 +44,31 @@ export type TokenChart = {
   points: TokenChartPoint[];
   provider: MarketDataProviderId;
   updatedAt: string;
+  sourceStatus?: MarketSourceStatus;
+  providerId?: MarketDataProviderId;
+};
+
+export type ProviderHealth = {
+  providerId: MarketDataProviderId;
+  healthy: boolean;
+  latencyMs?: number;
+};
+
+export type TokenDiscoveryResult = {
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel: RiskLevel;
+  riskFlags: string[];
+  sourceStatus: MarketSourceStatus;
+  providerId: MarketDataProviderId;
 };
 
 export type PortfolioAsset = {

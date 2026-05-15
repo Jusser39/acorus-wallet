@@ -397,7 +397,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     return store.setOnboardingProgress(body.userId, body.step, body.completed);
   });
 
-  const marketProvider = createMarketDataProvider();
+  const marketProvider = createMarketDataProvider(env);
 
   // ---- User Tokens ----
   const fiatCurrencySchema = z.enum(["USD", "EUR", "RUB"]);
@@ -415,6 +415,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     isVerified: z.boolean().optional(),
     isCustom: z.boolean().optional(),
     isHidden: z.boolean().optional(),
+    sourceStatus: z.string().nullable().optional(),
+    liquidityUsd: z.number().nullable().optional(),
+    volume24hUsd: z.number().nullable().optional(),
+    marketCapUsd: z.number().nullable().optional(),
+    fdvUsd: z.number().nullable().optional(),
+    pairUrl: z.string().nullable().optional(),
+    riskLevel: z.string().nullable().optional(),
+    riskFlagsJson: z.string().nullable().optional(),
   });
 
   app.get("/api/user-tokens", async (request) => {
@@ -533,6 +541,42 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     await store.upsertMarketChart(chart);
 
     return { ok: true, chart };
+  });
+
+  // ---- Token Discovery ----
+  app.get("/api/market/discover-token", async (request) => {
+    const query = z
+      .object({
+        chainId: z.coerce.number().int().positive(),
+        tokenAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token address"),
+      })
+      .parse(request.query);
+
+    // Validate address doesn't look like a mnemonic or private key
+    assertNoSensitiveFields({ tokenAddress: query.tokenAddress });
+
+    if (!marketProvider.discoverToken) {
+      return {
+        ok: false,
+        error: "Token discovery not supported",
+      };
+    }
+
+    const discovery = await marketProvider.discoverToken(
+      query.chainId,
+      query.tokenAddress,
+    );
+
+    return {
+      ok: true,
+      discovery: {
+        chainId: query.chainId,
+        tokenAddress: query.tokenAddress,
+        ...discovery,
+        sourceStatus: "live" as const,
+        providerId: marketProvider.id,
+      },
+    };
   });
 
   return app;

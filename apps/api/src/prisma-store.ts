@@ -109,6 +109,15 @@ type PrismaUserTokenShape = {
   isVerified: boolean;
   isCustom: boolean;
   isHidden: boolean;
+  sourceStatus: string | null;
+  liquidityUsd: number | null;
+  volume24hUsd: number | null;
+  marketCapUsd: number | null;
+  fdvUsd: number | null;
+  pairUrl: string | null;
+  riskLevel: string | null;
+  riskFlagsJson: string | null;
+  lastMarketSyncAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -542,6 +551,15 @@ export class PrismaStore implements AppStore {
         isVerified: input.isVerified ?? false,
         isCustom: input.isCustom ?? true,
         isHidden: input.isHidden ?? false,
+        sourceStatus: input.sourceStatus ?? null,
+        liquidityUsd: input.liquidityUsd ?? null,
+        volume24hUsd: input.volume24hUsd ?? null,
+        marketCapUsd: input.marketCapUsd ?? null,
+        fdvUsd: input.fdvUsd ?? null,
+        pairUrl: input.pairUrl ?? null,
+        riskLevel: input.riskLevel ?? null,
+        riskFlagsJson: input.riskFlagsJson ?? null,
+        lastMarketSyncAt: input.sourceStatus ? new Date() : null,
       },
     });
     return this.toUserTokenDto(item as PrismaUserTokenShape);
@@ -663,6 +681,15 @@ export class PrismaStore implements AppStore {
       isVerified: item.isVerified,
       isCustom: item.isCustom,
       isHidden: item.isHidden,
+      sourceStatus: item.sourceStatus,
+      liquidityUsd: item.liquidityUsd,
+      volume24hUsd: item.volume24hUsd,
+      marketCapUsd: item.marketCapUsd,
+      fdvUsd: item.fdvUsd,
+      pairUrl: item.pairUrl,
+      riskLevel: item.riskLevel,
+      riskFlagsJson: item.riskFlagsJson,
+      lastMarketSyncAt: toIso(item.lastMarketSyncAt),
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     };

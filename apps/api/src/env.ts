@@ -46,6 +46,15 @@ const envSchema = z.object({
   NEXT_PUBLIC_ARBITRUM_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_OPTIMISM_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_BASE_RPC_URL: z.string().optional(),
+  MARKET_PROVIDER_MODE: z.enum(["mock", "live", "auto"]).default("auto"),
+  DEXSCREENER_BASE_URL: z.string().default("https://api.dexscreener.com"),
+  COINGECKO_BASE_URL: z.string().default("https://api.coingecko.com/api/v3"),
+  COINGECKO_API_KEY: optionalStringFromEnv,
+  MARKET_PRICE_TTL_SEC: z.coerce.number().int().positive().default(60),
+  MARKET_CHART_TTL_SEC: z.coerce.number().int().positive().default(300),
+  MARKET_DISCOVERY_TTL_SEC: z.coerce.number().int().positive().default(300),
+  MARKET_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  MARKET_RATE_LIMIT_RPM: z.coerce.number().int().positive().default(30),
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;

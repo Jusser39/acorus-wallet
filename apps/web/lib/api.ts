@@ -281,6 +281,15 @@ export type UserToken = {
   isVerified: boolean;
   isCustom: boolean;
   isHidden: boolean;
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
+  lastMarketSyncAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -333,6 +342,14 @@ export async function createUserToken(input: {
   isVerified?: boolean;
   isCustom?: boolean;
   isHidden?: boolean;
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
 }): Promise<UserToken> {
   const response = await apiFetch<{ ok: true; token: UserToken }>("/api/user-tokens", {
     method: "POST",
@@ -397,4 +414,35 @@ export async function getMarketChart(input: {
     `/api/market/chart?${params.toString()}`,
   );
   return response.chart;
+}
+
+export type TokenDiscoveryResult = {
+  chainId: number;
+  tokenAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel: "low" | "medium" | "high" | "unknown";
+  riskFlags: string[];
+  sourceStatus: "live" | "stale" | "mock" | "error";
+  providerId: string;
+};
+
+export async function discoverToken(
+  chainId: number,
+  tokenAddress: string,
+): Promise<TokenDiscoveryResult> {
+  const params = new URLSearchParams({
+    chainId: String(chainId),
+    tokenAddress,
+  });
+  const response = await apiFetch<{ ok: true; discovery: TokenDiscoveryResult }>(
+    `/api/market/discover-token?${params.toString()}`,
+  );
+  return response.discovery;
 }

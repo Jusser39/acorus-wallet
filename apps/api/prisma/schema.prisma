@@ -163,6 +163,15 @@ model UserToken {
   isVerified      Boolean  @default(false)
   isCustom        Boolean  @default(true)
   isHidden        Boolean  @default(false)
+  sourceStatus      String?
+  liquidityUsd      Float?
+  volume24hUsd      Float?
+  marketCapUsd      Float?
+  fdvUsd            Float?
+  pairUrl           String?
+  riskLevel         String?
+  riskFlagsJson     String?
+  lastMarketSyncAt  DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -187,6 +196,11 @@ model MarketPriceCache {
   marketCap        Float?
   volume24h        Float?
   provider         String
+  sourceStatus     String   @default("mock")
+  liquidityUsd     Float?
+  pairUrl          String?
+  riskLevel        String   @default("unknown")
+  riskFlagsJson    String   @default("[]")
   updatedAt        DateTime @updatedAt
   createdAt        DateTime @default(now())
 

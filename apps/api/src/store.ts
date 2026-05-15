@@ -85,6 +85,15 @@ export interface UserTokenDto {
   isVerified: boolean;
   isCustom: boolean;
   isHidden: boolean;
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
+  lastMarketSyncAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -101,6 +110,14 @@ export interface CreateUserTokenInput {
   isVerified?: boolean;
   isCustom?: boolean;
   isHidden?: boolean;
+  sourceStatus?: string | null;
+  liquidityUsd?: number | null;
+  volume24hUsd?: number | null;
+  marketCapUsd?: number | null;
+  fdvUsd?: number | null;
+  pairUrl?: string | null;
+  riskLevel?: string | null;
+  riskFlagsJson?: string | null;
 }
 
 export interface MarketPriceDto {
