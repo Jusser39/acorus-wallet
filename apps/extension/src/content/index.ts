@@ -8,8 +8,17 @@ import {
   type InpageResponseEnvelope,
   type InpageStateEnvelope,
 } from "../shared/protocol";
+import {
+  isDappWalletSyncEnvelope,
+  type DappWalletSyncEnvelope,
+} from "@acorus/shared";
 
 const INPAGE_SCRIPT_ID = "acorus-extension-inpage";
+const TRUSTED_WALLET_SYNC_ORIGINS = new Set([
+  "http://85.239.59.199:8080",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
 
 injectInpageProvider();
 window.addEventListener("message", handleWindowMessage);
@@ -34,41 +43,59 @@ function injectInpageProvider(): void {
 }
 
 function handleWindowMessage(event: MessageEvent<unknown>): void {
-  if (event.source !== window || !isInpageRequestEnvelope(event.data)) {
+  if (event.source !== window) {
     return;
   }
 
-  const request = event.data;
+  if (isInpageRequestEnvelope(event.data)) {
+    const request = event.data;
 
-  void chrome.runtime
-    .sendMessage({
-      kind: "provider_request",
-      requestId: request.requestId,
-      surface: "content",
-      origin: window.location.origin,
-      method: request.method,
-      params: request.params ?? [],
-    })
-    .then((response) => {
-      postInpageResponse(request.requestId, response as ExtensionRuntimeResponse);
-      return syncOriginState();
-    })
-    .catch((error) => {
-      const response: InpageResponseEnvelope = {
-        type: ACORUS_INPAGE_RESPONSE,
+    void chrome.runtime
+      .sendMessage({
+        kind: "provider_request",
         requestId: request.requestId,
-        ok: false,
-        error: {
-          code: "bridge_error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to route the Acorus extension message.",
-        },
-      };
+        surface: "content",
+        origin: window.location.origin,
+        method: request.method,
+        params: request.params ?? [],
+      })
+      .then((response) => {
+        postInpageResponse(request.requestId, response as ExtensionRuntimeResponse);
+        return syncOriginState();
+      })
+      .catch((error) => {
+        const response: InpageResponseEnvelope = {
+          type: ACORUS_INPAGE_RESPONSE,
+          requestId: request.requestId,
+          ok: false,
+          error: {
+            code: "bridge_error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Failed to route the Acorus extension message.",
+          },
+        };
 
-      window.postMessage(response, window.location.origin);
-    });
+        window.postMessage(response, window.location.origin);
+      });
+
+    return;
+  }
+
+  if (!isTrustedWalletSyncEnvelope(event.data)) {
+    return;
+  }
+
+  void chrome.runtime.sendMessage({
+    kind: "sync_wallet_profiles",
+    requestId: createRequestId("wallet_sync"),
+    surface: "content",
+    origin: window.location.origin,
+    payload: event.data,
+  }).then(() => syncOriginState()).catch(() => {
+    // ignore sync failures so the page does not leak extension internals
+  });
 }
 
 function postInpageResponse(
@@ -114,4 +141,13 @@ async function syncOriginState(): Promise<void> {
   } catch {
     // ignore bridge sync failures in content script; request path still reports errors explicitly
   }
+}
+
+function isTrustedWalletSyncEnvelope(
+  value: unknown,
+): value is DappWalletSyncEnvelope {
+  return (
+    TRUSTED_WALLET_SYNC_ORIGINS.has(window.location.origin)
+    && isDappWalletSyncEnvelope(value)
+  );
 }

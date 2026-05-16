@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACORUS_EXTENSION_WALLET_SYNC,
   approveDappProposal,
   createApprovedPreviewDappResult,
   createDemoDappShellSnapshot,
   createDappBridgeSessionView,
   ensureDappConnectionProposal,
+  isDappWalletSyncEnvelope,
   queueDappRequest,
   setDappSessionActiveChain,
 } from "./dapp";
@@ -23,6 +25,7 @@ describe("dapp helpers", () => {
     expect(ensured.created).toBe(true);
     expect(bridge.status).toBe("approval_required");
     expect(bridge.proposalId).toBeTruthy();
+    expect(bridge.providerMode).toBe("preview_accounts");
   });
 
   it("creates connected bridge state after proposal approval", () => {
@@ -36,6 +39,7 @@ describe("dapp helpers", () => {
     expect(bridge.status).toBe("connected");
     expect(bridge.accounts.length).toBeGreaterThan(0);
     expect(bridge.activeChainId).toBe(1);
+    expect(bridge.providerMode).toBe("preview_accounts");
   });
 
   it("updates the active chain for an approved session", () => {
@@ -83,5 +87,25 @@ describe("dapp helpers", () => {
 
     expect(result.status).toBe("approved_preview");
     expect(result.signature).toBeNull();
+  });
+
+  it("recognizes wallet sync envelopes", () => {
+    expect(
+      isDappWalletSyncEnvelope({
+        type: ACORUS_EXTENSION_WALLET_SYNC,
+        source: "acorus_wallet_web",
+        activeProfileId: "profile_evm",
+        syncedAt: "2026-05-16T00:00:00.000Z",
+        profiles: [
+          {
+            id: "profile_evm",
+            name: "Main Wallet",
+            type: "local",
+            publicAddress: "0x123400000000000000000000000000000000abcd",
+            chainFamily: "evm",
+          },
+        ],
+      }),
+    ).toBe(true);
   });
 });

@@ -23,23 +23,26 @@ export default function ExtensionPage() {
           Browser wallet preview bridge
         </h1>
         <p className="text-sm text-slate-300">
-          Acorus Wallet now injects a preview-backed browser bridge with common{" "}
+          Acorus Wallet now injects a browser bridge with common{" "}
           <code className="rounded bg-slate-800 px-1 py-0.5 text-slate-100">
             window.ethereum
           </code>{" "}
           compatibility on top of the native Acorus methods. Connection
           approval, account listing, active chain reads, switch-chain prompts,
           and sign/transaction review requests can all flow through the
-          extension after explicit approval. Real signatures, broadcast, and
-          WalletConnect remain disabled.
+          extension after explicit approval. When the Acorus web app is open in
+          the same browser profile, public local EVM wallet addresses can sync
+          into the bridge without exposing seed phrase, passcode, or signing
+          output. Real signatures, broadcast, and WalletConnect remain
+          disabled.
         </p>
       </div>
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
-        Current bridge mode is preview-backed only. Websites can never reach
-        mnemonic, private keys, passcode, real signing output, or transaction
-        broadcast in this wave, even when they talk to the EVM-compatible
-        provider surface.
+        Websites can never reach mnemonic, private keys, passcode, real signing
+        output, or transaction broadcast in this wave, even when they talk to
+        the EVM-compatible provider surface. The new sync layer shares public
+        approved EVM addresses only.
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -69,8 +72,9 @@ export default function ExtensionPage() {
           <p className="mt-4 text-sm text-slate-300">
             The extension now speaks both its native Acorus provider contract
             and a familiar EVM wallet shape for connection, accounts, and chain
-            metadata. Returned data still comes only from the approved
-            preview-backed session state.
+            metadata. Returned data now comes from approved session state, with
+            wallet-backed public EVM addresses available after the Acorus web
+            app syncs them into the extension.
           </p>
         </div>
 
@@ -108,12 +112,11 @@ export default function ExtensionPage() {
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
           <h2 className="text-lg font-semibold text-white">Still blocked</h2>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
-            <li>Real signature material returned to websites</li>
-            <li>Real transaction broadcast</li>
-            <li>Wallet-backed account exposure</li>
-            <li>Automatic chain addition</li>
-            <li>WalletConnect pairing</li>
-          </ul>
+              <li>Real signature material returned to websites</li>
+              <li>Real transaction broadcast</li>
+              <li>Automatic chain addition</li>
+              <li>WalletConnect pairing</li>
+            </ul>
         </div>
       </div>
 

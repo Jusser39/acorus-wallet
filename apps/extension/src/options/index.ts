@@ -46,7 +46,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, and sign/transaction approval review can flow through the extension after approval, while real signing and send execution remain disabled.
+          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, and sign/transaction approval review can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing and send execution remain disabled.
         </p>
       </section>
 
@@ -76,6 +76,8 @@ function renderOptions(state: BackgroundStateSnapshot): string {
           <div style="font-size:14px;color:#cbd5e1">Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Approved accounts: <strong>${escapeHtml((bridge?.accounts ?? []).join(", ") || "none")}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">Wallet sync mode: <strong>${escapeHtml(state.walletExposureMode)}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">Synced wallet accounts: <strong>${String(state.walletExposedAccounts.length)}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong></div>
           <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a page requests approval.")}</div>
         </div>
@@ -100,6 +102,11 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         </div>
 
         <div style="display:grid;gap:16px">
+          <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
+            <h2 style="margin:0 0 10px;font-size:20px">Synced wallet accounts</h2>
+            <div style="display:grid;gap:10px">${renderWalletProfiles(state)}</div>
+          </section>
+
           <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
             <h2 style="margin:0 0 10px;font-size:20px">Permission model</h2>
             <div style="display:grid;gap:10px">
@@ -251,6 +258,27 @@ function renderApprovalResults(state: BackgroundStateSnapshot): string {
             <div style="font-size:12px;color:#94a3b8">${escapeHtml(result.targetId)}</div>
           </div>
           ${result.reason ? `<div style="margin-top:6px;font-size:13px;color:#cbd5e1;line-height:1.5">${escapeHtml(result.reason)}</div>` : ""}
+        </article>`,
+    )
+    .join("");
+}
+
+function renderWalletProfiles(state: BackgroundStateSnapshot): string {
+  if (state.walletExposedAccounts.length === 0) {
+    return emptyCard("Open the Acorus web app in the same browser profile to sync local EVM wallet addresses into the extension bridge.");
+  }
+
+  return state.walletExposedAccounts
+    .map(
+      (profile) => `
+        <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.72)">
+          <div style="display:flex;justify-content:space-between;gap:12px">
+            <div>
+              <div style="font-weight:600;color:#fff">${escapeHtml(profile.name)}</div>
+              <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(profile.account)}</div>
+            </div>
+            <span style="${badgeStyle(profile.selected ? "#10b981" : "#0ea5e9")}">${profile.selected ? "selected" : "synced"}</span>
+          </div>
         </article>`,
     )
     .join("");

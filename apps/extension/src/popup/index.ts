@@ -122,6 +122,23 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         .join("")
     : emptyCard("No decisions recorded yet.");
 
+  const walletSync = state.walletExposedAccounts.length
+    ? state.walletExposedAccounts
+        .map(
+          (profile) => `
+            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:12px 14px;background:rgba(2,6,23,0.72)">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+                <div>
+                  <div style="font-weight:600;color:#fff">${escapeHtml(profile.name)}</div>
+                  <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(profile.account)}</div>
+                </div>
+                <span style="${badgeStyle(profile.selected ? "#10b981" : "#0ea5e9")}">${profile.selected ? "selected" : "synced"}</span>
+              </div>
+            </article>`,
+        )
+        .join("")
+    : emptyCard("Open the Acorus web app in the same browser profile to sync local EVM wallet addresses into the extension bridge.");
+
   const phases = EXTENSION_PHASES.map(
     (phase, index) => `
       <div style="display:flex;justify-content:space-between;gap:12px;border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(15,23,42,0.88)">
@@ -139,7 +156,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports preview-backed <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, and sign/transaction approval review. Real signatures and broadcast still remain disabled.
+          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, and sign/transaction approval review. When the Acorus web app is open in the same browser profile, public local EVM wallet addresses can sync into the bridge without exposing seed, passcode, or signing output.
         </p>
       </section>
 
@@ -168,12 +185,20 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong> · Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong>
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+          Wallet sync: <strong>${escapeHtml(state.walletExposureMode)}</strong> · Synced accounts: <strong>${state.walletExposedAccounts.length}</strong>
+        </div>
+        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
           Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>, <strong>acorus_signMessage</strong>, <strong>acorus_signTypedData</strong>, <strong>acorus_signTransaction</strong>, <strong>acorus_sendTransaction</strong>
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
           EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong>
         </div>
         <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a site requests approval.")}</div>
+      </section>
+
+      <section style="display:grid;gap:12px">
+        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Synced wallet accounts</div>
+        ${walletSync}
       </section>
 
       <section style="display:grid;gap:12px">

@@ -1,4 +1,5 @@
-import type { ChainId } from "./multichain";
+import type { ChainFamily, ChainId } from "./multichain";
+import type { WalletProfileType } from "./types";
 
 export type DappRequestKind =
   | "connect"
@@ -53,6 +54,7 @@ export type DappPermission = {
 export type DappSessionProposal = {
   id: string;
   origin: DappOriginMetadata;
+  providerMode: DappProviderExposureMode;
   requestedAccounts: string[];
   requestedChainIds: ChainId[];
   requestedPermissions: DappPermissionScope[];
@@ -64,6 +66,7 @@ export type DappSessionProposal = {
 export type DappSession = {
   id: string;
   origin: DappOriginMetadata;
+  providerMode: DappProviderExposureMode;
   accounts: string[];
   chainIds: ChainId[];
   activeChainId?: ChainId | null;
@@ -119,8 +122,36 @@ export type DappBridgeSessionView = {
   updatedAt: string;
 };
 
+export type DappWalletSyncProfile = {
+  id: string;
+  name: string;
+  type: WalletProfileType;
+  publicAddress: string;
+  chainFamily: ChainFamily;
+};
+
+export type DappWalletExposure = {
+  profileId: string;
+  name: string;
+  account: string;
+  chainFamily: ChainFamily;
+  chainIds: ChainId[];
+  selected: boolean;
+};
+
+export const ACORUS_EXTENSION_WALLET_SYNC = "acorus:wallet-sync";
+
+export type DappWalletSyncEnvelope = {
+  type: typeof ACORUS_EXTENSION_WALLET_SYNC;
+  source: "acorus_wallet_web";
+  activeProfileId?: string | null;
+  profiles: DappWalletSyncProfile[];
+  syncedAt: string;
+};
+
 export type EnsureDappConnectionProposalInput = {
   origin: string;
+  providerMode?: DappProviderExposureMode;
   requestedAccounts?: string[];
   requestedChainIds?: ChainId[];
   requestedPermissions?: DappPermissionScope[];
@@ -259,6 +290,29 @@ export function getDappSessionStatusLabel(status: DappSessionStatus): string {
   }
 }
 
+export function isDappWalletSyncEnvelope(
+  value: unknown,
+): value is DappWalletSyncEnvelope {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<DappWalletSyncEnvelope>;
+  return (
+    candidate.type === ACORUS_EXTENSION_WALLET_SYNC
+    && candidate.source === "acorus_wallet_web"
+    && typeof candidate.syncedAt === "string"
+    && Array.isArray(candidate.profiles)
+    && candidate.profiles.every((profile) =>
+      typeof profile?.id === "string"
+      && typeof profile?.name === "string"
+      && typeof profile?.type === "string"
+      && typeof profile?.publicAddress === "string"
+      && typeof profile?.chainFamily === "string",
+    )
+  );
+}
+
 export function getDappRequestStatusLabel(status: DappRequestStatus): string {
   switch (status) {
     case "pending":
@@ -291,6 +345,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "proposal_demo_quests_connect",
         origin: questsOrigin,
+        providerMode: "preview_accounts",
         requestedAccounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
         requestedChainIds: [1, 101],
         requestedPermissions: ["view_accounts", "view_chain"],
@@ -304,6 +359,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "session_demo_swap",
         origin: swapOrigin,
+        providerMode: "preview_accounts",
         accounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
         chainIds: [1, 137, 8453],
         activeChainId: 1,
@@ -432,6 +488,7 @@ export function ensureDappConnectionProposal(
   }
 
   const createdAt = new Date().toISOString();
+  const providerMode = input.providerMode ?? "preview_accounts";
   const requestedAccounts = [...new Set(input.requestedAccounts ?? [PREVIEW_DAPP_BRIDGE_ACCOUNT])];
   const requestedChainIds = [...new Set(input.requestedChainIds ?? PREVIEW_DAPP_BRIDGE_CHAIN_IDS)];
   const requestedPermissions: DappPermissionScope[] = [
@@ -451,13 +508,18 @@ export function ensureDappConnectionProposal(
       description: input.description,
       trustLevel: input.trustLevel,
     }),
+    providerMode,
     requestedAccounts,
     requestedChainIds,
     requestedPermissions,
     status: "pending",
     warning:
       input.warning
-      ?? "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships.",
+      ?? (
+        providerMode === "wallet_backed"
+          ? "The page-to-extension bridge is live, and approved accounts now come from synced local Acorus wallet profiles. Signing output and broadcast still remain disabled."
+          : "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships."
+      ),
     createdAt,
   };
 
@@ -530,6 +592,7 @@ export function approveDappProposal(
   const nextSession: DappSession = {
     id: `session_${proposal.id}`,
     origin: proposal.origin,
+    providerMode: proposal.providerMode,
     accounts: proposal.requestedAccounts,
     chainIds: proposal.requestedChainIds,
     activeChainId: proposal.requestedChainIds[0] ?? null,
@@ -538,7 +601,9 @@ export function approveDappProposal(
     connectedAt: decidedAt,
     lastUsedAt: null,
     warning:
-      "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.",
+      proposal.providerMode === "wallet_backed"
+        ? "Approved in wallet-backed bridge mode. The site can now see synced local Acorus account addresses after approval, while real signing output and send execution remain disabled."
+        : "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.",
   };
 
   return {
@@ -743,7 +808,7 @@ export function createDappBridgeSessionView(
     return {
       origin,
       status: "connected",
-      providerMode: "preview_accounts",
+      providerMode: activeSession.providerMode,
       sessionId: activeSession.id,
       proposalId: null,
       accounts: activeSession.accounts,
@@ -752,7 +817,11 @@ export function createDappBridgeSessionView(
       permissions: activeSession.permissions,
       warning:
         activeSession.warning
-        ?? "Session is connected through the live extension bridge in preview-backed mode.",
+        ?? (
+          activeSession.providerMode === "wallet_backed"
+            ? "Session is connected through the live extension bridge using synced local Acorus wallet accounts."
+            : "Session is connected through the live extension bridge in preview-backed mode."
+        ),
       updatedAt: snapshot.updatedAt,
     };
   }
@@ -763,7 +832,7 @@ export function createDappBridgeSessionView(
     return {
       origin,
       status: "approval_required",
-      providerMode: "preview_accounts",
+      providerMode: pendingProposal.providerMode,
       sessionId: null,
       proposalId: pendingProposal.id,
       accounts: pendingProposal.requestedAccounts,
@@ -772,7 +841,11 @@ export function createDappBridgeSessionView(
       permissions: pendingProposal.requestedPermissions,
       warning:
         pendingProposal.warning
-        ?? "Approval is required before the live bridge exposes preview-backed accounts.",
+        ?? (
+          pendingProposal.providerMode === "wallet_backed"
+            ? "Approval is required before the live bridge exposes synced local Acorus wallet accounts."
+            : "Approval is required before the live bridge exposes preview-backed accounts."
+        ),
       updatedAt: snapshot.updatedAt,
     };
   }

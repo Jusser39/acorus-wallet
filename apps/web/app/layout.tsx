@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppBootstrap } from "@/components/app-bootstrap";
+import { ExtensionProfileSync } from "@/components/extension-profile-sync";
 import { WalletNav } from "@/components/wallet-nav";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-full bg-slate-950 text-white">
         <AppBootstrap />
+        <ExtensionProfileSync />
         <div className="flex min-h-full flex-col">
           <WalletNav />
           <main className="flex-1">{children}</main>

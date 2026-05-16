@@ -24,6 +24,10 @@
   - `apps/extension` now injects preview-backed `window.ethereum` compatibility in addition to `window.acorus`
   - common EVM wallet methods now map into the live Acorus bridge and approval queue
   - `/dapps`, `/extension`, README, and extension docs now describe the compatibility surface honestly
+- Wallet-backed Public Account Bridge wave implemented locally (2026-05-16)
+  - `apps/web` now syncs only public local EVM wallet addresses into the extension via trusted-origin `window.postMessage`
+  - `apps/extension` now stores a synced wallet registry in `chrome.storage.local` and upgrades proposal/session bridge state from preview placeholder accounts to `wallet_backed` public accounts when available
+  - popup/options plus `/dapps` and `/extension` copy now disclose wallet-backed public account sync while keeping signatures and broadcast disabled
 - Token Management + Real Charts wave deployed (2026-05-15)
   - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
   - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
@@ -51,7 +55,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live preview-backed connect/accounts/chainId bridge, sign/transaction approval review, and preview-backed `window.ethereum` compatibility; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, and wallet-backed public EVM account sync from the Acorus web app; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
@@ -105,6 +109,24 @@
   - no real signature bytes or real transaction hash are returned to websites in this wave
 - Next sensible step:
   - wallet-backed provider execution for approved requests, then Solana provider compatibility and WalletConnect
+
+## Wallet-backed Public Account Bridge Wave (2026-05-16)
+
+- Status: **implemented locally**
+- Shared/runtime additions:
+  - `packages/shared` now defines wallet sync envelope types plus provider-mode-aware dApp proposals/sessions
+  - the extension permission store now maintains a synced public EVM account registry separately from the dApp session snapshot
+  - bridge proposals, approved sessions, and active-origin bridge state now switch from `preview_accounts` to `wallet_backed` when synced local EVM profiles are available
+- Web/product additions:
+  - `apps/web` now emits a trusted-origin wallet sync message from the live PWA layout so the extension can discover local EVM wallet profiles in the same browser profile without backend custody
+  - `/dapps` and `/extension` now explain that only public addresses sync, while seed/private keys/passcode/signatures never leave the client
+  - popup/options now show synced wallet accounts and whether the selected bridge is still preview-backed or wallet-backed
+- Security boundary unchanged:
+  - only public local EVM addresses are synced into the extension
+  - no mnemonic/privateKey/passcode/signature material is exposed to webpages, content scripts, or backend services
+  - sign/send methods still resolve preview-only results; no real signature bytes or broadcast transaction hash are returned
+- Next sensible step:
+  - Solana provider compatibility, then WalletConnect pairing and later true client-side signing execution guarded by the same approval boundary
 
 ## Security hardening wave
 

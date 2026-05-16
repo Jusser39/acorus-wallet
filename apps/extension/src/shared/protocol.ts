@@ -4,6 +4,8 @@ import type {
   DappRequest,
   DappSession,
   DappSessionProposal,
+  DappWalletExposure,
+  DappWalletSyncEnvelope,
 } from "@acorus/shared";
 
 export const ACORUS_INPAGE_REQUEST = "acorus:inpage-request";
@@ -33,13 +35,16 @@ export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];
 
 export type BackgroundStateSnapshot = {
   phase: "permission_shell";
-  providerInjection: "stub_only" | "preview_bridge";
+  providerInjection: "stub_only" | "preview_bridge" | "wallet_bridge";
   executionEnabled: false;
   proposals: DappSessionProposal[];
   sessions: DappSession[];
   pendingRequests: DappRequest[];
   approvalResults: DappApprovalResult[];
   activeOriginBridge?: DappBridgeSessionView | null;
+  walletExposureMode: "preview_accounts" | "wallet_backed";
+  walletExposedAccounts: DappWalletExposure[];
+  walletLastSyncedAt?: string | null;
   supportedMethods: readonly AcorusProviderMethod[];
   lastUpdatedAt: string;
   activeOrigin?: string | null;
@@ -94,6 +99,13 @@ export type ExtensionRuntimeMessage =
       requestId: string;
       surface: "popup" | "options";
       sessionId: string;
+    }
+  | {
+      kind: "sync_wallet_profiles";
+      requestId: string;
+      surface: "content";
+      origin: string;
+      payload: DappWalletSyncEnvelope;
     };
 
 export type ExtensionRuntimeResponse = {
@@ -165,6 +177,9 @@ export function createSkeletonState(input?: {
   activeOriginBridge?: DappBridgeSessionView | null;
   lastUpdatedAt?: string;
   providerInjection?: BackgroundStateSnapshot["providerInjection"];
+  walletExposureMode?: BackgroundStateSnapshot["walletExposureMode"];
+  walletExposedAccounts?: BackgroundStateSnapshot["walletExposedAccounts"];
+  walletLastSyncedAt?: string | null;
 }): BackgroundStateSnapshot {
   return {
     phase: "permission_shell",
@@ -175,6 +190,9 @@ export function createSkeletonState(input?: {
     pendingRequests: input?.pendingRequests ?? [],
     approvalResults: input?.approvalResults ?? [],
     activeOriginBridge: input?.activeOriginBridge ?? null,
+    walletExposureMode: input?.walletExposureMode ?? "preview_accounts",
+    walletExposedAccounts: input?.walletExposedAccounts ?? [],
+    walletLastSyncedAt: input?.walletLastSyncedAt ?? null,
     supportedMethods: ACORUS_PROVIDER_METHODS,
     lastUpdatedAt: input?.lastUpdatedAt ?? new Date().toISOString(),
     activeOrigin: input?.activeOrigin ?? null,

@@ -22,6 +22,7 @@ import {
   approveProposal,
   approveRequestInQueue,
   ensureOriginConnectionProposal,
+  getWalletSyncState,
   getDappShellState,
   initializePermissionStore,
   rejectProposal,
@@ -29,6 +30,7 @@ import {
   revokeSessionInRegistry,
   setDappShellState,
   switchOriginSessionChain,
+  syncWalletProfiles,
   touchOriginSession,
 } from "./permission-store";
 
@@ -82,8 +84,12 @@ async function handleRuntimeMessage(
 
   if (input.kind === "get_state") {
     const state = await getDappShellState();
+    const walletState = await getWalletSyncState();
     const activeOrigin =
       input.origin ?? sender.origin ?? sender.url ?? null;
+    const walletExposureMode = walletState.profiles.length > 0
+      ? "wallet_backed"
+      : "preview_accounts";
 
     return {
       requestId,
@@ -98,8 +104,29 @@ async function handleRuntimeMessage(
           ? createDappBridgeSessionView(state, activeOrigin)
           : null,
         lastUpdatedAt: state.updatedAt,
-        providerInjection: "preview_bridge",
+        providerInjection:
+          walletExposureMode === "wallet_backed"
+            ? "wallet_bridge"
+            : "preview_bridge",
+        walletExposureMode,
+        walletExposedAccounts: walletState.profiles,
+        walletLastSyncedAt: walletState.lastSyncedAt,
       }),
+    };
+  }
+
+  if (input.kind === "sync_wallet_profiles") {
+    const walletState = await syncWalletProfiles(input.payload);
+
+    return {
+      requestId,
+      ok: true,
+      result: {
+        syncedProfiles: walletState.profiles.length,
+        walletExposureMode:
+          walletState.profiles.length > 0 ? "wallet_backed" : "preview_accounts",
+        syncedAt: walletState.lastSyncedAt,
+      },
     };
   }
 

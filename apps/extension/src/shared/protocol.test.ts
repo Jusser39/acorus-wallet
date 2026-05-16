@@ -24,6 +24,8 @@ describe("extension protocol", () => {
     expect(state.activeOrigin).toBe("https://app.example");
     expect(state.proposals).toEqual([]);
     expect(state.pendingRequests).toEqual([]);
+    expect(state.walletExposureMode).toBe("preview_accounts");
+    expect(state.walletExposedAccounts).toEqual([]);
   });
 
   it("recognizes bridge state envelopes", () => {
