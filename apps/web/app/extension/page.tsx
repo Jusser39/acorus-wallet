@@ -9,7 +9,7 @@ const EXTENSION_PHASES = [
   "Permission queue shell",
   "EVM provider compatibility",
   "Universal account controls",
-  "WalletConnect later",
+  "WalletConnect pairing shell",
 ];
 
 export default function ExtensionPage() {
@@ -34,8 +34,10 @@ export default function ExtensionPage() {
           the same browser profile, public local EVM wallet addresses can sync
           into the bridge without exposing seed phrase, passcode, or signing
           output. The bridge now defaults to one selected public account per
-          site instead of exposing every synced address at once. Real
-          signatures, broadcast, and WalletConnect remain disabled.
+          site instead of exposing every synced address at once. The options
+          shell can now queue preview-only WalletConnect pairings while
+          redacting the imported symKey immediately. Real signatures, live
+          WalletConnect relay, and broadcast remain disabled.
         </p>
       </div>
 
@@ -43,7 +45,8 @@ export default function ExtensionPage() {
         Websites can never reach mnemonic, private keys, passcode, real signing
         output, or transaction broadcast in this wave, even when they talk to
         the EVM-compatible provider surface. The new sync layer shares public
-        approved EVM addresses only.
+        approved EVM addresses only, and WalletConnect pairing secrets are
+        redacted before they reach stored extension state.
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -112,13 +115,15 @@ export default function ExtensionPage() {
         </div>
 
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
-          <h2 className="text-lg font-semibold text-white">Still blocked</h2>
+          <h2 className="text-lg font-semibold text-white">
+            WalletConnect preview shell
+          </h2>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
-              <li>Real signature material returned to websites</li>
-              <li>Real transaction broadcast</li>
-              <li>Automatic chain addition</li>
-              <li>WalletConnect pairing</li>
-            </ul>
+            <li>Queue a pairing proposal from a pasted URI</li>
+            <li>Redact symKey immediately and persist safe peer metadata only</li>
+            <li>Review connected peers under the same account controls</li>
+            <li>Keep live relay, signatures, and broadcast disabled</li>
+          </ul>
         </div>
       </div>
 
@@ -138,7 +143,7 @@ export default function ExtensionPage() {
             </div>
 
             <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-xs font-semibold text-slate-300">
-              {index < 10 ? "Preview" : "Planned"}
+              {index < EXTENSION_PHASES.length ? "Preview" : "Planned"}
             </span>
           </div>
         ))}

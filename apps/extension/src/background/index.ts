@@ -25,6 +25,7 @@ import {
   getWalletSyncState,
   getDappShellState,
   initializePermissionStore,
+  queueWalletConnectPairingProposal,
   rejectProposal,
   rejectRequestInQueue,
   revokeSessionInRegistry,
@@ -150,6 +151,28 @@ async function handleRuntimeMessage(
       ok: true,
       result: await setSessionAccount(input.sessionId, input.profileId),
     };
+  }
+
+  if (input.kind === "queue_walletconnect_pairing") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueWalletConnectPairingProposal(input.uri, input.title),
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "invalid_walletconnect_uri",
+          message:
+            error instanceof Error
+              ? error.message
+              : "WalletConnect pairing URI is invalid.",
+        },
+      };
+    }
   }
 
   if (input.kind === "approve_proposal") {

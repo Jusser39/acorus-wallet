@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACORUS_EXTENSION_WALLET_SYNC,
   approveDappProposal,
+  parseWalletConnectPairingPreview,
   createApprovedPreviewDappResult,
   createDemoDappShellSnapshot,
   createDappBridgeSessionView,
@@ -107,5 +108,15 @@ describe("dapp helpers", () => {
         ],
       }),
     ).toBe(true);
+  });
+
+  it("redacts WalletConnect pairing secrets in preview metadata", () => {
+    const pairing = parseWalletConnectPairingPreview(
+      "wc:0123456789abcdef@2?relay-protocol=irn&symKey=super-secret-key",
+    );
+
+    expect(pairing.origin).toContain("wc://");
+    expect(pairing.origin).not.toContain("super-secret-key");
+    expect(pairing.description).toContain("redacted");
   });
 });

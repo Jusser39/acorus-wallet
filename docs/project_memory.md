@@ -32,6 +32,10 @@
   - the extension bridge now defaults to one selected synced public account instead of exposing every synced wallet address at once
   - popup/options can change the default account for new connections and switch the exposed account for an already connected site
   - extension/web copy now reflects privacy-first multi-wallet account exposure instead of a chain-specific next step
+- WalletConnect Preview Shell wave implemented locally (2026-05-17)
+  - `packages/shared` now models dApp transport (`injected` vs `walletconnect`) plus redacted WalletConnect pairing previews that never persist raw symKeys
+  - `apps/extension` options can now queue preview-only WalletConnect pairing proposals into the same permission/session registry used by websites
+  - `/dapps` and `/extension` now describe and demo WalletConnect pairing previews while keeping live relay, real signatures, and broadcast disabled
 - Token Management + Real Charts wave deployed (2026-05-15)
   - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
   - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
@@ -59,7 +63,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, and single-account exposure controls for connected sites; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, single-account exposure controls for connected sites, and a preview-only WalletConnect pairing shell with redacted secrets; live WalletConnect relay / real signature output / real dApp send execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
@@ -149,6 +153,24 @@
   - sign/send methods still resolve preview-only results; no real signature bytes or broadcast transaction hash are returned
 - Next sensible step:
   - WalletConnect pairing and broader multichain session/provider surfaces, then true client-side signing execution behind the same approval boundary
+
+## WalletConnect Preview Shell Wave (2026-05-17)
+
+- Status: **implemented locally**
+- Shared/runtime additions:
+  - dApp proposals and sessions now carry a transport field so injected sites and WalletConnect peers share one contract
+  - WalletConnect URIs are parsed into redacted preview metadata immediately; raw `symKey` material is never written into preview state
+  - the extension protocol/background runtime now accepts preview-only WalletConnect pairing imports from the options shell
+- Product/UI additions:
+  - extension options now include a WalletConnect pairing composer that queues preview proposals into the same approval/session registry
+  - popup/options and `/dapps` surface transport labels so injected sites and WalletConnect peers are visible side by side
+  - `/extension` and the extension roadmap now explain that pairing preview is live while relay/sign/broadcast stay blocked
+- Security boundary unchanged:
+  - no mnemonic/privateKey/passcode exposure to webpages, content scripts, or backend services
+  - raw WalletConnect pairing secrets are redacted on import and not persisted in extension preview state
+  - live WalletConnect relay, real signature bytes, and real transaction broadcast remain disabled
+- Next sensible step:
+  - real multichain session-request execution and later client-side signing execution behind the same approval boundary
 
 ## Security hardening wave
 

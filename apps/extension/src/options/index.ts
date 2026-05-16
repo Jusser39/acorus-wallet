@@ -1,5 +1,6 @@
 import {
   DAPP_PERMISSION_DEFINITIONS,
+  getDappConnectionTransportLabel,
   getDappRequestKindLabel,
   getDappSessionStatusLabel,
 } from "@acorus/shared";
@@ -46,7 +47,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, and sign/transaction approval review can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing and send execution remain disabled.
+          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, sign/transaction approval review, and preview-only WalletConnect pairing records can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing, live WalletConnect relay, and send execution remain disabled.
         </p>
       </section>
 
@@ -97,12 +98,21 @@ function renderOptions(state: BackgroundStateSnapshot): string {
           </section>
 
           <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
-            <h2 style="margin:0 0 10px;font-size:20px">Connected sites</h2>
+            <h2 style="margin:0 0 10px;font-size:20px">Connected peers</h2>
             <div style="display:grid;gap:12px">${renderSessions(state)}</div>
           </section>
         </div>
 
         <div style="display:grid;gap:16px">
+          <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
+            <h2 style="margin:0 0 10px;font-size:20px">WalletConnect pairing shell</h2>
+            <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.6">
+              Paste a WalletConnect URI to queue a preview-only pairing proposal. The
+              symKey is redacted immediately and never persisted in extension state.
+            </p>
+            ${renderWalletConnectComposer()}
+          </section>
+
           <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
             <h2 style="margin:0 0 10px;font-size:20px">Synced wallet accounts</h2>
             <div style="display:grid;gap:10px">${renderWalletProfiles(state)}</div>
@@ -126,7 +136,8 @@ function renderOptions(state: BackgroundStateSnapshot): string {
             <ul style="margin:0;padding-left:18px;color:#cbd5e1;font-size:14px;line-height:1.7">
               <li>No seed or private key in webpages or content scripts</li>
               <li>No silent approvals or background signing</li>
-              <li>No WalletConnect in this wave</li>
+              <li>No raw WalletConnect pairing secret persistence</li>
+              <li>No live WalletConnect relay session in this wave</li>
               <li>No live transaction signing output or broadcast</li>
               <li>No automatic exposure of every synced account to every site</li>
             </ul>
@@ -147,7 +158,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
                 <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
                 <div style="margin-top:4px;font-weight:600;color:#fff">${phase}</div>
               </div>
-              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 10 ? "Preview" : "Planned"}</span>
+              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < EXTENSION_PHASES.length ? "Preview" : "Planned"}</span>
             </div>`,
         ).join("")}
       </section>
@@ -181,6 +192,7 @@ function renderProposals(state: BackgroundStateSnapshot): string {
             </div>
             <span style="${badgeStyle(proposal.origin.trustLevel === "trusted" ? "#10b981" : "#f59e0b")}">${proposal.origin.trustLevel}</span>
           </div>
+          <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(proposal.transport))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Permissions: ${escapeHtml(proposal.requestedPermissions.join(", "))}</div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Account to expose: <strong>${escapeHtml(proposal.requestedAccounts[0] ?? "none")}</strong></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -220,7 +232,7 @@ function renderRequests(state: BackgroundStateSnapshot): string {
 
 function renderSessions(state: BackgroundStateSnapshot): string {
   if (state.sessions.length === 0) {
-    return emptyCard("No connected sites stored.");
+    return emptyCard("No connected peers stored.");
   }
 
   return state.sessions
@@ -234,6 +246,7 @@ function renderSessions(state: BackgroundStateSnapshot): string {
             </div>
             <span style="${badgeStyle(session.status === "active" ? "#10b981" : "#ef4444")}">${escapeHtml(getDappSessionStatusLabel(session.status))}</span>
           </div>
+          <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(session.transport))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Permissions: ${escapeHtml(session.permissions.join(", "))}</div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Exposed account: <strong>${escapeHtml(session.accounts[0] ?? "none")}</strong></div>
           ${renderSessionAccountActions(session.id, session.accounts[0] ?? null, state)}
@@ -314,6 +327,43 @@ function wireOptionActions(): void {
           await loadOptionsState();
         }
     });
+  });
+
+  const pairingForm = root.querySelector<HTMLFormElement>("#walletconnect-pairing-form");
+  const pairButton = root.querySelector<HTMLButtonElement>("#walletconnect-pair-button");
+  const uriField = root.querySelector<HTMLTextAreaElement>("#walletconnect-uri");
+  const titleField = root.querySelector<HTMLInputElement>("#walletconnect-title");
+
+  pairingForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const uri = uriField?.value.trim() ?? "";
+    const title = titleField?.value.trim() ?? "";
+
+    if (!uri) {
+      window.alert("Paste a WalletConnect URI first.");
+      return;
+    }
+
+    if (pairButton) {
+      pairButton.disabled = true;
+    }
+
+    try {
+      const response = (await chrome.runtime.sendMessage({
+        kind: "queue_walletconnect_pairing",
+        requestId: createRequestId("options"),
+        surface: "options",
+        uri,
+        title: title || undefined,
+      })) as ExtensionRuntimeResponse;
+
+      if (!response.ok) {
+        window.alert(response.error?.message ?? "WalletConnect pairing preview failed.");
+      }
+    } finally {
+      await loadOptionsState();
+    }
   });
 }
 
@@ -401,6 +451,28 @@ function actionButton(
   extra?: string,
 ): string {
   return `<button data-action="${action}" data-id="${id}"${extra ? ` data-extra="${extra}"` : ""} style="border:1px solid ${primary ? "rgba(56,189,248,0.35)" : "rgba(71,85,105,0.7)"};background:${primary ? "rgba(14,165,233,0.12)" : "rgba(2,6,23,0.75)"};color:${primary ? "#bae6fd" : "#e2e8f0"};border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer">${label}</button>`;
+}
+
+function renderWalletConnectComposer(): string {
+  return `
+    <form id="walletconnect-pairing-form" style="margin-top:14px;display:grid;gap:10px">
+      <label style="display:grid;gap:6px">
+        <span style="font-size:12px;color:#94a3b8">Peer label</span>
+        <input id="walletconnect-title" placeholder="Universal Swap" style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px" />
+      </label>
+      <label style="display:grid;gap:6px">
+        <span style="font-size:12px;color:#94a3b8">WalletConnect URI</span>
+        <textarea id="walletconnect-uri" rows="3" placeholder="wc:topic@2?relay-protocol=irn&symKey=..." style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px;resize:vertical"></textarea>
+      </label>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.6">
+        Acorus stores only redacted peer metadata in the preview queue. Live WalletConnect relay, real signatures, and broadcast remain disabled.
+      </div>
+      <div>
+        <button id="walletconnect-pair-button" type="submit" style="border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:10px 14px;font-size:12px;cursor:pointer">
+          Queue pairing preview
+        </button>
+      </div>
+    </form>`;
 }
 
 function renderSessionAccountActions(

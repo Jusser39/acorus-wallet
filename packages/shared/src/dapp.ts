@@ -19,6 +19,8 @@ export type DappPermissionScope =
 
 export type DappTrustLevel = "unknown" | "trusted" | "warning";
 
+export type DappConnectionTransport = "injected" | "walletconnect";
+
 export type DappProposalStatus = "pending" | "rejected";
 
 export type DappSessionStatus = "active" | "revoked" | "expired";
@@ -54,6 +56,7 @@ export type DappPermission = {
 export type DappSessionProposal = {
   id: string;
   origin: DappOriginMetadata;
+  transport: DappConnectionTransport;
   providerMode: DappProviderExposureMode;
   requestedAccounts: string[];
   requestedChainIds: ChainId[];
@@ -66,6 +69,7 @@ export type DappSessionProposal = {
 export type DappSession = {
   id: string;
   origin: DappOriginMetadata;
+  transport: DappConnectionTransport;
   providerMode: DappProviderExposureMode;
   accounts: string[];
   chainIds: ChainId[];
@@ -151,6 +155,7 @@ export type DappWalletSyncEnvelope = {
 
 export type EnsureDappConnectionProposalInput = {
   origin: string;
+  transport?: DappConnectionTransport;
   providerMode?: DappProviderExposureMode;
   requestedAccounts?: string[];
   requestedChainIds?: ChainId[];
@@ -184,6 +189,28 @@ export type QueueDappRequestResult = {
   request: DappRequest;
   created: boolean;
 };
+
+export type WalletConnectPairingPreview = {
+  origin: string;
+  title: string;
+  description: string;
+  topic: string;
+  topicPreview: string;
+  version: string;
+  relayProtocol?: string | null;
+};
+
+export type QueueWalletConnectPairingInput = {
+  uri: string;
+  title?: string;
+  providerMode?: DappProviderExposureMode;
+  requestedAccounts?: string[];
+  requestedChainIds?: ChainId[];
+  requestedPermissions?: DappPermissionScope[];
+  warning?: string | null;
+};
+
+export type QueueWalletConnectPairingResult = EnsureDappConnectionProposalResult;
 
 export type DappProviderApprovalPreview = {
   requestId: string;
@@ -290,6 +317,92 @@ export function getDappSessionStatusLabel(status: DappSessionStatus): string {
   }
 }
 
+export function getDappConnectionTransportLabel(
+  transport: DappConnectionTransport,
+): string {
+  switch (transport) {
+    case "walletconnect":
+      return "WalletConnect";
+    case "injected":
+    default:
+      return "Injected";
+  }
+}
+
+export function buildDappProposalWarning(input: {
+  transport: DappConnectionTransport;
+  providerMode: DappProviderExposureMode;
+}): string {
+  if (input.transport === "walletconnect") {
+    return input.providerMode === "wallet_backed"
+      ? "Approve to expose the selected synced Acorus account to this WalletConnect pairing preview. The imported pairing secret is redacted immediately and never persisted. Live relay, signatures, and broadcast remain disabled."
+      : "WalletConnect pairing preview only. The imported pairing secret is redacted immediately and never persisted. Accounts remain preview-backed, and live relay, signatures, and broadcast stay disabled.";
+  }
+
+  return input.providerMode === "wallet_backed"
+    ? "The page-to-extension bridge is live, and the approved account now comes from the selected synced local Acorus wallet profile. Signing output and broadcast still remain disabled."
+    : "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships.";
+}
+
+export function buildDappSessionWarning(input: {
+  transport: DappConnectionTransport;
+  providerMode: DappProviderExposureMode;
+}): string {
+  if (input.transport === "walletconnect") {
+    return input.providerMode === "wallet_backed"
+      ? "Approved in wallet-backed WalletConnect preview mode. The peer can see only the selected synced Acorus account after approval, while live relay, signatures, and broadcast remain disabled."
+      : "Approved in preview-backed WalletConnect mode only. The pairing secret was redacted on import, and live relay, signatures, and broadcast remain disabled.";
+  }
+
+  return input.providerMode === "wallet_backed"
+    ? "Approved in wallet-backed bridge mode. The site can now see the selected synced local Acorus account after approval, while real signing output and send execution remain disabled."
+    : "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.";
+}
+
+export function parseWalletConnectPairingPreview(
+  uri: string,
+): WalletConnectPairingPreview {
+  const trimmed = uri.trim();
+  const match = /^wc:([^@]+)@([^?]+)\?(.*)$/i.exec(trimmed);
+
+  if (!match) {
+    throw new Error(
+      "WalletConnect pairing URI must look like wc:<topic>@<version>?...",
+    );
+  }
+
+  const topic = match[1];
+  const version = match[2];
+  const query = match[3];
+
+  if (!topic || !version || query === undefined) {
+    throw new Error("WalletConnect pairing URI is malformed.");
+  }
+
+  const params = new URLSearchParams(query);
+  const symKey = params.get("symKey");
+
+  if (!symKey) {
+    throw new Error("WalletConnect pairing URI is missing symKey.");
+  }
+
+  const relayProtocol = params.get("relay-protocol");
+  const topicPreview = topic.slice(0, 10);
+  const relaySuffix = relayProtocol ? ` via ${relayProtocol}` : "";
+
+  return {
+    origin: `wc://${topicPreview}@${version}`,
+    title: `WalletConnect ${topicPreview}`,
+    description:
+      `Preview pairing shell for WalletConnect v${version}${relaySuffix}. `
+      + "The imported pairing secret is redacted immediately and never persisted.",
+    topic,
+    topicPreview,
+    version,
+    relayProtocol,
+  };
+}
+
 export function isDappWalletSyncEnvelope(
   value: unknown,
 ): value is DappWalletSyncEnvelope {
@@ -345,13 +458,16 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "proposal_demo_quests_connect",
         origin: questsOrigin,
+        transport: "injected",
         providerMode: "preview_accounts",
         requestedAccounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
         requestedChainIds: [1, 137],
         requestedPermissions: ["view_accounts", "view_chain"],
         status: "pending",
-        warning:
-          "Preview proposal only. A live page-to-extension bridge can queue approvals, but wallet-backed accounts are still disabled.",
+        warning: buildDappProposalWarning({
+          transport: "injected",
+          providerMode: "preview_accounts",
+        }),
         createdAt: DEMO_TIMESTAMPS.proposal,
       },
     ],
@@ -359,6 +475,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "session_demo_swap",
         origin: swapOrigin,
+        transport: "injected",
         providerMode: "preview_accounts",
         accounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
         chainIds: [1, 137, 8453],
@@ -367,8 +484,10 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
         status: "active",
         connectedAt: DEMO_TIMESTAMPS.session,
         lastUsedAt: DEMO_TIMESTAMPS.request,
-        warning:
-          "Bridge connectivity and approval review are live in preview-backed mode only. Real signing output and broadcast remain disabled until a later execution wave.",
+        warning: buildDappSessionWarning({
+          transport: "injected",
+          providerMode: "preview_accounts",
+        }),
       },
     ],
     pendingRequests: [
@@ -488,6 +607,7 @@ export function ensureDappConnectionProposal(
   }
 
   const createdAt = new Date().toISOString();
+  const transport = input.transport ?? "injected";
   const providerMode = input.providerMode ?? "preview_accounts";
   const requestedAccounts = [...new Set(input.requestedAccounts ?? [PREVIEW_DAPP_BRIDGE_ACCOUNT])];
   const requestedChainIds = [...new Set(input.requestedChainIds ?? PREVIEW_DAPP_BRIDGE_CHAIN_IDS)];
@@ -508,6 +628,7 @@ export function ensureDappConnectionProposal(
       description: input.description,
       trustLevel: input.trustLevel,
     }),
+    transport,
     providerMode,
     requestedAccounts,
     requestedChainIds,
@@ -515,11 +636,10 @@ export function ensureDappConnectionProposal(
     status: "pending",
     warning:
       input.warning
-      ?? (
-        providerMode === "wallet_backed"
-          ? "The page-to-extension bridge is live, and the approved account now comes from the selected synced local Acorus wallet profile. Signing output and broadcast still remain disabled."
-          : "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships."
-      ),
+      ?? buildDappProposalWarning({
+        transport,
+        providerMode,
+      }),
     createdAt,
   };
 
@@ -532,6 +652,42 @@ export function ensureDappConnectionProposal(
     proposal,
     created: true,
   };
+}
+
+export function queueWalletConnectPairing(
+  snapshot: DappShellSnapshot,
+  input: QueueWalletConnectPairingInput,
+): QueueWalletConnectPairingResult {
+  const pairing = parseWalletConnectPairingPreview(input.uri);
+  const trimmedTitle = input.title?.trim();
+
+  return ensureDappConnectionProposal(snapshot, {
+    origin: pairing.origin,
+    title: trimmedTitle && trimmedTitle.length > 0 ? trimmedTitle : pairing.title,
+    description: pairing.description,
+    trustLevel: "warning",
+    transport: "walletconnect",
+    providerMode: input.providerMode,
+    requestedAccounts: input.requestedAccounts,
+    requestedChainIds: input.requestedChainIds,
+    requestedPermissions:
+      input.requestedPermissions
+      ?? [
+        "view_accounts",
+        "view_chain",
+        "switch_chain",
+        "sign_message",
+        "sign_typed_data",
+        "sign_transaction",
+        "send_transaction",
+      ],
+    warning:
+      input.warning
+      ?? buildDappProposalWarning({
+        transport: "walletconnect",
+        providerMode: input.providerMode ?? "preview_accounts",
+      }),
+  });
 }
 
 export function queueDappRequest(
@@ -592,6 +748,7 @@ export function approveDappProposal(
   const nextSession: DappSession = {
     id: `session_${proposal.id}`,
     origin: proposal.origin,
+    transport: proposal.transport,
     providerMode: proposal.providerMode,
     accounts: proposal.requestedAccounts,
     chainIds: proposal.requestedChainIds,
@@ -600,10 +757,10 @@ export function approveDappProposal(
     status: "active",
     connectedAt: decidedAt,
     lastUsedAt: null,
-    warning:
-      proposal.providerMode === "wallet_backed"
-        ? "Approved in wallet-backed bridge mode. The site can now see the selected synced local Acorus account after approval, while real signing output and send execution remain disabled."
-        : "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.",
+    warning: buildDappSessionWarning({
+      transport: proposal.transport,
+      providerMode: proposal.providerMode,
+    }),
   };
 
   return {
@@ -817,11 +974,10 @@ export function createDappBridgeSessionView(
       permissions: activeSession.permissions,
       warning:
         activeSession.warning
-        ?? (
-          activeSession.providerMode === "wallet_backed"
-            ? "Session is connected through the live extension bridge using the selected synced local Acorus wallet account."
-            : "Session is connected through the live extension bridge in preview-backed mode."
-        ),
+        ?? buildDappSessionWarning({
+          transport: activeSession.transport,
+          providerMode: activeSession.providerMode,
+        }),
       updatedAt: snapshot.updatedAt,
     };
   }
@@ -841,11 +997,10 @@ export function createDappBridgeSessionView(
       permissions: pendingProposal.requestedPermissions,
       warning:
         pendingProposal.warning
-        ?? (
-          pendingProposal.providerMode === "wallet_backed"
-            ? "Approval is required before the live bridge exposes the selected synced local Acorus wallet account."
-            : "Approval is required before the live bridge exposes preview-backed accounts."
-        ),
+        ?? buildDappProposalWarning({
+          transport: pendingProposal.transport,
+          providerMode: pendingProposal.providerMode,
+        }),
       updatedAt: snapshot.updatedAt,
     };
   }

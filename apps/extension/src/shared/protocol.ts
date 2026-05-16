@@ -119,6 +119,13 @@ export type ExtensionRuntimeMessage =
       surface: "popup" | "options";
       sessionId: string;
       profileId: string;
+    }
+  | {
+      kind: "queue_walletconnect_pairing";
+      requestId: string;
+      surface: "options";
+      uri: string;
+      title?: string;
     };
 
 export type ExtensionRuntimeResponse = {
@@ -165,7 +172,7 @@ export const EXTENSION_PHASES = [
   "Permission queue shell",
   "EVM compatibility",
   "Universal account controls",
-  "WalletConnect later",
+  "WalletConnect pairing shell",
 ] as const;
 
 export function createRequestId(prefix = "acorus"): string {

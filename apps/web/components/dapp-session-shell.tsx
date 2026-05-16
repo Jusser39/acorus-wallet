@@ -11,24 +11,52 @@ import {
   revokeDappSession,
   type DappShellSnapshot,
 } from "@acorus/shared";
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import {
   createWebDappShellPreview,
+  formatDappTransportLabel,
   formatDappPermissionList,
   getDappSessionTone,
+  getDappTransportTone,
   getDappTrustLabel,
   getDappTrustTone,
+  queuePreviewWalletConnectPairing,
 } from "../lib/dapp-shell";
 
 export function DappSessionShell() {
   const [snapshot, setSnapshot] = useState<DappShellSnapshot>(() =>
     createWebDappShellPreview(),
   );
+  const [walletConnectLabel, setWalletConnectLabel] = useState("");
+  const [walletConnectUri, setWalletConnectUri] = useState("");
+  const [walletConnectError, setWalletConnectError] = useState<string | null>(null);
 
   const activeSessions = useMemo(
     () => snapshot.sessions.filter((session) => session.status === "active"),
     [snapshot.sessions],
   );
+
+  function handleWalletConnectSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setSnapshot((current) =>
+        queuePreviewWalletConnectPairing(current, {
+          uri: walletConnectUri,
+          title: walletConnectLabel || undefined,
+        }),
+      );
+      setWalletConnectLabel("");
+      setWalletConnectUri("");
+      setWalletConnectError(null);
+    } catch (error) {
+      setWalletConnectError(
+        error instanceof Error
+          ? error.message
+          : "WalletConnect pairing URI is invalid.",
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -37,7 +65,7 @@ export function DappSessionShell() {
           dApps
         </p>
         <h1 className="text-3xl font-semibold text-white">
-          Universal dApp bridge now includes preview-backed EVM compatibility
+          Universal dApp bridge now includes WalletConnect pairing previews
         </h1>
         <p className="text-sm text-slate-300">
           Connected sites, permission prompts, request queue and revoke controls
@@ -51,7 +79,10 @@ export function DappSessionShell() {
           while real signature output and broadcast still stay disabled. Public
           local EVM addresses can now sync from the Acorus web app into the
           extension bridge without exposing seed or passcode, and the bridge can
-          keep exposure narrowed to one selected account per connected site.
+          keep exposure narrowed to one selected account per connected site. A
+          WalletConnect URI can now be imported into a preview pairing shell
+          that immediately redacts the pairing secret and stores only safe peer
+          metadata.
         </p>
       </div>
 
@@ -82,8 +113,65 @@ export function DappSessionShell() {
         No website can access keys, mnemonic, passcode, or signing output in
         this wave. The bridge is now live for both native Acorus methods and an
         EVM-compatible layer using approved session accounts; sign/send
-        execution remains preview-only and multi-account exposure stays
-        opt-in per site.
+        execution remains preview-only, WalletConnect pairing secrets are
+        redacted on import, and multi-account exposure stays opt-in per site.
+      </div>
+
+      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              WalletConnect pairing preview
+            </h2>
+            <p className="mt-1 text-sm text-slate-300">
+              Paste a WalletConnect URI to queue a preview-only peer proposal.
+              The symKey never lands in stored preview state.
+            </p>
+          </div>
+          <StatusPill
+            label={`${snapshot.sessions.filter((session) => session.transport === "walletconnect").length} connected peers`}
+            tone="border-violet-500/30 bg-violet-500/10 text-violet-100"
+          />
+        </div>
+
+        <form className="mt-4 grid gap-3" onSubmit={handleWalletConnectSubmit}>
+          <div className="grid gap-3 md:grid-cols-[0.8fr,1.2fr]">
+            <label className="grid gap-2 text-sm text-slate-300">
+              <span className="text-slate-400">Peer label</span>
+              <input
+                value={walletConnectLabel}
+                onChange={(event) => setWalletConnectLabel(event.target.value)}
+                placeholder="Universal Swap"
+                className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm text-slate-300">
+              <span className="text-slate-400">WalletConnect URI</span>
+              <input
+                value={walletConnectUri}
+                onChange={(event) => setWalletConnectUri(event.target.value)}
+                placeholder="wc:topic@2?relay-protocol=irn&symKey=..."
+                className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+              />
+            </label>
+          </div>
+
+          {walletConnectError ? (
+            <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-100">
+              {walletConnectError}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-400">
+              Acorus keeps only a redacted peer preview in UI state. Live relay,
+              signatures, and broadcast are still out of scope for this wave.
+            </p>
+          )}
+
+          <div>
+            <ShellButton label="Queue pairing preview" tone="primary" type="submit" />
+          </div>
+        </form>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
@@ -124,6 +212,13 @@ export function DappSessionShell() {
                       >
                         {getDappTrustLabel(proposal.origin.trustLevel)}
                       </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusPill
+                        label={formatDappTransportLabel(proposal.transport)}
+                        tone={getDappTransportTone(proposal.transport)}
+                      />
                     </div>
 
                     <dl className="mt-4 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
@@ -258,7 +353,7 @@ export function DappSessionShell() {
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  Connected sites
+                  Connected peers
                 </h2>
                 <p className="mt-1 text-sm text-slate-300">
                   Revocable sessions under the same universal contract.
@@ -269,7 +364,7 @@ export function DappSessionShell() {
 
             <div className="space-y-3">
               {snapshot.sessions.length === 0 ? (
-                <EmptyState message="No connected sites are stored in the preview registry." />
+                <EmptyState message="No connected peers are stored in the preview registry." />
               ) : (
                 snapshot.sessions.map((session) => (
                   <article
@@ -290,6 +385,13 @@ export function DappSessionShell() {
                       >
                         {getDappSessionStatusLabel(session.status)}
                       </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusPill
+                        label={formatDappTransportLabel(session.transport)}
+                        tone={getDappTransportTone(session.transport)}
+                      />
                     </div>
 
                     <dl className="mt-4 grid gap-3 text-sm text-slate-300">
@@ -402,9 +504,11 @@ function SummaryCard(props: { label: string; value: number; tone: string }) {
   );
 }
 
-function StatusPill(props: { label: string }) {
+function StatusPill(props: { label: string; tone?: string }) {
   return (
-    <span className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+    <span
+      className={`rounded-full border px-3 py-1 text-xs ${props.tone ?? "border-slate-700 bg-slate-950/80 text-slate-300"}`}
+    >
       {props.label}
     </span>
   );
@@ -421,7 +525,8 @@ function EmptyState(props: { message: string }) {
 function ShellButton(props: {
   label: string;
   tone: "primary" | "secondary";
-  onClick: () => void;
+  onClick?: () => void;
+  type?: "button" | "submit";
 }) {
   const toneClass =
     props.tone === "primary"
@@ -430,7 +535,7 @@ function ShellButton(props: {
 
   return (
     <button
-      type="button"
+      type={props.type ?? "button"}
       onClick={props.onClick}
       className={`rounded-full border px-4 py-2 text-sm transition ${toneClass}`}
     >

@@ -1,4 +1,4 @@
-import { getDappRequestKindLabel } from "@acorus/shared";
+import { getDappConnectionTransportLabel, getDappRequestKindLabel } from "@acorus/shared";
 import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
   EXTENSION_PHASES,
@@ -49,8 +49,11 @@ function renderPopup(state: BackgroundStateSnapshot): string {
                 <span style="${badgeStyle(proposal.origin.trustLevel === "trusted" ? "#10b981" : "#f59e0b")}">${proposal.origin.trustLevel}</span>
               </div>
                <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Permissions: ${escapeHtml(proposal.requestedPermissions.join(", "))}
+                 Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(proposal.transport))}</strong>
                </div>
+               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+                 Permissions: ${escapeHtml(proposal.requestedPermissions.join(", "))}
+                </div>
                <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
                  Account to expose: <strong>${escapeHtml(proposal.requestedAccounts[0] ?? "none")}</strong>
                </div>
@@ -98,8 +101,11 @@ function renderPopup(state: BackgroundStateSnapshot): string {
                 <span style="${badgeStyle(session.status === "active" ? "#10b981" : "#ef4444")}">${session.status}</span>
               </div>
                <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Permissions: ${escapeHtml(session.permissions.join(", "))}
+                 Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(session.transport))}</strong>
                </div>
+               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+                 Permissions: ${escapeHtml(session.permissions.join(", "))}
+                </div>
                <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
                  Exposed account: <strong>${escapeHtml(session.accounts[0] ?? "none")}</strong>
                </div>
@@ -158,7 +164,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
           <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
         </div>
-        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 10 ? "Preview" : "Later"}</span>
+        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < EXTENSION_PHASES.length ? "Preview" : "Later"}</span>
       </div>`,
   ).join("");
 
@@ -168,7 +174,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, and sign/transaction approval review. When the Acorus web app is open in the same browser profile, public local EVM wallet addresses can sync into the bridge without exposing seed, passcode, or signing output.
+          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, sign/transaction approval review, and preview-only WalletConnect pairing records. When the Acorus web app is open in the same browser profile, public local EVM wallet addresses can sync into the bridge without exposing seed, passcode, or signing output.
         </p>
       </section>
 
@@ -200,6 +206,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           Wallet sync: <strong>${escapeHtml(state.walletExposureMode)}</strong> · Synced accounts: <strong>${state.walletExposedAccounts.length}</strong> · Default exposed account: <strong>${escapeHtml(state.walletExposedAccounts.find((profile) => profile.selected)?.account ?? "none")}</strong>
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+          WalletConnect preview: <strong>queue from Options</strong> · pairing secrets are redacted immediately and never persisted
+        </div>
+        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
           Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>, <strong>acorus_signMessage</strong>, <strong>acorus_signTypedData</strong>, <strong>acorus_signTransaction</strong>, <strong>acorus_sendTransaction</strong>
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
@@ -224,7 +233,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
       </section>
 
       <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Connected sites</div>
+        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Connected peers</div>
         ${sessions}
       </section>
 

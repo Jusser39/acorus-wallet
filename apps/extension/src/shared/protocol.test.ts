@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACORUS_PROVIDER_METHODS,
+  EXTENSION_PHASES,
   createSkeletonState,
   isInpageStateEnvelope,
   isAcorusProviderMethod,
@@ -44,5 +45,9 @@ describe("extension protocol", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("tracks the WalletConnect pairing shell phase", () => {
+    expect(EXTENSION_PHASES.at(-1)).toBe("WalletConnect pairing shell");
   });
 });

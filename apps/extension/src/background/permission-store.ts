@@ -1,4 +1,6 @@
 import {
+  buildDappProposalWarning,
+  buildDappSessionWarning,
   PREVIEW_DAPP_BRIDGE_ACCOUNT,
   PREVIEW_DAPP_BRIDGE_CHAIN_IDS,
   approveDappProposal,
@@ -11,6 +13,7 @@ import {
   rejectDappProposal,
   rejectDappRequest,
   revokeDappSession,
+  queueWalletConnectPairing,
   setDappSessionActiveChain,
   touchDappSession,
   type ChainId,
@@ -167,8 +170,10 @@ export async function setSessionAccount(
             ? session.activeChainId
             : (exposure.chainIds[0] ?? null),
           lastUsedAt: updatedAt,
-          warning:
-            "This site now exposes only the selected synced Acorus account. Mnemonic, private keys, signing output, and send execution remain unavailable.",
+          warning: buildDappSessionWarning({
+            transport: session.transport,
+            providerMode: "wallet_backed",
+          }),
         }
       : session,
   );
@@ -196,6 +201,27 @@ export async function setSessionAccount(
 
   await setDappShellState(next);
   return next;
+}
+
+export async function queueWalletConnectPairingProposal(
+  uri: string,
+  title?: string,
+): Promise<DappShellSnapshot> {
+  const current = await getDappShellState();
+  const walletState = resolveBridgeWalletState(await getWalletSyncState());
+  const ensured = queueWalletConnectPairing(current, {
+    uri,
+    title,
+    providerMode: walletState.providerMode,
+    requestedAccounts: walletState.accounts,
+    requestedChainIds: walletState.chainIds,
+  });
+
+  if (ensured.created) {
+    await setDappShellState(ensured.snapshot);
+  }
+
+  return ensured.snapshot;
 }
 
 export async function approveProposal(proposalId: string): Promise<DappShellSnapshot> {
@@ -379,9 +405,10 @@ function reconcileSnapshotWithWalletState(
         ? session.activeChainId
         : (chainIds[0] ?? null),
       warning:
-        bridgeWalletState.providerMode === "wallet_backed"
-          ? "This session now exposes only the selected synced Acorus account after approval. Mnemonic, private keys, signing output, and send execution remain unavailable."
-          : "Bridge connectivity and approval review are live in preview-backed mode only. Real signing output and broadcast remain disabled until a later execution wave.",
+        buildDappSessionWarning({
+          transport: session.transport,
+          providerMode: bridgeWalletState.providerMode,
+        }),
     };
   });
   const sessionsById = new Map(sessions.map((session) => [session.id, session]));
@@ -392,10 +419,10 @@ function reconcileSnapshotWithWalletState(
       providerMode: bridgeWalletState.providerMode,
       requestedAccounts: bridgeWalletState.accounts,
       requestedChainIds: bridgeWalletState.chainIds,
-      warning:
-        bridgeWalletState.providerMode === "wallet_backed"
-          ? "Approve to expose the selected synced Acorus EVM account to this site. Mnemonic, private keys, signing output, and broadcast remain blocked."
-          : "Preview proposal only. A live page-to-extension bridge can queue approvals, but wallet-backed accounts are still disabled.",
+      warning: buildDappProposalWarning({
+        transport: proposal.transport,
+        providerMode: bridgeWalletState.providerMode,
+      }),
     })),
     sessions,
     pendingRequests: snapshot.pendingRequests.map((request) => {
