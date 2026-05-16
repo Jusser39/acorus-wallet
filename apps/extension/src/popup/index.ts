@@ -1,3 +1,4 @@
+import { getDappRequestKindLabel } from "@acorus/shared";
 import {
   EXTENSION_PHASES,
   createRequestId,
@@ -69,7 +70,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
             <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.72);display:grid;gap:10px">
               <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
                 <div>
-                  <div style="font-weight:600;color:#fff">${escapeHtml(request.kind)}</div>
+                  <div style="font-weight:600;color:#fff">${escapeHtml(getDappRequestKindLabel(request.kind))}</div>
                   <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(request.origin.title)}</div>
                 </div>
                 <span style="${badgeStyle("#0ea5e9")}">${request.chainId ?? "multi"}</span>
@@ -131,7 +132,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
           <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
         </div>
-        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 4 ? "Preview" : "Later"}</span>
+        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 8 ? "Preview" : "Later"}</span>
       </div>`,
   ).join("");
 
@@ -141,7 +142,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports connect, accounts, chainId, and switchChain in preview-backed mode. Signing, transaction review, and broadcast still remain disabled.
+          The live bridge now supports connect, accounts, chainId, switchChain, and sign/transaction approval review in preview-backed mode. Real signatures and broadcast still remain disabled.
         </p>
       </section>
 
@@ -170,7 +171,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong> · Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong>
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>
+          Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>, <strong>acorus_signMessage</strong>, <strong>acorus_signTypedData</strong>, <strong>acorus_signTransaction</strong>, <strong>acorus_sendTransaction</strong>
         </div>
         <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a site requests approval.")}</div>
       </section>

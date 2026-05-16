@@ -43,7 +43,8 @@ export function DappSessionShell() {
           Connected sites, permission prompts, request queue and revoke controls
           now share one multichain dApp contract. Connect, accounts, chainId and
           switchChain can now route through the extension bridge after approval.
-          Signing and broadcast still stay disabled in this wave.
+          Sign and transaction requests now also enter a live approval-review
+          queue, while real signature output and broadcast still stay disabled.
         </p>
       </div>
 
@@ -65,15 +66,16 @@ export function DappSessionShell() {
         />
         <SummaryCard
           label="Live bridge methods"
-          value={4}
+          value={8}
           tone="border-violet-500/30 bg-violet-500/10 text-violet-100"
         />
       </div>
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
         No website can access keys, mnemonic, passcode, or signing output in
-        this wave. The bridge is live only for connection and network metadata
-        using preview-backed approved accounts; sign/send flows remain blocked.
+        this wave. The bridge is live for connection, network metadata, and
+        explicit approval review using preview-backed approved accounts;
+        sign/send execution remains preview-only.
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">

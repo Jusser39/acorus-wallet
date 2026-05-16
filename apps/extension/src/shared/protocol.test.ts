@@ -9,6 +9,7 @@ import {
 describe("extension protocol", () => {
   it("recognizes supported internal provider methods", () => {
     expect(isAcorusProviderMethod("acorus_ping")).toBe(true);
+    expect(isAcorusProviderMethod("acorus_signMessage")).toBe(true);
     expect(isAcorusProviderMethod("eth_requestAccounts")).toBe(false);
     expect(ACORUS_PROVIDER_METHODS).toContain("acorus_requestAccounts");
   });

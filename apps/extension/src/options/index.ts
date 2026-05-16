@@ -49,7 +49,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, and switchChain can flow through the extension after approval, while signing and send execution remain disabled.
+          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, switchChain, and sign/transaction approval review can flow through the extension after approval, while real signing and send execution remain disabled.
         </p>
       </section>
 
@@ -141,7 +141,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
                 <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
                 <div style="margin-top:4px;font-weight:600;color:#fff">${phase}</div>
               </div>
-              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 4 ? "Preview" : "Planned"}</span>
+              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 8 ? "Preview" : "Planned"}</span>
             </div>`,
         ).join("")}
       </section>

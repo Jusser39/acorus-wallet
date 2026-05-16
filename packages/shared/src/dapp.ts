@@ -136,6 +136,37 @@ export type EnsureDappConnectionProposalResult = {
   created: boolean;
 };
 
+export type QueueDappRequestInput = {
+  id: string;
+  sessionId: string;
+  kind: DappRequestKind;
+  origin: string;
+  account?: string | null;
+  chainId?: ChainId | null;
+  requestedPermissions?: DappPermissionScope[];
+  summary: string;
+  warning?: string | null;
+};
+
+export type QueueDappRequestResult = {
+  snapshot: DappShellSnapshot;
+  request: DappRequest;
+  created: boolean;
+};
+
+export type DappProviderApprovalPreview = {
+  requestId: string;
+  kind: DappRequestKind;
+  status: "approved_preview";
+  account?: string | null;
+  chainId?: ChainId | null;
+  summary: string;
+  warning: string;
+  approvedAt: string;
+  signature: null;
+  transactionHash: null;
+};
+
 export const PREVIEW_DAPP_BRIDGE_ACCOUNT =
   "0x123400000000000000000000000000000000abcd";
 
@@ -281,7 +312,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
         connectedAt: DEMO_TIMESTAMPS.session,
         lastUsedAt: DEMO_TIMESTAMPS.request,
         warning:
-          "Bridge connectivity is live in preview-backed mode only. Signing and send requests remain disabled until a later wave.",
+          "Bridge connectivity and approval review are live in preview-backed mode only. Real signing output and broadcast remain disabled until a later execution wave.",
       },
     ],
     pendingRequests: [
@@ -343,6 +374,31 @@ export function getPendingDappProposal(
   );
 }
 
+export function getPendingDappRequest(
+  snapshot: DappShellSnapshot,
+  requestId: string,
+): DappRequest | null {
+  return snapshot.pendingRequests.find((item) => item.id === requestId) ?? null;
+}
+
+export function getDappRequestPermissionScope(
+  kind: DappRequestKind,
+): DappPermissionScope {
+  switch (kind) {
+    case "sign_message":
+      return "sign_message";
+    case "sign_typed_data":
+      return "sign_typed_data";
+    case "sign_transaction":
+      return "sign_transaction";
+    case "send_transaction":
+      return "send_transaction";
+    case "connect":
+    default:
+      return "view_accounts";
+  }
+}
+
 export function createDappOriginMetadata(input: {
   origin: string;
   title?: string;
@@ -401,7 +457,7 @@ export function ensureDappConnectionProposal(
     status: "pending",
     warning:
       input.warning
-      ?? "The page-to-extension bridge is live, but approved accounts remain preview-backed until wallet profile integration ships.",
+      ?? "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships.",
     createdAt,
   };
 
@@ -412,6 +468,50 @@ export function ensureDappConnectionProposal(
       updatedAt: createdAt,
     },
     proposal,
+    created: true,
+  };
+}
+
+export function queueDappRequest(
+  snapshot: DappShellSnapshot,
+  input: QueueDappRequestInput,
+): QueueDappRequestResult {
+  const existing = getPendingDappRequest(snapshot, input.id);
+
+  if (existing) {
+    return {
+      snapshot,
+      request: existing,
+      created: false,
+    };
+  }
+
+  const session = snapshot.sessions.find((item) => item.id === input.sessionId);
+  const createdAt = new Date().toISOString();
+  const request: DappRequest = {
+    id: input.id,
+    sessionId: input.sessionId,
+    kind: input.kind,
+    origin: session?.origin ?? createDappOriginMetadata({ origin: input.origin }),
+    account: input.account ?? null,
+    chainId: input.chainId ?? null,
+    requestedPermissions:
+      input.requestedPermissions ?? [getDappRequestPermissionScope(input.kind)],
+    summary: input.summary,
+    status: "pending",
+    createdAt,
+    warning:
+      input.warning
+      ?? "Approval review is live, but the final signature or broadcast remains preview-only in this wave.",
+  };
+
+  return {
+    snapshot: {
+      ...snapshot,
+      pendingRequests: [request, ...snapshot.pendingRequests],
+      updatedAt: createdAt,
+    },
+    request,
     created: true,
   };
 }
@@ -438,7 +538,7 @@ export function approveDappProposal(
     connectedAt: decidedAt,
     lastUsedAt: null,
     warning:
-      "Approved in preview-backed bridge mode only. Wallet-backed account exposure, signing, and send execution remain disabled.",
+      "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.",
   };
 
   return {
@@ -690,6 +790,26 @@ export function createDappBridgeSessionView(
     warning:
       "No live session exists for this origin yet. The site must request approval first.",
     updatedAt: snapshot.updatedAt,
+  };
+}
+
+export function createApprovedPreviewDappResult(
+  request: DappRequest,
+  approvedAt: string,
+): DappProviderApprovalPreview {
+  return {
+    requestId: request.id,
+    kind: request.kind,
+    status: "approved_preview",
+    account: request.account ?? null,
+    chainId: request.chainId ?? null,
+    summary: request.summary,
+    warning:
+      request.warning
+      ?? "Approved in preview mode only. No real signature or broadcast was produced.",
+    approvedAt,
+    signature: null,
+    transactionHash: null,
   };
 }
 

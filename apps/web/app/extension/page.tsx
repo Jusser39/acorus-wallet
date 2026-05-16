@@ -6,6 +6,7 @@ const EXTENSION_PHASES = [
   "Popup wallet UI",
   "Permission prompts",
   "Connected sites",
+  "Permission queue shell",
   "EVM provider compatibility",
   "Solana provider compatibility",
   "WalletConnect later",
@@ -23,19 +24,20 @@ export default function ExtensionPage() {
         </h1>
         <p className="text-sm text-slate-300">
           Acorus Wallet now has a live preview-backed browser bridge for
-          connection approval, account listing, active chain reads and
-          switch-chain prompts. Signing, send execution and WalletConnect remain
-          disabled.
+          connection approval, account listing, active chain reads, switch-chain
+          prompts, plus sign and transaction review requests that resolve after
+          explicit approval. Real signatures, broadcast, and WalletConnect
+          remain disabled.
         </p>
       </div>
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
         Current bridge mode is preview-backed only. Websites can never reach
-        mnemonic, private keys, passcode, signing payloads or transaction
+        mnemonic, private keys, passcode, real signing output, or transaction
         broadcast in this wave.
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
           <h2 className="text-lg font-semibold text-white">Live now</h2>
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-cyan-100">
@@ -61,12 +63,37 @@ export default function ExtensionPage() {
         </div>
 
         <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+          <h2 className="text-lg font-semibold text-white">
+            Approval review live
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-violet-100">
+            {[
+              "acorus_signMessage",
+              "acorus_signTypedData",
+              "acorus_signTransaction",
+              "acorus_sendTransaction",
+            ].map((method) => (
+              <span
+                key={method}
+                className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1"
+              >
+                {method}
+              </span>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-slate-300">
+            These methods now enter the extension request queue and resolve only
+            after explicit approve or reject actions. Returned results stay
+            preview-only.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
           <h2 className="text-lg font-semibold text-white">Still blocked</h2>
           <ul className="mt-4 space-y-2 text-sm text-slate-300">
-            <li>Message signing</li>
-            <li>Typed data signing</li>
-            <li>Transaction signing</li>
-            <li>Transaction broadcast</li>
+            <li>Real signature material returned to websites</li>
+            <li>Real transaction broadcast</li>
+            <li>Wallet-backed account exposure</li>
             <li>WalletConnect pairing</li>
           </ul>
         </div>
@@ -88,7 +115,7 @@ export default function ExtensionPage() {
             </div>
 
             <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-xs font-semibold text-slate-300">
-              {index < 4 ? "Preview" : "Planned"}
+              {index < 8 ? "Preview" : "Planned"}
             </span>
           </div>
         ))}

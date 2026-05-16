@@ -23,6 +23,10 @@ export const ACORUS_PROVIDER_METHODS = [
   "acorus_accounts",
   "acorus_chainId",
   "acorus_switchChain",
+  "acorus_signMessage",
+  "acorus_signTypedData",
+  "acorus_signTransaction",
+  "acorus_sendTransaction",
 ] as const;
 
 export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];

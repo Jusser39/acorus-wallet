@@ -57,18 +57,18 @@ export const WALLET_ACTION_FEATURES: ProductFeature[] = [
   {
     id: "dapps",
     title: "dApps",
-    description: "Live preview bridge for connect/accounts/chainId plus permission queue.",
+    description: "Live preview bridge for connect/accounts/chainId plus sign and transaction approval review.",
     href: "/dapps",
     status: "preview",
-    badge: "Preview bridge",
+    badge: "Approval preview",
   },
   {
     id: "extension",
     title: "Chrome Extension",
-    description: "Preview bridge foundation for connecting to crypto websites.",
+    description: "Preview-backed browser wallet bridge with explicit dApp approval review.",
     href: "/extension",
     status: "preview",
-    badge: "Manifest V3",
+    badge: "Preview bridge",
   },
   {
     id: "quests",

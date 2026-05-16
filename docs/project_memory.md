@@ -16,6 +16,10 @@
   - MockMarketDataProvider: pseudo-prices seeded by symbol, sin-wave chart generation
   - Frontend: PortfolioSummaryCard, AssetList, TokenChart, /tokens/add, /tokens/[chainId]/[address]
   - Prisma null sentinel fix: use "" for tokenAddress in compound unique key where clause
+- Universal dApp Signing / Transaction Approval wave implemented locally (2026-05-16)
+  - `packages/shared` now defines queued provider-request helpers and approved-preview result objects
+  - `apps/extension` now keeps sign/typed-data/transaction requests pending until popup/options approve or reject them
+  - `/dapps` and `/extension` now describe live approval review while keeping real signatures and broadcast disabled
 - Token Management + Real Charts wave deployed (2026-05-15)
   - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
   - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
@@ -43,8 +47,31 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, and a live preview-backed connect/accounts/chainId bridge; WalletConnect / signing approval / real swap execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live preview-backed connect/accounts/chainId bridge, and sign/transaction approval review; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
+
+## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
+
+- Status: **implemented locally**
+- Shared dApp contract additions:
+  - queued provider-request helper for origin/session-bound sign and transaction prompts
+  - canonical approved-preview result object for review-only methods
+  - updated preview warnings so demo/runtime state no longer claims the approval layer is fully disabled
+- Extension runtime additions:
+  - `acorus_signMessage`
+  - `acorus_signTypedData`
+  - `acorus_signTransaction`
+  - `acorus_sendTransaction`
+  - background resolver map so provider requests stay pending until popup/options approve or reject them
+  - revoke-session path now cancels pending provider promises for that session explicitly
+- Product/UI additions:
+  - popup/options shells now describe approval review as live preview functionality
+  - `/dapps`, `/extension`, product feature copy, and README now distinguish live review from real signature/broadcast execution
+- Security boundary unchanged:
+  - no mnemonic/privateKey/passcode exposure to pages, content scripts, or backend
+  - approvals can resolve preview results only; no real signature bytes or transaction hash are produced in this wave
+- Next sensible step:
+  - wallet-backed provider execution layer for approved requests, plus later compatibility surfaces (`window.ethereum`, Solana provider shape, WalletConnect) without weakening the current client-side custody boundary
 
 ## Security hardening wave
 

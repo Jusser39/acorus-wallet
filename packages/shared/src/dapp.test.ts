@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   approveDappProposal,
+  createApprovedPreviewDappResult,
   createDemoDappShellSnapshot,
   createDappBridgeSessionView,
   ensureDappConnectionProposal,
+  queueDappRequest,
   setDappSessionActiveChain,
 } from "./dapp";
 
@@ -53,5 +55,30 @@ describe("dapp helpers", () => {
     const bridge = createDappBridgeSessionView(switched, "https://app.example");
 
     expect(bridge.activeChainId).toBe(137);
+  });
+
+  it("queues a provider request and builds an approved preview result", () => {
+    const base = createDemoDappShellSnapshot();
+    const session = base.sessions[0];
+    const queued = queueDappRequest(base, {
+      id: "request_live_sign_message",
+      sessionId: session.id,
+      kind: "sign_message",
+      origin: session.origin.origin,
+      account: session.accounts[0],
+      chainId: 1,
+      summary: "Sign a login message.",
+    });
+
+    expect(queued.created).toBe(true);
+    expect(queued.snapshot.pendingRequests[0]?.id).toBe("request_live_sign_message");
+
+    const result = createApprovedPreviewDappResult(
+      queued.request,
+      "2026-05-16T00:00:00.000Z",
+    );
+
+    expect(result.status).toBe("approved_preview");
+    expect(result.signature).toBeNull();
   });
 });

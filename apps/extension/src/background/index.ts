@@ -1,7 +1,13 @@
 import {
+  createApprovedPreviewDappResult,
   createDappBridgeSessionView,
   getActiveDappSession,
+  getDappSessionActiveChainId,
+  getPendingDappRequest,
   hasDappPermission,
+  queueDappRequest,
+  type DappRequest,
+  type DappRequestKind,
   type ChainId,
 } from "@acorus/shared";
 import {
@@ -21,9 +27,17 @@ import {
   rejectProposal,
   rejectRequestInQueue,
   revokeSessionInRegistry,
+  setDappShellState,
   switchOriginSessionChain,
   touchOriginSession,
 } from "./permission-store";
+
+const pendingProviderApprovals = new Map<
+  string,
+  {
+    resolve: (response: ExtensionRuntimeResponse) => void;
+  }
+>();
 
 chrome.runtime.onInstalled.addListener(() => {
   void initializePermissionStore();
@@ -106,26 +120,60 @@ async function handleRuntimeMessage(
   }
 
   if (input.kind === "approve_request") {
+    const current = await getDappShellState();
+    const request = getPendingDappRequest(current, input.requestIdTarget);
+    const next = await approveRequestInQueue(input.requestIdTarget);
+
+    if (request) {
+      resolvePendingProviderApproval(request, next.updatedAt);
+    }
+
     return {
       requestId,
       ok: true,
-      result: await approveRequestInQueue(input.requestIdTarget),
+      result: next,
     };
   }
 
   if (input.kind === "reject_request") {
+    const current = await getDappShellState();
+    const request = getPendingDappRequest(current, input.requestIdTarget);
+    const next = await rejectRequestInQueue(input.requestIdTarget);
+
+    if (request) {
+      rejectPendingProviderApproval(
+        request.id,
+        "user_rejected",
+        "The request was rejected in Acorus Wallet.",
+      );
+    }
+
     return {
       requestId,
       ok: true,
-      result: await rejectRequestInQueue(input.requestIdTarget),
+      result: next,
     };
   }
 
   if (input.kind === "revoke_session") {
+    const current = await getDappShellState();
+    const affectedRequests = current.pendingRequests.filter(
+      (request) => request.sessionId === input.sessionId,
+    );
+    const next = await revokeSessionInRegistry(input.sessionId);
+
+    for (const request of affectedRequests) {
+      rejectPendingProviderApproval(
+        request.id,
+        "session_revoked",
+        "The active dApp session was revoked before the request completed.",
+      );
+    }
+
     return {
       requestId,
       ok: true,
-      result: await revokeSessionInRegistry(input.sessionId),
+      result: next,
     };
   }
 
@@ -299,6 +347,38 @@ async function handleProviderMethod(
     };
   }
 
+  if (isApprovalMethod(method)) {
+    if (!session) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "not_connected",
+          message:
+            "No approved session is connected for this origin, so request review cannot begin.",
+        },
+      };
+    }
+
+    const queued = queueDappRequest(state, {
+      id: requestId,
+      sessionId: session.id,
+      kind: getRequestKindForMethod(method),
+      origin,
+      account: session.accounts[0] ?? null,
+      chainId: getDappSessionActiveChainId(session),
+      summary: buildApprovalSummary(method, params, session),
+      warning:
+        "Approval can complete in the extension, but the final signature or broadcast remains preview-only in this wave.",
+    });
+
+    if (queued.created) {
+      await setDappShellState(queued.snapshot);
+    }
+
+    return waitForProviderApproval(queued.request);
+  }
+
   return {
     requestId,
     ok: false,
@@ -316,4 +396,128 @@ function parseRequestedChainId(value: unknown): ChainId | null {
   }
 
   return null;
+}
+
+function isApprovalMethod(method: AcorusProviderMethod): boolean {
+  return (
+    method === "acorus_signMessage"
+    || method === "acorus_signTypedData"
+    || method === "acorus_signTransaction"
+    || method === "acorus_sendTransaction"
+  );
+}
+
+function getRequestKindForMethod(method: AcorusProviderMethod): DappRequestKind {
+  switch (method) {
+    case "acorus_signMessage":
+      return "sign_message";
+    case "acorus_signTypedData":
+      return "sign_typed_data";
+    case "acorus_signTransaction":
+      return "sign_transaction";
+    case "acorus_sendTransaction":
+      return "send_transaction";
+    default:
+      return "sign_message";
+  }
+}
+
+function waitForProviderApproval(
+  request: DappRequest,
+): Promise<ExtensionRuntimeResponse> {
+  return new Promise((resolve) => {
+    pendingProviderApprovals.set(request.id, {
+      resolve,
+    });
+  });
+}
+
+function resolvePendingProviderApproval(
+  request: DappRequest,
+  approvedAt: string,
+): void {
+  const pending = pendingProviderApprovals.get(request.id);
+
+  if (!pending) {
+    return;
+  }
+
+  pendingProviderApprovals.delete(request.id);
+  pending.resolve({
+    requestId: request.id,
+    ok: true,
+    result: createApprovedPreviewDappResult(request, approvedAt),
+  });
+}
+
+function rejectPendingProviderApproval(
+  requestId: string,
+  code: string,
+  message: string,
+): void {
+  const pending = pendingProviderApprovals.get(requestId);
+
+  if (!pending) {
+    return;
+  }
+
+  pendingProviderApprovals.delete(requestId);
+  pending.resolve({
+    requestId,
+    ok: false,
+    error: {
+      code,
+      message,
+    },
+  });
+}
+
+function buildApprovalSummary(
+  method: AcorusProviderMethod,
+  params: unknown[] | undefined,
+  session: NonNullable<ReturnType<typeof getActiveDappSession>>,
+): string {
+  const chain = String(getDappSessionActiveChainId(session) ?? "n/a");
+  const payload = summarizePayload(params?.[0]);
+
+  switch (method) {
+    case "acorus_signMessage":
+      return `Sign message review on chain ${chain}. Payload preview: ${payload}.`;
+    case "acorus_signTypedData":
+      return `Sign typed data review on chain ${chain}. Payload preview: ${payload}.`;
+    case "acorus_signTransaction":
+      return `Sign transaction review on chain ${chain}. Transaction preview: ${payload}.`;
+    case "acorus_sendTransaction":
+      return `Send transaction review on chain ${chain}. Broadcast remains preview-only. Payload preview: ${payload}.`;
+    default:
+      return `Request review on chain ${chain}. Payload preview: ${payload}.`;
+  }
+}
+
+function summarizePayload(value: unknown): string {
+  if (typeof value === "string") {
+    return truncate(value);
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (value && typeof value === "object") {
+    try {
+      return truncate(JSON.stringify(value));
+    } catch {
+      return "object";
+    }
+  }
+
+  if (value === undefined) {
+    return "empty";
+  }
+
+  return String(value);
+}
+
+function truncate(value: string, length = 96): string {
+  return value.length > length ? `${value.slice(0, length)}…` : value;
 }
