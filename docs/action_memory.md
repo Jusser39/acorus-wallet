@@ -120,6 +120,14 @@
 119. Updated `apps/web/app/send/page.tsx`: both SendComposer instances receive `mnemonic`; EVM instance `onExecutionResult` persists tx via `createTransaction()`.
 120. Added 2 new `SendExecutionEngine` tests to `wallet-core.test.ts`; confirmed wallet-core 24/24 pass, web 49/49 pass, `pnpm build` clean.
 121. Built Wave 5 deploy tarball, uploaded to VPS `85.239.59.199`, ran `docker compose build api web`, `up -d api web nginx`, `restart api`; verified `/health`, `/api/chains`, `/send`, persistence after restart, public URL.
+122. Re-aligned the active project plan away from any single-chain priority and fixed the product direction as a universal multichain wallet + swap + dapp shell.
+123. Audited the current adapter contract, swap placeholder types, README, architecture doc, and roadmap doc to identify where the repository still described the product in chain-specific terms.
+124. Added `docs/adapter_expansion_roadmap.md` with the capability matrix, universal adapter contract, rollout sequence across EVM/Solana/Tron/UTXO/TON, UX rules, and security invariants.
+125. Updated `README.md`, `docs/architecture.md`, and `docs/roadmap.md` so the repository now consistently describes Acorus Wallet as adapter-first and universal-first rather than “EVM MVP → Solana next”.
+126. Updated `docs/project_memory.md` and `docs/action_memory.md` to record the roadmap alignment step; no runtime code or deployment changed during this documentation milestone.
+127. Added `docs/universal_swap_shell_plan.md` to define the universal swap shell as one quote/review/approval/execute engine with provider abstraction, capability gating, rollout phases, and client-side security invariants.
+128. Added `docs/universal_dapp_shell_plan.md` to define the universal dapp shell as one session/permission/signing approval model across families, with EVM as the first reference adapter rather than the product identity.
+129. Updated `README.md` and `docs/project_memory.md` so the new swap/dapp planning documents are part of the recorded product direction and repository entrypoints.
 
 
 ## Commands run

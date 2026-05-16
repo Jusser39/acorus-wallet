@@ -393,5 +393,31 @@
   - `/send` returns HTTP 200
   - persistence verification passes after `docker compose restart api`
 - Known limitation: `onExecutionResult` persists tx with placeholder `to/amount/assetType` because full draft lives in SendComposer state. To be improved in a future wave.
-- Implementation commit: pending (Wave 5)
+- Implementation commit: `6d938ab`
+
+## Universal Adapter Expansion Alignment (2026-05-16)
+
+- Status: **roadmap aligned**
+- New document: `docs/adapter_expansion_roadmap.md`
+- Updated docs: `README.md`, `docs/architecture.md`, `docs/roadmap.md`
+- Product direction now explicitly fixed as **universal multichain wallet + swap + dapp shell**
+- EVM remains the strongest live adapter, but no longer defines product identity or roadmap naming
+- Solana, Tron, Bitcoin/UTXO, TON, and future families are treated as adapters under one shared `Network → Asset → Action` UX
+- The next roadmap layers are now framed around:
+  - adapter contract completion
+  - universal swap engine
+  - universal dapp session/signing shell
+- Safety boundary unchanged: backend still never receives mnemonic/privateKey/passcode; send/swap/dapp approvals remain client-side only
+- This alignment changed documentation and planning only; no runtime behavior changed in this step
+
+## Universal Swap + Dapp Planning Alignment (2026-05-16)
+
+- Status: **planning docs added**
+- New documents:
+  - `docs/universal_swap_shell_plan.md`
+  - `docs/universal_dapp_shell_plan.md`
+- Universal swap is now fixed as one quote/review/approval/execute shell, with EVM as the first live reference adapter and other families joining through the same capability contract
+- Universal dapp support is now fixed as one session/permission/signing shell, not as separate WalletConnect-style products per family
+- Both plans keep the same non-custodial boundary as send execution: backend never receives mnemonic/privateKey/passcode and all approvals stay client-side
+- This step still changed documentation/planning only; no runtime behavior changed
 
