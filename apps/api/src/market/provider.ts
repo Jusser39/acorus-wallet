@@ -3,6 +3,7 @@ import type { ApiEnv } from "../env.js";
 import { resolveMarketRateLimitRpm } from "../env.js";
 import { DexscreenerMarketDataProvider } from "./dexscreener-provider.js";
 import { CoinGeckoMarketDataProvider } from "./coingecko-provider.js";
+import type { ExploreTokenItem } from "@acorus/shared";
 
 export type MarketPriceRequest = {
   chainId: number;
@@ -35,6 +36,8 @@ export interface MarketDataProvider {
   getChart(request: MarketChartRequest): Promise<MarketChartDto>;
   discoverToken?(chainId: number, tokenAddress: string): Promise<ProviderDiscoveryPayload>;
   healthCheck?(): Promise<boolean>;
+  getTrending?(): Promise<ExploreTokenItem[]>;
+  getMemeBoosts?(): Promise<ExploreTokenItem[]>;
 }
 
 /**
@@ -199,6 +202,16 @@ export class MockMarketDataProvider implements MarketDataProvider {
       riskFlags: ["mock_price"],
     };
   }
+
+  async getTrending(): Promise<ExploreTokenItem[]> {
+    return [
+      { id: "bitcoin", symbol: "BTC", name: "Bitcoin", price: 65000, change24h: 2.5, rank: 1, riskLevel: "low", riskFlags: [], source: "mock" },
+      { id: "ethereum", symbol: "ETH", name: "Ethereum", price: 3200, change24h: 1.8, rank: 2, riskLevel: "low", riskFlags: [], source: "mock" },
+      { id: "solana", symbol: "SOL", name: "Solana", price: 150, change24h: 4.2, rank: 3, riskLevel: "low", riskFlags: [], source: "mock" },
+      { id: "binancecoin", symbol: "BNB", name: "BNB", price: 600, change24h: -0.5, rank: 4, riskLevel: "low", riskFlags: [], source: "mock" },
+      { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", price: 35, change24h: 6.1, rank: 5, riskLevel: "low", riskFlags: [], source: "mock" },
+    ];
+  }
 }
 
 export class CompositeMarketDataProvider implements MarketDataProvider {
@@ -299,6 +312,32 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
     }
 
     return this.mockProvider.discoverToken(chainId, tokenAddress);
+  }
+
+  async getTrending(): Promise<ExploreTokenItem[]> {
+    for (const provider of this.providers) {
+      if (provider.getTrending) {
+        try {
+          return await provider.getTrending();
+        } catch {
+          continue;
+        }
+      }
+    }
+    return this.mockProvider.getTrending!();
+  }
+
+  async getMemeBoosts(): Promise<ExploreTokenItem[]> {
+    for (const provider of this.providers) {
+      if (provider.getMemeBoosts) {
+        try {
+          return await provider.getMemeBoosts();
+        } catch {
+          continue;
+        }
+      }
+    }
+    return [];
   }
 }
 

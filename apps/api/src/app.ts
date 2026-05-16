@@ -789,5 +789,80 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     }
   });
 
+  // ---- Explore Feed ----
+  app.get("/api/explore/trending", async () => {
+    try {
+      const items = marketProvider.getTrending
+        ? await marketProvider.getTrending()
+        : await mockFallback.getTrending!();
+      return {
+        ok: true,
+        section: "trending",
+        items,
+        source: marketProvider.getTrending ? marketProvider.id : "mock",
+        sourceStatus: marketProvider.getTrending ? "live" : "mock",
+        updatedAt: new Date().toISOString(),
+      };
+    } catch {
+      const items = await mockFallback.getTrending!();
+      return { ok: true, section: "trending", items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+    }
+  });
+
+  app.get("/api/explore/top", async (request) => {
+    const currency = fiatCurrencySchema.default("USD").parse(
+      (request.query as { currency?: string }).currency,
+    );
+    const TOP_SYMBOLS = [
+      { symbol: "BTC", chainId: 1 },
+      { symbol: "ETH", chainId: 1 },
+      { symbol: "SOL", chainId: 1 },
+      { symbol: "BNB", chainId: 56 },
+      { symbol: "AVAX", chainId: 43114 },
+      { symbol: "MATIC", chainId: 137 },
+      { symbol: "TRX", chainId: 1 },
+      { symbol: "USDT", chainId: 1 },
+      { symbol: "USDC", chainId: 1 },
+      { symbol: "LINK", chainId: 1 },
+    ];
+    const requests = TOP_SYMBOLS.map((t) => ({
+      chainId: t.chainId,
+      symbol: t.symbol,
+      currency: currency as FiatCurrency,
+    }));
+
+    try {
+      const prices = await marketProvider.getPrices(requests);
+      const items = prices.map((p, i) => ({
+        id: p.symbol.toLowerCase(),
+        symbol: p.symbol,
+        name: p.symbol,
+        price: p.price,
+        change24h: p.change24h?.percent ?? null,
+        marketCapUsd: p.marketCap ?? null,
+        volume24hUsd: p.volume24h ?? null,
+        chainId: TOP_SYMBOLS[i]?.chainId ?? null,
+        rank: i + 1,
+        source: p.provider,
+        riskLevel: "low" as const,
+        riskFlags: [],
+      }));
+      return { ok: true, section: "top", items, source: marketProvider.id, sourceStatus: "live", updatedAt: new Date().toISOString() };
+    } catch {
+      return { ok: true, section: "top", items: [], source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+    }
+  });
+
+  app.get("/api/explore/memes", async () => {
+    try {
+      const items = marketProvider.getMemeBoosts
+        ? await marketProvider.getMemeBoosts()
+        : [];
+      return { ok: true, section: "memes", items, source: "dexscreener_boost", sourceStatus: items.length > 0 ? "live" : "mock", updatedAt: new Date().toISOString() };
+    } catch {
+      return { ok: true, section: "memes", items: [], source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+    }
+  });
+
   return app;
 }

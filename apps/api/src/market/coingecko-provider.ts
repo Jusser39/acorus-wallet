@@ -5,6 +5,7 @@ import type {
   MarketPriceRequest,
 } from "./provider.js";
 import type { ApiEnv } from "../env.js";
+import type { ExploreTokenItem } from "@acorus/shared";
 import { httpGet } from "./http.js";
 import { RateLimiter } from "./rate-limit.js";
 
@@ -45,6 +46,19 @@ const SYMBOL_TO_ID: Record<string, string> = {
 
 function coingeckoCurrency(currency: string): string {
   return currency.toLowerCase();
+}
+
+function parseSuffixedUsd(str: string | undefined): number | null {
+  if (!str) return null;
+  const cleaned = str.replace(/[$,\s]/g, "");
+  const suffixes: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+  const last = cleaned.slice(-1).toUpperCase();
+  if (suffixes[last] !== undefined) {
+    const num = parseFloat(cleaned.slice(0, -1));
+    return isNaN(num) ? null : num * suffixes[last]!;
+  }
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
 }
 
 interface CoinGeckoSimplePriceResponse {
@@ -257,5 +271,65 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       riskLevel,
       riskFlags,
     };
+  }
+
+  async getTrending(): Promise<ExploreTokenItem[]> {
+    await this.rateLimiter.acquire();
+
+    interface CoinGeckoTrendingCoin {
+      item: {
+        id: string;
+        name: string;
+        symbol: string;
+        large?: string;
+        small?: string;
+        market_cap_rank?: number | null;
+        score?: number | null;
+        data?: {
+          price?: string | number | null;
+          price_change_percentage_24h?: { usd?: number | null } | null;
+          market_cap?: string | null;
+          total_volume?: string | null;
+        } | null;
+      };
+    }
+
+    interface CoinGeckoTrendingResponse {
+      coins?: CoinGeckoTrendingCoin[];
+    }
+
+    const url = `${this.baseUrl}/search/trending`;
+    const response = await httpGet<CoinGeckoTrendingResponse>(
+      url,
+      this.timeoutMs,
+      this.getHeaders(),
+    );
+
+    return (response.coins ?? []).map((coin): ExploreTokenItem => {
+      const item = coin.item;
+      const rawPrice = item.data?.price;
+      const price =
+        rawPrice == null
+          ? null
+          : typeof rawPrice === "number"
+            ? rawPrice
+            : parseFloat(rawPrice) || null;
+
+      return {
+        id: item.id,
+        symbol: item.symbol.toUpperCase(),
+        name: item.name,
+        logoUrl: item.large ?? item.small ?? null,
+        price,
+        change24h: item.data?.price_change_percentage_24h?.usd ?? null,
+        marketCapUsd: parseSuffixedUsd(item.data?.market_cap ?? undefined),
+        volume24hUsd: parseSuffixedUsd(item.data?.total_volume ?? undefined),
+        rank: item.market_cap_rank ?? null,
+        trendingScore: item.score ?? null,
+        riskLevel: "unknown",
+        riskFlags: [],
+        source: "coingecko",
+      };
+    });
   }
 }

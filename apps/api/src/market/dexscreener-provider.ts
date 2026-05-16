@@ -5,6 +5,7 @@ import type {
   MarketPriceRequest,
 } from "./provider.js";
 import type { ApiEnv } from "../env.js";
+import type { ExploreTokenItem } from "@acorus/shared";
 import { httpGet } from "./http.js";
 import { RateLimiter } from "./rate-limit.js";
 
@@ -192,5 +193,44 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
       riskLevel,
       riskFlags,
     };
+  }
+
+  async getMemeBoosts(): Promise<ExploreTokenItem[]> {
+    interface DexScreenerBoostItem {
+      url?: string;
+      chainId?: string;
+      tokenAddress?: string;
+      amount?: number;
+      totalAmount?: number;
+      icon?: string;
+      header?: string;
+      description?: string;
+    }
+
+    try {
+      const boosts = await httpGet<DexScreenerBoostItem[]>(
+        "https://api.dexscreener.com/token-boosts/top/v1",
+        this.timeoutMs,
+      );
+
+      return boosts.slice(0, 10).map((item): ExploreTokenItem => {
+        const firstWord = item.header?.split(/\s+/)[0] ?? "";
+        const symbol = firstWord.length > 0 ? firstWord.toUpperCase() : "???";
+        return {
+          id: item.tokenAddress ?? item.url ?? symbol,
+          symbol,
+          name: item.header ?? "Unknown",
+          logoUrl: item.icon ?? null,
+          tokenAddress: item.tokenAddress ?? null,
+          pairUrl: item.url ?? null,
+          riskLevel: "unknown",
+          riskFlags: ["boosted"],
+          trendingScore: item.totalAmount ?? null,
+          source: "dexscreener_boost",
+        };
+      });
+    } catch {
+      return [];
+    }
   }
 }

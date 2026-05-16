@@ -2,6 +2,7 @@ import type {
   ApiChainRecord,
   ChainFamily,
   ContactRecord,
+  ExploreFeedResponse,
   OnboardingProgressRecord,
   PreferredCurrency,
   SwapQuote,
@@ -499,4 +500,19 @@ export async function discoverToken(
     `/api/market/discover-token?${params.toString()}`,
   );
   return response.discovery;
+}
+
+// ---- Explore Feed ----
+
+export async function fetchExploreTrending(): Promise<ExploreFeedResponse> {
+  return apiFetch<ExploreFeedResponse>("/api/explore/trending");
+}
+
+export async function fetchExploreTop(currency?: string): Promise<ExploreFeedResponse> {
+  const qs = currency ? `?currency=${encodeURIComponent(currency)}` : "";
+  return apiFetch<ExploreFeedResponse>(`/api/explore/top${qs}`);
+}
+
+export async function fetchExploreMemes(): Promise<ExploreFeedResponse> {
+  return apiFetch<ExploreFeedResponse>("/api/explore/memes");
 }
