@@ -30,6 +30,7 @@ export type ChainAdapterCapabilities = {
   broadcast: boolean;
   history: boolean;
   swap: boolean;
+  dapp: boolean;
 };
 
 export type ChainAdapter = {

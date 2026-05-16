@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -22,4 +23,13 @@ export default defineConfig({
   sourcemap: false,
   splitting: false,
   target: "es2022",
+  esbuildOptions(options) {
+    options.alias = {
+      ...(options.alias ?? {}),
+      "@acorus/shared": path.resolve(
+        __dirname,
+        "../../packages/shared/src/index.ts",
+      ),
+    };
+  },
 });

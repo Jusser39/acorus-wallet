@@ -28,6 +28,7 @@ export function createTronAdapter(): ChainAdapter {
       broadcast: false,
       history: false,
       swap: false,
+      dapp: false,
     },
 
     validateAddress(address: string): boolean {

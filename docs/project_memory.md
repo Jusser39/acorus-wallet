@@ -43,7 +43,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live as product placeholders; `apps/extension` now exists as a Manifest V3 architecture skeleton; WalletConnect / live dapp session shell / real swap execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell plus preview dApp session/permission queue surfaces; WalletConnect / live provider connectivity / real swap execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Security hardening wave
@@ -527,4 +527,39 @@
   - `pnpm test`
   - `pnpm build`
   - `git diff --check`
+
+## Universal dApp Session / Permission Shell (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS for the web shell**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_dapp_session_permission_shell_plan.md`
+- Report: `docs/universal_dapp_session_permission_shell_report.md`
+- New shared/core capabilities:
+  - `packages/shared/src/dapp.ts` adds canonical dApp session, permission, request, approval, and snapshot types
+  - shared reducer helpers now support approve/reject/revoke preview flows
+  - adapter capability metadata now includes `dapp`
+- New web/extension capabilities:
+  - `/dapps` now renders an interactive preview session shell instead of a static placeholder
+  - `apps/extension` background store now tracks proposals, sessions, pending requests, and approval history
+  - popup and options shells now expose approve/reject/revoke actions over the shared preview contract
+- Safety boundary maintained:
+  - no live site connectivity
+  - no WalletConnect
+  - no account exposure to real sites
+  - no signing or broadcast
+  - no mnemonic/privateKey/passcode handling outside the client vault boundary
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - public route `/dapps` returns HTTP 200 after rollout
+  - persistence verification still passes after `docker compose restart api`
 

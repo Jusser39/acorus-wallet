@@ -57,10 +57,10 @@ export const WALLET_ACTION_FEATURES: ProductFeature[] = [
   {
     id: "dapps",
     title: "dApps",
-    description: "dApp sessions and site permissions are planned.",
+    description: "Preview connected sites, permission prompts and request queue.",
     href: "/dapps",
-    status: "planned",
-    badge: "Coming",
+    status: "preview",
+    badge: "Permission shell",
   },
   {
     id: "extension",

@@ -5,7 +5,15 @@ import {
   type ExtensionRuntimeMessage,
   type ExtensionRuntimeResponse,
 } from "../shared/protocol";
-import { initializePermissionStore, listConnectedSites } from "./permission-store";
+import {
+  approveProposal,
+  approveRequestInQueue,
+  getDappShellState,
+  initializePermissionStore,
+  rejectProposal,
+  rejectRequestInQueue,
+  revokeSessionInRegistry,
+} from "./permission-store";
 
 chrome.runtime.onInstalled.addListener(() => {
   void initializePermissionStore();
@@ -49,13 +57,58 @@ async function handleRuntimeMessage(
   }
 
   if (input.kind === "get_state") {
+    const state = await getDappShellState();
     return {
       requestId,
       ok: true,
       result: createSkeletonState({
         activeOrigin: input.origin ?? sender.origin ?? sender.url ?? null,
-        connectedSites: await listConnectedSites(),
+        proposals: state.proposals,
+        sessions: state.sessions,
+        pendingRequests: state.pendingRequests,
+        approvalResults: state.approvalResults,
+        lastUpdatedAt: state.updatedAt,
       }),
+    };
+  }
+
+  if (input.kind === "approve_proposal") {
+    return {
+      requestId,
+      ok: true,
+      result: await approveProposal(input.proposalId),
+    };
+  }
+
+  if (input.kind === "reject_proposal") {
+    return {
+      requestId,
+      ok: true,
+      result: await rejectProposal(input.proposalId),
+    };
+  }
+
+  if (input.kind === "approve_request") {
+    return {
+      requestId,
+      ok: true,
+      result: await approveRequestInQueue(input.requestIdTarget),
+    };
+  }
+
+  if (input.kind === "reject_request") {
+    return {
+      requestId,
+      ok: true,
+      result: await rejectRequestInQueue(input.requestIdTarget),
+    };
+  }
+
+  if (input.kind === "revoke_session") {
+    return {
+      requestId,
+      ok: true,
+      result: await revokeSessionInRegistry(input.sessionId),
     };
   }
 

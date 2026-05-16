@@ -1,4 +1,9 @@
-import type { ChainId } from "@acorus/shared";
+import type {
+  DappApprovalResult,
+  DappRequest,
+  DappSession,
+  DappSessionProposal,
+} from "@acorus/shared";
 
 export const ACORUS_INPAGE_REQUEST = "acorus:inpage-request";
 export const ACORUS_INPAGE_RESPONSE = "acorus:inpage-response";
@@ -20,22 +25,14 @@ export const ACORUS_PROVIDER_METHODS = [
 
 export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];
 
-export type PermissionMethod = Exclude<AcorusProviderMethod, "acorus_ping">;
-
-export type ConnectedSitePermission = {
-  origin: string;
-  accounts: string[];
-  chainIds: ChainId[];
-  methods: PermissionMethod[];
-  grantedAt: string;
-  expiresAt?: string | null;
-};
-
 export type BackgroundStateSnapshot = {
-  phase: "skeleton";
+  phase: "permission_shell";
   providerInjection: "stub_only";
   executionEnabled: false;
-  connectedSites: ConnectedSitePermission[];
+  proposals: DappSessionProposal[];
+  sessions: DappSession[];
+  pendingRequests: DappRequest[];
+  approvalResults: DappApprovalResult[];
   supportedMethods: readonly AcorusProviderMethod[];
   lastUpdatedAt: string;
   activeOrigin?: string | null;
@@ -60,6 +57,36 @@ export type ExtensionRuntimeMessage =
       origin: string;
       method: AcorusProviderMethod;
       params?: unknown[];
+    }
+  | {
+      kind: "approve_proposal";
+      requestId: string;
+      surface: "popup" | "options";
+      proposalId: string;
+    }
+  | {
+      kind: "reject_proposal";
+      requestId: string;
+      surface: "popup" | "options";
+      proposalId: string;
+    }
+  | {
+      kind: "approve_request";
+      requestId: string;
+      surface: "popup" | "options";
+      requestIdTarget: string;
+    }
+  | {
+      kind: "reject_request";
+      requestId: string;
+      surface: "popup" | "options";
+      requestIdTarget: string;
+    }
+  | {
+      kind: "revoke_session";
+      requestId: string;
+      surface: "popup" | "options";
+      sessionId: string;
     };
 
 export type ExtensionRuntimeResponse = {
@@ -98,6 +125,7 @@ export const EXTENSION_PHASES = [
   "Popup and options shells",
   "Permission store types",
   "Connected sites UX later",
+  "Permission queue shell",
   "EVM compatibility later",
   "Solana compatibility later",
 ] as const;
@@ -116,33 +144,24 @@ export function isAcorusProviderMethod(
   return (ACORUS_PROVIDER_METHODS as readonly string[]).includes(value);
 }
 
-export function createConnectedSitePermission(input: {
-  origin: string;
-  accounts?: string[];
-  chainIds?: ChainId[];
-  methods?: PermissionMethod[];
-}): ConnectedSitePermission {
-  return {
-    origin: input.origin,
-    accounts: [...new Set(input.accounts ?? [])],
-    chainIds: [...new Set(input.chainIds ?? [])],
-    methods: [...new Set(input.methods ?? [])],
-    grantedAt: new Date().toISOString(),
-    expiresAt: null,
-  };
-}
-
 export function createSkeletonState(input?: {
   activeOrigin?: string | null;
-  connectedSites?: ConnectedSitePermission[];
+  proposals?: DappSessionProposal[];
+  sessions?: DappSession[];
+  pendingRequests?: DappRequest[];
+  approvalResults?: DappApprovalResult[];
+  lastUpdatedAt?: string;
 }): BackgroundStateSnapshot {
   return {
-    phase: "skeleton",
+    phase: "permission_shell",
     providerInjection: "stub_only",
     executionEnabled: false,
-    connectedSites: input?.connectedSites ?? [],
+    proposals: input?.proposals ?? [],
+    sessions: input?.sessions ?? [],
+    pendingRequests: input?.pendingRequests ?? [],
+    approvalResults: input?.approvalResults ?? [],
     supportedMethods: ACORUS_PROVIDER_METHODS,
-    lastUpdatedAt: new Date().toISOString(),
+    lastUpdatedAt: input?.lastUpdatedAt ?? new Date().toISOString(),
     activeOrigin: input?.activeOrigin ?? null,
   };
 }

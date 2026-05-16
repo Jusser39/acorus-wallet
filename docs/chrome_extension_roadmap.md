@@ -7,7 +7,8 @@ like MetaMask, Trust Wallet, or Uniswap Extension.
 ## Current status
 - `apps/extension` now exists in the repository as a Manifest V3 architecture skeleton
 - current surfaces: background, content, inpage, popup, options
-- live connectivity is still disabled: no account exposure, no signing, no WalletConnect
+- preview permission shell is now implemented for proposals, connected sites, request queue, and revoke actions
+- live connectivity is still disabled: no account exposure to real sites, no signing, no WalletConnect
 
 ## Why extension matters
 A wallet becomes useful across crypto websites when it can:
@@ -113,5 +114,6 @@ Responsible for:
 - Suspicious contracts flagged
 
 ## Not now
-This roadmap does not implement live extension connectivity yet. It prepares
-the architecture and is now backed by a repository-level skeleton.
+This roadmap still does not implement live extension connectivity. It now has a
+repository-level skeleton plus a preview permission/session shell, but real
+provider connectivity remains a later wave.

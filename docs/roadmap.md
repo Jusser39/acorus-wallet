@@ -8,8 +8,8 @@
 6. TON and next-family adapter onboarding through the same adapter contract
 7. Universal swap engine: quote, route, review, execute, and provider failover
 8. Cross-chain swap orchestration after single-family swap flows are stable
-9. Browser extension architecture skeleton and permission-store foundation
-10. Universal dapp shell: session registry, connection approval, signing approval, and browser/runtime bridge
+9. Browser extension architecture skeleton and preview permission-shell foundation
+10. Live universal dapp bridge: real session connectivity, signing approval, and browser/runtime bridge activation
 11. NFT universal asset model and action support where family semantics allow it
 12. Explore feed
 13. Quests and onboarding progression

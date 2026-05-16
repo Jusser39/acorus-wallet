@@ -6,7 +6,7 @@ Acorus Wallet uses a **TypeScript monorepo** with clear separation between:
 
 - `apps/web` — Next.js App Router PWA shell and wallet UI
 - `apps/api` — Fastify API for public wallet data and onboarding metadata
-- `apps/extension` — Manifest V3 browser extension skeleton with background/content/inpage/popup/options surfaces
+- `apps/extension` — Manifest V3 browser extension shell with background/content/inpage/popup/options surfaces
 - `packages/wallet-core` — local-only wallet primitives, encryption, adapter registry, multichain send foundations
 - `packages/shared` — shared DTOs, chain config, token list, practice content
 
@@ -21,12 +21,13 @@ Acorus Wallet uses a **TypeScript monorepo** with clear separation between:
 7. Universal actions (`receive`, `send`, future `swap`, future `dapp sign`) resolve through family adapters.
 8. Any supported signing/broadcast remains client-side only.
 
-## Extension skeleton
+## Extension shell
 
-- `apps/extension` now provides the repository-level browser extension skeleton only
+- `apps/extension` now provides a repository-level permission shell on top of the original Manifest V3 skeleton
 - Current surfaces: background service worker, content bridge, inpage provider stub, popup shell, options shell
-- The provider stub is non-live: no account access, no WalletConnect, no signing, no broadcast, no `window.ethereum` compatibility runtime yet
-- Future dApp connectivity should be layered on top of this skeleton through explicit permission prompts and review queues
+- The shell now models connected-site proposals, active sessions, pending requests, approval history, and revoke actions through shared dApp types
+- The provider stub is still non-live: no account access to real pages, no WalletConnect, no signing, no broadcast, no `window.ethereum` compatibility runtime yet
+- Future dApp connectivity should continue to layer on top of this shell instead of introducing a second permission model
 
 ## Transaction flow
 
@@ -64,11 +65,12 @@ Current live/foundation capabilities:
 - Send broadcast
 - History/status
 - Swap capability placeholder
+- Dapp capability placeholder
 
 Target capabilities for the next expansion waves:
 
 - Swap quote/execution contracts
-- Dapp session/signing contracts
+- Dapp session/signing contracts and runtime bridge activation
 - Capability metadata that lets the UI stay universal while honestly gating unsupported flows
 
 ## Future mobile architecture

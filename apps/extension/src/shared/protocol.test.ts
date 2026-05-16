@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   ACORUS_PROVIDER_METHODS,
-  createConnectedSitePermission,
   createSkeletonState,
   isAcorusProviderMethod,
 } from "./protocol";
@@ -13,26 +12,15 @@ describe("extension protocol", () => {
     expect(ACORUS_PROVIDER_METHODS).toContain("acorus_requestAccounts");
   });
 
-  it("creates deduplicated connected site permissions", () => {
-    const permission = createConnectedSitePermission({
-      origin: "https://app.example",
-      accounts: ["0xabc", "0xabc"],
-      chainIds: [1, 1],
-      methods: ["acorus_accounts", "acorus_accounts"],
-    });
-
-    expect(permission.accounts).toEqual(["0xabc"]);
-    expect(permission.chainIds).toEqual([1]);
-    expect(permission.methods).toEqual(["acorus_accounts"]);
-  });
-
   it("creates a skeleton state with execution disabled", () => {
     const state = createSkeletonState({
       activeOrigin: "https://app.example",
     });
 
-    expect(state.phase).toBe("skeleton");
+    expect(state.phase).toBe("permission_shell");
     expect(state.executionEnabled).toBe(false);
     expect(state.activeOrigin).toBe("https://app.example");
+    expect(state.proposals).toEqual([]);
+    expect(state.pendingRequests).toEqual([]);
   });
 });

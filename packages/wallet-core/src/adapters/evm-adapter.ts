@@ -38,6 +38,7 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
       broadcast: true,
       history: true,
       swap: false,
+      dapp: false,
     },
 
     validateAddress(address: string): boolean {

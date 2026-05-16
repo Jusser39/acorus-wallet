@@ -34,6 +34,7 @@ export function createSolanaAdapter(): ChainAdapter {
       broadcast: false,
       history: false,
       swap: false,
+      dapp: false,
     },
 
     validateAddress(address: string): boolean {
