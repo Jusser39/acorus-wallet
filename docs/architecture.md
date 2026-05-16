@@ -6,6 +6,7 @@ Acorus Wallet uses a **TypeScript monorepo** with clear separation between:
 
 - `apps/web` — Next.js App Router PWA shell and wallet UI
 - `apps/api` — Fastify API for public wallet data and onboarding metadata
+- `apps/extension` — Manifest V3 browser extension skeleton with background/content/inpage/popup/options surfaces
 - `packages/wallet-core` — local-only wallet primitives, encryption, adapter registry, multichain send foundations
 - `packages/shared` — shared DTOs, chain config, token list, practice content
 
@@ -19,6 +20,13 @@ Acorus Wallet uses a **TypeScript monorepo** with clear separation between:
 6. Unlock decrypts the vault in memory only.
 7. Universal actions (`receive`, `send`, future `swap`, future `dapp sign`) resolve through family adapters.
 8. Any supported signing/broadcast remains client-side only.
+
+## Extension skeleton
+
+- `apps/extension` now provides the repository-level browser extension skeleton only
+- Current surfaces: background service worker, content bridge, inpage provider stub, popup shell, options shell
+- The provider stub is non-live: no account access, no WalletConnect, no signing, no broadcast, no `window.ethereum` compatibility runtime yet
+- Future dApp connectivity should be layered on top of this skeleton through explicit permission prompts and review queues
 
 ## Transaction flow
 

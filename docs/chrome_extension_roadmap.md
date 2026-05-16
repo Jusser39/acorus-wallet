@@ -4,6 +4,11 @@
 Turn Acorus Wallet into a browser extension that can connect to Web3 websites
 like MetaMask, Trust Wallet, or Uniswap Extension.
 
+## Current status
+- `apps/extension` now exists in the repository as a Manifest V3 architecture skeleton
+- current surfaces: background, content, inpage, popup, options
+- live connectivity is still disabled: no account exposure, no signing, no WalletConnect
+
 ## Why extension matters
 A wallet becomes useful across crypto websites when it can:
 - inject a provider into pages
@@ -108,4 +113,5 @@ Responsible for:
 - Suspicious contracts flagged
 
 ## Not now
-This roadmap does not implement extension yet. It prepares architecture only.
+This roadmap does not implement live extension connectivity yet. It prepares
+the architecture and is now backed by a repository-level skeleton.

@@ -43,7 +43,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live as product placeholders; WalletConnect / dapp session shell / real swap execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live as product placeholders; `apps/extension` now exists as a Manifest V3 architecture skeleton; WalletConnect / live dapp session shell / real swap execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Security hardening wave
@@ -501,4 +501,30 @@
   - persistence verification passes before and after `docker compose restart api`
 - Local Docker note:
   - local Docker engine remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable on this machine, so deployment verification stayed VPS-first
+
+## Chrome Extension Architecture Skeleton (2026-05-16)
+
+- Status: **implemented and validated locally**
+- Deployment: repository-only change; no VPS rollout required
+- New documents:
+  - `docs/chrome_extension_architecture_skeleton_plan.md`
+  - `docs/chrome_extension_architecture_skeleton_report.md`
+- New package:
+  - `apps/extension`
+- New extension architecture pieces:
+  - Manifest V3 build output with background service worker, content script, inpage provider stub, popup shell, and options shell
+  - shared message bus and permission model types in `apps/extension/src/shared/protocol.ts`
+  - storage-backed connected-sites placeholder in `apps/extension/src/background/permission-store.ts`
+- Safety boundary maintained:
+  - no live dApp connectivity
+  - no WalletConnect
+  - no account exposure
+  - no signing or broadcast
+  - no mnemonic/privateKey/passcode handling
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
 

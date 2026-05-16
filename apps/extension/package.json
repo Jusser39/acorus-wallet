@@ -1,0 +1,16 @@
+{
+  "name": "@acorus/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "pnpm --filter @acorus/shared build",
+    "build": "tsup --config tsup.config.ts && node ./scripts/postbuild.mjs",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "pretest": "pnpm --filter @acorus/shared build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@acorus/shared": "workspace:*"
+  }
+}

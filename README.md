@@ -6,6 +6,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 
 - Next.js App Router web/PWA shell
 - Fastify API for anonymous users, wallet profiles, contacts, transaction records, chains, tokens, and price stubs
+- `apps/extension` Manifest V3 architecture skeleton for future browser-wallet connectivity
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap types, practice content
 - Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
@@ -77,6 +78,7 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
 - Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
 - No WalletConnect, universal dapp session shell, NFT send/burn, real swap execution, or cross-chain swap execution yet
+- Chrome extension architecture skeleton exists in-repo, but no live site connectivity, permissions, signing, or provider compatibility is enabled yet
 
 ## Docs
 
@@ -84,6 +86,8 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/adapter_expansion_roadmap.md`
 - `docs/wallet_competitor_benchmark.md`
 - `docs/chrome_extension_roadmap.md`
+- `docs/chrome_extension_architecture_skeleton_plan.md`
+- `docs/chrome_extension_architecture_skeleton_report.md`
 - `docs/product_ux_upgrade_plan.md`
 - `docs/security_model.md`
 - `docs/universal_swap_shell_plan.md`

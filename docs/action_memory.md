@@ -146,6 +146,15 @@
 145. Re-ran local validation for the wave: web tests, web build, root tests, root build, and `git diff --check`; local Docker remained workstation-blocked on `dockerDesktopLinuxEngine`.
 146. Deployed the UX shell wave to VPS `85.239.59.199`, rebuilt `api` and `web`, re-ran `prisma db push`, verified public routes for wallet/explore/security/dapps/extension/quests/swap, and re-checked persistence before and after `docker compose restart api`.
 147. Updated `docs/project_memory.md` and `docs/action_memory.md` to record changed files, validation, rollout status, non-scope, and the next recommended step: a Chrome Extension Architecture Skeleton without live site connectivity.
+148. Started the Chrome Extension Architecture Skeleton wave by auditing the session plan, root workspace scripts, current extension roadmap docs, and recent repo state on top of `b66789b`.
+149. Added `apps/extension` as a new workspace package with a Manifest V3 build pipeline, static popup/options HTML, and bundled output entrypoints for background, content, inpage, popup, and options surfaces.
+150. Added shared extension protocol/types in `apps/extension/src/shared/protocol.ts`, including message bus envelopes, permission model types, skeleton state helpers, extension phases, and protocol tests.
+151. Added a safe runtime skeleton: storage-backed permission placeholder, background message router, content-to-inpage bridge, and `window.acorus` stub provider that rejects all live account methods except a ping-style skeleton response.
+152. Added popup and options shells so the extension package already communicates scope, phases, and safety constraints without pretending live connectivity exists.
+153. Added `docs/chrome_extension_architecture_skeleton_plan.md` and `docs/chrome_extension_architecture_skeleton_report.md`, then updated README, architecture, roadmap, project memory, and action memory to reflect the new extension package and unchanged safety boundary.
+154. Kept runtime non-scope intact: no WalletConnect, no `window.ethereum` compatibility runtime, no live dApp connectivity, no signing/broadcast, and no backend handling of mnemonic/privateKey/passcode.
+155. Re-ran local validation for the extension wave: `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/extension build`, root `pnpm test`, root `pnpm build`, and `git diff --check`.
+156. No VPS rollout was required for this wave because the extension skeleton is repository-only and does not change the deployed web/api runtime.
 
 
 ## Commands run
@@ -260,6 +269,8 @@
 - `pnpm build`
 - `docker info`
 - `pnpm --filter @acorus/web test`
+- `pnpm --filter @acorus/extension test`
+- `pnpm --filter @acorus/extension build`
 - `python -c "... paramiko ... docker compose ps / health / chains audit ..."`
 - `python scripts/deploy_wave6.py`
 - `tar.exe -czf ... acorus-wallet`
@@ -306,6 +317,7 @@
 - Current product follow-up: the Universal Send Draft Engine wave is implemented and deployed; the next sensible product step is Universal Send UI so the existing EVM send review flow and future non-EVM flows can share one preview/review foundation.
 - Current product follow-up: the Universal Swap Quote Engine + Swap Shell MVP is implemented and deployed; the next sensible product step is live provider integration (0x/1inch/ParaSwap for EVM, then Jupiter/SunSwap/cross-chain providers) without relaxing the current non-custodial boundary.
 - Current product follow-up: the wallet benchmark + UX shell wave is implemented and deployed; the next recommended step is a Chrome Extension Architecture Skeleton (Manifest V3, background/content/inpage/popup/message bus/permission types) without live site connectivity yet.
+- Current product follow-up: the Chrome Extension Architecture Skeleton wave is implemented locally; the next recommended step is a Universal dApp Session / Permission Shell layered onto this skeleton before enabling any real site connectivity.
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
