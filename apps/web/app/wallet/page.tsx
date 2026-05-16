@@ -25,6 +25,7 @@ import {
 import { getPracticeAddress, PRACTICE_LESSONS } from "@/lib/practice";
 import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
 import { AssetList } from "@/components/asset-list";
+import { WalletActionGrid } from "@/components/wallet-action-grid";
 import { formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getSendAvailability } from "@/lib/send-policy";
@@ -369,6 +370,20 @@ export default function WalletPage() {
             hidden={hiddenBalance}
             currency={currency}
           />
+
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white">
+                Actions
+              </h2>
+              <p className="mt-1 text-sm text-slate-300">
+                One wallet for sending, receiving, swapping, exploring and
+                connecting later.
+              </p>
+            </div>
+
+            <WalletActionGrid />
+          </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">

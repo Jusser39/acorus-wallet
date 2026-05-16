@@ -8,12 +8,12 @@ import { formatAddress } from "@/lib/utils";
 const navItems = [
   { href: "/wallet", label: "Wallet" },
   { href: "/send", label: "Send" },
-  { href: "/swap", label: "Swap" },
   { href: "/receive", label: "Receive" },
-  { href: "/history", label: "History" },
-  { href: "/contacts", label: "Contacts" },
+  { href: "/swap", label: "Swap" },
+  { href: "/explore", label: "Explore" },
+  { href: "/security", label: "Security" },
+  { href: "/dapps", label: "dApps" },
   { href: "/settings", label: "Settings" },
-  { href: "/practice", label: "Practice" },
 ];
 
 export function WalletNav() {

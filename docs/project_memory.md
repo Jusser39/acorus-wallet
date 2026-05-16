@@ -43,7 +43,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; WalletConnect / dapp session shell / real swap execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live as product placeholders; WalletConnect / dapp session shell / real swap execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Security hardening wave
@@ -462,4 +462,43 @@
   - persistence verification passes before and after `docker compose restart api`
 - Local Docker note:
   - local Docker regression remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable on this machine
+
+## Competitor Benchmark + Product UX Upgrade + Extension Roadmap (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- New documents:
+  - `docs/wallet_competitor_benchmark.md`
+  - `docs/chrome_extension_roadmap.md`
+  - `docs/product_ux_upgrade_plan.md`
+  - `docs/wallet_product_benchmark_ux_upgrade_report.md`
+- Benchmark direction captured:
+  - MetaMask → extension-ready architecture, permissions thinking, transaction review, network/account controls
+  - Trust Wallet → beginner-friendly multichain action cards, security center language, asset-hub positioning
+  - Uniswap Wallet → premium swap-first dashboard language, clean action cards, route-preview-friendly product shell
+  - PancakeSwap → Explore / Earn / Quests / Launch style ecosystem framing without implying live execution
+- New web/product capabilities:
+  - `apps/web/lib/product-features.ts` adds the product feature registry for live / preview / planned surfaces
+  - `ProductFeatureCard` and `WalletActionGrid` upgrade the wallet dashboard with a universal action grid
+  - new shell routes: `/explore`, `/security`, `/dapps`, `/extension`, `/quests`
+  - wallet navigation now surfaces the product shell more cleanly around Wallet / Send / Receive / Swap / Explore / Security / dApps / Settings
+  - future features are explicitly marked `Preview` or `Planned`
+- Extension readiness remains docs-first:
+  - no extension provider injection
+  - no WalletConnect
+  - no dApp connection runtime
+  - no new signing or broadcast behavior
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - public routes `/wallet`, `/explore`, `/security`, `/dapps`, `/extension`, `/quests`, `/swap` return HTTP 200
+  - persistence verification passes before and after `docker compose restart api`
+- Local Docker note:
+  - local Docker engine remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable on this machine, so deployment verification stayed VPS-first
 

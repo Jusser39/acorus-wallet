@@ -9,6 +9,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap types, practice content
 - Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
+- Wallet dashboard action grid plus preview shells for Explore, Security Center, dApps, Chrome Extension, and Quests
 - Practice wallet mode with fake balances and fake transactions
 - View-only wallet flow
 - Contacts, history, settings, receive QR, send review flow, autolock, safety mode
@@ -81,11 +82,15 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 
 - `docs/architecture.md`
 - `docs/adapter_expansion_roadmap.md`
+- `docs/wallet_competitor_benchmark.md`
+- `docs/chrome_extension_roadmap.md`
+- `docs/product_ux_upgrade_plan.md`
 - `docs/security_model.md`
 - `docs/universal_swap_shell_plan.md`
 - `docs/universal_swap_quote_engine_plan.md`
 - `docs/universal_swap_quote_engine_report.md`
 - `docs/universal_dapp_shell_plan.md`
+- `docs/wallet_product_benchmark_ux_upgrade_report.md`
 - `docs/roadmap.md`
 - `docs/api.md`
 - `docs/project_memory.md`

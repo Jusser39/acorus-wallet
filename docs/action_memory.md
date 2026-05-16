@@ -137,6 +137,15 @@
 136. Fixed the Wave 6 VPS deploy script by correcting the persistence script path from `scripts/check_persistence.sh` to `scripts/check-persistence.sh`, then re-ran the full deployment successfully.
 137. Verified the live rollout on VPS: `/health`, `/api/chains`, `/swap`, quote-preview POSTs, sensitive-field rejection, and persistence before/after `docker compose restart api` all passed.
 138. Added `docs/universal_swap_quote_engine_plan.md`, `docs/universal_swap_quote_engine_report.md`, and updated project/action/API/README docs so the repository now records the live quote-only swap shell honestly.
+139. Started the wallet benchmark wave with a read-only audit across current docs, wallet navigation, dashboard layout, product shell routes, shared adapter/swap contracts, local git state, VPS health, and official MetaMask / Trust Wallet / Uniswap Wallet / PancakeSwap product positioning.
+140. Added benchmark and roadmap docs: `docs/wallet_competitor_benchmark.md`, `docs/chrome_extension_roadmap.md`, `docs/product_ux_upgrade_plan.md`, and `docs/wallet_product_benchmark_ux_upgrade_report.md`.
+141. Added `apps/web/lib/product-features.ts` plus `apps/web/lib/product-features.test.ts`, then created `ProductFeatureCard` and `WalletActionGrid` so the wallet dashboard can expose live, preview, and planned product surfaces without implying fake execution.
+142. Added shell routes for `/explore`, `/security`, `/dapps`, `/extension`, and `/quests`, using placeholder-safe messaging for Web3 discovery, permissions, Chrome extension planning, and gamified onboarding.
+143. Updated `apps/web/components/wallet-nav.tsx`, `apps/web/app/wallet/page.tsx`, `apps/web/app/globals.css`, and `README.md` so the top-level product shell now reflects universal wallet + DEX shell + dApp shell direction more clearly.
+144. Kept non-custodial and execution boundaries unchanged: did not add WalletConnect, extension provider injection, dApp connection runtime, swap execution, token approvals, new signing paths, or any backend handling of mnemonic/privateKey/passcode.
+145. Re-ran local validation for the wave: web tests, web build, root tests, root build, and `git diff --check`; local Docker remained workstation-blocked on `dockerDesktopLinuxEngine`.
+146. Deployed the UX shell wave to VPS `85.239.59.199`, rebuilt `api` and `web`, re-ran `prisma db push`, verified public routes for wallet/explore/security/dapps/extension/quests/swap, and re-checked persistence before and after `docker compose restart api`.
+147. Updated `docs/project_memory.md` and `docs/action_memory.md` to record changed files, validation, rollout status, non-scope, and the next recommended step: a Chrome Extension Architecture Skeleton without live site connectivity.
 
 
 ## Commands run
@@ -249,6 +258,9 @@
 - `pnpm --filter @acorus/api build`
 - `pnpm --filter @acorus/web build`
 - `pnpm build`
+- `docker info`
+- `pnpm --filter @acorus/web test`
+- `python -c "... paramiko ... docker compose ps / health / chains audit ..."`
 - `python scripts/deploy_wave6.py`
 - `tar.exe -czf ... acorus-wallet`
 - Python `paramiko` upload to `/root/acorus-wallet-solana-deploy.tar.gz`
@@ -293,6 +305,7 @@
 - Current product follow-up: the Universal Multichain Wallet UI wave is implemented and deployed; the next sensible product step is the Universal Send Draft Engine so all future send flows route through one multichain draft model before enabling additional networks.
 - Current product follow-up: the Universal Send Draft Engine wave is implemented and deployed; the next sensible product step is Universal Send UI so the existing EVM send review flow and future non-EVM flows can share one preview/review foundation.
 - Current product follow-up: the Universal Swap Quote Engine + Swap Shell MVP is implemented and deployed; the next sensible product step is live provider integration (0x/1inch/ParaSwap for EVM, then Jupiter/SunSwap/cross-chain providers) without relaxing the current non-custodial boundary.
+- Current product follow-up: the wallet benchmark + UX shell wave is implemented and deployed; the next recommended step is a Chrome Extension Architecture Skeleton (Manifest V3, background/content/inpage/popup/message bus/permission types) without live site connectivity yet.
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types
