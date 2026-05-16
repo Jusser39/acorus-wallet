@@ -1,4 +1,4 @@
-import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft } from "@acorus/shared";
+import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
 import { getCuratedTokens } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import {
@@ -160,6 +160,20 @@ export function createSolanaAdapter(): ChainAdapter {
         canProceed: false,
         canBroadcast: false,
         createdAt: new Date().toISOString(),
+      };
+    },
+
+    async broadcastSend(): Promise<SendExecutionResult> {
+      return {
+        family: "solana",
+        chainId,
+        status: "unsupported",
+        txHash: null,
+        explorerUrl: null,
+        errorCode: "solana_broadcast_not_enabled",
+        errorMessage: "Solana broadcast is not implemented yet.",
+        broadcastProvider: "solana",
+        submittedAt: new Date().toISOString(),
       };
     },
   };

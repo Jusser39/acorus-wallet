@@ -489,6 +489,7 @@ export default function SendPage() {
           portfolio={null}
           initialFamily={activeProfile.chainFamily}
           initialChainId={activeProfile.chainFamily === "solana" ? 101 : undefined}
+          mnemonic={unlockedVault?.mnemonic ?? null}
         />
       </section>
     );
@@ -496,13 +497,36 @@ export default function SendPage() {
 
   return (
     <section className="page space-y-8">
-      {/* Universal Send Composer — draft validation layer */}
+      {/* Universal Send Composer — Wave 5 execution layer */}
       <SendComposer
         profile={activeProfile}
         portfolio={null}
         initialFamily="evm"
         initialChainId={selectedChainId}
         evmSendHref="#evm-send-form"
+        mnemonic={unlockedVault?.mnemonic ?? null}
+        onExecutionResult={async (result) => {
+          if (result.status === "submitted" && result.txHash && userId && activeProfile) {
+            try {
+              await createTransaction({
+                userId,
+                walletProfileId: activeProfile.id,
+                chainId: typeof result.chainId === "number" ? result.chainId : selectedChainId,
+                hash: result.txHash,
+                from: activeProfile.publicAddress,
+                to: "",
+                assetType: "native",
+                symbol: chain.nativeSymbol,
+                amount: "0",
+                status: "pending",
+                direction: "out",
+                submittedAt: result.submittedAt,
+              });
+            } catch {
+              // tx record creation failure should not block the user flow
+            }
+          }
+        }}
       />
 
       {/* EVM Send Form — real transaction broadcast */}

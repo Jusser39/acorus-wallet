@@ -1,4 +1,4 @@
-import type { ReceiveInfo, SendDraft } from "@acorus/shared";
+import type { ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { notImplemented } from "./types";
 
@@ -85,6 +85,20 @@ export function createBitcoinAdapter(): ChainAdapter {
         canProceed: false,
         canBroadcast: false,
         createdAt: new Date().toISOString(),
+      };
+    },
+
+    async broadcastSend(): Promise<SendExecutionResult> {
+      return {
+        family: "utxo",
+        chainId,
+        status: "unsupported",
+        txHash: null,
+        explorerUrl: null,
+        errorCode: "utxo_broadcast_not_enabled",
+        errorMessage: "Bitcoin/UTXO broadcast is not implemented yet.",
+        broadcastProvider: "utxo",
+        submittedAt: new Date().toISOString(),
       };
     },
   };

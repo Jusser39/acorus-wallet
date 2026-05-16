@@ -1,11 +1,12 @@
 import type { Address } from "viem";
 import { formatUnits, getAddress, isAddress } from "viem";
 import { EVM_CHAINS, getChainById, getCuratedTokens } from "@acorus/shared";
-import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft } from "@acorus/shared";
+import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { getEvmAddressFromMnemonic } from "../mnemonic";
 import { getErc20Balance, getNativeBalance } from "../evm/balance";
 import { buildExplorerAddressUrl, buildExplorerTxUrl } from "../evm/explorer";
+import { sendNativeTransaction, sendErc20Transaction } from "../evm/send";
 
 export function createEvmAdapter(chainId: number): ChainAdapter {
   const chain = getChainById(chainId);
@@ -164,6 +165,72 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
         canProceed: true,
         canBroadcast: true,
         createdAt: new Date().toISOString(),
+      };
+    },
+
+    async broadcastSend(input): Promise<SendExecutionResult> {
+      const { draft } = input;
+      const numericChainId = chainId as number;
+
+      if (!input.mnemonic) {
+        return {
+          family: "evm",
+          chainId: numericChainId,
+          status: "rejected",
+          txHash: null,
+          explorerUrl: null,
+          errorCode: "missing_signer",
+          errorMessage: "Wallet must be unlocked before broadcasting.",
+          broadcastProvider: "evm",
+          submittedAt: new Date().toISOString(),
+        };
+      }
+
+      if (!input.rpcUrl) {
+        return {
+          family: "evm",
+          chainId: numericChainId,
+          status: "rejected",
+          txHash: null,
+          explorerUrl: null,
+          errorCode: "missing_rpc_url",
+          errorMessage: "RPC URL is required for EVM broadcast.",
+          broadcastProvider: "evm",
+          submittedAt: new Date().toISOString(),
+        };
+      }
+
+      const env = { [chain.rpcUrlEnv]: input.rpcUrl };
+      const toAddr = (draft.normalizedToAddress ?? draft.toAddress) as Address;
+      const isNative = draft.asset.type === "native";
+
+      const txHash = isNative
+        ? await sendNativeTransaction({
+            mnemonic: input.mnemonic,
+            chainId: numericChainId,
+            to: toAddr,
+            amountWei: BigInt(draft.amountRaw),
+            env,
+          })
+        : await sendErc20Transaction({
+            mnemonic: input.mnemonic,
+            chainId: numericChainId,
+            tokenAddress: draft.asset.tokenAddress! as Address,
+            to: toAddr,
+            amountUnits: BigInt(draft.amountRaw),
+            env,
+          });
+
+      return {
+        family: "evm",
+        chainId: numericChainId,
+        status: "submitted",
+        txHash,
+        explorerUrl: buildExplorerTxUrl(numericChainId, txHash),
+        errorCode: null,
+        errorMessage: null,
+        broadcastProvider: "evm",
+        submittedAt: new Date().toISOString(),
       };
     },
   };

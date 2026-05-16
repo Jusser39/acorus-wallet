@@ -432,3 +432,87 @@ describe("wallet-core", () => {
     expect(draft.canBroadcast).toBe(false);
   });
 });
+
+// ── Wave 5: SendExecutionEngine tests ────────────────────────────────────────
+
+import { SendExecutionEngine } from "./send/execution-engine";
+
+describe("SendExecutionEngine", () => {
+  it("returns unsupported for Solana adapter", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendExecutionEngine(registry);
+
+    const result = await engine.execute({
+      draft: {
+        family: "solana",
+        chainId: 101,
+        fromAddress: "11111111111111111111111111111111",
+        toAddress: "11111111111111111111111111111111",
+        normalizedToAddress: "11111111111111111111111111111111",
+        asset: {
+          family: "solana",
+          chainId: 101,
+          type: "native",
+          symbol: "SOL",
+          name: "Solana",
+          decimals: 9,
+          tokenAddress: null,
+          isVerified: true,
+        },
+        amountRaw: "100000000",
+        amountFormatted: "0.1",
+        supportStatus: "coming_soon",
+        feeEstimate: null,
+        issues: [],
+        warnings: [],
+        errors: [],
+        canProceed: false,
+        canBroadcast: false,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.family).toBe("solana");
+  });
+
+  it("returns rejected for EVM draft with missing_signer", async () => {
+    const registry = createDefaultAdapterRegistry();
+    const engine = new SendExecutionEngine(registry);
+
+    const result = await engine.execute({
+      draft: {
+        family: "evm",
+        chainId: 1,
+        fromAddress: "0x0000000000000000000000000000000000000000",
+        toAddress: "0x0000000000000000000000000000000000000001",
+        normalizedToAddress: "0x0000000000000000000000000000000000000001",
+        asset: {
+          family: "evm",
+          chainId: 1,
+          type: "native",
+          symbol: "ETH",
+          name: "Ethereum",
+          decimals: 18,
+          tokenAddress: null,
+          isVerified: true,
+        },
+        amountRaw: "10000000000000000",
+        amountFormatted: "0.01",
+        supportStatus: "supported",
+        feeEstimate: null,
+        issues: [],
+        warnings: [],
+        errors: [],
+        canProceed: true,
+        canBroadcast: true,
+        createdAt: new Date().toISOString(),
+      },
+      // no mnemonic supplied — should return missing_signer
+    });
+
+    expect(result.status).toBe("rejected");
+    expect(result.errorCode).toBe("missing_signer");
+    expect(result.family).toBe("evm");
+  });
+});

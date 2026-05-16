@@ -109,6 +109,17 @@
 108. Updated `apps/web/app/wallet/page.tsx`: send CTA now links to `/send` for non-EVM non-view_only profiles with label "Send draft"; Solana/skeleton info banners updated to mention send draft availability.
 109. Added 19 unit tests across `send-ui.test.ts`, `send-networks.test.ts`, `send-assets.test.ts`; all 49 web tests pass; `pnpm build` clean (18 routes, TypeScript strict).
 110. Built Wave 4 deploy tarball, uploaded to VPS `85.239.59.199`, ran `docker compose build api web`, `up -d api web nginx`, `prisma db push`; verified `/health`, `/api/chains`, `/send` (HTTP 200), and persistence after `restart api`.
+111. Performed Wave 5 read-only audit of `adapters/types.ts`, `evm-adapter.ts`, `evm/send.ts`, `adapters/registry.ts`, non-EVM adapters, `send-composer.tsx`, `send/page.tsx`, `api.ts`, `wallet-core/index.ts` to understand existing helpers before implementing the execution layer.
+112. Added `SendExecutionStatus`, `SendExecutionRequest`, `SendExecutionResult` to `packages/shared/src/multichain.ts`.
+113. Added `BroadcastSendInput` type and optional `broadcastSend?` method to `ChainAdapter` interface in `packages/wallet-core/src/adapters/types.ts`.
+114. Created `packages/wallet-core/src/send/execution-engine.ts` — `SendExecutionEngine` with pre-flight guard logic (unsupported/rejected/failed/submitted) and try/catch wrapping.
+115. Added EVM `broadcastSend()` implementation to `evm-adapter.ts`: checks mnemonic/rpcUrl, converts `amountRaw` string to BigInt, delegates to `sendNativeTransaction`/`sendErc20Transaction`, returns `submitted` with txHash.
+116. Added explicit `broadcastSend()` methods returning `unsupported` to Solana, Tron, and UTXO adapters.
+117. Created `apps/web/lib/send-execution.ts` — `executeUniversalSend()` client-side service; never imported server-side.
+118. Updated `apps/web/components/send-composer.tsx`: added `mnemonic?`, `privateKey?`, `onExecutionResult?` props; added `executing`/`executionResult` state; added `handleExecuteDraft()` function; added execute block in preview panel with locked-wallet notice, broadcast button, and result display.
+119. Updated `apps/web/app/send/page.tsx`: both SendComposer instances receive `mnemonic`; EVM instance `onExecutionResult` persists tx via `createTransaction()`.
+120. Added 2 new `SendExecutionEngine` tests to `wallet-core.test.ts`; confirmed wallet-core 24/24 pass, web 49/49 pass, `pnpm build` clean.
+121. Built Wave 5 deploy tarball, uploaded to VPS `85.239.59.199`, ran `docker compose build api web`, `up -d api web nginx`, `restart api`; verified `/health`, `/api/chains`, `/send`, persistence after restart, public URL.
 
 
 ## Commands run

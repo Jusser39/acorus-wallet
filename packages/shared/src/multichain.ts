@@ -145,6 +145,34 @@ export type BroadcastResult = {
   explorerUrl?: string | null;
 };
 
+// ── Wave 5: Universal Send Execution Layer ────────────────────────────────────
+
+export type SendExecutionStatus =
+  | "submitted"
+  | "rejected"
+  | "failed"
+  | "unsupported";
+
+export type SendExecutionRequest = {
+  draft: SendDraft;
+  /** Marker only — the actual secret stays in frontend memory and is never sent to the backend. */
+  signerSecretRef?: "local_vault";
+};
+
+export type SendExecutionResult = {
+  family: ChainFamily;
+  chainId: ChainId;
+  status: SendExecutionStatus;
+  txHash?: string | null;
+  explorerUrl?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  broadcastProvider?: string | null;
+  submittedAt: string;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type SwapProvider =
   | "oneinch"
   | "zeroex"

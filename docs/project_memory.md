@@ -353,6 +353,45 @@
   - `/api/chains` still returns EVM, Solana, Tron skeleton, Bitcoin skeleton
   - persistence verification passes after `docker compose restart api`
   - public routes `/`, `/wallet`, `/send`, `/receive` return HTTP 200
-- Implementation commit: `feat: add universal send ui (Wave 4)` (pending)
+- Implementation commit: `feat: add universal send ui (Wave 4)` (`5eb4a1f`)
 - Next product step: EVM Send through universal layer (Wave 5)
+
+## Universal Send Execution Layer Wave (Wave 5) (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_send_execution_layer_plan.md`
+- Report: `docs/universal_send_execution_layer_report.md`
+- New shared/core capabilities:
+  - `SendExecutionStatus`, `SendExecutionRequest`, `SendExecutionResult` types added to `packages/shared/src/multichain.ts`
+  - `BroadcastSendInput` type and optional `broadcastSend?` method added to `ChainAdapter` interface in `packages/wallet-core/src/adapters/types.ts`
+  - `packages/wallet-core/src/send/execution-engine.ts` (NEW) — `SendExecutionEngine` class with full pre-flight guard (unsupported/rejected/failed/submitted)
+  - EVM adapter `broadcastSend()` implementation: real native coin and ERC-20 sends via viem helpers
+  - Non-EVM adapters (Solana/Tron/UTXO) all return explicit `unsupported` results from `broadcastSend()`
+- New frontend capabilities:
+  - `apps/web/lib/send-execution.ts` (NEW) — `executeUniversalSend()` client-side service, never imported server-side
+  - `SendComposer` now accepts `mnemonic?`, `privateKey?`, `onExecutionResult?` props
+  - Preview panel shows execute button when `draft.canBroadcast && mnemonic && local profile`
+  - Execution result displays: status, txHash (monospace), explorer link, error message
+  - Non-EVM: amber "broadcast disabled" notice; broadcast button never renders
+  - `/send` page passes `mnemonic` to both SendComposer instances; EVM instance persists tx on success
+- Safety invariants maintained:
+  - Backend never receives mnemonic/privateKey/passcode
+  - Non-custodial boundary unchanged: all signing is client-side only
+  - Legacy EVM send form preserved under `#evm-send-form` anchor
+  - `BroadcastSendInput.signerSecretRef` is a marker string only, not key material
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/wallet-core test` — 24/24 pass (2 new `SendExecutionEngine` tests)
+  - `pnpm --filter @acorus/web test` — 49/49 pass
+  - `pnpm build` — clean, 18 routes, TypeScript strict
+- VPS verified:
+  - `docker compose build api web` succeeded
+  - `docker compose up -d api web nginx` — containers recreated and healthy
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - `/api/chains` returns 9 chains
+  - `/send` returns HTTP 200
+  - persistence verification passes after `docker compose restart api`
+- Known limitation: `onExecutionResult` persists tx with placeholder `to/amount/assetType` because full draft lives in SendComposer state. To be improved in a future wave.
+- Implementation commit: pending (Wave 5)
 

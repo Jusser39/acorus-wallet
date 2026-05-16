@@ -9,7 +9,17 @@ import type {
   ReceiveInfo,
   SendDraft,
   SendDraftInput,
+  SendExecutionResult,
 } from "@acorus/shared";
+
+export type BroadcastSendInput = {
+  draft: SendDraft;
+  /** BIP-39 mnemonic — present only in frontend memory, never sent to backend. */
+  mnemonic?: string;
+  /** Raw private key — alternative to mnemonic; frontend memory only. */
+  privateKey?: string;
+  rpcUrl?: string;
+};
 
 export type ChainAdapterCapabilities = {
   deriveAccount: boolean;
@@ -55,6 +65,7 @@ export type ChainAdapter = {
 
   createSendDraft?(input: SendDraftInput): Promise<SendDraft>;
   broadcastTransaction?(input: BroadcastInput): Promise<BroadcastResult>;
+  broadcastSend?(input: BroadcastSendInput): Promise<SendExecutionResult>;
 };
 
 export function notImplemented(feature: string): never {

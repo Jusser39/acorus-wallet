@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import type { SendExecutionResult } from "@acorus/shared";
 import type { WalletProfileRecord } from "@acorus/shared";
 import type { PortfolioSummaryView } from "@/lib/portfolio";
 import type { UniversalPortfolioView } from "@/lib/universal-assets";
 import { createUniversalSendDraft } from "@/lib/send-draft";
+import { executeUniversalSend } from "@/lib/send-execution";
 import { buildSendAssetOptions } from "@/lib/send-assets";
 import { buildSendNetworkOptions, findSendNetworkOption } from "@/lib/send-networks";
 import {
@@ -25,8 +27,14 @@ type Props = {
   portfolio: PortfolioSummaryView | UniversalPortfolioView | null;
   initialFamily?: string;
   initialChainId?: number | string;
-  /** When EVM draft is ready and canProceed, show a bridge link to the EVM send form */
+  /** When EVM draft is ready and canProceed, show a bridge link to the EVM legacy send form */
   evmSendHref?: string;
+  /** BIP-39 mnemonic from the unlocked vault. Stays in frontend memory only. */
+  mnemonic?: string | null;
+  /** Raw private key — alternative to mnemonic; frontend memory only. */
+  privateKey?: string | null;
+  /** Called after execution attempt (success or failure). Use to persist tx record. */
+  onExecutionResult?: (result: SendExecutionResult) => void | Promise<void>;
 };
 
 export function SendComposer(props: Props) {
@@ -57,6 +65,9 @@ export function SendComposer(props: Props) {
     error: null,
   });
 
+  const [executing, setExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState<SendExecutionResult | null>(null);
+
   const selectedNetwork =
     findSendNetworkOption({ family: state.family, chainId: state.chainId }) ??
     initialNetwork;
@@ -86,6 +97,18 @@ export function SendComposer(props: Props) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNetwork.id]);
+
+  const sendStatusLabel = getSendStatusLabel(selectedNetwork.sendStatus);
+  const canBroadcast = canNetworkBroadcast(selectedNetwork.sendStatus);
+  const showEvmBridge =
+    canBroadcast &&
+    state.draft?.canProceed &&
+    Boolean(props.evmSendHref);
+
+  const canCreateDraft =
+    Boolean(selectedAsset) &&
+    state.toAddress.trim().length > 0 &&
+    state.amountFormatted.trim().length > 0;
 
   function handleNetworkChange(networkId: string) {
     const next = networkOptions.find((n) => n.id === networkId);
@@ -135,17 +158,38 @@ export function SendComposer(props: Props) {
     }
   }
 
-  const canCreateDraft =
-    Boolean(selectedAsset) &&
-    state.toAddress.trim().length > 0 &&
-    state.amountFormatted.trim().length > 0;
+  async function handleExecuteDraft() {
+    if (!state.draft) return;
+    setExecuting(true);
+    setExecutionResult(null);
 
-  const sendStatusLabel = getSendStatusLabel(selectedNetwork.sendStatus);
-  const canBroadcast = canNetworkBroadcast(selectedNetwork.sendStatus);
-  const showEvmBridge =
-    canBroadcast &&
-    state.draft?.canProceed &&
-    Boolean(props.evmSendHref);
+    try {
+      const result = await executeUniversalSend({
+        draft: state.draft,
+        mnemonic: props.mnemonic ?? undefined,
+        privateKey: props.privateKey ?? undefined,
+      });
+      setExecutionResult(result);
+      await props.onExecutionResult?.(result);
+    } catch (error) {
+      const fallback: SendExecutionResult = {
+        family: state.draft.family,
+        chainId: state.draft.chainId,
+        status: "failed",
+        txHash: null,
+        explorerUrl: null,
+        errorCode: "client_execution_failed",
+        errorMessage:
+          error instanceof Error ? error.message : "Execution failed.",
+        broadcastProvider: null,
+        submittedAt: new Date().toISOString(),
+      };
+      setExecutionResult(fallback);
+      await props.onExecutionResult?.(fallback);
+    } finally {
+      setExecuting(false);
+    }
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -344,6 +388,65 @@ export function SendComposer(props: Props) {
             <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-400">
               Draft is valid but this network is coming soon. No transaction will
               be submitted.
+            </div>
+          ) : null}
+
+          {/* ── Execute block (EVM only) ── */}
+          {state.draft?.canBroadcast ? (
+            <div className="space-y-3">
+              {props.profile.type !== "local" ? (
+                <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-400">
+                  Only local wallets can broadcast real transactions.
+                </div>
+              ) : !props.mnemonic ? (
+                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                  Wallet is locked. Unlock your wallet to broadcast.
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="button-primary w-full"
+                  disabled={executing}
+                  onClick={() => void handleExecuteDraft()}
+                >
+                  {executing ? "Broadcasting…" : "Broadcast transaction"}
+                </button>
+              )}
+
+              {executionResult ? (
+                <div
+                  className={`rounded-2xl border p-4 text-sm ${
+                    executionResult.status === "submitted"
+                      ? "border-emerald-500/30 bg-emerald-500/10"
+                      : "border-rose-500/20 bg-rose-500/10"
+                  }`}
+                >
+                  <p className="font-semibold capitalize text-slate-100">
+                    {executionResult.status === "submitted" ? "✓ Submitted" : `⚠ ${executionResult.status}`}
+                  </p>
+
+                  {executionResult.txHash ? (
+                    <p className="mt-2 break-all font-mono text-xs text-slate-400">
+                      {executionResult.txHash}
+                    </p>
+                  ) : null}
+
+                  {executionResult.explorerUrl ? (
+                    <a
+                      href={executionResult.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-emerald-400 underline underline-offset-4"
+                    >
+                      View in explorer ↗
+                    </a>
+                  ) : null}
+
+                  {executionResult.errorMessage ? (
+                    <p className="mt-2 text-rose-400">{executionResult.errorMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

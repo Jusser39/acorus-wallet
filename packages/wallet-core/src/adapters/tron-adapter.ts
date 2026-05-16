@@ -1,4 +1,4 @@
-import type { ReceiveInfo, SendDraft } from "@acorus/shared";
+import type { ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
 import type { ChainAdapter } from "./types";
 import { notImplemented } from "./types";
 
@@ -85,6 +85,20 @@ export function createTronAdapter(): ChainAdapter {
         canProceed: false,
         canBroadcast: false,
         createdAt: new Date().toISOString(),
+      };
+    },
+
+    async broadcastSend(): Promise<SendExecutionResult> {
+      return {
+        family: "tron",
+        chainId,
+        status: "unsupported",
+        txHash: null,
+        explorerUrl: null,
+        errorCode: "tron_broadcast_not_enabled",
+        errorMessage: "Tron broadcast is not implemented yet.",
+        broadcastProvider: "tron",
+        submittedAt: new Date().toISOString(),
       };
     },
   };
