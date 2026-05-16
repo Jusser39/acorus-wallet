@@ -8,7 +8,8 @@ like MetaMask, Trust Wallet, or Uniswap Extension.
 - `apps/extension` now exists in the repository as a Manifest V3 architecture skeleton
 - current surfaces: background, content, inpage, popup, options
 - preview permission shell is now implemented for proposals, connected sites, request queue, and revoke actions
-- live connectivity is still disabled: no account exposure to real sites, no signing, no WalletConnect
+- live preview-backed bridge is now active for `acorus_requestAccounts`, `acorus_accounts`, `acorus_chainId`, and `acorus_switchChain`
+- signing, transaction broadcast, WalletConnect, and wallet-backed provider compatibility are still disabled
 
 ## Why extension matters
 A wallet becomes useful across crypto websites when it can:
@@ -114,6 +115,6 @@ Responsible for:
 - Suspicious contracts flagged
 
 ## Not now
-This roadmap still does not implement live extension connectivity. It now has a
-repository-level skeleton plus a preview permission/session shell, but real
-provider connectivity remains a later wave.
+This roadmap now includes a live preview-backed connect/runtime bridge, but it
+still does not implement signing, broadcast, WalletConnect, or wallet-backed
+provider compatibility.

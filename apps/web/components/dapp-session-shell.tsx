@@ -37,17 +37,17 @@ export function DappSessionShell() {
           dApps
         </p>
         <h1 className="text-3xl font-semibold text-white">
-          Universal dApp session shell is live in preview mode
+          Universal dApp bridge is live in preview-backed mode
         </h1>
         <p className="text-sm text-slate-300">
           Connected sites, permission prompts, request queue and revoke controls
-          now share one multichain dApp contract. Everything here is still
-          preview-only: no live site connectivity, no account exposure, no
-          signing, and no broadcast in this wave.
+          now share one multichain dApp contract. Connect, accounts, chainId and
+          switchChain can now route through the extension bridge after approval.
+          Signing and broadcast still stay disabled in this wave.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           label="Connection proposals"
           value={snapshot.proposals.length}
@@ -63,12 +63,17 @@ export function DappSessionShell() {
           value={activeSessions.length}
           tone="border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
         />
+        <SummaryCard
+          label="Live bridge methods"
+          value={4}
+          tone="border-violet-500/30 bg-violet-500/10 text-violet-100"
+        />
       </div>
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
         No website can access keys, mnemonic, passcode, or signing output in
-        this wave. Approve/reject controls mutate only preview state so the UX
-        can be validated before any real provider connectivity ships.
+        this wave. The bridge is live only for connection and network metadata
+        using preview-backed approved accounts; sign/send flows remain blocked.
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">

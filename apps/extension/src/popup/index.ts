@@ -37,6 +37,7 @@ async function loadPopupState(): Promise<void> {
 }
 
 function renderPopup(state: BackgroundStateSnapshot): string {
+  const bridge = state.activeOriginBridge;
   const proposals = state.proposals.length
     ? state.proposals
         .map(
@@ -130,7 +131,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
           <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
         </div>
-        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 2 ? "Preview" : "Later"}</span>
+        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 4 ? "Preview" : "Later"}</span>
       </div>`,
   ).join("");
 
@@ -140,11 +141,11 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          Connected sites, permission prompts, and request queue are now modeled in the extension shell. Live site connectivity, key access, signing, and broadcast remain disabled.
+          The live bridge now supports connect, accounts, chainId, and switchChain in preview-backed mode. Signing, transaction review, and broadcast still remain disabled.
         </p>
       </section>
 
-      <section style="display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr))">
+      <section style="display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
         <div style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:18px;padding:14px 16px;font-size:14px">
           Execution enabled: <strong>${String(state.executionEnabled)}</strong>
         </div>
@@ -154,6 +155,24 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:18px;padding:14px 16px;font-size:14px">
           Requests: <strong>${state.pendingRequests.length}</strong>
         </div>
+        <div style="border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.12);color:#e9d5ff;border-radius:18px;padding:14px 16px;font-size:14px">
+          Bridge: <strong>${bridge?.status ?? "disconnected"}</strong>
+        </div>
+      </section>
+
+      <section style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(15,23,42,0.88);display:grid;gap:8px">
+        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Active origin bridge</div>
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="font-size:14px;color:#fff">${escapeHtml(bridge?.origin ?? "No active origin")}</div>
+          <span style="${badgeStyle(bridge?.status === "connected" ? "#10b981" : bridge?.status === "approval_required" ? "#f59e0b" : "#64748b")}">${bridge?.status ?? "disconnected"}</span>
+        </div>
+        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+          Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong> · Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong>
+        </div>
+        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+          Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a site requests approval.")}</div>
       </section>
 
       <section style="display:grid;gap:12px">

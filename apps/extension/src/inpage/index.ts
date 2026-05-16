@@ -2,10 +2,13 @@ import {
   ACORUS_INPAGE_REQUEST,
   ACORUS_INPAGE_RESPONSE,
   createRequestId,
+  isInpageStateEnvelope,
   isAcorusProviderMethod,
+  type InpageStateEnvelope,
   type InpageRequestEnvelope,
   type InpageResponseEnvelope,
 } from "../shared/protocol";
+import type { DappBridgeSessionView } from "@acorus/shared";
 
 declare global {
   interface Window {
@@ -25,12 +28,23 @@ const pendingRequests = new Map<
   }
 >();
 
+let bridgeState: DappBridgeSessionView = {
+  origin: window.location.origin,
+  status: "disconnected",
+  providerMode: "stub_only",
+  accounts: [],
+  chainIds: [],
+  activeChainId: null,
+  permissions: [],
+  updatedAt: new Date().toISOString(),
+};
+
 window.addEventListener("message", handleInpageResponse);
 
 window.acorus = {
   isAcorus: true,
   isConnected() {
-    return false;
+    return bridgeState.status === "connected";
   },
   async request(input) {
     if (!isAcorusProviderMethod(input.method)) {
@@ -61,6 +75,11 @@ function handleInpageResponse(event: MessageEvent<unknown>): void {
 
   const data = event.data;
 
+  if (isInpageStateEnvelope(data)) {
+    applyBridgeState(data);
+    return;
+  }
+
   if (
     typeof data !== "object"
     || data === null
@@ -85,6 +104,42 @@ function handleInpageResponse(event: MessageEvent<unknown>): void {
   }
 
   pending.reject(
-    new Error(response.error?.message ?? "Acorus extension request failed."),
+    createProviderError(
+      response.error?.code ?? "provider_error",
+      response.error?.message ?? "Acorus extension request failed.",
+    ),
   );
+}
+
+function applyBridgeState(envelope: InpageStateEnvelope): void {
+  const previous = bridgeState;
+  bridgeState = envelope.state;
+
+  window.dispatchEvent(
+    new CustomEvent("acorus#stateChanged", {
+      detail: bridgeState,
+    }),
+  );
+
+  if (JSON.stringify(previous.accounts) !== JSON.stringify(bridgeState.accounts)) {
+    window.dispatchEvent(
+      new CustomEvent("acorus#accountsChanged", {
+        detail: bridgeState.accounts,
+      }),
+    );
+  }
+
+  if (previous.activeChainId !== bridgeState.activeChainId) {
+    window.dispatchEvent(
+      new CustomEvent("acorus#chainChanged", {
+        detail: bridgeState.activeChainId,
+      }),
+    );
+  }
+}
+
+function createProviderError(code: string, message: string): Error {
+  const error = new Error(message);
+  error.name = code;
+  return error;
 }

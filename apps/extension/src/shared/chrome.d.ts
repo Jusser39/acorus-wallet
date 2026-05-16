@@ -32,6 +32,11 @@ declare namespace chrome {
   }
 
   namespace storage {
+    type StorageChange = {
+      oldValue?: unknown;
+      newValue?: unknown;
+    };
+
     namespace local {
       function get(
         keys?: string | string[] | Record<string, unknown> | null,
@@ -39,5 +44,14 @@ declare namespace chrome {
 
       function set(items: Record<string, unknown>): Promise<void>;
     }
+
+    const onChanged: {
+      addListener(
+        listener: (
+          changes: Record<string, StorageChange>,
+          areaName: string,
+        ) => void,
+      ): void;
+    };
   }
 }

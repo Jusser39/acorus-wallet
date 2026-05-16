@@ -43,7 +43,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell plus preview dApp session/permission queue surfaces; WalletConnect / live provider connectivity / real swap execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, and a live preview-backed connect/accounts/chainId bridge; WalletConnect / signing approval / real swap execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Security hardening wave
@@ -561,5 +561,40 @@
 - VPS verified:
   - `/health` returns `store: "prisma"` on loopback and public `:8080`
   - public route `/dapps` returns HTTP 200 after rollout
+  - persistence verification still passes after `docker compose restart api`
+
+## Universal dApp Live Bridge (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS for the web shell**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_dapp_live_bridge_plan.md`
+- Report: `docs/universal_dapp_live_bridge_report.md`
+- New shared/core capabilities:
+  - `packages/shared/src/dapp.ts` now models live origin bridge state, provider exposure mode, active chain tracking, and connect proposal helpers
+  - shared dApp reducers now support active-chain switching and origin bridge snapshots
+- New extension/web capabilities:
+  - `apps/extension` now exposes a live preview-backed bridge for `acorus_requestAccounts`, `acorus_accounts`, `acorus_chainId`, and `acorus_switchChain`
+  - content and inpage surfaces now sync origin bridge state and emit provider state change events
+  - `/dapps` and `/extension` now describe the bridge as live for connect/network metadata while keeping sign/send blocked
+- Safety boundary maintained:
+  - no mnemonic/privateKey/passcode exposure
+  - no signing output
+  - no transaction broadcast
+  - no WalletConnect
+  - no backend custody changes
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/shared test`
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - public routes `/dapps` and `/extension` return HTTP 200 after rollout
   - persistence verification still passes after `docker compose restart api`
 

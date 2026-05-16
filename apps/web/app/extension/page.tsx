@@ -2,7 +2,7 @@ const EXTENSION_PHASES = [
   "Manifest V3 extension shell",
   "Background service worker",
   "Content script bridge",
-  "Inpage provider",
+  "Live preview inpage provider",
   "Popup wallet UI",
   "Permission prompts",
   "Connected sites",
@@ -19,18 +19,57 @@ export default function ExtensionPage() {
           Chrome Extension
         </p>
         <h1 className="text-3xl font-semibold text-white">
-          Browser wallet roadmap
+          Browser wallet preview bridge
         </h1>
         <p className="text-sm text-slate-300">
-          The final goal is to connect Acorus Wallet to crypto websites through
-          a secure browser extension. This page tracks the architecture before
-          implementation.
+          Acorus Wallet now has a live preview-backed browser bridge for
+          connection approval, account listing, active chain reads and
+          switch-chain prompts. Signing, send execution and WalletConnect remain
+          disabled.
         </p>
       </div>
 
-      <div className="rounded-3xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-100">
-        Extension is not implemented yet. Do not expose keys to websites,
-        content scripts or injected providers.
+      <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
+        Current bridge mode is preview-backed only. Websites can never reach
+        mnemonic, private keys, passcode, signing payloads or transaction
+        broadcast in this wave.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+          <h2 className="text-lg font-semibold text-white">Live now</h2>
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-cyan-100">
+            {[
+              "acorus_requestAccounts",
+              "acorus_accounts",
+              "acorus_chainId",
+              "acorus_switchChain",
+            ].map((method) => (
+              <span
+                key={method}
+                className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1"
+              >
+                {method}
+              </span>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-slate-300">
+            The first live bridge layer routes page requests into the extension
+            permission shell and exposes only approved preview-backed accounts
+            and chains.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+          <h2 className="text-lg font-semibold text-white">Still blocked</h2>
+          <ul className="mt-4 space-y-2 text-sm text-slate-300">
+            <li>Message signing</li>
+            <li>Typed data signing</li>
+            <li>Transaction signing</li>
+            <li>Transaction broadcast</li>
+            <li>WalletConnect pairing</li>
+          </ul>
+        </div>
       </div>
 
       <div className="grid gap-3">
@@ -49,7 +88,7 @@ export default function ExtensionPage() {
             </div>
 
             <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-xs font-semibold text-slate-300">
-              Planned
+              {index < 4 ? "Preview" : "Planned"}
             </span>
           </div>
         ))}

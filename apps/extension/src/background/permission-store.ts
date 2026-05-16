@@ -1,11 +1,18 @@
 import {
   approveDappProposal,
   approveDappRequest,
+  createDappBridgeSessionView,
   createDemoDappShellSnapshot,
+  ensureDappConnectionProposal,
+  getActiveDappSession,
   rejectDappProposal,
   rejectDappRequest,
   revokeDappSession,
+  setDappSessionActiveChain,
+  touchDappSession,
   type DappShellSnapshot,
+  type DappBridgeSessionView,
+  type ChainId,
 } from "@acorus/shared";
 
 const DAPP_SHELL_STATE_KEY = "acorus_dapp_shell_state";
@@ -69,4 +76,54 @@ export async function revokeSessionInRegistry(
   const next = revokeDappSession(await getDappShellState(), sessionId);
   await setDappShellState(next);
   return next;
+}
+
+export async function getOriginBridgeState(
+  origin: string,
+): Promise<DappBridgeSessionView> {
+  return createDappBridgeSessionView(await getDappShellState(), origin);
+}
+
+export async function ensureOriginConnectionProposal(
+  origin: string,
+): Promise<DappBridgeSessionView> {
+  const current = await getDappShellState();
+  const ensured = ensureDappConnectionProposal(current, { origin });
+
+  if (ensured.created) {
+    await setDappShellState(ensured.snapshot);
+  }
+
+  return createDappBridgeSessionView(ensured.snapshot, origin);
+}
+
+export async function touchOriginSession(
+  origin: string,
+): Promise<DappBridgeSessionView> {
+  const current = await getDappShellState();
+  const session = getActiveDappSession(current, origin);
+
+  if (!session) {
+    return createDappBridgeSessionView(current, origin);
+  }
+
+  const next = touchDappSession(current, session.id);
+  await setDappShellState(next);
+  return createDappBridgeSessionView(next, origin);
+}
+
+export async function switchOriginSessionChain(
+  origin: string,
+  chainId: ChainId,
+): Promise<DappBridgeSessionView> {
+  const current = await getDappShellState();
+  const session = getActiveDappSession(current, origin);
+
+  if (!session) {
+    return createDappBridgeSessionView(current, origin);
+  }
+
+  const next = setDappSessionActiveChain(current, session.id, chainId);
+  await setDappShellState(next);
+  return createDappBridgeSessionView(next, origin);
 }

@@ -1,5 +1,6 @@
 import type {
   DappApprovalResult,
+  DappBridgeSessionView,
   DappRequest,
   DappSession,
   DappSessionProposal,
@@ -7,6 +8,7 @@ import type {
 
 export const ACORUS_INPAGE_REQUEST = "acorus:inpage-request";
 export const ACORUS_INPAGE_RESPONSE = "acorus:inpage-response";
+export const ACORUS_INPAGE_STATE = "acorus:inpage-state";
 
 export type ExtensionSurface =
   | "background"
@@ -27,12 +29,13 @@ export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];
 
 export type BackgroundStateSnapshot = {
   phase: "permission_shell";
-  providerInjection: "stub_only";
+  providerInjection: "stub_only" | "preview_bridge";
   executionEnabled: false;
   proposals: DappSessionProposal[];
   sessions: DappSession[];
   pendingRequests: DappRequest[];
   approvalResults: DappApprovalResult[];
+  activeOriginBridge?: DappBridgeSessionView | null;
   supportedMethods: readonly AcorusProviderMethod[];
   lastUpdatedAt: string;
   activeOrigin?: string | null;
@@ -117,14 +120,19 @@ export type InpageResponseEnvelope = {
   };
 };
 
+export type InpageStateEnvelope = {
+  type: typeof ACORUS_INPAGE_STATE;
+  state: DappBridgeSessionView;
+};
+
 export const EXTENSION_PHASES = [
   "Manifest V3 shell",
   "Background message router",
   "Content-to-inpage bridge",
-  "Stub provider exposure",
+  "Live preview provider bridge",
   "Popup and options shells",
   "Permission store types",
-  "Connected sites UX later",
+  "Connected sites UX",
   "Permission queue shell",
   "EVM compatibility later",
   "Solana compatibility later",
@@ -150,16 +158,19 @@ export function createSkeletonState(input?: {
   sessions?: DappSession[];
   pendingRequests?: DappRequest[];
   approvalResults?: DappApprovalResult[];
+  activeOriginBridge?: DappBridgeSessionView | null;
   lastUpdatedAt?: string;
+  providerInjection?: BackgroundStateSnapshot["providerInjection"];
 }): BackgroundStateSnapshot {
   return {
     phase: "permission_shell",
-    providerInjection: "stub_only",
+    providerInjection: input?.providerInjection ?? "stub_only",
     executionEnabled: false,
     proposals: input?.proposals ?? [],
     sessions: input?.sessions ?? [],
     pendingRequests: input?.pendingRequests ?? [],
     approvalResults: input?.approvalResults ?? [],
+    activeOriginBridge: input?.activeOriginBridge ?? null,
     supportedMethods: ACORUS_PROVIDER_METHODS,
     lastUpdatedAt: input?.lastUpdatedAt ?? new Date().toISOString(),
     activeOrigin: input?.activeOrigin ?? null,
@@ -179,5 +190,21 @@ export function isInpageRequestEnvelope(
     && typeof candidate.requestId === "string"
     && typeof candidate.method === "string"
     && isAcorusProviderMethod(candidate.method)
+  );
+}
+
+export function isInpageStateEnvelope(
+  value: unknown,
+): value is InpageStateEnvelope {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<InpageStateEnvelope>;
+  return (
+    candidate.type === ACORUS_INPAGE_STATE
+    && typeof candidate.state === "object"
+    && candidate.state !== null
+    && typeof (candidate.state as Partial<DappBridgeSessionView>).origin === "string"
   );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACORUS_PROVIDER_METHODS,
   createSkeletonState,
+  isInpageStateEnvelope,
   isAcorusProviderMethod,
 } from "./protocol";
 
@@ -22,5 +23,23 @@ describe("extension protocol", () => {
     expect(state.activeOrigin).toBe("https://app.example");
     expect(state.proposals).toEqual([]);
     expect(state.pendingRequests).toEqual([]);
+  });
+
+  it("recognizes bridge state envelopes", () => {
+    expect(
+      isInpageStateEnvelope({
+        type: "acorus:inpage-state",
+        state: {
+          origin: "https://app.example",
+          status: "disconnected",
+          providerMode: "stub_only",
+          accounts: [],
+          chainIds: [],
+          activeChainId: null,
+          permissions: [],
+          updatedAt: "2026-05-16T00:00:00.000Z",
+        },
+      }),
+    ).toBe(true);
   });
 });

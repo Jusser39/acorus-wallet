@@ -26,6 +26,16 @@ export type DappRequestStatus = "pending" | "approved" | "rejected";
 
 export type DappApprovalDecision = "approved" | "rejected";
 
+export type DappProviderExposureMode =
+  | "stub_only"
+  | "preview_accounts"
+  | "wallet_backed";
+
+export type DappBridgeConnectionStatus =
+  | "disconnected"
+  | "approval_required"
+  | "connected";
+
 export type DappOriginMetadata = {
   origin: string;
   title: string;
@@ -56,6 +66,7 @@ export type DappSession = {
   origin: DappOriginMetadata;
   accounts: string[];
   chainIds: ChainId[];
+  activeChainId?: ChainId | null;
   permissions: DappPermissionScope[];
   status: DappSessionStatus;
   connectedAt: string;
@@ -93,6 +104,42 @@ export type DappShellSnapshot = {
   approvalResults: DappApprovalResult[];
   updatedAt: string;
 };
+
+export type DappBridgeSessionView = {
+  origin: string;
+  status: DappBridgeConnectionStatus;
+  providerMode: DappProviderExposureMode;
+  sessionId?: string | null;
+  proposalId?: string | null;
+  accounts: string[];
+  chainIds: ChainId[];
+  activeChainId?: ChainId | null;
+  permissions: DappPermissionScope[];
+  warning?: string | null;
+  updatedAt: string;
+};
+
+export type EnsureDappConnectionProposalInput = {
+  origin: string;
+  requestedAccounts?: string[];
+  requestedChainIds?: ChainId[];
+  requestedPermissions?: DappPermissionScope[];
+  title?: string;
+  description?: string | null;
+  trustLevel?: DappTrustLevel;
+  warning?: string | null;
+};
+
+export type EnsureDappConnectionProposalResult = {
+  snapshot: DappShellSnapshot;
+  proposal: DappSessionProposal;
+  created: boolean;
+};
+
+export const PREVIEW_DAPP_BRIDGE_ACCOUNT =
+  "0x123400000000000000000000000000000000abcd";
+
+export const PREVIEW_DAPP_BRIDGE_CHAIN_IDS: ChainId[] = [1, 137, 8453];
 
 export const DAPP_PERMISSION_DEFINITIONS: DappPermission[] = [
   {
@@ -136,7 +183,6 @@ const DEMO_TIMESTAMPS = {
   proposal: "2026-05-16T12:00:00.000Z",
   session: "2026-05-16T12:05:00.000Z",
   request: "2026-05-16T12:10:00.000Z",
-  approval: "2026-05-16T12:12:00.000Z",
 } as const;
 
 export function getDappPermissionDefinition(
@@ -199,7 +245,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
   const swapOrigin: DappOriginMetadata = {
     origin: "https://swap.demo.acorus.app",
     title: "Acorus Demo Swap",
-    description: "Preview-only swap dApp shell for permission UX.",
+    description: "Preview-backed swap dApp shell for permission UX.",
     trustLevel: "trusted",
   };
   const questsOrigin: DappOriginMetadata = {
@@ -214,12 +260,12 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "proposal_demo_quests_connect",
         origin: questsOrigin,
-        requestedAccounts: ["0x123400000000000000000000000000000000abcd"],
+        requestedAccounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
         requestedChainIds: [1, 101],
         requestedPermissions: ["view_accounts", "view_chain"],
         status: "pending",
         warning:
-          "Preview proposal only. No real site connectivity or account access is enabled in this wave.",
+          "Preview proposal only. A live page-to-extension bridge can queue approvals, but wallet-backed accounts are still disabled.",
         createdAt: DEMO_TIMESTAMPS.proposal,
       },
     ],
@@ -227,14 +273,15 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
       {
         id: "session_demo_swap",
         origin: swapOrigin,
-        accounts: ["0x123400000000000000000000000000000000abcd"],
-        chainIds: [1],
+        accounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
+        chainIds: [1, 137, 8453],
+        activeChainId: 1,
         permissions: ["view_accounts", "view_chain", "switch_chain"],
         status: "active",
         connectedAt: DEMO_TIMESTAMPS.session,
         lastUsedAt: DEMO_TIMESTAMPS.request,
         warning:
-          "Preview session only. Signing and send requests remain disabled until a later wave.",
+          "Bridge connectivity is live in preview-backed mode only. Signing and send requests remain disabled until a later wave.",
       },
     ],
     pendingRequests: [
@@ -243,7 +290,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
         sessionId: "session_demo_swap",
         kind: "sign_message",
         origin: swapOrigin,
-        account: "0x123400000000000000000000000000000000abcd",
+        account: PREVIEW_DAPP_BRIDGE_ACCOUNT,
         chainId: 1,
         requestedPermissions: ["sign_message"],
         summary:
@@ -259,6 +306,116 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
   };
 }
 
+export function hasDappPermission(
+  session: DappSession,
+  permission: DappPermissionScope,
+): boolean {
+  return session.permissions.includes(permission);
+}
+
+export function getDappSessionActiveChainId(
+  session: DappSession,
+): ChainId | null {
+  return session.activeChainId ?? session.chainIds[0] ?? null;
+}
+
+export function getActiveDappSession(
+  snapshot: DappShellSnapshot,
+  origin: string,
+): DappSession | null {
+  return (
+    snapshot.sessions.find(
+      (session) =>
+        session.origin.origin === origin && session.status === "active",
+    ) ?? null
+  );
+}
+
+export function getPendingDappProposal(
+  snapshot: DappShellSnapshot,
+  origin: string,
+): DappSessionProposal | null {
+  return (
+    snapshot.proposals.find(
+      (proposal) =>
+        proposal.origin.origin === origin && proposal.status === "pending",
+    ) ?? null
+  );
+}
+
+export function createDappOriginMetadata(input: {
+  origin: string;
+  title?: string;
+  description?: string | null;
+  trustLevel?: DappTrustLevel;
+}): DappOriginMetadata {
+  const fallbackTitle = getHostnameLabel(input.origin);
+
+  return {
+    origin: input.origin,
+    title: input.title ?? fallbackTitle,
+    description:
+      input.description
+      ?? "Live extension bridge request in preview-backed mode.",
+    trustLevel: input.trustLevel ?? "unknown",
+  };
+}
+
+export function ensureDappConnectionProposal(
+  snapshot: DappShellSnapshot,
+  input: EnsureDappConnectionProposalInput,
+): EnsureDappConnectionProposalResult {
+  const existing = getPendingDappProposal(snapshot, input.origin);
+
+  if (existing) {
+    return {
+      snapshot,
+      proposal: existing,
+      created: false,
+    };
+  }
+
+  const createdAt = new Date().toISOString();
+  const requestedAccounts = [...new Set(input.requestedAccounts ?? [PREVIEW_DAPP_BRIDGE_ACCOUNT])];
+  const requestedChainIds = [...new Set(input.requestedChainIds ?? PREVIEW_DAPP_BRIDGE_CHAIN_IDS)];
+  const requestedPermissions: DappPermissionScope[] = [
+    ...new Set<DappPermissionScope>(
+      input.requestedPermissions ?? [
+        "view_accounts",
+        "view_chain",
+        "switch_chain",
+      ],
+    ),
+  ];
+  const proposal: DappSessionProposal = {
+    id: `proposal_${sanitizeOrigin(input.origin)}_${Date.now()}`,
+    origin: createDappOriginMetadata({
+      origin: input.origin,
+      title: input.title,
+      description: input.description,
+      trustLevel: input.trustLevel,
+    }),
+    requestedAccounts,
+    requestedChainIds,
+    requestedPermissions,
+    status: "pending",
+    warning:
+      input.warning
+      ?? "The page-to-extension bridge is live, but approved accounts remain preview-backed until wallet profile integration ships.",
+    createdAt,
+  };
+
+  return {
+    snapshot: {
+      ...snapshot,
+      proposals: [proposal, ...snapshot.proposals],
+      updatedAt: createdAt,
+    },
+    proposal,
+    created: true,
+  };
+}
+
 export function approveDappProposal(
   snapshot: DappShellSnapshot,
   proposalId: string,
@@ -269,17 +426,19 @@ export function approveDappProposal(
     return snapshot;
   }
 
+  const decidedAt = new Date().toISOString();
   const nextSession: DappSession = {
     id: `session_${proposal.id}`,
     origin: proposal.origin,
     accounts: proposal.requestedAccounts,
     chainIds: proposal.requestedChainIds,
+    activeChainId: proposal.requestedChainIds[0] ?? null,
     permissions: proposal.requestedPermissions,
     status: "active",
-    connectedAt: snapshot.updatedAt,
+    connectedAt: decidedAt,
     lastUsedAt: null,
     warning:
-      "Approved in preview mode only. Live connectivity remains disabled until a later wave.",
+      "Approved in preview-backed bridge mode only. Wallet-backed account exposure, signing, and send execution remain disabled.",
   };
 
   return {
@@ -291,10 +450,11 @@ export function approveDappProposal(
         targetKind: "proposal",
         targetId: proposalId,
         decision: "approved",
+        decidedAt,
       }),
       ...snapshot.approvalResults,
     ],
-    updatedAt: new Date().toISOString(),
+    updatedAt: decidedAt,
   };
 }
 
@@ -307,6 +467,7 @@ export function rejectDappProposal(
     return snapshot;
   }
 
+  const decidedAt = new Date().toISOString();
   return {
     proposals: snapshot.proposals.filter((item) => item.id !== proposalId),
     sessions: snapshot.sessions,
@@ -317,10 +478,11 @@ export function rejectDappProposal(
         targetId: proposalId,
         decision: "rejected",
         reason: reason ?? "Rejected in preview shell.",
+        decidedAt,
       }),
       ...snapshot.approvalResults,
     ],
-    updatedAt: new Date().toISOString(),
+    updatedAt: decidedAt,
   };
 }
 
@@ -334,13 +496,14 @@ export function approveDappRequest(
     return snapshot;
   }
 
+  const decidedAt = new Date().toISOString();
   return {
     proposals: snapshot.proposals,
     sessions: snapshot.sessions.map((session) =>
       session.id === request.sessionId
         ? {
             ...session,
-            lastUsedAt: new Date().toISOString(),
+            lastUsedAt: decidedAt,
           }
         : session,
     ),
@@ -350,10 +513,11 @@ export function approveDappRequest(
         targetKind: "request",
         targetId: requestId,
         decision: "approved",
+        decidedAt,
       }),
       ...snapshot.approvalResults,
     ],
-    updatedAt: new Date().toISOString(),
+    updatedAt: decidedAt,
   };
 }
 
@@ -366,6 +530,7 @@ export function rejectDappRequest(
     return snapshot;
   }
 
+  const decidedAt = new Date().toISOString();
   return {
     proposals: snapshot.proposals,
     sessions: snapshot.sessions,
@@ -376,10 +541,11 @@ export function rejectDappRequest(
         targetId: requestId,
         decision: "rejected",
         reason: reason ?? "Rejected in preview shell.",
+        decidedAt,
       }),
       ...snapshot.approvalResults,
     ],
-    updatedAt: new Date().toISOString(),
+    updatedAt: decidedAt,
   };
 }
 
@@ -391,6 +557,7 @@ export function revokeDappSession(
     return snapshot;
   }
 
+  const decidedAt = new Date().toISOString();
   return {
     proposals: snapshot.proposals,
     sessions: snapshot.sessions.map((session) =>
@@ -410,10 +577,119 @@ export function revokeDappSession(
         targetId: sessionId,
         decision: "rejected",
         reason: "Session revoked in preview shell.",
+        decidedAt,
       }),
       ...snapshot.approvalResults,
     ],
-    updatedAt: new Date().toISOString(),
+    updatedAt: decidedAt,
+  };
+}
+
+export function touchDappSession(
+  snapshot: DappShellSnapshot,
+  sessionId: string,
+): DappShellSnapshot {
+  if (!snapshot.sessions.some((item) => item.id === sessionId)) {
+    return snapshot;
+  }
+
+  const touchedAt = new Date().toISOString();
+  return {
+    ...snapshot,
+    sessions: snapshot.sessions.map((session) =>
+      session.id === sessionId
+        ? {
+            ...session,
+            lastUsedAt: touchedAt,
+          }
+        : session,
+    ),
+    updatedAt: touchedAt,
+  };
+}
+
+export function setDappSessionActiveChain(
+  snapshot: DappShellSnapshot,
+  sessionId: string,
+  chainId: ChainId,
+): DappShellSnapshot {
+  if (!snapshot.sessions.some((item) => item.id === sessionId)) {
+    return snapshot;
+  }
+
+  const updatedAt = new Date().toISOString();
+  return {
+    ...snapshot,
+    sessions: snapshot.sessions.map((session) =>
+      session.id === sessionId
+        ? {
+            ...session,
+            activeChainId: chainId,
+            lastUsedAt: updatedAt,
+          }
+        : session,
+    ),
+    updatedAt,
+  };
+}
+
+export function createDappBridgeSessionView(
+  snapshot: DappShellSnapshot,
+  origin: string,
+): DappBridgeSessionView {
+  const activeSession = getActiveDappSession(snapshot, origin);
+
+  if (activeSession) {
+    return {
+      origin,
+      status: "connected",
+      providerMode: "preview_accounts",
+      sessionId: activeSession.id,
+      proposalId: null,
+      accounts: activeSession.accounts,
+      chainIds: activeSession.chainIds,
+      activeChainId: getDappSessionActiveChainId(activeSession),
+      permissions: activeSession.permissions,
+      warning:
+        activeSession.warning
+        ?? "Session is connected through the live extension bridge in preview-backed mode.",
+      updatedAt: snapshot.updatedAt,
+    };
+  }
+
+  const pendingProposal = getPendingDappProposal(snapshot, origin);
+
+  if (pendingProposal) {
+    return {
+      origin,
+      status: "approval_required",
+      providerMode: "preview_accounts",
+      sessionId: null,
+      proposalId: pendingProposal.id,
+      accounts: pendingProposal.requestedAccounts,
+      chainIds: pendingProposal.requestedChainIds,
+      activeChainId: pendingProposal.requestedChainIds[0] ?? null,
+      permissions: pendingProposal.requestedPermissions,
+      warning:
+        pendingProposal.warning
+        ?? "Approval is required before the live bridge exposes preview-backed accounts.",
+      updatedAt: snapshot.updatedAt,
+    };
+  }
+
+  return {
+    origin,
+    status: "disconnected",
+    providerMode: "stub_only",
+    sessionId: null,
+    proposalId: null,
+    accounts: [],
+    chainIds: [],
+    activeChainId: null,
+    permissions: [],
+    warning:
+      "No live session exists for this origin yet. The site must request approval first.",
+    updatedAt: snapshot.updatedAt,
   };
 }
 
@@ -422,13 +698,36 @@ function createApprovalResult(input: {
   targetId: string;
   decision: DappApprovalDecision;
   reason?: string | null;
+  decidedAt: string;
 }): DappApprovalResult {
   return {
     id: `approval_${input.targetKind}_${input.targetId}_${Date.now()}`,
     targetKind: input.targetKind,
     targetId: input.targetId,
     decision: input.decision,
-    decidedAt: new Date().toISOString(),
+    decidedAt: input.decidedAt,
     reason: input.reason ?? null,
   };
+}
+
+function getHostnameLabel(origin: string): string {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.replace(/^www\./, "");
+    if (!host) {
+      return "Unknown dApp";
+    }
+
+    return host
+      .split(".")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  } catch {
+    return "Unknown dApp";
+  }
+}
+
+function sanitizeOrigin(origin: string): string {
+  return origin.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }

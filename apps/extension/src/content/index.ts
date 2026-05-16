@@ -1,15 +1,24 @@
 import {
-  ACORUS_INPAGE_REQUEST,
   ACORUS_INPAGE_RESPONSE,
+  ACORUS_INPAGE_STATE,
+  createRequestId,
   isInpageRequestEnvelope,
+  type BackgroundStateSnapshot,
   type ExtensionRuntimeResponse,
   type InpageResponseEnvelope,
+  type InpageStateEnvelope,
 } from "../shared/protocol";
 
 const INPAGE_SCRIPT_ID = "acorus-extension-inpage";
 
 injectInpageProvider();
 window.addEventListener("message", handleWindowMessage);
+chrome.storage.onChanged.addListener((_changes, areaName) => {
+  if (areaName === "local") {
+    void syncOriginState();
+  }
+});
+void syncOriginState();
 
 function injectInpageProvider(): void {
   if (document.getElementById(INPAGE_SCRIPT_ID)) {
@@ -42,6 +51,7 @@ function handleWindowMessage(event: MessageEvent<unknown>): void {
     })
     .then((response) => {
       postInpageResponse(request.requestId, response as ExtensionRuntimeResponse);
+      return syncOriginState();
     })
     .catch((error) => {
       const response: InpageResponseEnvelope = {
@@ -74,4 +84,34 @@ function postInpageResponse(
   };
 
   window.postMessage(payload, window.location.origin);
+}
+
+async function syncOriginState(): Promise<void> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      kind: "get_state",
+      requestId: createRequestId("content"),
+      surface: "content",
+      origin: window.location.origin,
+    })) as ExtensionRuntimeResponse;
+
+    if (!response.ok || !response.result) {
+      return;
+    }
+
+    const state = response.result as BackgroundStateSnapshot;
+
+    if (!state.activeOriginBridge) {
+      return;
+    }
+
+    const payload: InpageStateEnvelope = {
+      type: ACORUS_INPAGE_STATE,
+      state: state.activeOriginBridge,
+    };
+
+    window.postMessage(payload, window.location.origin);
+  } catch {
+    // ignore bridge sync failures in content script; request path still reports errors explicitly
+  }
 }

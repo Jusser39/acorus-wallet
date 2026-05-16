@@ -6,7 +6,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 
 - Next.js App Router web/PWA shell
 - Fastify API for anonymous users, wallet profiles, contacts, transaction records, chains, tokens, and price stubs
-- `apps/extension` Manifest V3 extension shell with preview dApp session registry and permission queue
+- `apps/extension` Manifest V3 extension shell with live preview-backed dApp bridge, session registry, and permission queue
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap/dapp types, practice content
 - Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
@@ -78,7 +78,7 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
 - Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
 - No WalletConnect, NFT send/burn, real swap execution, or cross-chain swap execution yet
-- Universal dApp session / permission shell now exists in preview mode on web and in the extension, but live site connectivity, account exposure, signing, send execution, and provider compatibility remain disabled
+- Universal dApp connect/accounts/chainId/switchChain bridge now exists in preview-backed mode on web and in the extension, but signing, send execution, WalletConnect, and wallet-backed provider compatibility remain disabled
 
 ## Docs
 
@@ -94,6 +94,8 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/universal_swap_quote_engine_plan.md`
 - `docs/universal_swap_quote_engine_report.md`
 - `docs/universal_dapp_shell_plan.md`
+- `docs/universal_dapp_live_bridge_plan.md`
+- `docs/universal_dapp_live_bridge_report.md`
 - `docs/universal_dapp_session_permission_shell_plan.md`
 - `docs/universal_dapp_session_permission_shell_report.md`
 - `docs/wallet_product_benchmark_ux_upgrade_report.md`

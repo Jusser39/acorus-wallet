@@ -42,13 +42,14 @@ async function loadOptionsState(): Promise<void> {
 }
 
 function renderOptions(state: BackgroundStateSnapshot): string {
+  const bridge = state.activeOriginBridge;
   return `
     <main style="max-width:1100px;margin:0 auto;padding:32px 20px 48px;display:flex;flex-direction:column;gap:20px">
       <section style="border:1px solid rgba(71,85,105,0.5);background:rgba(15,23,42,0.9);border-radius:28px;padding:24px">
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell mirrors the preview session registry and approval queue. Live provider connectivity, account exposure, signing, and send execution remain disabled.
+          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, and switchChain can flow through the extension after approval, while signing and send execution remain disabled.
         </p>
       </section>
 
@@ -64,6 +65,21 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);border-radius:24px;padding:20px;color:#d1fae5">
           <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.14em">Active sessions</div>
           <div style="margin-top:10px;font-size:32px;font-weight:700">${state.sessions.filter((session) => session.status === "active").length}</div>
+        </div>
+        <div style="border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.12);border-radius:24px;padding:20px;color:#e9d5ff">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.14em">Bridge status</div>
+          <div style="margin-top:10px;font-size:32px;font-weight:700">${escapeHtml(bridge?.status ?? "disconnected")}</div>
+        </div>
+      </section>
+
+      <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
+        <h2 style="margin:0 0 10px;font-size:20px">Active origin bridge</h2>
+        <div style="display:grid;gap:8px">
+          <div style="font-size:14px;color:#fff">${escapeHtml(bridge?.origin ?? "No active origin selected")}</div>
+          <div style="font-size:14px;color:#cbd5e1">Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">Approved accounts: <strong>${escapeHtml((bridge?.accounts ?? []).join(", ") || "none")}</strong></div>
+          <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a page requests approval.")}</div>
         </div>
       </section>
 
@@ -106,7 +122,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
               <li>No silent approvals or background signing</li>
               <li>No WalletConnect in this wave</li>
               <li>No live transaction signing or broadcast</li>
-              <li>No real account exposure outside preview data</li>
+              <li>No wallet-backed account exposure outside preview-backed bridge data</li>
             </ul>
           </section>
 
@@ -125,7 +141,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
                 <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
                 <div style="margin-top:4px;font-weight:600;color:#fff">${phase}</div>
               </div>
-              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 2 ? "Preview" : "Planned"}</span>
+              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 4 ? "Preview" : "Planned"}</span>
             </div>`,
         ).join("")}
       </section>

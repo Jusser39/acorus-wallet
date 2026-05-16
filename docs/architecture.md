@@ -25,8 +25,8 @@ Acorus Wallet uses a **TypeScript monorepo** with clear separation between:
 
 - `apps/extension` now provides a repository-level permission shell on top of the original Manifest V3 skeleton
 - Current surfaces: background service worker, content bridge, inpage provider stub, popup shell, options shell
-- The shell now models connected-site proposals, active sessions, pending requests, approval history, and revoke actions through shared dApp types
-- The provider stub is still non-live: no account access to real pages, no WalletConnect, no signing, no broadcast, no `window.ethereum` compatibility runtime yet
+- The shell now models connected-site proposals, active sessions, pending requests, approval history, revoke actions, and a live preview-backed origin bridge through shared dApp types
+- The provider bridge is live only for connect/accounts/chainId/switchChain with preview-backed account state; there is still no WalletConnect, no signing, no broadcast, and no `window.ethereum` compatibility runtime yet
 - Future dApp connectivity should continue to layer on top of this shell instead of introducing a second permission model
 
 ## Transaction flow
@@ -70,7 +70,7 @@ Current live/foundation capabilities:
 Target capabilities for the next expansion waves:
 
 - Swap quote/execution contracts
-- Dapp session/signing contracts and runtime bridge activation
+- Dapp signing/transaction review contracts on top of the active bridge
 - Capability metadata that lets the UI stay universal while honestly gating unsupported flows
 
 ## Future mobile architecture

@@ -1,4 +1,11 @@
 import {
+  createDappBridgeSessionView,
+  getActiveDappSession,
+  hasDappPermission,
+  type ChainId,
+} from "@acorus/shared";
+import {
+  type AcorusProviderMethod,
   createRequestId,
   createSkeletonState,
   isAcorusProviderMethod,
@@ -8,11 +15,14 @@ import {
 import {
   approveProposal,
   approveRequestInQueue,
+  ensureOriginConnectionProposal,
   getDappShellState,
   initializePermissionStore,
   rejectProposal,
   rejectRequestInQueue,
   revokeSessionInRegistry,
+  switchOriginSessionChain,
+  touchOriginSession,
 } from "./permission-store";
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -58,16 +68,23 @@ async function handleRuntimeMessage(
 
   if (input.kind === "get_state") {
     const state = await getDappShellState();
+    const activeOrigin =
+      input.origin ?? sender.origin ?? sender.url ?? null;
+
     return {
       requestId,
       ok: true,
       result: createSkeletonState({
-        activeOrigin: input.origin ?? sender.origin ?? sender.url ?? null,
+        activeOrigin,
         proposals: state.proposals,
         sessions: state.sessions,
         pendingRequests: state.pendingRequests,
         approvalResults: state.approvalResults,
+        activeOriginBridge: activeOrigin
+          ? createDappBridgeSessionView(state, activeOrigin)
+          : null,
         lastUpdatedAt: state.updatedAt,
+        providerInjection: "preview_bridge",
       }),
     };
   }
@@ -125,25 +142,24 @@ async function handleRuntimeMessage(
     }
 
     if (input.method === "acorus_ping") {
+      const state = await getDappShellState();
+      const bridge = createDappBridgeSessionView(state, input.origin);
+
       return {
         requestId,
         ok: true,
         result: {
-          provider: "acorus_extension_skeleton",
-          connectivity: "disabled",
+          provider: "acorus_extension_preview_bridge",
+          connectivity: bridge.status,
+          providerMode: bridge.providerMode,
           origin: input.origin,
+          accounts: bridge.accounts,
+          chainId: bridge.activeChainId,
         },
       };
     }
 
-    return {
-      requestId,
-      ok: false,
-      error: {
-        code: "not_enabled",
-        message: "Chrome extension skeleton is present, but live account access is disabled.",
-      },
-    };
+    return handleProviderMethod(requestId, input.origin, input.method, input.params);
   }
 
   return {
@@ -154,4 +170,150 @@ async function handleRuntimeMessage(
       message: "Unsupported extension message kind.",
     },
   };
+}
+
+async function handleProviderMethod(
+  requestId: string,
+  origin: string,
+  method: AcorusProviderMethod,
+  params?: unknown[],
+): Promise<ExtensionRuntimeResponse> {
+  const state = await getDappShellState();
+  const session = getActiveDappSession(state, origin);
+
+  if (method === "acorus_requestAccounts") {
+    if (session && hasDappPermission(session, "view_accounts")) {
+      const bridge = await touchOriginSession(origin);
+      return {
+        requestId,
+        ok: true,
+        result: bridge.accounts,
+      };
+    }
+
+    await ensureOriginConnectionProposal(origin);
+    return {
+      requestId,
+      ok: false,
+      error: {
+        code: "approval_required",
+        message:
+          "Approve the connection request in Acorus Wallet before retrying requestAccounts.",
+      },
+    };
+  }
+
+  if (method === "acorus_accounts") {
+    if (!session || !hasDappPermission(session, "view_accounts")) {
+      return {
+        requestId,
+        ok: true,
+        result: [],
+      };
+    }
+
+    return {
+      requestId,
+      ok: true,
+      result: session.accounts,
+    };
+  }
+
+  if (method === "acorus_chainId") {
+    if (!session || !hasDappPermission(session, "view_chain")) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "not_connected",
+          message:
+            "No approved session is connected for this origin, so the active chain is unavailable.",
+        },
+      };
+    }
+
+    const bridge = await touchOriginSession(origin);
+    return {
+      requestId,
+      ok: true,
+      result: bridge.activeChainId,
+    };
+  }
+
+  if (method === "acorus_switchChain") {
+    if (!session) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "not_connected",
+          message:
+            "No approved session is connected for this origin, so chain switching is unavailable.",
+        },
+      };
+    }
+
+    if (!hasDappPermission(session, "switch_chain")) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "permission_denied",
+          message:
+            "This session was not approved for chain switching.",
+        },
+      };
+    }
+
+    const requestedChainId = parseRequestedChainId(params?.[0]);
+
+    if (requestedChainId === null) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "bad_request",
+          message:
+            "acorus_switchChain expects the first parameter to be a string or number chain id.",
+        },
+      };
+    }
+
+    if (!session.chainIds.some((chainId) => String(chainId) === String(requestedChainId))) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "unsupported_chain",
+          message:
+            "This preview-backed session was not approved for the requested chain id.",
+        },
+      };
+    }
+
+    const bridge = await switchOriginSessionChain(origin, requestedChainId);
+    return {
+      requestId,
+      ok: true,
+      result: bridge.activeChainId,
+    };
+  }
+
+  return {
+    requestId,
+    ok: false,
+    error: {
+      code: "not_enabled",
+      message:
+        "This provider method is recognized, but it is not live in the current Acorus bridge wave.",
+    },
+  };
+}
+
+function parseRequestedChainId(value: unknown): ChainId | null {
+  if (typeof value === "number" || typeof value === "string") {
+    return value;
+  }
+
+  return null;
 }
