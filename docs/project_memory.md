@@ -20,6 +20,10 @@
   - `packages/shared` now defines queued provider-request helpers and approved-preview result objects
   - `apps/extension` now keeps sign/typed-data/transaction requests pending until popup/options approve or reject them
   - `/dapps` and `/extension` now describe live approval review while keeping real signatures and broadcast disabled
+- EVM Provider Compatibility wave implemented locally (2026-05-16)
+  - `apps/extension` now injects preview-backed `window.ethereum` compatibility in addition to `window.acorus`
+  - common EVM wallet methods now map into the live Acorus bridge and approval queue
+  - `/dapps`, `/extension`, README, and extension docs now describe the compatibility surface honestly
 - Token Management + Real Charts wave deployed (2026-05-15)
   - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
   - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
@@ -47,7 +51,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live preview-backed connect/accounts/chainId bridge, and sign/transaction approval review; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live preview-backed connect/accounts/chainId bridge, sign/transaction approval review, and preview-backed `window.ethereum` compatibility; WalletConnect / real signature output / real dApp send execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
@@ -71,7 +75,36 @@
   - no mnemonic/privateKey/passcode exposure to pages, content scripts, or backend
   - approvals can resolve preview results only; no real signature bytes or transaction hash are produced in this wave
 - Next sensible step:
-  - wallet-backed provider execution layer for approved requests, plus later compatibility surfaces (`window.ethereum`, Solana provider shape, WalletConnect) without weakening the current client-side custody boundary
+  - wallet-backed provider execution layer for approved requests, then Solana provider compatibility and WalletConnect without weakening the current client-side custody boundary
+
+## EVM Provider Compatibility Wave (2026-05-16)
+
+- Status: **implemented locally**
+- Extension runtime additions:
+  - `window.ethereum` is now injected alongside `window.acorus`
+  - common EVM wallet methods now route into the existing preview-backed Acorus bridge
+  - connect, accounts, chain metadata, and switch-chain requests now work through familiar EVM method names
+  - sign/send-style EVM methods now enter the same extension approval queue and still resolve preview-only
+- Supported EVM compatibility methods:
+  - `eth_requestAccounts`
+  - `eth_accounts`
+  - `eth_chainId`
+  - `net_version`
+  - `eth_coinbase`
+  - `wallet_switchEthereumChain`
+  - `personal_sign`
+  - `eth_signTypedData_v4`
+  - `eth_signTransaction`
+  - `eth_sendTransaction`
+- Product/UI additions:
+  - popup/options shells now disclose the EVM compatibility surface
+  - `/dapps` and `/extension` now describe both native Acorus methods and the preview-backed EVM method surface
+  - README, architecture, and extension roadmap now reflect that `window.ethereum` compatibility is live in preview-backed mode
+- Security boundary unchanged:
+  - no mnemonic/privateKey/passcode exposure to pages, content scripts, or backend
+  - no real signature bytes or real transaction hash are returned to websites in this wave
+- Next sensible step:
+  - wallet-backed provider execution for approved requests, then Solana provider compatibility and WalletConnect
 
 ## Security hardening wave
 

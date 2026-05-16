@@ -3,6 +3,7 @@ import {
   getDappRequestKindLabel,
   getDappSessionStatusLabel,
 } from "@acorus/shared";
+import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
   EXTENSION_PHASES,
   createRequestId,
@@ -11,11 +12,7 @@ import {
   type ExtensionRuntimeResponse,
 } from "../shared/protocol";
 
-const root = document.getElementById("app");
-
-if (!root) {
-  throw new Error("Options root not found.");
-}
+const root = getRoot("Options root not found.");
 
 void loadOptionsState();
 
@@ -49,7 +46,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, switchChain, and sign/transaction approval review can flow through the extension after approval, while real signing and send execution remain disabled.
+          This options shell now mirrors the live preview bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, and sign/transaction approval review can flow through the extension after approval, while real signing and send execution remain disabled.
         </p>
       </section>
 
@@ -79,6 +76,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
           <div style="font-size:14px;color:#cbd5e1">Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Approved accounts: <strong>${escapeHtml((bridge?.accounts ?? []).join(", ") || "none")}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong></div>
           <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a page requests approval.")}</div>
         </div>
       </section>
@@ -121,7 +119,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
               <li>No seed or private key in webpages or content scripts</li>
               <li>No silent approvals or background signing</li>
               <li>No WalletConnect in this wave</li>
-              <li>No live transaction signing or broadcast</li>
+              <li>No live transaction signing output or broadcast</li>
               <li>No wallet-backed account exposure outside preview-backed bridge data</li>
             </ul>
           </section>
@@ -141,12 +139,22 @@ function renderOptions(state: BackgroundStateSnapshot): string {
                 <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
                 <div style="margin-top:4px;font-weight:600;color:#fff">${phase}</div>
               </div>
-              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 8 ? "Preview" : "Planned"}</span>
+              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 9 ? "Preview" : "Planned"}</span>
             </div>`,
         ).join("")}
       </section>
     </main>
   `;
+}
+
+function getRoot(message: string): HTMLElement {
+  const element = document.getElementById("app");
+
+  if (!element) {
+    throw new Error(message);
+  }
+
+  return element;
 }
 
 function renderProposals(state: BackgroundStateSnapshot): string {

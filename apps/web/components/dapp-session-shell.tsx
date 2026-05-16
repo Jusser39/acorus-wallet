@@ -37,14 +37,18 @@ export function DappSessionShell() {
           dApps
         </p>
         <h1 className="text-3xl font-semibold text-white">
-          Universal dApp bridge is live in preview-backed mode
+          Universal dApp bridge now includes preview-backed EVM compatibility
         </h1>
         <p className="text-sm text-slate-300">
           Connected sites, permission prompts, request queue and revoke controls
-          now share one multichain dApp contract. Connect, accounts, chainId and
-          switchChain can now route through the extension bridge after approval.
-          Sign and transaction requests now also enter a live approval-review
-          queue, while real signature output and broadcast still stay disabled.
+          now share one multichain dApp contract. Connect, accounts, chainId,
+          switchChain, and common{" "}
+          <code className="rounded bg-slate-800 px-1 py-0.5 text-slate-100">
+            window.ethereum
+          </code>{" "}
+          requests can route through the extension bridge after approval. Sign
+          and transaction requests now also enter a live approval-review queue,
+          while real signature output and broadcast still stay disabled.
         </p>
       </div>
 
@@ -65,16 +69,16 @@ export function DappSessionShell() {
           tone="border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
         />
         <SummaryCard
-          label="Live bridge methods"
-          value={8}
+          label="Exposed methods"
+          value={18}
           tone="border-violet-500/30 bg-violet-500/10 text-violet-100"
         />
       </div>
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
         No website can access keys, mnemonic, passcode, or signing output in
-        this wave. The bridge is live for connection, network metadata, and
-        explicit approval review using preview-backed approved accounts;
+        this wave. The bridge is now live for both native Acorus methods and a
+        preview-backed EVM compatibility layer using approved session accounts;
         sign/send execution remains preview-only.
       </div>
 

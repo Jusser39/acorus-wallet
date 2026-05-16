@@ -138,7 +138,7 @@ export const EXTENSION_PHASES = [
   "Permission store types",
   "Connected sites UX",
   "Permission queue shell",
-  "EVM compatibility later",
+  "EVM compatibility",
   "Solana compatibility later",
 ] as const;
 

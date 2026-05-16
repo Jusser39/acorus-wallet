@@ -78,7 +78,7 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
 - Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
 - No WalletConnect, NFT send/burn, real swap execution, or cross-chain swap execution yet
-- Universal dApp connect/accounts/chainId/switchChain bridge now exists in preview-backed mode on web and in the extension, and sign/transaction requests can enter an explicit approval-review queue, but real signing output, send execution, WalletConnect, and wallet-backed provider compatibility remain disabled
+- Universal dApp bridge now includes preview-backed `window.ethereum` compatibility in the extension for common EVM wallet methods, and sign/transaction requests can enter an explicit approval-review queue, but real signing output, send execution, WalletConnect, and wallet-backed provider execution remain disabled
 
 ## Docs
 

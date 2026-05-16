@@ -60,12 +60,15 @@ describe("dapp helpers", () => {
   it("queues a provider request and builds an approved preview result", () => {
     const base = createDemoDappShellSnapshot();
     const session = base.sessions[0];
+
+    expect(session).toBeTruthy();
+
     const queued = queueDappRequest(base, {
       id: "request_live_sign_message",
-      sessionId: session.id,
+      sessionId: session!.id,
       kind: "sign_message",
-      origin: session.origin.origin,
-      account: session.accounts[0],
+      origin: session!.origin.origin,
+      account: session!.accounts[0],
       chainId: 1,
       summary: "Sign a login message.",
     });

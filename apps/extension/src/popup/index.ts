@@ -1,4 +1,5 @@
 import { getDappRequestKindLabel } from "@acorus/shared";
+import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
   EXTENSION_PHASES,
   createRequestId,
@@ -7,11 +8,7 @@ import {
   type ExtensionRuntimeResponse,
 } from "../shared/protocol";
 
-const root = document.getElementById("app");
-
-if (!root) {
-  throw new Error("Popup root not found.");
-}
+const root = getRoot("Popup root not found.");
 
 void loadPopupState();
 
@@ -132,7 +129,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
           <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
         </div>
-        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 8 ? "Preview" : "Later"}</span>
+        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < 9 ? "Preview" : "Later"}</span>
       </div>`,
   ).join("");
 
@@ -142,7 +139,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports connect, accounts, chainId, switchChain, and sign/transaction approval review in preview-backed mode. Real signatures and broadcast still remain disabled.
+          The live bridge now supports preview-backed <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, and sign/transaction approval review. Real signatures and broadcast still remain disabled.
         </p>
       </section>
 
@@ -172,6 +169,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         </div>
         <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
           Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>, <strong>acorus_signMessage</strong>, <strong>acorus_signTypedData</strong>, <strong>acorus_signTransaction</strong>, <strong>acorus_sendTransaction</strong>
+        </div>
+        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+          EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong>
         </div>
         <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a site requests approval.")}</div>
       </section>
@@ -224,6 +224,16 @@ function wirePopupActions(): void {
       }
     });
   });
+}
+
+function getRoot(message: string): HTMLElement {
+  const element = document.getElementById("app");
+
+  if (!element) {
+    throw new Error(message);
+  }
+
+  return element;
 }
 
 async function sendAction(action: string, targetId: string): Promise<void> {

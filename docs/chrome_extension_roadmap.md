@@ -9,7 +9,8 @@ like MetaMask, Trust Wallet, or Uniswap Extension.
 - current surfaces: background, content, inpage, popup, options
 - preview permission shell is now implemented for proposals, connected sites, request queue, and revoke actions
 - live preview-backed bridge is now active for `acorus_requestAccounts`, `acorus_accounts`, `acorus_chainId`, and `acorus_switchChain`
-- signing, transaction broadcast, WalletConnect, and wallet-backed provider compatibility are still disabled
+- preview-backed `window.ethereum` compatibility is now active for common EVM wallet methods
+- real signing output, real transaction broadcast, WalletConnect, and wallet-backed provider execution are still disabled
 
 ## Why extension matters
 A wallet becomes useful across crypto websites when it can:
@@ -56,7 +57,7 @@ Responsible for:
 ### 3. Inpage provider
 Responsible for:
 - `window.acorus`
-- optional `window.ethereum` compatibility later
+- preview-backed `window.ethereum` compatibility
 - `request({ method, params })`
 
 ### 4. Popup UI
@@ -86,9 +87,12 @@ Responsible for:
 - `eth_requestAccounts`
 - `eth_accounts`
 - `eth_chainId`
+- `net_version`
+- `eth_coinbase`
 - `wallet_switchEthereumChain`
 - `personal_sign`
 - `eth_signTypedData_v4`
+- `eth_signTransaction`
 - `eth_sendTransaction`
 
 ### Phase 3: Solana compatibility
@@ -115,6 +119,7 @@ Responsible for:
 - Suspicious contracts flagged
 
 ## Not now
-This roadmap now includes a live preview-backed connect/runtime bridge, but it
-still does not implement signing, broadcast, WalletConnect, or wallet-backed
-provider compatibility.
+This roadmap now includes a live preview-backed connect/runtime bridge plus
+preview-backed `window.ethereum` compatibility, but it still does not implement
+real signing output, real broadcast, WalletConnect, or wallet-backed provider
+execution.
