@@ -15,7 +15,7 @@ export * from "./solana/client";
 export * from "./solana/derive";
 export * from "./solana/portfolio";
 export * from "./solana/tokens";
-export * from "./swap/types";
+export * from "./swap";
 export * from "./types";
 export * from "./vault";
 export * from "./wallet-adapter";

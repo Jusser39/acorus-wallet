@@ -128,6 +128,15 @@
 127. Added `docs/universal_swap_shell_plan.md` to define the universal swap shell as one quote/review/approval/execute engine with provider abstraction, capability gating, rollout phases, and client-side security invariants.
 128. Added `docs/universal_dapp_shell_plan.md` to define the universal dapp shell as one session/permission/signing approval model across families, with EVM as the first reference adapter rather than the product identity.
 129. Updated `README.md` and `docs/project_memory.md` so the new swap/dapp planning documents are part of the recorded product direction and repository entrypoints.
+130. Started Wave 6 with a read-only audit across the current swap types, adapter registry, API app/tests/store, universal web helpers, docs, local git state, and VPS health endpoints.
+131. Replaced the old placeholder swap DTOs with canonical universal quote types in `packages/shared/src/multichain.ts`, then added wallet-core swap provider contracts, a mock universal quote provider, and `SwapQuoteEngine`.
+132. Added `POST /api/swap/quote` to the Fastify app, wired it to `createDefaultSwapQuoteEngine()`, and blocked sensitive payload fields such as `mnemonic`, `seed`, `privateKey`, and `passcode` with `sensitive_fields_not_allowed`.
+133. Added frontend swap foundations: `getSwapQuote()` in `apps/web/lib/api.ts`, `swap-ui.ts`, `swap-assets.ts`, `SwapRoutePreview`, `SwapComposer`, and `/swap`, while keeping execution disabled and clearly labeled as preview-only.
+134. Updated wallet navigation and the wallet dashboard quick actions so Swap is exposed as a universal product action instead of an adapter-specific future branch.
+135. Added regression coverage for wallet-core mock swap quotes, API quote route behavior, and frontend swap UI/helper logic; local package tests and full root builds passed cleanly.
+136. Fixed the Wave 6 VPS deploy script by correcting the persistence script path from `scripts/check_persistence.sh` to `scripts/check-persistence.sh`, then re-ran the full deployment successfully.
+137. Verified the live rollout on VPS: `/health`, `/api/chains`, `/swap`, quote-preview POSTs, sensitive-field rejection, and persistence before/after `docker compose restart api` all passed.
+138. Added `docs/universal_swap_quote_engine_plan.md`, `docs/universal_swap_quote_engine_report.md`, and updated project/action/API/README docs so the repository now records the live quote-only swap shell honestly.
 
 
 ## Commands run
@@ -240,6 +249,7 @@
 - `pnpm --filter @acorus/api build`
 - `pnpm --filter @acorus/web build`
 - `pnpm build`
+- `python scripts/deploy_wave6.py`
 - `tar.exe -czf ... acorus-wallet`
 - Python `paramiko` upload to `/root/acorus-wallet-solana-deploy.tar.gz`
 - Remote `docker compose --env-file .env -f infra/docker-compose.yml build api web`
@@ -282,6 +292,7 @@
 - Current product follow-up: the Unified Multichain Asset Engine + Adapter Foundation wave is implemented and deployed; the next sensible product step is to move universal receive/portfolio/token detail UI deeper into the adapter model or ship Solana Send MVP on top of this foundation
 - Current product follow-up: the Universal Multichain Wallet UI wave is implemented and deployed; the next sensible product step is the Universal Send Draft Engine so all future send flows route through one multichain draft model before enabling additional networks.
 - Current product follow-up: the Universal Send Draft Engine wave is implemented and deployed; the next sensible product step is Universal Send UI so the existing EVM send review flow and future non-EVM flows can share one preview/review foundation.
+- Current product follow-up: the Universal Swap Quote Engine + Swap Shell MVP is implemented and deployed; the next sensible product step is live provider integration (0x/1inch/ParaSwap for EVM, then Jupiter/SunSwap/cross-chain providers) without relaxing the current non-custodial boundary.
 
 37. Implemented EVM Token Details + Market Data + Portfolio UX wave (2026-05-15):
     - Phase 1: packages/shared/src/market.ts with FiatCurrency, TokenPrice, TokenChart, PortfolioSummary types

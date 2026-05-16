@@ -173,44 +173,68 @@ export type SendExecutionResult = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SwapProvider =
-  | "oneinch"
-  | "zeroex"
+export type SwapQuoteStatus =
+  | "quoted"
+  | "no_route"
+  | "unsupported"
+  | "provider_error";
+
+export type SwapProviderId =
+  | "mock"
+  | "zero_x"
+  | "one_inch"
   | "paraswap"
   | "jupiter"
+  | "sunswap"
   | "lifi"
   | "rango"
-  | "mock";
+  | "socket";
+
+/** Backward-compatible alias for older imports. */
+export type SwapProvider = SwapProviderId;
+
+export type SwapSlippageMode = "auto" | "custom";
 
 export type SwapQuoteRequest = {
-  fromChain: ChainRef;
-  toChain: ChainRef;
-  fromAsset: AssetRef;
-  toAsset: AssetRef;
-  amountRaw: string;
-  walletAddress: string;
-  slippageBps: number;
+  from: AssetRef;
+  to: AssetRef;
+  amountRaw?: string;
+  amountFormatted?: string;
+  slippageBps?: number;
+  slippageMode?: SwapSlippageMode;
+  userAddress?: string | null;
 };
 
 export type SwapRouteStep = {
-  provider: SwapProvider;
-  label: string;
+  provider: SwapProviderId;
+  family: ChainFamily;
+  chainId: ChainId;
   fromAsset: AssetRef;
   toAsset: AssetRef;
-  estimatedAmountOutRaw?: string | null;
+  fromAmountRaw: string;
+  toAmountRaw: string;
+  estimatedGasAsset?: AssetRef | null;
+  estimatedGasRaw?: string | null;
+  protocolName?: string | null;
 };
 
 export type SwapQuote = {
-  provider: SwapProvider;
-  fromChain: ChainRef;
-  toChain: ChainRef;
-  fromAsset: AssetRef;
-  toAsset: AssetRef;
-  amountInRaw: string;
-  estimatedAmountOutRaw: string;
-  priceImpactPercent?: number | null;
-  gasEstimateRaw?: string | null;
+  id: string;
+  status: SwapQuoteStatus;
+  provider: SwapProviderId;
+  from: AssetRef;
+  to: AssetRef;
+  fromAmountRaw: string;
+  fromAmountFormatted: string;
+  toAmountRaw?: string | null;
+  toAmountFormatted?: string | null;
+  priceImpactBps?: number | null;
+  slippageBps: number;
+  minimumReceivedRaw?: string | null;
+  minimumReceivedFormatted?: string | null;
   route: SwapRouteStep[];
   warnings: string[];
-  expiresAt: string;
+  errors: string[];
+  expiresAt?: string | null;
+  createdAt: string;
 };

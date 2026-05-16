@@ -1,6 +1,6 @@
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
-import { refreshTxStatus } from "@acorus/wallet-core";
+import { createDefaultSwapQuoteEngine, refreshTxStatus } from "@acorus/wallet-core";
 import type { AppStore } from "./store";
 import { MemoryStore } from "./memory-store";
 import { PrismaStore } from "./prisma-store";
@@ -72,6 +72,18 @@ const onboardingProgressSchema = z.object({
   userId: z.string().min(1),
   step: z.string().min(1),
   completed: z.boolean(),
+});
+
+const assetRefSchema = z.object({
+  family: z.enum(["evm", "solana", "tron", "utxo", "ton"]),
+  chainId: z.union([z.number(), z.string()]),
+  type: z.enum(["native", "erc20", "spl", "trc20", "utxo", "jetton", "unknown"]),
+  symbol: z.string().min(1),
+  name: z.string().min(1),
+  decimals: z.number().int().nonnegative(),
+  tokenAddress: z.string().nullable().optional(),
+  logoUrl: z.string().nullable().optional(),
+  isVerified: z.boolean().optional(),
 });
 
 const SENSITIVE_FIELD_NAMES = new Set([
@@ -225,6 +237,17 @@ function rejectSensitiveBody(value: unknown): void {
   assertNoSensitiveFields(value);
 }
 
+function containsSensitiveSwapField(body: Record<string, unknown>): boolean {
+  const keys = JSON.stringify(body).toLowerCase();
+  return (
+    keys.includes("mnemonic") ||
+    keys.includes("privatekey") ||
+    keys.includes("private_key") ||
+    keys.includes("passcode") ||
+    keys.includes("seed")
+  );
+}
+
 function normalizeTokenAddress(chainId: number, tokenAddress?: string | null): string | null {
   const normalized = normalizeAddressForChain(chainId, tokenAddress);
   return normalized || null;
@@ -257,6 +280,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         },
   );
   const store = options.store ?? resolveStore(env);
+  const swapQuoteEngine = createDefaultSwapQuoteEngine();
 
   app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
@@ -317,6 +341,51 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         currency: "USD",
         provider: "stub",
       })),
+    };
+  });
+
+  app.post("/api/swap/quote", async (request, reply) => {
+    const body = request.body as Record<string, unknown> | null;
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return reply.code(400).send({
+        error: "bad_request",
+      });
+    }
+
+    if (containsSensitiveSwapField(body)) {
+      return reply.code(400).send({
+        error: "sensitive_fields_not_allowed",
+      });
+    }
+
+    const { from, to, amountRaw, amountFormatted, slippageBps, slippageMode, userAddress } = body;
+
+    if (!from || !to) {
+      return reply.code(400).send({
+        error: "from_and_to_required",
+      });
+    }
+
+    if (!amountRaw && !amountFormatted) {
+      return reply.code(400).send({
+        error: "amount_required",
+      });
+    }
+
+    const quote = await swapQuoteEngine.getQuote({
+      from: assetRefSchema.parse(from),
+      to: assetRefSchema.parse(to),
+      amountRaw: typeof amountRaw === "string" ? amountRaw : undefined,
+      amountFormatted: typeof amountFormatted === "string" ? amountFormatted : undefined,
+      slippageBps: typeof slippageBps === "number" ? slippageBps : undefined,
+      slippageMode: slippageMode === "auto" || slippageMode === "custom" ? slippageMode : undefined,
+      userAddress: typeof userAddress === "string" ? userAddress : null,
+    });
+
+    return {
+      ok: true,
+      quote,
     };
   });
 

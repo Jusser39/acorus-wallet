@@ -310,6 +310,7 @@ export default function WalletPage() {
                 {copied ? "Copied" : "Copy address"}
               </button>
               <Link href="/receive" className="button-secondary">Receive</Link>
+              <Link href="/swap" className="button-secondary">Swap quote</Link>
               {isViewOnly ? (
                 <button type="button" className="button-primary opacity-60" disabled>
                   {sendAvailability.ctaLabel}
@@ -447,6 +448,7 @@ export default function WalletPage() {
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
+            <Link href="/swap" className="button-secondary text-center">Swap quote</Link>
             {isViewOnly || !isEvm ? (
               <div className="button-primary text-center opacity-60">{sendAvailability.ctaLabel}</div>
             ) : (

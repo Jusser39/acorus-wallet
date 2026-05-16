@@ -8,6 +8,7 @@ import { formatAddress } from "@/lib/utils";
 const navItems = [
   { href: "/wallet", label: "Wallet" },
   { href: "/send", label: "Send" },
+  { href: "/swap", label: "Swap" },
   { href: "/receive", label: "Receive" },
   { href: "/history", label: "History" },
   { href: "/contacts", label: "Contacts" },

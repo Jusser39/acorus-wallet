@@ -38,3 +38,9 @@
 - `GET /api/chains`
 - `GET /api/tokens?chainId=...`
 - `GET /api/prices?symbols=ETH,BNB,MATIC`
+
+## Swap
+
+- `POST /api/swap/quote`
+  - quote-preview only
+  - rejects sensitive payload fields such as `mnemonic`, `seed`, `privateKey`, and `passcode`

@@ -445,4 +445,59 @@ describe("api", () => {
       },
     });
   });
+
+  it("POST /api/swap/quote returns mock quote", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/swap/quote",
+      payload: {
+        from: {
+          family: "evm",
+          chainId: 1,
+          type: "native",
+          symbol: "ETH",
+          name: "Ethereum",
+          decimals: 18,
+          tokenAddress: null,
+          isVerified: true,
+        },
+        to: {
+          family: "evm",
+          chainId: 1,
+          type: "erc20",
+          symbol: "USDC",
+          name: "USD Coin",
+          decimals: 6,
+          tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          isVerified: true,
+        },
+        amountFormatted: "1",
+        slippageBps: 50,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const body = response.json();
+
+    expect(body.ok).toBe(true);
+    expect(body.quote.status).toBe("quoted");
+    expect(body.quote.provider).toBe("mock");
+  });
+
+  it("POST /api/swap/quote rejects sensitive fields", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/swap/quote",
+      payload: {
+        mnemonic: "test test test",
+        from: {},
+        to: {},
+        amountFormatted: "1",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("sensitive_fields_not_allowed");
+  });
 });

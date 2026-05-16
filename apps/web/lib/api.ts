@@ -4,6 +4,8 @@ import type {
   ContactRecord,
   OnboardingProgressRecord,
   PreferredCurrency,
+  SwapQuote,
+  SwapQuoteRequest,
   TokenMetadata,
   TokenMetadataItem,
   TransactionAssetType,
@@ -82,6 +84,8 @@ function getApiErrorMessage(status: number, payload: ApiErrorPayload | null): st
       return "Requested record was not found.";
     case "sensitive_fields_forbidden":
       return "Sensitive fields are not accepted by the API.";
+    case "sensitive_fields_not_allowed":
+      return "Sensitive fields are not allowed in swap quote requests.";
     case "bad_request":
       return "The API rejected this request.";
     case "internal_error":
@@ -235,6 +239,16 @@ export const refreshTransactionStatus = updateTransactionStatus;
 export async function listChains(): Promise<ApiChainRecord[]> {
   const response = await apiFetch<{ items: ApiChainRecord[] }>("/api/chains");
   return response.items;
+}
+
+export async function getSwapQuote(
+  request: SwapQuoteRequest,
+): Promise<SwapQuote> {
+  const response = await apiFetch<{ ok: boolean; quote: SwapQuote }>("/api/swap/quote", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+  return response.quote;
 }
 
 export async function listTokens(chainId: number): Promise<TokenMetadata[]> {

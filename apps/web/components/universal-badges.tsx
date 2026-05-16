@@ -44,3 +44,15 @@ export function SkeletonBadge({ label }: { label?: string }) {
     </span>
   );
 }
+
+export function SourceBadge(props: {
+  provider?: string | null;
+  sourceStatus?: string | null;
+}) {
+  const label = [props.provider, props.sourceStatus].filter(Boolean).join(" · ") || "source";
+  return (
+    <span className="inline-flex rounded-full border border-slate-600 bg-slate-700/60 px-1.5 py-0.5 text-[10px] text-slate-300">
+      {label}
+    </span>
+  );
+}

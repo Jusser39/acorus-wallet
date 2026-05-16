@@ -8,6 +8,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - Fastify API for anonymous users, wallet profiles, contacts, transaction records, chains, tokens, and price stubs
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap types, practice content
+- Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
 - Practice wallet mode with fake balances and fake transactions
 - View-only wallet flow
 - Contacts, history, settings, receive QR, send review flow, autolock, safety mode
@@ -74,7 +75,7 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - No backend seed backup
 - Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
 - Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
-- No WalletConnect, universal dapp session shell, NFT send/burn, real swap, or cross-chain swap yet
+- No WalletConnect, universal dapp session shell, NFT send/burn, real swap execution, or cross-chain swap execution yet
 
 ## Docs
 
@@ -82,6 +83,8 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/adapter_expansion_roadmap.md`
 - `docs/security_model.md`
 - `docs/universal_swap_shell_plan.md`
+- `docs/universal_swap_quote_engine_plan.md`
+- `docs/universal_swap_quote_engine_report.md`
 - `docs/universal_dapp_shell_plan.md`
 - `docs/roadmap.md`
 - `docs/api.md`

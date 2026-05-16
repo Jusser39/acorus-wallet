@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createDefaultAdapterRegistry,
+  createDefaultSwapQuoteEngine,
   deriveEvmAccountFromMnemonic,
   deriveSolanaAddressFromMnemonic,
   buildExplorerTxUrl,
@@ -514,5 +515,74 @@ describe("SendExecutionEngine", () => {
     expect(result.status).toBe("rejected");
     expect(result.errorCode).toBe("missing_signer");
     expect(result.family).toBe("evm");
+  });
+});
+
+describe("SwapQuoteEngine", () => {
+  it("creates mock same-chain swap quote", async () => {
+    const engine = createDefaultSwapQuoteEngine();
+
+    const quote = await engine.getQuote({
+      from: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      to: {
+        family: "evm",
+        chainId: 1,
+        type: "erc20",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        isVerified: true,
+      },
+      amountFormatted: "1",
+      slippageBps: 50,
+    });
+
+    expect(quote.status).toBe("quoted");
+    expect(quote.provider).toBe("mock");
+    expect(quote.toAmountRaw).toBeTruthy();
+    expect(quote.route.length).toBeGreaterThan(0);
+    expect(quote.warnings.some((item) => item.includes("preview"))).toBe(true);
+  });
+
+  it("creates mock cross-chain swap quote", async () => {
+    const engine = createDefaultSwapQuoteEngine();
+
+    const quote = await engine.getQuote({
+      from: {
+        family: "evm",
+        chainId: 1,
+        type: "native",
+        symbol: "ETH",
+        name: "Ethereum",
+        decimals: 18,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      to: {
+        family: "solana",
+        chainId: 101,
+        type: "native",
+        symbol: "SOL",
+        name: "Solana",
+        decimals: 9,
+        tokenAddress: null,
+        isVerified: true,
+      },
+      amountFormatted: "0.5",
+      slippageBps: 100,
+    });
+
+    expect(quote.status).toBe("quoted");
+    expect(quote.warnings.some((item) => item.includes("Cross-chain"))).toBe(true);
   });
 });

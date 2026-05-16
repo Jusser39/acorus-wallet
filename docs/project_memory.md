@@ -42,8 +42,8 @@
 
 ## Constraints
 
-- Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, swap, and NFT flows are still not implemented
-- No WalletConnect / real swap / NFT module yet
+- Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
+- Universal swap quote shell is now live as preview-only; WalletConnect / dapp session shell / real swap execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Security hardening wave
@@ -420,4 +420,46 @@
 - Universal dapp support is now fixed as one session/permission/signing shell, not as separate WalletConnect-style products per family
 - Both plans keep the same non-custodial boundary as send execution: backend never receives mnemonic/privateKey/passcode and all approvals stay client-side
 - This step still changed documentation/planning only; no runtime behavior changed
+
+## Universal Swap Quote Engine + Swap Shell MVP (Wave 6) (2026-05-16)
+
+- Status: **implemented, validated locally, and deployed to VPS**
+- Deployment: `http://85.239.59.199:8080`
+- Backend store remains `prisma`
+- Planning document: `docs/universal_swap_quote_engine_plan.md`
+- Report: `docs/universal_swap_quote_engine_report.md`
+- New shared/core capabilities:
+  - `packages/shared/src/multichain.ts` now exposes canonical universal swap quote types: `SwapQuoteStatus`, `SwapProviderId`, `SwapSlippageMode`, `SwapQuoteRequest`, `SwapRouteStep`, `SwapQuote`
+  - `packages/wallet-core/src/swap/provider.ts` adds `SwapQuoteProvider` plus capability metadata and `isSameChainSwap()`
+  - `packages/wallet-core/src/swap/mock-provider.ts` adds preview-only same-chain and cross-chain mock routing with warnings, minimum received, and mock gas asset metadata
+  - `packages/wallet-core/src/swap/quote-engine.ts` adds `SwapQuoteEngine` plus `createDefaultSwapQuoteEngine()`
+- New backend/frontend capabilities:
+  - `POST /api/swap/quote` added in API and wired to the quote engine
+  - sensitive swap payload fields such as `mnemonic`, `seed`, `privateKey`, and `passcode` are rejected with `sensitive_fields_not_allowed`
+  - `apps/web/lib/api.ts` now exposes `getSwapQuote()`
+  - `/swap` route, `SwapComposer`, `SwapRoutePreview`, `swap-ui.ts`, and `swap-assets.ts` add the universal shell flow `Network → Asset → Amount → Quote → Route Preview`
+  - wallet navigation and wallet quick actions now link to `/swap`
+- Safety boundary maintained:
+  - quote preview only; execution remains disabled / coming soon
+  - no approvals, signing, allowance handling, or broadcast
+  - backend still never receives mnemonic/privateKey/passcode
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- VPS verified:
+  - `/health` returns `store: "prisma"` on loopback and public `:8080`
+  - `/api/chains` still returns the universal chain list
+  - `/swap` returns HTTP 200 on loopback and public `:8080`
+  - `POST /api/swap/quote` returns mock same-chain/cross-chain preview quotes
+  - sensitive-field rejection returns HTTP 400 with `sensitive_fields_not_allowed`
+  - persistence verification passes before and after `docker compose restart api`
+- Local Docker note:
+  - local Docker regression remains workstation-blocked because `dockerDesktopLinuxEngine` is unavailable on this machine
 

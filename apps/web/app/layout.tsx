@@ -5,7 +5,7 @@ import { WalletNav } from "@/components/wallet-nav";
 
 export const metadata: Metadata = {
   title: "Acorus Wallet",
-  description: "Non-custodial EVM wallet MVP with local encrypted vault",
+  description: "Non-custodial universal multichain wallet with local encrypted vault",
 };
 
 export default function RootLayout({
