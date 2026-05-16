@@ -8,7 +8,7 @@ const EXTENSION_PHASES = [
   "Connected sites",
   "Permission queue shell",
   "EVM provider compatibility",
-  "Solana provider compatibility",
+  "Universal account controls",
   "WalletConnect later",
 ];
 
@@ -33,8 +33,9 @@ export default function ExtensionPage() {
           extension after explicit approval. When the Acorus web app is open in
           the same browser profile, public local EVM wallet addresses can sync
           into the bridge without exposing seed phrase, passcode, or signing
-          output. Real signatures, broadcast, and WalletConnect remain
-          disabled.
+          output. The bridge now defaults to one selected public account per
+          site instead of exposing every synced address at once. Real
+          signatures, broadcast, and WalletConnect remain disabled.
         </p>
       </div>
 
@@ -74,7 +75,8 @@ export default function ExtensionPage() {
             and a familiar EVM wallet shape for connection, accounts, and chain
             metadata. Returned data now comes from approved session state, with
             wallet-backed public EVM addresses available after the Acorus web
-            app syncs them into the extension.
+            app syncs them into the extension. One selected public account is
+            exposed by default for each approved site.
           </p>
         </div>
 
@@ -136,7 +138,7 @@ export default function ExtensionPage() {
             </div>
 
             <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-xs font-semibold text-slate-300">
-              {index < 9 ? "Preview" : "Planned"}
+              {index < 10 ? "Preview" : "Planned"}
             </span>
           </div>
         ))}

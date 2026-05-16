@@ -106,6 +106,19 @@ export type ExtensionRuntimeMessage =
       surface: "content";
       origin: string;
       payload: DappWalletSyncEnvelope;
+    }
+  | {
+      kind: "select_wallet_profile";
+      requestId: string;
+      surface: "popup" | "options";
+      profileId: string;
+    }
+  | {
+      kind: "set_session_account";
+      requestId: string;
+      surface: "popup" | "options";
+      sessionId: string;
+      profileId: string;
     };
 
 export type ExtensionRuntimeResponse = {
@@ -151,7 +164,8 @@ export const EXTENSION_PHASES = [
   "Connected sites UX",
   "Permission queue shell",
   "EVM compatibility",
-  "Solana compatibility later",
+  "Universal account controls",
+  "WalletConnect later",
 ] as const;
 
 export function createRequestId(prefix = "acorus"): string {

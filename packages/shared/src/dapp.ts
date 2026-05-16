@@ -347,7 +347,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
         origin: questsOrigin,
         providerMode: "preview_accounts",
         requestedAccounts: [PREVIEW_DAPP_BRIDGE_ACCOUNT],
-        requestedChainIds: [1, 101],
+        requestedChainIds: [1, 137],
         requestedPermissions: ["view_accounts", "view_chain"],
         status: "pending",
         warning:
@@ -517,7 +517,7 @@ export function ensureDappConnectionProposal(
       input.warning
       ?? (
         providerMode === "wallet_backed"
-          ? "The page-to-extension bridge is live, and approved accounts now come from synced local Acorus wallet profiles. Signing output and broadcast still remain disabled."
+          ? "The page-to-extension bridge is live, and the approved account now comes from the selected synced local Acorus wallet profile. Signing output and broadcast still remain disabled."
           : "The page-to-extension bridge is live, and request approval review can continue after connect. Approved accounts still remain preview-backed until wallet profile integration ships."
       ),
     createdAt,
@@ -602,7 +602,7 @@ export function approveDappProposal(
     lastUsedAt: null,
     warning:
       proposal.providerMode === "wallet_backed"
-        ? "Approved in wallet-backed bridge mode. The site can now see synced local Acorus account addresses after approval, while real signing output and send execution remain disabled."
+        ? "Approved in wallet-backed bridge mode. The site can now see the selected synced local Acorus account after approval, while real signing output and send execution remain disabled."
         : "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.",
   };
 
@@ -819,7 +819,7 @@ export function createDappBridgeSessionView(
         activeSession.warning
         ?? (
           activeSession.providerMode === "wallet_backed"
-            ? "Session is connected through the live extension bridge using synced local Acorus wallet accounts."
+            ? "Session is connected through the live extension bridge using the selected synced local Acorus wallet account."
             : "Session is connected through the live extension bridge in preview-backed mode."
         ),
       updatedAt: snapshot.updatedAt,
@@ -843,7 +843,7 @@ export function createDappBridgeSessionView(
         pendingProposal.warning
         ?? (
           pendingProposal.providerMode === "wallet_backed"
-            ? "Approval is required before the live bridge exposes synced local Acorus wallet accounts."
+            ? "Approval is required before the live bridge exposes the selected synced local Acorus wallet account."
             : "Approval is required before the live bridge exposes preview-backed accounts."
         ),
       updatedAt: snapshot.updatedAt,

@@ -50,7 +50,8 @@ export function DappSessionShell() {
           and transaction requests now also enter a live approval-review queue,
           while real signature output and broadcast still stay disabled. Public
           local EVM addresses can now sync from the Acorus web app into the
-          extension bridge without exposing seed or passcode.
+          extension bridge without exposing seed or passcode, and the bridge can
+          keep exposure narrowed to one selected account per connected site.
         </p>
       </div>
 
@@ -81,7 +82,8 @@ export function DappSessionShell() {
         No website can access keys, mnemonic, passcode, or signing output in
         this wave. The bridge is now live for both native Acorus methods and an
         EVM-compatible layer using approved session accounts; sign/send
-        execution remains preview-only.
+        execution remains preview-only and multi-account exposure stays
+        opt-in per site.
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">

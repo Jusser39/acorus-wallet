@@ -28,6 +28,8 @@ import {
   rejectProposal,
   rejectRequestInQueue,
   revokeSessionInRegistry,
+  selectWalletProfile,
+  setSessionAccount,
   setDappShellState,
   switchOriginSessionChain,
   syncWalletProfiles,
@@ -127,6 +129,26 @@ async function handleRuntimeMessage(
           walletState.profiles.length > 0 ? "wallet_backed" : "preview_accounts",
         syncedAt: walletState.lastSyncedAt,
       },
+    };
+  }
+
+  if (input.kind === "select_wallet_profile") {
+    const walletState = await selectWalletProfile(input.profileId);
+
+    return {
+      requestId,
+      ok: true,
+      result: {
+        selectedProfileId: walletState.activeProfileId,
+      },
+    };
+  }
+
+  if (input.kind === "set_session_account") {
+    return {
+      requestId,
+      ok: true,
+      result: await setSessionAccount(input.sessionId, input.profileId),
     };
   }
 

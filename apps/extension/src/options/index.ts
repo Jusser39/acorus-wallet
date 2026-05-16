@@ -78,6 +78,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
           <div style="font-size:14px;color:#cbd5e1">Approved accounts: <strong>${escapeHtml((bridge?.accounts ?? []).join(", ") || "none")}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Wallet sync mode: <strong>${escapeHtml(state.walletExposureMode)}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">Synced wallet accounts: <strong>${String(state.walletExposedAccounts.length)}</strong></div>
+          <div style="font-size:14px;color:#cbd5e1">Default exposed account: <strong>${escapeHtml(state.walletExposedAccounts.find((profile) => profile.selected)?.account ?? "none")}</strong></div>
           <div style="font-size:14px;color:#cbd5e1">EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong></div>
           <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a page requests approval.")}</div>
         </div>
@@ -127,7 +128,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
               <li>No silent approvals or background signing</li>
               <li>No WalletConnect in this wave</li>
               <li>No live transaction signing output or broadcast</li>
-              <li>No wallet-backed account exposure outside preview-backed bridge data</li>
+              <li>No automatic exposure of every synced account to every site</li>
             </ul>
           </section>
 
@@ -146,7 +147,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
                 <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
                 <div style="margin-top:4px;font-weight:600;color:#fff">${phase}</div>
               </div>
-              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 9 ? "Preview" : "Planned"}</span>
+              <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < 10 ? "Preview" : "Planned"}</span>
             </div>`,
         ).join("")}
       </section>
@@ -181,8 +182,9 @@ function renderProposals(state: BackgroundStateSnapshot): string {
             <span style="${badgeStyle(proposal.origin.trustLevel === "trusted" ? "#10b981" : "#f59e0b")}">${proposal.origin.trustLevel}</span>
           </div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Permissions: ${escapeHtml(proposal.requestedPermissions.join(", "))}</div>
+          <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Account to expose: <strong>${escapeHtml(proposal.requestedAccounts[0] ?? "none")}</strong></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${actionButton("approve-proposal", proposal.id, "Approve preview", true)}
+            ${actionButton("approve-proposal", proposal.id, "Approve account", true)}
             ${actionButton("reject-proposal", proposal.id, "Reject", false)}
           </div>
         </article>`,
@@ -233,6 +235,8 @@ function renderSessions(state: BackgroundStateSnapshot): string {
             <span style="${badgeStyle(session.status === "active" ? "#10b981" : "#ef4444")}">${escapeHtml(getDappSessionStatusLabel(session.status))}</span>
           </div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Permissions: ${escapeHtml(session.permissions.join(", "))}</div>
+          <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Exposed account: <strong>${escapeHtml(session.accounts[0] ?? "none")}</strong></div>
+          ${renderSessionAccountActions(session.id, session.accounts[0] ?? null, state)}
           ${
             session.status === "active"
               ? `<div>${actionButton("revoke-session", session.id, "Revoke session", false)}</div>`
@@ -279,6 +283,11 @@ function renderWalletProfiles(state: BackgroundStateSnapshot): string {
             </div>
             <span style="${badgeStyle(profile.selected ? "#10b981" : "#0ea5e9")}">${profile.selected ? "selected" : "synced"}</span>
           </div>
+          ${
+            profile.selected
+              ? `<div style="margin-top:10px;font-size:12px;color:#86efac">Default for new dApp connections</div>`
+              : `<div style="margin-top:10px">${actionButton("select-wallet-profile", profile.profileId, "Use by default", true)}</div>`
+          }
         </article>`,
     )
     .join("");
@@ -288,26 +297,31 @@ function wireOptionActions(): void {
   const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action]");
 
   buttons.forEach((button) => {
-    button.addEventListener("click", async () => {
-      const action = button.dataset.action;
-      const targetId = button.dataset.id;
+      button.addEventListener("click", async () => {
+        const action = button.dataset.action;
+        const targetId = button.dataset.id;
+        const extra = button.dataset.extra;
 
-      if (!action || !targetId) {
-        return;
-      }
+        if (!action || !targetId) {
+          return;
+        }
 
-      button.disabled = true;
+        button.disabled = true;
 
-      try {
-        await sendAction(action, targetId);
-      } finally {
-        await loadOptionsState();
-      }
+        try {
+          await sendAction(action, targetId, extra);
+        } finally {
+          await loadOptionsState();
+        }
     });
   });
 }
 
-async function sendAction(action: string, targetId: string): Promise<void> {
+async function sendAction(
+  action: string,
+  targetId: string,
+  extra?: string,
+): Promise<void> {
   if (action === "approve-proposal") {
     await chrome.runtime.sendMessage({
       kind: "approve_proposal",
@@ -355,6 +369,27 @@ async function sendAction(action: string, targetId: string): Promise<void> {
       surface: "options",
       sessionId: targetId,
     });
+    return;
+  }
+
+  if (action === "select-wallet-profile") {
+    await chrome.runtime.sendMessage({
+      kind: "select_wallet_profile",
+      requestId: createRequestId("options"),
+      surface: "options",
+      profileId: targetId,
+    });
+    return;
+  }
+
+  if (action === "set-session-account" && extra) {
+    await chrome.runtime.sendMessage({
+      kind: "set_session_account",
+      requestId: createRequestId("options"),
+      surface: "options",
+      sessionId: targetId,
+      profileId: extra,
+    });
   }
 }
 
@@ -363,8 +398,37 @@ function actionButton(
   id: string,
   label: string,
   primary: boolean,
+  extra?: string,
 ): string {
-  return `<button data-action="${action}" data-id="${id}" style="border:1px solid ${primary ? "rgba(56,189,248,0.35)" : "rgba(71,85,105,0.7)"};background:${primary ? "rgba(14,165,233,0.12)" : "rgba(2,6,23,0.75)"};color:${primary ? "#bae6fd" : "#e2e8f0"};border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer">${label}</button>`;
+  return `<button data-action="${action}" data-id="${id}"${extra ? ` data-extra="${extra}"` : ""} style="border:1px solid ${primary ? "rgba(56,189,248,0.35)" : "rgba(71,85,105,0.7)"};background:${primary ? "rgba(14,165,233,0.12)" : "rgba(2,6,23,0.75)"};color:${primary ? "#bae6fd" : "#e2e8f0"};border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer">${label}</button>`;
+}
+
+function renderSessionAccountActions(
+  sessionId: string,
+  currentAccount: string | null,
+  state: BackgroundStateSnapshot,
+): string {
+  const alternatives = state.walletExposedAccounts.filter(
+    (profile) => profile.account !== currentAccount,
+  );
+
+  if (alternatives.length === 0) {
+    return "";
+  }
+
+  return `
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${alternatives
+        .map((profile) =>
+          actionButton(
+            "set-session-account",
+            sessionId,
+            `Use ${escapeHtml(profile.name)}`,
+            false,
+            profile.profileId,
+          ))
+        .join("")}
+    </div>`;
 }
 
 function emptyCard(message: string): string {

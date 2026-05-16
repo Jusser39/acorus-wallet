@@ -108,6 +108,96 @@ export async function syncWalletProfiles(
   return nextState;
 }
 
+export async function selectWalletProfile(
+  profileId: string,
+): Promise<DappWalletSyncState> {
+  const current = await getWalletSyncState();
+  const exists = current.profiles.some((profile) => profile.profileId === profileId);
+
+  if (!exists) {
+    return current;
+  }
+
+  const nextState: DappWalletSyncState = {
+    activeProfileId: profileId,
+    profiles: current.profiles
+      .map((profile) => ({
+        ...profile,
+        selected: profile.profileId === profileId,
+      }))
+      .sort((left, right) => Number(right.selected) - Number(left.selected)),
+    lastSyncedAt: current.lastSyncedAt,
+  };
+
+  await chrome.storage.local.set({
+    [DAPP_WALLET_SYNC_KEY]: nextState,
+  });
+
+  const snapshot = await getDappShellState();
+  await setDappShellState(reconcileSnapshotWithWalletState(snapshot, nextState));
+
+  return nextState;
+}
+
+export async function setSessionAccount(
+  sessionId: string,
+  profileId: string,
+): Promise<DappShellSnapshot> {
+  const walletState = await getWalletSyncState();
+  const exposure = walletState.profiles.find((profile) => profile.profileId === profileId);
+
+  if (!exposure) {
+    return getDappShellState();
+  }
+
+  const current = await getDappShellState();
+  if (!current.sessions.some((session) => session.id === sessionId)) {
+    return current;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const sessions = current.sessions.map((session) =>
+    session.id === sessionId
+      ? {
+          ...session,
+          providerMode: "wallet_backed" as const,
+          accounts: [exposure.account],
+          chainIds: exposure.chainIds,
+          activeChainId: exposure.chainIds.includes(session.activeChainId ?? -1)
+            ? session.activeChainId
+            : (exposure.chainIds[0] ?? null),
+          lastUsedAt: updatedAt,
+          warning:
+            "This site now exposes only the selected synced Acorus account. Mnemonic, private keys, signing output, and send execution remain unavailable.",
+        }
+      : session,
+  );
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+  const next: DappShellSnapshot = {
+    ...current,
+    sessions,
+    pendingRequests: current.pendingRequests.map((request) => {
+      const session = request.sessionId
+        ? sessionsById.get(request.sessionId) ?? null
+        : null;
+
+      return request.sessionId === sessionId
+        ? {
+            ...request,
+            account: session?.accounts[0] ?? request.account ?? null,
+            chainId: session?.activeChainId ?? request.chainId ?? null,
+            warning:
+              "Approval review is bound to the currently selected synced Acorus account. Real signatures and broadcast remain disabled in this wave.",
+          }
+        : request;
+    }),
+    updatedAt,
+  };
+
+  await setDappShellState(next);
+  return next;
+}
+
 export async function approveProposal(proposalId: string): Promise<DappShellSnapshot> {
   const next = approveDappProposal(await getDappShellState(), proposalId);
   await setDappShellState(next);
@@ -162,7 +252,7 @@ export async function ensureOriginConnectionProposal(
     requestedChainIds: walletState.chainIds,
     warning:
       walletState.providerMode === "wallet_backed"
-        ? "Approve to expose synced local Acorus EVM accounts to this site. Mnemonic, private keys, passcode, signing output, and broadcast remain blocked."
+        ? "Approve to expose the selected synced Acorus EVM account to this site. Mnemonic, private keys, passcode, signing output, and broadcast remain blocked."
         : undefined,
   });
 
@@ -246,10 +336,16 @@ function resolveBridgeWalletState(
     };
   }
 
+  const selectedProfile = walletState.profiles.find((profile) => profile.selected)
+    ?? walletState.profiles[0]
+    ?? null;
+
   return {
     providerMode: "wallet_backed",
-    accounts: walletState.profiles.map((profile) => profile.account),
-    chainIds: [...new Set(walletState.profiles.flatMap((profile) => profile.chainIds))],
+    accounts: selectedProfile ? [selectedProfile.account] : [],
+    chainIds: selectedProfile
+      ? [...new Set(selectedProfile.chainIds)]
+      : [],
   };
 }
 
@@ -259,20 +355,35 @@ function reconcileSnapshotWithWalletState(
 ): DappShellSnapshot {
   const bridgeWalletState = resolveBridgeWalletState(walletState);
   const updatedAt = new Date().toISOString();
+  const exposuresByAccount = new Map(
+    walletState.profiles.map((profile) => [profile.account, profile]),
+  );
+  const selectedExposure = walletState.profiles.find((profile) => profile.selected)
+    ?? walletState.profiles[0]
+    ?? null;
+  const sessions = snapshot.sessions.map((session) => {
+    const pinnedExposure = session.accounts[0]
+      ? exposuresByAccount.get(session.accounts[0]) ?? null
+      : null;
+    const resolvedExposure = pinnedExposure ?? selectedExposure;
+    const chainIds = resolvedExposure?.chainIds ?? bridgeWalletState.chainIds;
 
-  const sessions = snapshot.sessions.map((session) => ({
-    ...session,
-    providerMode: bridgeWalletState.providerMode,
-    accounts: bridgeWalletState.accounts,
-    chainIds: bridgeWalletState.chainIds,
-    activeChainId: bridgeWalletState.chainIds.includes(session.activeChainId ?? -1)
-      ? session.activeChainId
-      : (bridgeWalletState.chainIds[0] ?? null),
-    warning:
-      bridgeWalletState.providerMode === "wallet_backed"
-        ? "This session now exposes synced local Acorus EVM accounts after approval. Mnemonic, private keys, signing output, and send execution remain unavailable."
-        : "Bridge connectivity and approval review are live in preview-backed mode only. Real signing output and broadcast remain disabled until a later execution wave.",
-  }));
+    return {
+      ...session,
+      providerMode: bridgeWalletState.providerMode,
+      accounts: resolvedExposure
+        ? [resolvedExposure.account]
+        : bridgeWalletState.accounts,
+      chainIds,
+      activeChainId: chainIds.includes(session.activeChainId ?? -1)
+        ? session.activeChainId
+        : (chainIds[0] ?? null),
+      warning:
+        bridgeWalletState.providerMode === "wallet_backed"
+          ? "This session now exposes only the selected synced Acorus account after approval. Mnemonic, private keys, signing output, and send execution remain unavailable."
+          : "Bridge connectivity and approval review are live in preview-backed mode only. Real signing output and broadcast remain disabled until a later execution wave.",
+    };
+  });
   const sessionsById = new Map(sessions.map((session) => [session.id, session]));
 
   return {
@@ -283,7 +394,7 @@ function reconcileSnapshotWithWalletState(
       requestedChainIds: bridgeWalletState.chainIds,
       warning:
         bridgeWalletState.providerMode === "wallet_backed"
-          ? "Approve to expose synced local Acorus EVM accounts to this site. Mnemonic, private keys, signing output, and broadcast remain blocked."
+          ? "Approve to expose the selected synced Acorus EVM account to this site. Mnemonic, private keys, signing output, and broadcast remain blocked."
           : "Preview proposal only. A live page-to-extension bridge can queue approvals, but wallet-backed accounts are still disabled.",
     })),
     sessions,
