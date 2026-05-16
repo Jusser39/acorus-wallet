@@ -11,6 +11,8 @@ const navItems = [
   { href: "/receive", label: "Receive" },
   { href: "/swap", label: "Swap" },
   { href: "/explore", label: "Explore" },
+  { href: "/nft", label: "NFTs" },
+  { href: "/quests", label: "Quests" },
   { href: "/security", label: "Security" },
   { href: "/dapps", label: "dApps" },
   { href: "/settings", label: "Settings" },

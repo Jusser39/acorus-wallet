@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { createAnonymousUser, fetchWalletProfiles } from "@/lib/api";
 import {
   loadActiveProfileId,
@@ -14,7 +15,11 @@ import {
 import { useWalletStore } from "@/store/wallet-store";
 import { ServiceWorkerRegister } from "./service-worker-register";
 
+const NON_WALLET_PATHS = ["/", "/unlock", "/create", "/import"];
+
 export function AppBootstrap() {
+  const router = useRouter();
+  const pathname = usePathname();
   const setBootstrapped = useWalletStore((state) => state.setBootstrapped);
   const setUserId = useWalletStore((state) => state.setUserId);
   const setEncryptedVault = useWalletStore((state) => state.setEncryptedVault);
@@ -146,11 +151,14 @@ export function AppBootstrap() {
 
       if (idleMs >= useWalletStore.getState().autoLockMinutes * 60_000) {
         lockWallet();
+        if (!NON_WALLET_PATHS.includes(pathname)) {
+          router.push("/unlock");
+        }
       }
     }, 15_000);
 
     return () => window.clearInterval(intervalId);
-  }, [lastActivityAt, lockWallet, unlockedVault]);
+  }, [lastActivityAt, lockWallet, pathname, router, unlockedVault]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -166,6 +174,9 @@ export function AppBootstrap() {
         Date.now() - lastHiddenAt > autoLockMinutes * 60_000
       ) {
         lockWallet();
+        if (!NON_WALLET_PATHS.includes(pathname)) {
+          router.push("/unlock");
+        }
       } else if (document.visibilityState === "visible" && unlockedVault) {
         markActivity();
       }
@@ -175,7 +186,7 @@ export function AppBootstrap() {
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [autoLockMinutes, lastHiddenAt, lockWallet, markActivity, setLastHiddenAt, unlockedVault]);
+  }, [autoLockMinutes, lastHiddenAt, lockWallet, markActivity, pathname, router, setLastHiddenAt, unlockedVault]);
 
   return <ServiceWorkerRegister />;
 }
