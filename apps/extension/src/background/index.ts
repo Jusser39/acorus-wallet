@@ -19,6 +19,11 @@ import {
   type ExtensionRuntimeResponse,
 } from "../shared/protocol";
 import {
+  createExtensionWallet,
+  getExtensionVaultStatus,
+  importExtensionWallet,
+} from "./extension-wallet";
+import {
   approveProposal,
   approveRequestInQueue,
   ensureOriginConnectionProposal,
@@ -27,6 +32,7 @@ import {
   initializePermissionStore,
   queueSessionRequestPreviewForSession,
   queueWalletConnectPairingProposal,
+  refreshDappShellWalletState,
   rejectProposal,
   rejectRequestInQueue,
   revokeSessionInRegistry,
@@ -89,6 +95,7 @@ async function handleRuntimeMessage(
   if (input.kind === "get_state") {
     const state = await getDappShellState();
     const walletState = await getWalletSyncState();
+    const extensionVaultStatus = await getExtensionVaultStatus();
     const activeOrigin =
       input.origin ?? sender.origin ?? sender.url ?? null;
     const walletExposureMode = walletState.profiles.length > 0
@@ -115,8 +122,66 @@ async function handleRuntimeMessage(
         walletExposureMode,
         walletExposedAccounts: walletState.profiles,
         walletLastSyncedAt: walletState.lastSyncedAt,
+        extensionVaultStatus,
       }),
     };
+  }
+
+  if (input.kind === "create_extension_wallet") {
+    try {
+      const created = await createExtensionWallet({
+        name: input.name,
+        passcode: input.passcode,
+      });
+      await refreshDappShellWalletState();
+
+      return {
+        requestId,
+        ok: true,
+        result: created,
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "wallet_create_failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to create the extension wallet.",
+        },
+      };
+    }
+  }
+
+  if (input.kind === "import_extension_wallet") {
+    try {
+      const imported = await importExtensionWallet({
+        name: input.name,
+        mnemonic: input.mnemonic,
+        passcode: input.passcode,
+      });
+      await refreshDappShellWalletState();
+
+      return {
+        requestId,
+        ok: true,
+        result: imported,
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "wallet_import_failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to import the extension wallet.",
+        },
+      };
+    }
   }
 
   if (input.kind === "sync_wallet_profiles") {
@@ -340,6 +405,7 @@ async function handleProviderMethod(
     }
 
     await ensureOriginConnectionProposal(origin);
+    openApprovalWindow();
     return {
       requestId,
       ok: false,
@@ -488,6 +554,20 @@ async function handleProviderMethod(
         "This provider method is recognized, but it is not live in the current Acorus bridge wave.",
     },
   };
+}
+
+function openApprovalWindow(): void {
+  try {
+    void chrome.windows?.create?.({
+      url: chrome.runtime.getURL("popup.html"),
+      type: "popup",
+      width: 420,
+      height: 720,
+      focused: true,
+    });
+  } catch {
+    // The provider still returns approval_required; the user can open the popup manually.
+  }
 }
 
 function parseRequestedChainId(value: unknown): ChainId | null {

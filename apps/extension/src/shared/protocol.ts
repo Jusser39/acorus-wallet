@@ -1,4 +1,7 @@
 import type {
+  EncryptedVaultV1,
+} from "@acorus/wallet-core";
+import type {
   DappApprovalResult,
   DappBridgeSessionView,
   DappRequest,
@@ -45,9 +48,18 @@ export type BackgroundStateSnapshot = {
   walletExposureMode: "preview_accounts" | "wallet_backed";
   walletExposedAccounts: DappWalletExposure[];
   walletLastSyncedAt?: string | null;
+  extensionVaultStatus: ExtensionVaultStatus;
   supportedMethods: readonly AcorusProviderMethod[];
   lastUpdatedAt: string;
   activeOrigin?: string | null;
+};
+
+export type ExtensionVaultStatus = {
+  hasVault: boolean;
+  activeProfileId: string | null;
+  profiles: DappWalletExposure[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type ExtensionRuntimeMessage =
@@ -121,6 +133,21 @@ export type ExtensionRuntimeMessage =
       profileId: string;
     }
   | {
+      kind: "create_extension_wallet";
+      requestId: string;
+      surface: "popup" | "options";
+      name: string;
+      passcode: string;
+    }
+  | {
+      kind: "import_extension_wallet";
+      requestId: string;
+      surface: "popup" | "options";
+      name: string;
+      mnemonic: string;
+      passcode: string;
+    }
+  | {
       kind: "queue_walletconnect_pairing";
       requestId: string;
       surface: "options";
@@ -136,6 +163,20 @@ export type ExtensionRuntimeMessage =
       chainId?: number | null;
       summary?: string;
     };
+
+export type ExtensionWalletCreateResult = {
+  profileId: string;
+  name: string;
+  account: string;
+  mnemonic: string;
+  encryptedVault: EncryptedVaultV1;
+  warning: string;
+};
+
+export type ExtensionWalletImportResult = Omit<
+  ExtensionWalletCreateResult,
+  "mnemonic"
+>;
 
 export type ExtensionRuntimeResponse = {
   requestId: string;
@@ -211,6 +252,7 @@ export function createSkeletonState(input?: {
   walletExposureMode?: BackgroundStateSnapshot["walletExposureMode"];
   walletExposedAccounts?: BackgroundStateSnapshot["walletExposedAccounts"];
   walletLastSyncedAt?: string | null;
+  extensionVaultStatus?: ExtensionVaultStatus;
 }): BackgroundStateSnapshot {
   return {
     phase: "permission_shell",
@@ -224,6 +266,15 @@ export function createSkeletonState(input?: {
     walletExposureMode: input?.walletExposureMode ?? "preview_accounts",
     walletExposedAccounts: input?.walletExposedAccounts ?? [],
     walletLastSyncedAt: input?.walletLastSyncedAt ?? null,
+    extensionVaultStatus:
+      input?.extensionVaultStatus
+      ?? {
+        hasVault: false,
+        activeProfileId: null,
+        profiles: [],
+        createdAt: null,
+        updatedAt: null,
+      },
     supportedMethods: ACORUS_PROVIDER_METHODS,
     lastUpdatedAt: input?.lastUpdatedAt ?? new Date().toISOString(),
     activeOrigin: input?.activeOrigin ?? null,

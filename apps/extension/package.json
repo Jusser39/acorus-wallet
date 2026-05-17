@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@acorus/shared": "workspace:*"
+    "@acorus/shared": "workspace:*",
+    "@acorus/wallet-core": "workspace:*"
   }
 }

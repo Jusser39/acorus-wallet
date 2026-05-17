@@ -26,6 +26,7 @@ import {
   type DappWalletExposure,
   type DappWalletSyncEnvelope,
 } from "@acorus/shared";
+import { getExtensionVaultStatus } from "./extension-wallet";
 
 const DAPP_SHELL_STATE_KEY = "acorus_dapp_shell_state";
 const DAPP_WALLET_SYNC_KEY = "acorus_dapp_wallet_sync_state";
@@ -76,13 +77,22 @@ export async function setDappShellState(
   });
 }
 
+export async function refreshDappShellWalletState(): Promise<DappShellSnapshot> {
+  const next = reconcileSnapshotWithWalletState(
+    await getDappShellState(),
+    await getWalletSyncState(),
+  );
+  await setDappShellState(next);
+  return next;
+}
+
 export async function getWalletSyncState(): Promise<DappWalletSyncState> {
   const result = await chrome.storage.local.get(DAPP_WALLET_SYNC_KEY);
   const value = result[DAPP_WALLET_SYNC_KEY];
 
   if (value && typeof value === "object") {
     const candidate = value as Partial<DappWalletSyncState>;
-    return {
+    const webState = {
       activeProfileId:
         typeof candidate.activeProfileId === "string"
           ? candidate.activeProfileId
@@ -94,6 +104,20 @@ export async function getWalletSyncState(): Promise<DappWalletSyncState> {
         typeof candidate.lastSyncedAt === "string"
           ? candidate.lastSyncedAt
           : null,
+    };
+
+    if (webState.profiles.length > 0) {
+      return webState;
+    }
+  }
+
+  const extensionVault = await getExtensionVaultStatus();
+
+  if (extensionVault.profiles.length > 0) {
+    return {
+      activeProfileId: extensionVault.activeProfileId,
+      profiles: extensionVault.profiles,
+      lastSyncedAt: extensionVault.updatedAt ?? extensionVault.createdAt ?? null,
     };
   }
 

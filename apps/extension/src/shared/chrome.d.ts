@@ -54,4 +54,14 @@ declare namespace chrome {
       ): void;
     };
   }
+
+  namespace windows {
+    function create(input: {
+      url: string;
+      type?: "normal" | "popup" | "panel" | "detached_panel";
+      width?: number;
+      height?: number;
+      focused?: boolean;
+    }): Promise<unknown>;
+  }
 }

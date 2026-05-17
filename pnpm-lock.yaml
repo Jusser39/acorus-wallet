@@ -80,6 +80,15 @@ importers:
         specifier: 6.16.2
         version: 6.16.2(typescript@5.9.3)
 
+  apps/extension:
+    dependencies:
+      '@acorus/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@acorus/wallet-core':
+        specifier: workspace:*
+        version: link:../../packages/wallet-core
+
   apps/web:
     dependencies:
       '@acorus/shared':

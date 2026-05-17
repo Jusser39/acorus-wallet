@@ -14,7 +14,7 @@ const manifest = {
   manifest_version: 3,
   name: "Acorus Wallet",
   version: packageJson.version,
-  description: "Universal multichain wallet extension skeleton with no live site connectivity yet.",
+  description: "Universal multichain wallet extension with local encrypted vault and injected dApp provider bridge.",
   action: {
     default_title: "Acorus Wallet",
     default_popup: "popup.html",

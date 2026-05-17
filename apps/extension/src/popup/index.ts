@@ -9,6 +9,7 @@ import {
 } from "../shared/protocol";
 
 const root = getRoot("Popup root not found.");
+let lastCreatedMnemonic: string | null = null;
 
 void loadPopupState();
 
@@ -36,6 +37,61 @@ async function loadPopupState(): Promise<void> {
 
 function renderPopup(state: BackgroundStateSnapshot): string {
   const bridge = state.activeOriginBridge;
+  const vault = state.extensionVaultStatus;
+  const walletOnboarding = vault.hasVault
+    ? `
+      <section style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.1);border-radius:24px;padding:18px;display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#86efac">Extension wallet ready</div>
+            <h2 style="margin:8px 0 0;font-size:20px;color:#fff">Chrome extension is the wallet</h2>
+          </div>
+          <span style="${badgeStyle("#10b981")}">vault encrypted</span>
+        </div>
+        <div style="font-size:13px;color:#d1fae5;line-height:1.5">
+          Sites connect to this extension through <strong>window.ethereum</strong>. The web app is now a client surface, not the place that must own wallet creation.
+        </div>
+        <div style="font-size:12px;color:#a7f3d0;line-height:1.5">
+          Active profile: <strong>${escapeHtml(vault.profiles.find((profile) => profile.selected)?.account ?? "none")}</strong>
+        </div>
+      </section>`
+    : `
+      <section style="border:1px solid rgba(94,234,212,0.28);background:linear-gradient(180deg,rgba(20,184,166,0.14),rgba(15,23,42,0.88));border-radius:24px;padding:18px;display:grid;gap:14px">
+        <div>
+          <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#99f6e4">Start here</div>
+          <h2 style="margin:8px 0 0;font-size:22px;color:#fff">Create the wallet inside Chrome extension</h2>
+          <p style="margin:8px 0 0;color:#cbd5e1;font-size:13px;line-height:1.5">
+            This matches how MetaMask-style wallets work: seed phrase and encrypted vault live in the extension, then sites request connect/sign through the injected provider.
+          </p>
+        </div>
+        <form id="create-wallet-form" style="display:grid;gap:10px">
+          <input name="name" placeholder="Wallet name" value="Main wallet" style="${inputStyle()}">
+          <input name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password" style="${inputStyle()}">
+          <button type="submit" style="${buttonStyle(true)}">Create extension wallet</button>
+        </form>
+        <details style="border-top:1px solid rgba(148,163,184,0.18);padding-top:12px">
+          <summary style="cursor:pointer;color:#e2e8f0;font-size:13px">Import existing seed phrase</summary>
+          <form id="import-wallet-form" style="display:grid;gap:10px;margin-top:12px">
+            <input name="name" placeholder="Wallet name" value="Imported wallet" style="${inputStyle()}">
+            <textarea name="mnemonic" placeholder="Seed phrase" rows="3" style="${inputStyle()}"></textarea>
+            <input name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password" style="${inputStyle()}">
+            <button type="submit" style="${buttonStyle(false)}">Import into extension</button>
+          </form>
+        </details>
+      </section>`;
+  const seedReveal = lastCreatedMnemonic
+    ? `
+      <section style="border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);border-radius:24px;padding:18px;display:grid;gap:12px">
+        <div style="font-weight:700;color:#fef3c7">Save these words offline now</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          ${lastCreatedMnemonic
+            .split(" ")
+            .map((word, index) => `<div style="border:1px solid rgba(245,158,11,0.28);border-radius:12px;padding:8px;color:#fff;background:rgba(2,6,23,0.36);font-size:12px"><span style="color:#fbbf24">${index + 1}.</span> ${escapeHtml(word)}</div>`)
+            .join("")}
+        </div>
+        <button data-action="clear-created-seed" data-id="seed" style="${buttonStyle(false)}">I saved it</button>
+      </section>`
+    : "";
   const proposals = state.proposals.length
     ? state.proposals
         .map(
@@ -181,6 +237,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         </p>
       </section>
 
+      ${seedReveal}
+      ${walletOnboarding}
+
       <section style="display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
         <div style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:18px;padding:14px 16px;font-size:14px">
           Execution enabled: <strong>${String(state.executionEnabled)}</strong>
@@ -253,6 +312,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
 }
 
 function wirePopupActions(): void {
+  wireWalletForms();
   const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action]");
 
   buttons.forEach((button) => {
@@ -260,6 +320,12 @@ function wirePopupActions(): void {
         const action = button.dataset.action;
         const targetId = button.dataset.id;
         const extra = button.dataset.extra;
+
+        if (action === "clear-created-seed") {
+          lastCreatedMnemonic = null;
+          await loadPopupState();
+          return;
+        }
 
         if (!action || !targetId) {
           return;
@@ -274,6 +340,53 @@ function wirePopupActions(): void {
         }
     });
   });
+}
+
+function wireWalletForms(): void {
+  root
+    .querySelector<HTMLFormElement>("#create-wallet-form")
+    ?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      const response = (await chrome.runtime.sendMessage({
+        kind: "create_extension_wallet",
+        requestId: createRequestId("popup"),
+        surface: "popup",
+        name: String(formData.get("name") ?? "Main wallet"),
+        passcode: String(formData.get("passcode") ?? ""),
+      })) as ExtensionRuntimeResponse;
+
+      if (response.ok && response.result) {
+        const result = response.result as { mnemonic?: string };
+        lastCreatedMnemonic = result.mnemonic ?? null;
+      } else {
+        lastCreatedMnemonic = null;
+        window.alert(response.error?.message ?? "Unable to create wallet.");
+      }
+
+      await loadPopupState();
+    });
+
+  root
+    .querySelector<HTMLFormElement>("#import-wallet-form")
+    ?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      const response = (await chrome.runtime.sendMessage({
+        kind: "import_extension_wallet",
+        requestId: createRequestId("popup"),
+        surface: "popup",
+        name: String(formData.get("name") ?? "Imported wallet"),
+        mnemonic: String(formData.get("mnemonic") ?? ""),
+        passcode: String(formData.get("passcode") ?? ""),
+      })) as ExtensionRuntimeResponse;
+
+      if (!response.ok) {
+        window.alert(response.error?.message ?? "Unable to import wallet.");
+      }
+
+      await loadPopupState();
+    });
 }
 
 function getRoot(message: string): HTMLElement {
@@ -370,6 +483,14 @@ function actionButton(
   extra?: string,
 ): string {
   return `<button data-action="${action}" data-id="${id}"${extra ? ` data-extra="${extra}"` : ""} style="border:1px solid ${primary ? "rgba(56,189,248,0.35)" : "rgba(71,85,105,0.7)"};background:${primary ? "rgba(14,165,233,0.12)" : "rgba(2,6,23,0.75)"};color:${primary ? "#bae6fd" : "#e2e8f0"};border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer">${label}</button>`;
+}
+
+function inputStyle(): string {
+  return "width:100%;box-sizing:border-box;border:1px solid rgba(148,163,184,0.25);background:rgba(2,6,23,0.58);color:#fff;border-radius:16px;padding:10px 12px;font-size:13px;outline:none";
+}
+
+function buttonStyle(primary: boolean): string {
+  return `border:1px solid ${primary ? "rgba(94,234,212,0.45)" : "rgba(148,163,184,0.35)"};background:${primary ? "linear-gradient(135deg,#5eead4,#a7f3d0)" : "rgba(2,6,23,0.75)"};color:${primary ? "#020617" : "#e2e8f0"};border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer`;
 }
 
 function renderSessionAccountActions(

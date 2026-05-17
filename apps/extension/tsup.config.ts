@@ -30,6 +30,10 @@ export default defineConfig({
         __dirname,
         "../../packages/shared/src/index.ts",
       ),
+      "@acorus/wallet-core": path.resolve(
+        __dirname,
+        "../../packages/wallet-core/src/index.ts",
+      ),
     };
   },
 });
