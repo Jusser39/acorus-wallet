@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createWebDappShellPreview,
   formatDappPermissionList,
+  queuePreviewSessionRequest,
   queuePreviewWalletConnectPairing,
   getDappTrustLabel,
 } from "./dapp-shell";
@@ -34,5 +35,18 @@ describe("dapp shell helpers", () => {
     expect(state.proposals[0]?.transport).toBe("walletconnect");
     expect(state.proposals[0]?.origin.title).toBe("Universal Swap");
     expect(state.proposals[0]?.origin.origin).not.toContain("super-secret-key");
+  });
+
+  it("queues a preview request for an active session", () => {
+    const base = createWebDappShellPreview();
+    const session = base.sessions[0];
+    const state = queuePreviewSessionRequest(base, {
+      sessionId: session!.id,
+      kind: "send_transaction",
+      chainId: 137,
+    });
+
+    expect(state.pendingRequests[0]?.transport).toBe(session!.transport);
+    expect(state.pendingRequests[0]?.chainId).toBe(137);
   });
 });

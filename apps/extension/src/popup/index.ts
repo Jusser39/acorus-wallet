@@ -78,6 +78,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
                 </div>
                 <span style="${badgeStyle("#0ea5e9")}">${request.chainId ?? "multi"}</span>
               </div>
+              <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
+                Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(request.transport))}</strong>
+              </div>
               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">${escapeHtml(request.summary)}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${actionButton("approve-request", request.id, "Approve preview", true)}

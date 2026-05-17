@@ -11,6 +11,7 @@ like MetaMask, Trust Wallet, or Uniswap Extension.
 - live preview-backed bridge is now active for `acorus_requestAccounts`, `acorus_accounts`, `acorus_chainId`, and `acorus_switchChain`
 - preview-backed `window.ethereum` compatibility is now active for common EVM wallet methods
 - preview-only WalletConnect pairing records can now be queued from the extension options shell with immediate secret redaction
+- preview-only multichain session requests can now be queued for approved peers so WalletConnect and injected transports share one follow-up review queue
 - real signing output, real transaction broadcast, live WalletConnect relay, and wallet-backed provider execution are still disabled
 
 ## Why extension matters
@@ -109,6 +110,12 @@ Responsible for:
 - connected peer registry
 - live relay, `sign`, and `broadcast` routing later
 
+### Phase 5: Multichain session request shell
+- queue preview follow-up requests for approved peers
+- keep transport/account/chain context visible
+- reuse the same approval queue for injected sites and WalletConnect peers
+- real client-side sign and broadcast execution later
+
 ## Safety requirements
 - No private key in content script
 - No seed in webpage
@@ -122,5 +129,6 @@ Responsible for:
 ## Not now
 This roadmap now includes a live preview-backed connect/runtime bridge plus
 preview-backed `window.ethereum` compatibility plus redacted WalletConnect
-pairing previews, but it still does not implement real signing output, real
-broadcast, live WalletConnect relay, or wallet-backed provider execution.
+pairing previews and multichain session-request staging, but it still does not
+implement real signing output, real broadcast, live WalletConnect relay, or
+wallet-backed provider execution.

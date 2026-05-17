@@ -9,6 +9,7 @@ import {
   ensureDappConnectionProposal,
   isDappWalletSyncEnvelope,
   queueDappRequest,
+  queueSessionRequestPreview,
   setDappSessionActiveChain,
 } from "./dapp";
 
@@ -88,6 +89,21 @@ describe("dapp helpers", () => {
 
     expect(result.status).toBe("approved_preview");
     expect(result.signature).toBeNull();
+  });
+
+  it("queues a follow-up preview request from an active session", () => {
+    const base = createDemoDappShellSnapshot();
+    const session = base.sessions[0];
+    const queued = queueSessionRequestPreview(base, {
+      sessionId: session!.id,
+      kind: "sign_transaction",
+      chainId: 137,
+    });
+
+    expect(queued.created).toBe(true);
+    expect(queued.request.transport).toBe(session!.transport);
+    expect(queued.request.account).toBe(session!.accounts[0]);
+    expect(queued.request.chainId).toBe(137);
   });
 
   it("recognizes wallet sync envelopes", () => {

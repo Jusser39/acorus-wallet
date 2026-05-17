@@ -1,5 +1,6 @@
 import {
   buildDappProposalWarning,
+  buildDappRequestWarning,
   buildDappSessionWarning,
   PREVIEW_DAPP_BRIDGE_ACCOUNT,
   PREVIEW_DAPP_BRIDGE_CHAIN_IDS,
@@ -13,10 +14,12 @@ import {
   rejectDappProposal,
   rejectDappRequest,
   revokeDappSession,
+  queueSessionRequestPreview,
   queueWalletConnectPairing,
   setDappSessionActiveChain,
   touchDappSession,
   type ChainId,
+  type DappRequestKind,
   type DappBridgeSessionView,
   type DappProviderExposureMode,
   type DappShellSnapshot,
@@ -50,7 +53,7 @@ export async function getDappShellState(): Promise<DappShellSnapshot> {
   const value = result[DAPP_SHELL_STATE_KEY];
 
   if (value && typeof value === "object") {
-    return value as DappShellSnapshot;
+    return normalizeStoredSnapshot(value as DappShellSnapshot);
   }
 
   const seeded = reconcileSnapshotWithWalletState(
@@ -191,8 +194,9 @@ export async function setSessionAccount(
             ...request,
             account: session?.accounts[0] ?? request.account ?? null,
             chainId: session?.activeChainId ?? request.chainId ?? null,
-            warning:
-              "Approval review is bound to the currently selected synced Acorus account. Real signatures and broadcast remain disabled in this wave.",
+            warning: buildDappRequestWarning({
+              transport: request.transport,
+            }),
           }
         : request;
     }),
@@ -222,6 +226,27 @@ export async function queueWalletConnectPairingProposal(
   }
 
   return ensured.snapshot;
+}
+
+export async function queueSessionRequestPreviewForSession(
+  sessionId: string,
+  kind: Exclude<DappRequestKind, "connect">,
+  chainId?: ChainId | null,
+  summary?: string,
+): Promise<DappShellSnapshot> {
+  const current = await getDappShellState();
+  const queued = queueSessionRequestPreview(current, {
+    sessionId,
+    kind,
+    chainId,
+    summary,
+  });
+
+  if (queued.created) {
+    await setDappShellState(queued.snapshot);
+  }
+
+  return queued.snapshot;
 }
 
 export async function approveProposal(proposalId: string): Promise<DappShellSnapshot> {
@@ -438,10 +463,9 @@ function reconcileSnapshotWithWalletState(
           ?? bridgeWalletState.chainIds[0]
           ?? request.chainId
           ?? null,
-        warning:
-          bridgeWalletState.providerMode === "wallet_backed"
-            ? "Approval review now targets a synced local Acorus wallet account. Real signatures and broadcast remain disabled in this wave."
-            : "Preview request only. No signature will be produced in this wave.",
+        warning: buildDappRequestWarning({
+          transport: request.transport,
+        }),
       };
     }),
     approvalResults: snapshot.approvalResults,
@@ -463,4 +487,30 @@ function isWalletExposure(value: unknown): value is DappWalletExposure {
     && Array.isArray(candidate.chainIds)
     && typeof candidate.selected === "boolean"
   );
+}
+
+function normalizeStoredSnapshot(snapshot: DappShellSnapshot): DappShellSnapshot {
+  const sessions = snapshot.sessions.map((session) => ({
+    ...session,
+    transport: session.transport ?? "injected",
+  }));
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+
+  return {
+    ...snapshot,
+    proposals: snapshot.proposals.map((proposal) => ({
+      ...proposal,
+      transport: proposal.transport ?? "injected",
+    })),
+    sessions,
+    pendingRequests: snapshot.pendingRequests.map((request) => ({
+      ...request,
+      transport:
+        request.transport
+        ?? (request.sessionId
+          ? sessionsById.get(request.sessionId)?.transport
+          : undefined)
+        ?? "injected",
+    })),
+  };
 }

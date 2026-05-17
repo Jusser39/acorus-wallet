@@ -9,6 +9,7 @@ import {
   rejectDappProposal,
   rejectDappRequest,
   revokeDappSession,
+  type DappRequestKind,
   type DappShellSnapshot,
 } from "@acorus/shared";
 import { type FormEvent, useMemo, useState } from "react";
@@ -20,8 +21,16 @@ import {
   getDappTransportTone,
   getDappTrustLabel,
   getDappTrustTone,
+  queuePreviewSessionRequest,
   queuePreviewWalletConnectPairing,
 } from "../lib/dapp-shell";
+
+const REQUEST_KIND_OPTIONS: readonly Exclude<DappRequestKind, "connect">[] = [
+  "sign_message",
+  "sign_typed_data",
+  "sign_transaction",
+  "send_transaction",
+];
 
 export function DappSessionShell() {
   const [snapshot, setSnapshot] = useState<DappShellSnapshot>(() =>
@@ -30,11 +39,35 @@ export function DappSessionShell() {
   const [walletConnectLabel, setWalletConnectLabel] = useState("");
   const [walletConnectUri, setWalletConnectUri] = useState("");
   const [walletConnectError, setWalletConnectError] = useState<string | null>(null);
+  const [requestSessionId, setRequestSessionId] = useState("");
+  const [requestKind, setRequestKind] = useState<
+    Exclude<DappRequestKind, "connect">
+  >("sign_message");
+  const [requestChainId, setRequestChainId] = useState("");
+  const [requestSummary, setRequestSummary] = useState("");
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   const activeSessions = useMemo(
     () => snapshot.sessions.filter((session) => session.status === "active"),
     [snapshot.sessions],
   );
+  const selectedRequestSession =
+    activeSessions.find((session) => session.id === requestSessionId)
+    ?? activeSessions[0]
+    ?? null;
+  const resolvedRequestChainId = selectedRequestSession
+    ? (
+      selectedRequestSession.chainIds.some(
+        (chainId) => String(chainId) === requestChainId,
+      )
+        ? requestChainId
+        : String(
+          selectedRequestSession.activeChainId
+          ?? selectedRequestSession.chainIds[0]
+          ?? "",
+        )
+    )
+    : "";
 
   function handleWalletConnectSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +91,36 @@ export function DappSessionShell() {
     }
   }
 
+  function handleSessionRequestSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedRequestSession) {
+      setRequestError("Approve a site or WalletConnect peer first.");
+      return;
+    }
+
+    try {
+      setSnapshot((current) =>
+        queuePreviewSessionRequest(current, {
+          sessionId: selectedRequestSession.id,
+          kind: requestKind,
+          chainId: resolvedRequestChainId
+            ? Number(resolvedRequestChainId)
+            : undefined,
+          summary: requestSummary || undefined,
+        }),
+      );
+      setRequestSummary("");
+      setRequestError(null);
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? error.message
+          : "Session request preview is invalid.",
+      );
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="glass-panel space-y-3">
@@ -65,7 +128,7 @@ export function DappSessionShell() {
           dApps
         </p>
         <h1 className="text-3xl font-semibold text-white">
-          Universal dApp bridge now includes WalletConnect pairing previews
+          Universal dApp bridge now includes WalletConnect and session request previews
         </h1>
         <p className="text-sm text-slate-300">
           Connected sites, permission prompts, request queue and revoke controls
@@ -82,7 +145,8 @@ export function DappSessionShell() {
           keep exposure narrowed to one selected account per connected site. A
           WalletConnect URI can now be imported into a preview pairing shell
           that immediately redacts the pairing secret and stores only safe peer
-          metadata.
+          metadata, while approved peers can stage follow-up multichain requests
+          into the same review queue.
         </p>
       </div>
 
@@ -114,7 +178,8 @@ export function DappSessionShell() {
         this wave. The bridge is now live for both native Acorus methods and an
         EVM-compatible layer using approved session accounts; sign/send
         execution remains preview-only, WalletConnect pairing secrets are
-        redacted on import, and multi-account exposure stays opt-in per site.
+        redacted on import, preview session requests stay queue-only, and
+        multi-account exposure stays opt-in per site.
       </div>
 
       <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
@@ -172,6 +237,132 @@ export function DappSessionShell() {
             <ShellButton label="Queue pairing preview" tone="primary" type="submit" />
           </div>
         </form>
+      </div>
+
+      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Session request preview
+            </h2>
+            <p className="mt-1 text-sm text-slate-300">
+              Queue follow-up preview requests for any approved site or
+              WalletConnect peer without enabling real sign or broadcast
+              execution.
+            </p>
+          </div>
+          <StatusPill
+            label={`${activeSessions.length} active peers`}
+            tone="border-cyan-500/30 bg-cyan-500/10 text-cyan-100"
+          />
+        </div>
+
+        {selectedRequestSession ? (
+          <form className="mt-4 grid gap-3" onSubmit={handleSessionRequestSubmit}>
+            <div className="grid gap-3 md:grid-cols-[1fr,0.9fr,0.7fr]">
+              <label className="grid gap-2 text-sm text-slate-300">
+                <span className="text-slate-400">Peer</span>
+                <select
+                  value={selectedRequestSession.id}
+                  onChange={(event) => {
+                    const nextSession = activeSessions.find(
+                      (session) => session.id === event.target.value,
+                    );
+                    setRequestSessionId(event.target.value);
+                    setRequestChainId(
+                      nextSession
+                        ? String(
+                          nextSession.activeChainId ?? nextSession.chainIds[0] ?? "",
+                        )
+                        : "",
+                    );
+                  }}
+                  className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+                >
+                  {activeSessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {session.origin.title} · {formatDappTransportLabel(session.transport)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm text-slate-300">
+                <span className="text-slate-400">Request kind</span>
+                <select
+                  value={requestKind}
+                  onChange={(event) => {
+                    const nextKind = parseRequestKind(event.target.value);
+
+                    if (nextKind) {
+                      setRequestKind(nextKind);
+                    }
+                  }}
+                  className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+                >
+                  {REQUEST_KIND_OPTIONS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {getDappRequestKindLabel(kind)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm text-slate-300">
+                <span className="text-slate-400">Chain</span>
+                <select
+                  value={resolvedRequestChainId}
+                  onChange={(event) => setRequestChainId(event.target.value)}
+                  className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+                >
+                  {selectedRequestSession.chainIds.map((chainId) => (
+                    <option key={chainId} value={chainId}>
+                      {chainId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <StatusPill
+                label={formatDappTransportLabel(selectedRequestSession.transport)}
+                tone={getDappTransportTone(selectedRequestSession.transport)}
+              />
+              <StatusPill label={selectedRequestSession.accounts[0] ?? "No account"} />
+            </div>
+
+            <label className="grid gap-2 text-sm text-slate-300">
+              <span className="text-slate-400">Summary override</span>
+              <input
+                value={requestSummary}
+                onChange={(event) => setRequestSummary(event.target.value)}
+                placeholder="Leave blank to auto-generate a preview summary"
+                className="rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-cyan-500"
+              />
+            </label>
+
+            {requestError ? (
+              <p className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-100">
+                {requestError}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Requests target the selected peer&apos;s current exposed account and
+                chain, then land in the same preview approval queue used by the
+                extension runtime.
+              </p>
+            )}
+
+            <div>
+              <ShellButton label="Queue request preview" tone="primary" type="submit" />
+            </div>
+          </form>
+        ) : (
+          <div className="mt-4">
+            <EmptyState message="Approve a site or WalletConnect peer first to queue preview requests." />
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
@@ -300,6 +491,13 @@ export function DappSessionShell() {
                         </p>
                       </div>
                       <StatusPill label={request.chainId ? `Chain ${request.chainId}` : "Multichain"} />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusPill
+                        label={formatDappTransportLabel(request.transport)}
+                        tone={getDappTransportTone(request.transport)}
+                      />
                     </div>
 
                     <p className="mt-4 text-sm text-slate-300">{request.summary}</p>
@@ -542,4 +740,16 @@ function ShellButton(props: {
       {props.label}
     </button>
   );
+}
+
+function parseRequestKind(value: string): Exclude<DappRequestKind, "connect"> | null {
+  switch (value) {
+    case "sign_message":
+    case "sign_typed_data":
+    case "sign_transaction":
+    case "send_transaction":
+      return value;
+    default:
+      return null;
+  }
 }

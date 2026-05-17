@@ -36,6 +36,10 @@
   - `packages/shared` now models dApp transport (`injected` vs `walletconnect`) plus redacted WalletConnect pairing previews that never persist raw symKeys
   - `apps/extension` options can now queue preview-only WalletConnect pairing proposals into the same permission/session registry used by websites
   - `/dapps` and `/extension` now describe and demo WalletConnect pairing previews while keeping live relay, real signatures, and broadcast disabled
+- Multichain Session Request Shell wave implemented locally (2026-05-17)
+  - `packages/shared` now carries request transport metadata plus helpers for queueing follow-up preview requests from active sessions with explicit chain/account context
+  - `apps/extension` options can now queue preview-only follow-up requests for approved injected sites and WalletConnect peers into the same approval queue
+  - `/dapps` and `/extension` now describe and demo transport-aware session request staging while keeping live sign/broadcast execution disabled
 - Token Management + Real Charts wave deployed (2026-05-15)
   - New routes: `/api/user-tokens/hide`, `/api/user-tokens/unhide`
   - `/api/market/chart` now uses cache-first semantics with `cached | live | stale_cache | fallback_mock`
@@ -63,7 +67,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, single-account exposure controls for connected sites, and a preview-only WalletConnect pairing shell with redacted secrets; live WalletConnect relay / real signature output / real dApp send execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, single-account exposure controls for connected sites, a preview-only WalletConnect pairing shell with redacted secrets, and a multichain session-request staging layer for approved peers; live WalletConnect relay / real signature output / real dApp send execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
@@ -171,6 +175,24 @@
   - live WalletConnect relay, real signature bytes, and real transaction broadcast remain disabled
 - Next sensible step:
   - real multichain session-request execution and later client-side signing execution behind the same approval boundary
+
+## Multichain Session Request Shell Wave (2026-05-17)
+
+- Status: **implemented locally**
+- Shared/runtime additions:
+  - dApp requests now carry transport metadata so injected pages and WalletConnect peers stay distinguishable all the way through the approval queue
+  - active sessions can now spawn preview-only follow-up requests with explicit chain/account context through a shared helper instead of ad hoc UI-only mutations
+  - stored extension snapshots are normalized so older proposal/session/request state safely picks up missing transport metadata
+- Product/UI additions:
+  - extension options now include a session request studio for approved peers, with peer selection, request kind, chain selection, and optional custom summary
+  - popup/options and `/dapps` now display request transport so queued prompts clearly show whether they came from an injected site or a WalletConnect peer
+  - `/extension` and the extension roadmap now describe multichain session request staging as live preview functionality
+- Security boundary unchanged:
+  - queued session requests still resolve preview-only; no real signature bytes or transaction hash are produced
+  - no mnemonic/privateKey/passcode exposure to webpages, content scripts, or backend services
+  - WalletConnect pairing secrets remain redacted on import and live relay remains disabled
+- Next sensible step:
+  - true client-side signing execution for approved requests, still behind the same explicit approval boundary
 
 ## Security hardening wave
 

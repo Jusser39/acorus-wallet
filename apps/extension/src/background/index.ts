@@ -25,6 +25,7 @@ import {
   getWalletSyncState,
   getDappShellState,
   initializePermissionStore,
+  queueSessionRequestPreviewForSession,
   queueWalletConnectPairingProposal,
   rejectProposal,
   rejectRequestInQueue,
@@ -170,6 +171,33 @@ async function handleRuntimeMessage(
             error instanceof Error
               ? error.message
               : "WalletConnect pairing URI is invalid.",
+        },
+      };
+    }
+  }
+
+  if (input.kind === "queue_session_request_preview") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueSessionRequestPreviewForSession(
+          input.sessionId,
+          input.requestKind,
+          input.chainId ?? undefined,
+          input.summary,
+        ),
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "invalid_session_request_preview",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Session request preview could not be queued.",
         },
       };
     }

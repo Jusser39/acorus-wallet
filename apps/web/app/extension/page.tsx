@@ -10,6 +10,7 @@ const EXTENSION_PHASES = [
   "EVM provider compatibility",
   "Universal account controls",
   "WalletConnect pairing shell",
+  "Multichain session request shell",
 ];
 
 export default function ExtensionPage() {
@@ -36,8 +37,10 @@ export default function ExtensionPage() {
           output. The bridge now defaults to one selected public account per
           site instead of exposing every synced address at once. The options
           shell can now queue preview-only WalletConnect pairings while
-          redacting the imported symKey immediately. Real signatures, live
-          WalletConnect relay, and broadcast remain disabled.
+          redacting the imported symKey immediately, and it can stage
+          transport-aware multichain follow-up requests for any approved peer.
+          Real signatures, live WalletConnect relay, and broadcast remain
+          disabled.
         </p>
       </div>
 
@@ -79,7 +82,8 @@ export default function ExtensionPage() {
             metadata. Returned data now comes from approved session state, with
             wallet-backed public EVM addresses available after the Acorus web
             app syncs them into the extension. One selected public account is
-            exposed by default for each approved site.
+            exposed by default for each approved site, and follow-up requests can
+            now stay explicitly tied to the selected peer, account, and chain.
           </p>
         </div>
 
@@ -110,7 +114,8 @@ export default function ExtensionPage() {
             These methods enter the extension request queue and resolve only
             after explicit approve or reject actions. Returned results still
             stay preview-only, so websites never receive real signature bytes
-            or a broadcast transaction hash in this wave.
+            or a broadcast transaction hash in this wave. The same queue can now
+            be seeded from approved WalletConnect peers in the options shell.
           </p>
         </div>
 

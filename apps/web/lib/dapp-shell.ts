@@ -2,7 +2,9 @@ import {
   createDemoDappShellSnapshot,
   getDappConnectionTransportLabel,
   getDappPermissionDefinition,
+  queueSessionRequestPreview,
   queueWalletConnectPairing,
+  type QueueSessionRequestPreviewInput,
   type DappPermissionScope,
   type DappConnectionTransport,
   type DappSessionStatus,
@@ -62,4 +64,11 @@ export function queuePreviewWalletConnectPairing(
   input: QueueWalletConnectPairingInput,
 ): DappShellSnapshot {
   return queueWalletConnectPairing(snapshot, input).snapshot;
+}
+
+export function queuePreviewSessionRequest(
+  snapshot: DappShellSnapshot,
+  input: QueueSessionRequestPreviewInput,
+): DappShellSnapshot {
+  return queueSessionRequestPreview(snapshot, input).snapshot;
 }

@@ -126,6 +126,15 @@ export type ExtensionRuntimeMessage =
       surface: "options";
       uri: string;
       title?: string;
+    }
+  | {
+      kind: "queue_session_request_preview";
+      requestId: string;
+      surface: "options";
+      sessionId: string;
+      requestKind: Exclude<DappRequest["kind"], "connect">;
+      chainId?: number | null;
+      summary?: string;
     };
 
 export type ExtensionRuntimeResponse = {
@@ -173,6 +182,7 @@ export const EXTENSION_PHASES = [
   "EVM compatibility",
   "Universal account controls",
   "WalletConnect pairing shell",
+  "Multichain session request shell",
 ] as const;
 
 export function createRequestId(prefix = "acorus"): string {

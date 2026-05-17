@@ -47,7 +47,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, sign/transaction approval review, and preview-only WalletConnect pairing records can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing, live WalletConnect relay, and send execution remain disabled.
+          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, sign/transaction approval review, preview-only WalletConnect pairing records, and multichain follow-up session requests can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing, live WalletConnect relay, and send execution remain disabled.
         </p>
       </section>
 
@@ -114,6 +114,15 @@ function renderOptions(state: BackgroundStateSnapshot): string {
           </section>
 
           <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
+            <h2 style="margin:0 0 10px;font-size:20px">Session request studio</h2>
+            <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.6">
+              Queue preview-only follow-up requests for any connected injected site
+              or WalletConnect peer, with explicit chain and account context.
+            </p>
+            ${renderSessionRequestComposer(state)}
+          </section>
+
+          <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
             <h2 style="margin:0 0 10px;font-size:20px">Synced wallet accounts</h2>
             <div style="display:grid;gap:10px">${renderWalletProfiles(state)}</div>
           </section>
@@ -138,6 +147,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
               <li>No silent approvals or background signing</li>
               <li>No raw WalletConnect pairing secret persistence</li>
               <li>No live WalletConnect relay session in this wave</li>
+              <li>No real client-side sign execution behind queued session requests yet</li>
               <li>No live transaction signing output or broadcast</li>
               <li>No automatic exposure of every synced account to every site</li>
             </ul>
@@ -220,6 +230,7 @@ function renderRequests(state: BackgroundStateSnapshot): string {
             </div>
             <span style="${badgeStyle("#0ea5e9")}">${request.chainId ?? "multi"}</span>
           </div>
+          <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(request.transport))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">${escapeHtml(request.summary)}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             ${actionButton("approve-request", request.id, "Approve preview", true)}
@@ -333,6 +344,12 @@ function wireOptionActions(): void {
   const pairButton = root.querySelector<HTMLButtonElement>("#walletconnect-pair-button");
   const uriField = root.querySelector<HTMLTextAreaElement>("#walletconnect-uri");
   const titleField = root.querySelector<HTMLInputElement>("#walletconnect-title");
+  const requestForm = root.querySelector<HTMLFormElement>("#session-request-form");
+  const requestButton = root.querySelector<HTMLButtonElement>("#session-request-button");
+  const requestSessionField = root.querySelector<HTMLSelectElement>("#session-request-session");
+  const requestChainField = root.querySelector<HTMLSelectElement>("#session-request-chain");
+  const requestSummaryField = root.querySelector<HTMLInputElement>("#session-request-summary");
+  const requestMeta = root.querySelector<HTMLElement>("#session-request-meta");
 
   pairingForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -360,6 +377,71 @@ function wireOptionActions(): void {
 
       if (!response.ok) {
         window.alert(response.error?.message ?? "WalletConnect pairing preview failed.");
+      }
+    } finally {
+      await loadOptionsState();
+    }
+  });
+
+  const syncSessionRequestComposer = () => {
+    if (!requestSessionField || !requestChainField) {
+      return;
+    }
+
+    const selected = requestSessionField.selectedOptions[0];
+    const chainIds = (selected?.dataset.chainIds ?? "")
+      .split(",")
+      .filter((value) => value.length > 0);
+    const currentValue = requestChainField.value;
+    requestChainField.innerHTML = chainIds
+      .map((chainId) => `<option value="${escapeAttribute(chainId)}">${escapeHtml(chainId)}</option>`)
+      .join("");
+
+    if (chainIds.includes(currentValue)) {
+      requestChainField.value = currentValue;
+    }
+
+    if (requestMeta) {
+      requestMeta.textContent =
+        `${selected?.dataset.transport ?? "Injected"} · ${selected?.dataset.account ?? "No account exposed"}`;
+    }
+  };
+
+  requestSessionField?.addEventListener("change", syncSessionRequestComposer);
+  syncSessionRequestComposer();
+
+  requestForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const sessionId = requestSessionField?.value ?? "";
+    const requestKind = parseSessionRequestKind(
+      root.querySelector<HTMLSelectElement>("#session-request-kind")?.value ?? "",
+    );
+    const chainId = requestChainField?.value ?? "";
+    const summary = requestSummaryField?.value.trim() ?? "";
+
+    if (!sessionId || !requestKind) {
+      window.alert("Choose a connected peer and request kind first.");
+      return;
+    }
+
+    if (requestButton) {
+      requestButton.disabled = true;
+    }
+
+    try {
+      const response = (await chrome.runtime.sendMessage({
+        kind: "queue_session_request_preview",
+        requestId: createRequestId("options"),
+        surface: "options",
+        sessionId,
+        requestKind,
+        chainId: chainId ? Number(chainId) : undefined,
+        summary: summary || undefined,
+      })) as ExtensionRuntimeResponse;
+
+      if (!response.ok) {
+        window.alert(response.error?.message ?? "Session request preview failed.");
       }
     } finally {
       await loadOptionsState();
@@ -475,6 +557,75 @@ function renderWalletConnectComposer(): string {
     </form>`;
 }
 
+function renderSessionRequestComposer(state: BackgroundStateSnapshot): string {
+  const activeSessions = state.sessions.filter((session) => session.status === "active");
+
+  if (activeSessions.length === 0) {
+    return emptyCard("Approve a site or WalletConnect peer first to queue preview requests.");
+  }
+
+  const firstSession = activeSessions[0];
+  if (!firstSession) {
+    return emptyCard("Approve a site or WalletConnect peer first to queue preview requests.");
+  }
+
+  const chainOptions = firstSession.chainIds
+    .map((chainId) => `<option value="${chainId}">${chainId}</option>`)
+    .join("");
+
+  return `
+    <form id="session-request-form" style="margin-top:14px;display:grid;gap:10px">
+      <label style="display:grid;gap:6px">
+        <span style="font-size:12px;color:#94a3b8">Connected peer</span>
+        <select id="session-request-session" style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px">
+          ${activeSessions
+            .map((session) => `
+              <option
+                value="${escapeAttribute(session.id)}"
+                data-chain-ids="${escapeAttribute(session.chainIds.join(","))}"
+                data-account="${escapeAttribute(session.accounts[0] ?? "")}"
+                data-transport="${escapeAttribute(getDappConnectionTransportLabel(session.transport))}"
+              >
+                ${escapeHtml(session.origin.title)} · ${escapeHtml(getDappConnectionTransportLabel(session.transport))}
+              </option>`)
+            .join("")}
+        </select>
+      </label>
+      <div id="session-request-meta" style="font-size:12px;color:#94a3b8;line-height:1.6">
+        ${escapeHtml(getDappConnectionTransportLabel(firstSession.transport))} · ${escapeHtml(firstSession.accounts[0] ?? "No account exposed")}
+      </div>
+      <div style="display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))">
+        <label style="display:grid;gap:6px">
+          <span style="font-size:12px;color:#94a3b8">Request kind</span>
+          <select id="session-request-kind" style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px">
+            <option value="sign_message">Sign message</option>
+            <option value="sign_typed_data">Sign typed data</option>
+            <option value="sign_transaction">Sign transaction</option>
+            <option value="send_transaction">Send transaction</option>
+          </select>
+        </label>
+        <label style="display:grid;gap:6px">
+          <span style="font-size:12px;color:#94a3b8">Chain</span>
+          <select id="session-request-chain" style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px">
+            ${chainOptions}
+          </select>
+        </label>
+      </div>
+      <label style="display:grid;gap:6px">
+        <span style="font-size:12px;color:#94a3b8">Summary override</span>
+        <input id="session-request-summary" placeholder="Leave blank to auto-generate a preview summary" style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px" />
+      </label>
+      <div style="font-size:12px;color:#94a3b8;line-height:1.6">
+        Requests target the selected peer's currently exposed account and chosen chain, then land in the same preview approval queue used by injected dApps.
+      </div>
+      <div>
+        <button id="session-request-button" type="submit" style="border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:10px 14px;font-size:12px;cursor:pointer">
+          Queue request preview
+        </button>
+      </div>
+    </form>`;
+}
+
 function renderSessionAccountActions(
   sessionId: string,
   currentAccount: string | null,
@@ -516,4 +667,27 @@ function escapeHtml(value: string): string {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function escapeAttribute(value: string): string {
+  return escapeHtml(value)
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function parseSessionRequestKind(value: string):
+  | "sign_message"
+  | "sign_typed_data"
+  | "sign_transaction"
+  | "send_transaction"
+  | null {
+  switch (value) {
+    case "sign_message":
+    case "sign_typed_data":
+    case "sign_transaction":
+    case "send_transaction":
+      return value;
+    default:
+      return null;
+  }
 }

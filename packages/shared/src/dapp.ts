@@ -85,6 +85,7 @@ export type DappRequest = {
   id: string;
   sessionId?: string | null;
   kind: DappRequestKind;
+  transport: DappConnectionTransport;
   origin: DappOriginMetadata;
   account?: string | null;
   chainId?: ChainId | null;
@@ -177,6 +178,7 @@ export type QueueDappRequestInput = {
   sessionId: string;
   kind: DappRequestKind;
   origin: string;
+  transport?: DappConnectionTransport;
   account?: string | null;
   chainId?: ChainId | null;
   requestedPermissions?: DappPermissionScope[];
@@ -189,6 +191,16 @@ export type QueueDappRequestResult = {
   request: DappRequest;
   created: boolean;
 };
+
+export type QueueSessionRequestPreviewInput = {
+  sessionId: string;
+  kind: Exclude<DappRequestKind, "connect">;
+  chainId?: ChainId | null;
+  summary?: string | null;
+  warning?: string | null;
+};
+
+export type QueueSessionRequestPreviewResult = QueueDappRequestResult;
 
 export type WalletConnectPairingPreview = {
   origin: string;
@@ -359,6 +371,41 @@ export function buildDappSessionWarning(input: {
     : "Approved in preview-backed bridge mode only. Request review can continue after connect, but wallet-backed account exposure, real signing, and send execution remain disabled.";
 }
 
+export function buildDappRequestWarning(input: {
+  transport: DappConnectionTransport;
+}): string {
+  if (input.transport === "walletconnect") {
+    return "WalletConnect session request preview only. The peer stays in review mode, and live relay, signatures, and broadcast remain disabled.";
+  }
+
+  return "Approval review is live, but the final signature or broadcast remains preview-only in this wave.";
+}
+
+export function buildDappRequestSummary(input: {
+  transport: DappConnectionTransport;
+  kind: Exclude<DappRequestKind, "connect">;
+  chainId?: ChainId | null;
+}): string {
+  const subject =
+    input.transport === "walletconnect"
+      ? "WalletConnect peer"
+      : "Connected site";
+  const chainSuffix = input.chainId ? ` on chain ${input.chainId}` : "";
+
+  switch (input.kind) {
+    case "sign_message":
+      return `${subject} requested a message signature preview${chainSuffix}.`;
+    case "sign_typed_data":
+      return `${subject} requested a typed data signature preview${chainSuffix}.`;
+    case "sign_transaction":
+      return `${subject} requested a transaction signature preview${chainSuffix}.`;
+    case "send_transaction":
+      return `${subject} requested a transaction broadcast preview${chainSuffix}.`;
+    default:
+      return `${subject} requested a preview action${chainSuffix}.`;
+  }
+}
+
 export function parseWalletConnectPairingPreview(
   uri: string,
 ): WalletConnectPairingPreview {
@@ -495,6 +542,7 @@ export function createDemoDappShellSnapshot(): DappShellSnapshot {
         id: "request_demo_swap_sign_message",
         sessionId: "session_demo_swap",
         kind: "sign_message",
+        transport: "injected",
         origin: swapOrigin,
         account: PREVIEW_DAPP_BRIDGE_ACCOUNT,
         chainId: 1,
@@ -710,6 +758,7 @@ export function queueDappRequest(
     id: input.id,
     sessionId: input.sessionId,
     kind: input.kind,
+    transport: input.transport ?? session?.transport ?? "injected",
     origin: session?.origin ?? createDappOriginMetadata({ origin: input.origin }),
     account: input.account ?? null,
     chainId: input.chainId ?? null,
@@ -720,7 +769,9 @@ export function queueDappRequest(
     createdAt,
     warning:
       input.warning
-      ?? "Approval review is live, but the final signature or broadcast remains preview-only in this wave.",
+      ?? buildDappRequestWarning({
+        transport: input.transport ?? session?.transport ?? "injected",
+      }),
   };
 
   return {
@@ -732,6 +783,50 @@ export function queueDappRequest(
     request,
     created: true,
   };
+}
+
+export function queueSessionRequestPreview(
+  snapshot: DappShellSnapshot,
+  input: QueueSessionRequestPreviewInput,
+): QueueSessionRequestPreviewResult {
+  const session = snapshot.sessions.find(
+    (item) => item.id === input.sessionId && item.status === "active",
+  );
+
+  if (!session) {
+    throw new Error("Active session was not found for this preview request.");
+  }
+
+  const resolvedChainId = input.chainId ?? getDappSessionActiveChainId(session);
+
+  if (resolvedChainId && !session.chainIds.includes(resolvedChainId)) {
+    throw new Error("Selected chain is not available for this session.");
+  }
+
+  const trimmedSummary = input.summary?.trim();
+
+  return queueDappRequest(snapshot, {
+    id: `request_${session.id}_${input.kind}_${Date.now()}`,
+    sessionId: session.id,
+    kind: input.kind,
+    origin: session.origin.origin,
+    transport: session.transport,
+    account: session.accounts[0] ?? null,
+    chainId: resolvedChainId,
+    summary:
+      trimmedSummary && trimmedSummary.length > 0
+        ? trimmedSummary
+        : buildDappRequestSummary({
+          transport: session.transport,
+          kind: input.kind,
+          chainId: resolvedChainId,
+        }),
+    warning:
+      input.warning
+      ?? buildDappRequestWarning({
+        transport: session.transport,
+      }),
+  });
 }
 
 export function approveDappProposal(

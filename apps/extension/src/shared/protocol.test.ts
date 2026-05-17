@@ -48,6 +48,7 @@ describe("extension protocol", () => {
   });
 
   it("tracks the WalletConnect pairing shell phase", () => {
-    expect(EXTENSION_PHASES.at(-1)).toBe("WalletConnect pairing shell");
+    expect(EXTENSION_PHASES).toContain("WalletConnect pairing shell");
+    expect(EXTENSION_PHASES.at(-1)).toBe("Multichain session request shell");
   });
 });
