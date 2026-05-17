@@ -10,6 +10,8 @@
     "dev": "pnpm --parallel --filter @acorus/api --filter @acorus/web dev",
     "dev:web": "pnpm --filter @acorus/web dev",
     "dev:api": "pnpm --filter @acorus/api dev",
+    "extension:build": "pnpm --filter @acorus/extension build",
+    "extension:open:chrome": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/open-extension-chrome.ps1",
     "build": "pnpm -r --workspace-concurrency=1 build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r --workspace-concurrency=1 test",

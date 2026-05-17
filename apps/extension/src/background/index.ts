@@ -3,12 +3,14 @@ import {
   createDappBridgeSessionView,
   getActiveDappSession,
   getDappSessionActiveChainId,
+  getPendingDappProposal,
   getPendingDappRequest,
   hasDappPermission,
   queueDappRequest,
   type DappRequest,
   type DappRequestKind,
   type ChainId,
+  type DappShellSnapshot,
 } from "@acorus/shared";
 import {
   type AcorusProviderMethod,
@@ -50,6 +52,16 @@ const pendingProviderApprovals = new Map<
     resolve: (response: ExtensionRuntimeResponse) => void;
   }
 >();
+const pendingConnectionApprovals = new Map<
+  string,
+  {
+    origin: string;
+    proposalId: string | null;
+    timeoutId: ReturnType<typeof setTimeout>;
+    resolve: (response: ExtensionRuntimeResponse) => void;
+  }
+>();
+const ACTIVE_PROMPT_ORIGIN_KEY = "acorus_active_prompt_origin";
 
 chrome.runtime.onInstalled.addListener(() => {
   void initializePermissionStore();
@@ -96,8 +108,7 @@ async function handleRuntimeMessage(
     const state = await getDappShellState();
     const walletState = await getWalletSyncState();
     const extensionVaultStatus = await getExtensionVaultStatus();
-    const activeOrigin =
-      input.origin ?? sender.origin ?? sender.url ?? null;
+    const activeOrigin = await resolveActiveOrigin(input.origin, sender);
     const walletExposureMode = walletState.profiles.length > 0
       ? "wallet_backed"
       : "preview_accounts";
@@ -269,18 +280,39 @@ async function handleRuntimeMessage(
   }
 
   if (input.kind === "approve_proposal") {
+    const current = await getDappShellState();
+    const proposal = current.proposals.find((item) => item.id === input.proposalId);
+    const next = await approveProposal(input.proposalId);
+
+    if (proposal) {
+      resolvePendingConnectionApproval(proposal.origin.origin, input.proposalId, next);
+    }
+
     return {
       requestId,
       ok: true,
-      result: await approveProposal(input.proposalId),
+      result: next,
     };
   }
 
   if (input.kind === "reject_proposal") {
+    const current = await getDappShellState();
+    const proposal = current.proposals.find((item) => item.id === input.proposalId);
+    const next = await rejectProposal(input.proposalId);
+
+    if (proposal) {
+      rejectPendingConnectionApproval(
+        proposal.origin.origin,
+        input.proposalId,
+        "user_rejected",
+        "The connection request was rejected in Acorus Wallet.",
+      );
+    }
+
     return {
       requestId,
       ok: true,
-      result: await rejectProposal(input.proposalId),
+      result: next,
     };
   }
 
@@ -404,17 +436,17 @@ async function handleProviderMethod(
       };
     }
 
-    await ensureOriginConnectionProposal(origin);
+    const bridge = await ensureOriginConnectionProposal(origin);
+    await setActivePromptOrigin(origin);
     openApprovalWindow();
-    return {
+    return waitForConnectionApproval({
       requestId,
-      ok: false,
-      error: {
-        code: "approval_required",
-        message:
-          "Approve the connection request in Acorus Wallet before retrying requestAccounts.",
-      },
-    };
+      origin,
+      proposalId: bridge.proposalId ?? getPendingDappProposal(
+        await getDappShellState(),
+        origin,
+      )?.id ?? null,
+    });
   }
 
   if (method === "acorus_accounts") {
@@ -556,6 +588,45 @@ async function handleProviderMethod(
   };
 }
 
+async function resolveActiveOrigin(
+  inputOrigin: string | null | undefined,
+  sender: chrome.MessageSender,
+): Promise<string | null> {
+  const senderOrigin = normalizeRuntimeOrigin(sender.origin ?? sender.url ?? null);
+
+  return inputOrigin ?? senderOrigin ?? await getActivePromptOrigin();
+}
+
+function normalizeRuntimeOrigin(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol === "chrome-extension:") {
+      return null;
+    }
+
+    return url.origin;
+  } catch {
+    return value.startsWith("chrome-extension://") ? null : value;
+  }
+}
+
+async function setActivePromptOrigin(origin: string): Promise<void> {
+  await chrome.storage.local.set({
+    [ACTIVE_PROMPT_ORIGIN_KEY]: origin,
+  });
+}
+
+async function getActivePromptOrigin(): Promise<string | null> {
+  const result = await chrome.storage.local.get(ACTIVE_PROMPT_ORIGIN_KEY);
+  const value = result[ACTIVE_PROMPT_ORIGIN_KEY];
+  return typeof value === "string" ? value : null;
+}
+
 function openApprovalWindow(): void {
   try {
     void chrome.windows?.create?.({
@@ -566,7 +637,7 @@ function openApprovalWindow(): void {
       focused: true,
     });
   } catch {
-    // The provider still returns approval_required; the user can open the popup manually.
+    // The request stays pending; the user can open the popup manually.
   }
 }
 
@@ -602,6 +673,33 @@ function getRequestKindForMethod(method: AcorusProviderMethod): DappRequestKind 
   }
 }
 
+function waitForConnectionApproval(input: {
+  requestId: string;
+  origin: string;
+  proposalId: string | null;
+}): Promise<ExtensionRuntimeResponse> {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      pendingConnectionApprovals.delete(input.requestId);
+      resolve({
+        requestId: input.requestId,
+        ok: false,
+        error: {
+          code: "user_rejected",
+          message: "The Acorus Wallet connection approval timed out.",
+        },
+      });
+    }, 5 * 60 * 1000);
+
+    pendingConnectionApprovals.set(input.requestId, {
+      origin: input.origin,
+      proposalId: input.proposalId,
+      timeoutId,
+      resolve,
+    });
+  });
+}
+
 function waitForProviderApproval(
   request: DappRequest,
 ): Promise<ExtensionRuntimeResponse> {
@@ -610,6 +708,52 @@ function waitForProviderApproval(
       resolve,
     });
   });
+}
+
+function resolvePendingConnectionApproval(
+  origin: string,
+  proposalId: string,
+  nextSnapshot: DappShellSnapshot,
+): void {
+  const bridge = createDappBridgeSessionView(nextSnapshot, origin);
+
+  for (const [requestId, pending] of pendingConnectionApprovals.entries()) {
+    if (pending.origin !== origin && pending.proposalId !== proposalId) {
+      continue;
+    }
+
+    clearTimeout(pending.timeoutId);
+    pendingConnectionApprovals.delete(requestId);
+    pending.resolve({
+      requestId,
+      ok: true,
+      result: bridge.accounts,
+    });
+  }
+}
+
+function rejectPendingConnectionApproval(
+  origin: string,
+  proposalId: string,
+  code: string,
+  message: string,
+): void {
+  for (const [requestId, pending] of pendingConnectionApprovals.entries()) {
+    if (pending.origin !== origin && pending.proposalId !== proposalId) {
+      continue;
+    }
+
+    clearTimeout(pending.timeoutId);
+    pendingConnectionApprovals.delete(requestId);
+    pending.resolve({
+      requestId,
+      ok: false,
+      error: {
+        code,
+        message,
+      },
+    });
+  }
 }
 
 function resolvePendingProviderApproval(

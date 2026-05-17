@@ -5,6 +5,7 @@ dist
 coverage
 .turbo
 .cache
+.chrome-extension-profile
 .next
 **/.next
 .pnpm-store
