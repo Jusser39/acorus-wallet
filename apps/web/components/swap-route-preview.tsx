@@ -9,23 +9,24 @@ export function SwapRoutePreview(props: {
   if (!quote) return null;
 
   return (
-    <div className="panel space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-xs font-semibold text-slate-300">
+    <div className="app-surface space-y-5 rounded-[2rem] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-semibold text-white">Route preview</h2>
+        <span className="rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-xs font-semibold text-teal-100">
           {quote.status}
         </span>
         <SourceBadge provider={quote.provider} sourceStatus="quote" />
       </div>
 
-      <div className="grid gap-4">
-        <div>
+      <div className="grid gap-3">
+        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-4">
           <div className="text-sm text-slate-400">You pay</div>
           <div className="text-2xl font-semibold text-white">
             {quote.fromAmountFormatted} {quote.from.symbol}
           </div>
         </div>
 
-        <div>
+        <div className="rounded-[1.35rem] border border-emerald-300/20 bg-emerald-300/10 p-4">
           <div className="text-sm text-slate-400">You receive estimated</div>
           <div className="text-2xl font-semibold text-white">
             {quote.toAmountFormatted ?? "—"} {quote.to.symbol}
@@ -58,7 +59,7 @@ export function SwapRoutePreview(props: {
         {quote.route.map((step, index) => (
           <div
             key={`${step.provider}-${index}`}
-            className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm"
+            className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4 text-sm"
           >
             <div className="flex flex-wrap gap-2">
               <ChainFamilyBadge family={step.family} />

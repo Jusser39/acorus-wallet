@@ -7,14 +7,14 @@ import { formatAddress } from "@/lib/utils";
 
 const navItems = [
   { href: "/wallet", label: "Wallet" },
+  { href: "/swap", label: "Swap" },
   { href: "/send", label: "Send" },
   { href: "/receive", label: "Receive" },
-  { href: "/swap", label: "Swap" },
   { href: "/explore", label: "Explore" },
   { href: "/nft", label: "NFTs" },
   { href: "/quests", label: "Quests" },
-  { href: "/security", label: "Security" },
   { href: "/dapps", label: "dApps" },
+  { href: "/security", label: "Security" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -28,21 +28,29 @@ export function WalletNav() {
   const setError = useWalletStore((state) => state.setError);
 
   return (
-    <header className="border-b border-white/10 bg-slate-950/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/58 backdrop-blur-2xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/" className="text-lg font-semibold text-white">
-            Acorus Wallet
+          <Link
+            href="/"
+            className="app-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white"
+          >
+            <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-teal-200 via-emerald-300 to-rose-300 text-sm font-black text-slate-950">
+              A
+            </span>
+            <span>Acorus</span>
           </Link>
-          <div className="flex items-center gap-3 text-sm text-slate-300">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-300">
             {activeProfile ? (
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1">
-                {activeProfile.name} · {activeProfile.type.replace("_", " ")} ·{" "}
-                {activeProfile.chainFamily.toUpperCase()} ·{" "}
+              <span className="app-pill max-w-full truncate rounded-full px-3 py-2 text-xs text-slate-200">
+                <span className="font-semibold text-white">{activeProfile.name}</span>{" "}
+                <span className="text-slate-500">/</span>{" "}
+                {activeProfile.chainFamily.toUpperCase()}{" "}
+                <span className="text-slate-500">/</span>{" "}
                 {formatAddress(activeProfile.publicAddress)}
               </span>
             ) : (
-              <span className="rounded-full border border-slate-700 px-3 py-1">
+              <span className="app-pill rounded-full px-3 py-2 text-xs">
                 No active wallet
               </span>
             )}
@@ -50,7 +58,8 @@ export function WalletNav() {
               <select
                 value={activeProfile?.id ?? ""}
                 onChange={(event) => setActiveProfileId(event.target.value || null)}
-                className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-sm text-white"
+                aria-label="Select wallet profile"
+                className="w-auto min-w-44 rounded-full px-3 py-2 text-xs text-white"
               >
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
@@ -61,24 +70,24 @@ export function WalletNav() {
             ) : null}
             <button
               type="button"
-              className="rounded-full border border-slate-700 px-3 py-1 text-white"
+              className="app-pill rounded-full px-4 py-2 text-xs font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
               onClick={() => lockWallet()}
             >
               Lock
             </button>
           </div>
         </div>
-        <nav className="flex flex-wrap gap-2">
+        <nav className="app-pill flex gap-1 overflow-x-auto rounded-full p-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-full px-4 py-2 text-sm ${
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-emerald-500 text-slate-950"
-                    : "border border-slate-800 text-slate-300"
+                    ? "bg-white text-slate-950 shadow-[0_10px_26px_rgba(255,255,255,0.12)]"
+                    : "text-slate-300 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {item.label}

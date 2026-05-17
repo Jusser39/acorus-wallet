@@ -185,28 +185,36 @@ export function SwapComposer(props: {
   });
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="panel space-y-6">
-        <div>
-          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">
-            Universal swap
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">
-            Swap quote preview
-          </h1>
-          <p className="mt-2 text-sm text-slate-300">
-            Build a route quote across supported networks. Execution is disabled
-            in this MVP wave.
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center">
+      <div className="app-surface space-y-5 rounded-[2rem] p-3">
+        <div className="px-3 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-teal-200">
+                Universal swap
+              </p>
+              <h1 className="mt-1 text-3xl font-semibold text-white">
+                Multichain quote
+              </h1>
+            </div>
+            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+              Preview mode
+            </span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            Build routes across EVM, Solana, Tron and planned chains from one
+            composer. Execution remains disabled while providers and signing
+            flows are safety-reviewed.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+        <div className="mx-1 rounded-[1.5rem] border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
           Quote preview only. No approvals, signatures or broadcasts happen here.
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-300">
               From network
             </span>
             <select
@@ -222,7 +230,7 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-300">
               To network
             </span>
             <select
@@ -238,7 +246,7 @@ export function SwapComposer(props: {
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2 px-2">
           <ChainFamilyBadge family={fromNetwork.family} />
           <span className="text-sm text-slate-500">→</span>
           <ChainFamilyBadge family={toNetwork.family} />
@@ -254,9 +262,9 @@ export function SwapComposer(props: {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-300">
               From asset
             </span>
             <select
@@ -281,7 +289,7 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-300">
               To asset
             </span>
             <select
@@ -305,9 +313,9 @@ export function SwapComposer(props: {
           </label>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-[1fr_180px]">
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">Amount</span>
+            <span className="px-2 text-sm font-medium text-slate-300">Amount</span>
             <input
               inputMode="decimal"
               placeholder="0.00"
@@ -325,7 +333,7 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-300">
               Slippage %
             </span>
             <input
@@ -347,15 +355,15 @@ export function SwapComposer(props: {
         </div>
 
         {state.error ? (
-          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-300">
+          <div className="mx-1 rounded-[1.5rem] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
             {state.error}
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid gap-3 px-1 pb-1 sm:grid-cols-[1fr_auto]">
           <button
             type="button"
-            className="button-primary"
+            className="button-primary w-full"
             disabled={!canQuote || quoting}
             onClick={() => void handleQuote()}
           >
