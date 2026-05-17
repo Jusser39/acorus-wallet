@@ -4,6 +4,7 @@ import { clearSensitiveMemoryBestEffort, type EncryptedVaultV1, type WalletVault
 import {
   getDefaultChainIdForFamily,
   isEvmChainId,
+  type ChainId,
   type WalletProfileRecord,
 } from "@acorus/shared";
 import { create } from "zustand";
@@ -11,8 +12,8 @@ import { clearSessionDecryptedState } from "../lib/storage";
 
 function resolveChainIdForProfile(
   profile: WalletProfileRecord | null | undefined,
-  currentChainId: number,
-): number {
+  currentChainId: ChainId,
+): ChainId {
   if (!profile) {
     return currentChainId;
   }
@@ -21,9 +22,13 @@ function resolveChainIdForProfile(
     return getDefaultChainIdForFamily("solana");
   }
 
-  return isEvmChainId(currentChainId)
+  if (profile.chainFamily === "evm") {
+    return typeof currentChainId === "number" && isEvmChainId(currentChainId)
     ? currentChainId
     : getDefaultChainIdForFamily("evm");
+  }
+
+  return getDefaultChainIdForFamily(profile.chainFamily);
 }
 
 interface WalletState {
@@ -33,7 +38,7 @@ interface WalletState {
   unlockedVault: WalletVaultPlaintext | null;
   profiles: WalletProfileRecord[];
   activeProfileId: string | null;
-  selectedChainId: number;
+  selectedChainId: ChainId;
   safetyMode: boolean;
   autoLockMinutes: number;
   lastHiddenAt: number | null;
@@ -48,7 +53,7 @@ interface WalletState {
   setProfiles(profiles: WalletProfileRecord[]): void;
   upsertProfile(profile: WalletProfileRecord): void;
   setActiveProfileId(id: string | null): void;
-  setSelectedChainId(chainId: number): void;
+  setSelectedChainId(chainId: ChainId): void;
   setSafetyMode(value: boolean): void;
   setAutoLockMinutes(value: number): void;
   setLastHiddenAt(value: number | null): void;

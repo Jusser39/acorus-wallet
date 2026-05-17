@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isValidSolanaAddress } from "@acorus/wallet-core";
+import { createDefaultAdapterRegistry, isValidSolanaAddress } from "@acorus/wallet-core";
 import { getAddress, isAddress } from "viem";
 import { formatAddress } from "@/lib/utils";
 import {
@@ -12,6 +12,8 @@ import {
 } from "@/lib/api";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import type { ContactRecord } from "@acorus/shared";
+
+const adapterRegistry = createDefaultAdapterRegistry();
 
 export default function ContactsPage() {
   const userId = useWalletStore((state) => state.userId);
@@ -57,11 +59,20 @@ export default function ContactsPage() {
 
     const chainFamily = activeProfile?.chainFamily ?? "evm";
 
-    if (chainFamily === "solana" ? !isValidSolanaAddress(address) : !isAddress(address)) {
+    const isValidAddress =
+      chainFamily === "solana"
+        ? isValidSolanaAddress(address)
+        : chainFamily === "tron"
+          ? Boolean(adapterRegistry.get({ family: "tron", chainId: "tron-mainnet" })?.validateAddress(address))
+          : isAddress(address);
+
+    if (!isValidAddress) {
       setError(
         chainFamily === "solana"
           ? "Введите корректный Solana-адрес."
-          : "Введите корректный EVM-адрес.",
+          : chainFamily === "tron"
+            ? "Введите корректный Tron-адрес."
+            : "Введите корректный EVM-адрес.",
       );
       return;
     }
@@ -71,7 +82,7 @@ export default function ContactsPage() {
     setMessage(null);
 
     const normalizedAddress =
-      chainFamily === "solana" ? address.trim() : getAddress(address);
+      chainFamily === "evm" ? getAddress(address) : address.trim();
 
     try {
       if (editingId) {
@@ -122,7 +133,13 @@ export default function ContactsPage() {
           <input
             value={address}
             onChange={(event) => setAddress(event.target.value)}
-            placeholder={activeProfile?.chainFamily === "solana" ? "Base58 address" : "0x..."}
+            placeholder={
+              activeProfile?.chainFamily === "solana"
+                ? "Base58 address"
+                : activeProfile?.chainFamily === "tron"
+                  ? "T..."
+                  : "0x..."
+            }
           />
         </label>
         <label className="space-y-2">

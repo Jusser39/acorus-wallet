@@ -6,9 +6,11 @@ import Link from "next/link";
 import { deriveSolanaAccountFromMnemonic } from "@acorus/wallet-core";
 import {
   getChainById,
-  getChainsByFamily,
   getDefaultChainIdForFamily,
+  getUniversalChain,
+  getUniversalChainsByFamily,
   normalizeAddressForChain,
+  type ChainId,
 } from "@acorus/shared";
 import {
   createWalletProfile,
@@ -26,9 +28,11 @@ import { getPracticeAddress, PRACTICE_LESSONS } from "@/lib/practice";
 import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
 import { AssetList } from "@/components/asset-list";
 import { WalletActionGrid } from "@/components/wallet-action-grid";
+import { WalletHealthCard } from "@/components/wallet-health-card";
 import { formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getSendAvailability } from "@/lib/send-policy";
+import { buildWalletHealthSummary } from "@/lib/wallet-health";
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
@@ -61,6 +65,14 @@ export default function WalletPage() {
     || activeProfile?.chainFamily === "utxo"
     || activeProfile?.chainFamily === "ton";
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
+  const healthSummary = activeProfile
+    ? buildWalletHealthSummary({
+        profile: activeProfile,
+        isUnlocked: Boolean(unlockedVault),
+        safetyMode: useWalletStore.getState().safetyMode,
+        hasEncryptedVault: Boolean(useWalletStore.getState().encryptedVault),
+      })
+    : null;
 
   const sendAvailability = activeProfile
     ? getSendAvailability({
@@ -72,15 +84,16 @@ export default function WalletPage() {
     : { canSend: false, ctaLabel: "Send unavailable" };
 
   const availableChains = useMemo(
-    () => (activeProfile ? getChainsByFamily(activeProfile.chainFamily) : []),
+    () => (activeProfile ? getUniversalChainsByFamily(activeProfile.chainFamily) : []),
     [activeProfile],
   );
 
   const chain = useMemo(
     () => (
-      getChainById(selectedChainId)
+      (typeof selectedChainId === "number" ? getChainById(selectedChainId) : undefined)
+      ?? getUniversalChain({ chainId: selectedChainId })
       ?? availableChains[0]
-      ?? getChainById(getDefaultChainIdForFamily("evm"))
+      ?? getChainById(getDefaultChainIdForFamily("evm") as number)
     ),
     [availableChains, selectedChainId],
   );
@@ -117,7 +130,7 @@ export default function WalletPage() {
         if (activeProfile.type === "practice") {
           summary = await loadPortfolioSummary(
             activeProfile,
-            selectedChainId,
+            typeof selectedChainId === "number" ? selectedChainId : 1,
             userId,
             currency,
           );
@@ -135,7 +148,7 @@ export default function WalletPage() {
         } else {
           summary = await loadPortfolioSummary(
             activeProfile,
-            selectedChainId,
+            typeof selectedChainId === "number" ? selectedChainId : 101,
             userId,
             currency,
           );
@@ -210,7 +223,7 @@ export default function WalletPage() {
       await hideUserToken({
         userId,
         walletProfileId: activeProfile.id,
-        chainId: selectedChainId,
+        chainId: typeof selectedChainId === "number" ? selectedChainId : 0,
         tokenAddress: asset.tokenAddress,
         symbol: asset.symbol,
         name: asset.name,
@@ -416,10 +429,10 @@ export default function WalletPage() {
               <span className="text-sm text-slate-300">Chain</span>
               <select
                 value={selectedChainId}
-                onChange={(event) => setSelectedChainId(Number(event.target.value))}
+                onChange={(event) => setSelectedChainId(parseChainId(event.target.value))}
               >
                 {availableChains.map((item) => (
-                  <option key={item.chainId} value={item.chainId}>{item.name}</option>
+                  <option key={String(item.chainId)} value={String(item.chainId)}>{item.name}</option>
                 ))}
               </select>
             </label>
@@ -449,7 +462,7 @@ export default function WalletPage() {
             assets={tokenAssets}
             hidden={hiddenBalance}
             currency={currency}
-            chainId={selectedChainId}
+            chainId={typeof selectedChainId === "number" ? selectedChainId : 0}
             chainFamily={activeProfile?.chainFamily}
             loading={loading}
             onHideToken={(asset) => void handleHideToken(asset)}
@@ -459,6 +472,8 @@ export default function WalletPage() {
       </div>
 
       <aside className="space-y-6">
+        {healthSummary ? <WalletHealthCard summary={healthSummary} /> : null}
+
         <div className="panel space-y-4">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
@@ -496,4 +511,9 @@ export default function WalletPage() {
       </aside>
     </section>
   );
+}
+
+function parseChainId(value: string): ChainId {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && value.trim() !== "" ? numeric : value;
 }

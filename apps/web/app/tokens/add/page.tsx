@@ -14,8 +14,13 @@ export default function AddTokenPage() {
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
   const selectedChainId = useWalletStore((state) => state.selectedChainId);
+  const initialChainId =
+    typeof selectedChainId === "number"
+    && EVM_CHAINS.some((chain) => chain.chainId === selectedChainId)
+      ? selectedChainId
+      : 1;
 
-  const [chainId, setChainId] = useState(selectedChainId);
+  const [chainId, setChainId] = useState(initialChainId);
   const [tokenAddress, setTokenAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +155,7 @@ export default function AddTokenPage() {
       <div className="panel space-y-6">
         <h1 className="text-2xl font-semibold">Add custom token</h1>
         <p className="text-sm text-slate-400">
-          Add any ERC-20 token by contract address. We'll fetch token details and market data automatically.
+          Add any ERC-20 token by contract address. We&apos;ll fetch token details and market data automatically.
         </p>
 
         {!preview ? (

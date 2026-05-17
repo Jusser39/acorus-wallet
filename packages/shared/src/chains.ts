@@ -198,9 +198,17 @@ export function getChainsByFamily(family: ChainFamily): SupportedChainConfig[] {
   return [];
 }
 
-export function getDefaultChainIdForFamily(family: ChainFamily): number {
+export function getDefaultChainIdForFamily(family: ChainFamily): ChainId {
   if (family === "solana") {
     return DEFAULT_SOLANA_CHAIN_ID;
+  }
+
+  if (family === "tron") {
+    return DEFAULT_TRON_CHAIN_ID;
+  }
+
+  if (family === "utxo") {
+    return DEFAULT_BITCOIN_CHAIN_ID;
   }
 
   return DEFAULT_EVM_CHAIN_ID;

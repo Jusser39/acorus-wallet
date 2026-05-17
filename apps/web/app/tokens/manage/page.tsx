@@ -89,6 +89,11 @@ export default function ManageTokensPage() {
   const userId = useWalletStore((state) => state.userId);
   const selectedChainId = useWalletStore((state) => state.selectedChainId);
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
+  const evmSelectedChainId =
+    typeof selectedChainId === "number"
+    && getChainsByFamily("evm").some((chain) => chain.chainId === selectedChainId)
+      ? selectedChainId
+      : 1;
 
   const [userTokens, setUserTokens] = useState<UserToken[]>([]);
   const [query, setQuery] = useState("");
@@ -139,8 +144,8 @@ export default function ManageTokensPage() {
   }, [activeProfile?.id, userId]);
 
   const rows = useMemo(
-    () => buildRows(selectedChainId, userTokens),
-    [selectedChainId, userTokens],
+    () => buildRows(evmSelectedChainId, userTokens),
+    [evmSelectedChainId, userTokens],
   );
 
   const filteredRows = useMemo(() => {
@@ -275,7 +280,7 @@ export default function ManageTokensPage() {
           <label className="space-y-2">
             <span className="text-sm text-slate-300">Chain</span>
             <select
-              value={selectedChainId}
+              value={evmSelectedChainId}
               onChange={(event) => setSelectedChainId(Number(event.target.value))}
             >
               {availableChains.map((chain) => (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { getChainById, getChainsByFamily } from "@acorus/shared";
+import { getChainById, getUniversalChainsByFamily, type ChainId } from "@acorus/shared";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getPracticeAddress } from "@/lib/practice";
 import { getUniversalReceiveInfo } from "@/lib/receive";
@@ -16,11 +16,15 @@ export default function ReceivePage() {
   const [copied, setCopied] = useState(false);
 
   const availableChains = useMemo(
-    () => (activeProfile ? getChainsByFamily(activeProfile.chainFamily) : []),
+    () => (activeProfile ? getUniversalChainsByFamily(activeProfile.chainFamily) : []),
     [activeProfile],
   );
   const chain = useMemo(
-    () => getChainById(selectedChainId) ?? availableChains[0] ?? null,
+    () => (
+      typeof selectedChainId === "number"
+        ? getChainById(selectedChainId) ?? availableChains[0] ?? null
+        : availableChains.find((item) => String(item.chainId) === String(selectedChainId)) ?? availableChains[0] ?? null
+    ),
     [availableChains, selectedChainId],
   );
 
@@ -74,10 +78,10 @@ export default function ReceivePage() {
           <span className="text-sm text-slate-300">Selected chain</span>
           <select
             value={selectedChainId}
-            onChange={(event) => setSelectedChainId(Number(event.target.value))}
+            onChange={(event) => setSelectedChainId(parseChainId(event.target.value))}
           >
             {availableChains.map((item) => (
-              <option key={item.chainId} value={item.chainId}>
+              <option key={String(item.chainId)} value={String(item.chainId)}>
                 {item.name}
               </option>
             ))}
@@ -118,4 +122,9 @@ export default function ReceivePage() {
       </aside>
     </section>
   );
+}
+
+function parseChainId(value: string): ChainId {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && value.trim() !== "" ? numeric : value;
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ContactRecord, SendAsset, TransactionRecordItem } from "@acorus/shared";
-import { EVM_CHAINS } from "@acorus/shared";
+import { EVM_CHAINS, getDefaultChainIdForFamily } from "@acorus/shared";
 import {
   assertAddress,
   buildExplorerTxUrl,
@@ -72,23 +72,28 @@ export default function SendPage() {
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const isSolanaProfile = activeProfile?.chainFamily === "solana";
+  const evmSelectedChainId =
+    typeof selectedChainId === "number"
+    && EVM_CHAINS.some((item) => item.chainId === selectedChainId)
+      ? selectedChainId
+      : 1;
 
   const chain = useMemo(
-    () => EVM_CHAINS.find((item) => item.chainId === selectedChainId) ?? EVM_CHAINS[0]!,
-    [selectedChainId],
+    () => EVM_CHAINS.find((item) => item.chainId === evmSelectedChainId) ?? EVM_CHAINS[0]!,
+    [evmSelectedChainId],
   );
   const selectedToken = tokens.find((token) => token.tokenAddress === assetKey) ?? null;
   const selectedAsset: SendAsset =
     assetKey === "native"
       ? {
           type: "native",
-          chainId: selectedChainId,
+          chainId: evmSelectedChainId,
           symbol: chain.nativeSymbol,
           decimals: 18,
         }
       : {
           type: "erc20",
-          chainId: selectedChainId,
+          chainId: evmSelectedChainId,
           symbol: selectedToken?.symbol ?? "TOKEN",
           tokenAddress: selectedToken?.tokenAddress ?? null,
           decimals: selectedToken?.decimals ?? 18,
@@ -129,11 +134,19 @@ export default function SendPage() {
 
     let active = true;
 
-    setAssetsLoading(true);
-    setError(null);
+    void (async () => {
+      await Promise.resolve();
 
-    void loadWalletAssetSnapshot(activeProfile, selectedChainId)
-      .then((snapshot) => {
+      if (!active) {
+        return;
+      }
+
+      setAssetsLoading(true);
+      setError(null);
+
+      try {
+        const snapshot = await loadWalletAssetSnapshot(activeProfile, evmSelectedChainId);
+
         if (!active) {
           return;
         }
@@ -141,8 +154,7 @@ export default function SendPage() {
         setNativeBalance(snapshot.nativeBalance);
         setNativeBalanceRaw(snapshot.nativeBalanceRaw);
         setTokens(snapshot.tokens);
-      })
-      .catch((nextError) => {
+      } catch (nextError) {
         if (!active) {
           return;
         }
@@ -151,21 +163,22 @@ export default function SendPage() {
         setError(
           nextError instanceof Error ? nextError.message : "Не удалось загрузить балансы.",
         );
-      })
-      .finally(() => {
+      } finally {
         if (active) {
           setAssetsLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       active = false;
     };
-  }, [activeProfile, isSolanaProfile, selectedChainId]);
+  }, [activeProfile, isSolanaProfile, evmSelectedChainId]);
 
   useEffect(() => {
     if (assetKey !== "native" && !selectedToken) {
-      setAssetKey("native");
+      const timer = window.setTimeout(() => setAssetKey("native"), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [assetKey, selectedToken]);
 
@@ -261,7 +274,7 @@ export default function SendPage() {
         from: assertAddress(activeProfile.publicAddress),
         to: recipientAddress,
         value: 0n,
-        chainId: selectedChainId,
+        chainId: evmSelectedChainId,
       });
       const maxWei = nativeBalanceRaw - feeEstimate.estimatedFeeWei;
 
@@ -307,7 +320,7 @@ export default function SendPage() {
           from: assertAddress(draft.activeProfile.publicAddress),
           to: draft.recipient,
           value: draft.amountUnits,
-          chainId: selectedChainId,
+          chainId: evmSelectedChainId,
         });
 
         if (draft.amountUnits + fee.estimatedFeeWei > nativeBalanceRaw) {
@@ -328,7 +341,7 @@ export default function SendPage() {
           to: draft.recipient,
           tokenAddress: assertAddress(selectedAsset.tokenAddress ?? ""),
           amountUnits: draft.amountUnits,
-          chainId: selectedChainId,
+          chainId: evmSelectedChainId,
         });
 
         if (fee.estimatedFeeWei > nativeBalanceRaw) {
@@ -390,7 +403,7 @@ export default function SendPage() {
         const record = await createTransaction({
           userId: draft.userId,
           walletProfileId: draft.activeProfile.id,
-          chainId: selectedChainId,
+          chainId: evmSelectedChainId,
           hash: fakeTx.id,
           from: draft.activeProfile.publicAddress,
           to: review.recipient,
@@ -412,13 +425,13 @@ export default function SendPage() {
         review.asset.type === "native"
           ? await sendNativeTransaction({
               mnemonic: unlockedVault!.mnemonic,
-              chainId: selectedChainId,
+              chainId: evmSelectedChainId,
               to: review.recipient as `0x${string}`,
               amountWei: draft.amountUnits,
             })
           : await sendErc20Transaction({
               mnemonic: unlockedVault!.mnemonic,
-              chainId: selectedChainId,
+              chainId: evmSelectedChainId,
               tokenAddress: review.asset.tokenAddress as `0x${string}`,
               to: review.recipient as `0x${string}`,
               amountUnits: draft.amountUnits,
@@ -427,7 +440,7 @@ export default function SendPage() {
       const record = await createTransaction({
         userId: draft.userId,
         walletProfileId: draft.activeProfile.id,
-        chainId: selectedChainId,
+        chainId: evmSelectedChainId,
         hash,
         from: draft.activeProfile.publicAddress,
         to: review.recipient,
@@ -488,7 +501,7 @@ export default function SendPage() {
           profile={activeProfile}
           portfolio={null}
           initialFamily={activeProfile.chainFamily}
-          initialChainId={activeProfile.chainFamily === "solana" ? 101 : undefined}
+          initialChainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
           mnemonic={unlockedVault?.mnemonic ?? null}
         />
       </section>
@@ -502,7 +515,7 @@ export default function SendPage() {
         profile={activeProfile}
         portfolio={null}
         initialFamily="evm"
-        initialChainId={selectedChainId}
+        initialChainId={evmSelectedChainId}
         evmSendHref="#evm-send-form"
         mnemonic={unlockedVault?.mnemonic ?? null}
         onExecutionResult={async (result) => {
@@ -511,7 +524,7 @@ export default function SendPage() {
               await createTransaction({
                 userId,
                 walletProfileId: activeProfile.id,
-                chainId: typeof result.chainId === "number" ? result.chainId : selectedChainId,
+                chainId: typeof result.chainId === "number" ? result.chainId : evmSelectedChainId,
                 hash: result.txHash,
                 from: activeProfile.publicAddress,
                 to: "",
@@ -559,7 +572,7 @@ export default function SendPage() {
           <label className="space-y-2">
             <span className="text-sm text-slate-300">Chain</span>
             <select
-              value={selectedChainId}
+              value={evmSelectedChainId}
               onChange={(event) => {
                 setSelectedChainId(Number(event.target.value));
                 resetFlow();
@@ -758,7 +771,7 @@ export default function SendPage() {
             <p className="mt-3 break-all">{submittedRecord.hash}</p>
             {submittedRecord.assetType !== "practice" ? (
               <Link
-                href={submittedRecord.explorerUrl ?? buildExplorerTxUrl(selectedChainId, submittedRecord.hash)}
+                href={submittedRecord.explorerUrl ?? buildExplorerTxUrl(evmSelectedChainId, submittedRecord.hash)}
                 target="_blank"
                 className="mt-3 inline-flex text-emerald-200 underline underline-offset-4"
               >
