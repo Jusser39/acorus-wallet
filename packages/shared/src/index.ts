@@ -1,4 +1,5 @@
 export * from "./chains";
+export * from "./capabilities";
 export * from "./dapp";
 export * from "./explore";
 export * from "./market";

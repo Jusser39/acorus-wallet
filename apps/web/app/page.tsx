@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CapabilityStatusBoard } from "@/components/capability-status-board";
 
 export default function Home() {
   return (
@@ -12,10 +13,12 @@ export default function Home() {
         </h1>
         <p className="text-lg text-slate-300">
           Создавайте, импортируйте и просматривайте кошельки без передачи seed
-          phrase на backend. Поддержка EVM-сетей, practice mode и public-data API
-          уже подготовлены.
+          phrase на backend. Архитектура строится как universal multichain wallet:
+          EVM, Solana, Tron, Bitcoin/UTXO, TON и будущие сети через единый adapter layer.
         </p>
       </div>
+
+      <CapabilityStatusBoard />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
@@ -57,7 +60,7 @@ export default function Home() {
         {[
           "Seed phrase никогда не отправляется на сервер.",
           "Подпись и расшифровка выполняются только на клиенте.",
-          "Practice mode полностью оффчейн и безопасен для onboarding.",
+          "Каждая сеть проходит через единую capability matrix: live, preview, planned или blocked.",
         ].map((item) => (
           <div
             key={item}

@@ -9,6 +9,8 @@ import {
   getDefaultChainIdForFamily,
   getUniversalChain,
   getUniversalChainsByFamily,
+  getChainCapabilityProfile,
+  summarizeCapabilityProfile,
   normalizeAddressForChain,
   type ChainId,
 } from "@acorus/shared";
@@ -73,6 +75,13 @@ export default function WalletPage() {
         hasEncryptedVault: Boolean(useWalletStore.getState().encryptedVault),
       })
     : null;
+  const capabilityProfile = activeProfile
+    ? getChainCapabilityProfile({
+        family: activeProfile.chainFamily,
+        chainId: selectedChainId,
+      })
+    : null;
+  const capabilitySummary = capabilityProfile ? summarizeCapabilityProfile(capabilityProfile) : null;
 
   const sendAvailability = activeProfile
     ? getSendAvailability({
@@ -474,6 +483,21 @@ export default function WalletPage() {
       <aside className="space-y-6">
         {healthSummary ? <WalletHealthCard summary={healthSummary} /> : null}
 
+        {capabilityProfile && capabilitySummary ? (
+          <div className="panel space-y-4">
+            <div>
+              <p className="text-sm text-slate-400">Multichain capabilities</p>
+              <h2 className="text-xl font-semibold">{capabilityProfile.name}</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <CapabilityMetric label="Live" value={capabilitySummary.live} tone="text-emerald-300" />
+              <CapabilityMetric label="Preview" value={capabilitySummary.preview} tone="text-sky-300" />
+              <CapabilityMetric label="Planned" value={capabilitySummary.planned} tone="text-amber-300" />
+              <CapabilityMetric label="Blocked" value={capabilitySummary.blocked} tone="text-slate-400" />
+            </div>
+          </div>
+        ) : null}
+
         <div className="panel space-y-4">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
@@ -516,4 +540,13 @@ export default function WalletPage() {
 function parseChainId(value: string): ChainId {
   const numeric = Number(value);
   return Number.isFinite(numeric) && value.trim() !== "" ? numeric : value;
+}
+
+function CapabilityMetric(props: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+      <p className="text-xs text-slate-500">{props.label}</p>
+      <p className={`mt-1 text-lg font-semibold ${props.tone}`}>{props.value}</p>
+    </div>
+  );
 }
