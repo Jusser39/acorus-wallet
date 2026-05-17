@@ -10,8 +10,20 @@ import type { EncryptedVaultV1, WalletVaultPlaintext } from "./types";
 
 const PBKDF2_ITERATIONS = 310_000;
 
+function getVaultCrypto(): Crypto {
+  const vaultCrypto = globalThis.crypto;
+
+  if (!vaultCrypto?.subtle || !vaultCrypto.getRandomValues) {
+    throw new Error(
+      "Secure browser crypto is unavailable. Open Acorus Wallet over HTTPS before creating, importing, or unlocking a wallet.",
+    );
+  }
+
+  return vaultCrypto;
+}
+
 async function importPasscodeKey(passcode: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
+  return getVaultCrypto().subtle.importKey(
     "raw",
     asArrayBuffer(encodeUtf8(passcode)),
     "PBKDF2",
@@ -27,7 +39,7 @@ async function deriveAesKey(
 ): Promise<CryptoKey> {
   const baseKey = await importPasscodeKey(passcode);
 
-  return crypto.subtle.deriveKey(
+  return getVaultCrypto().subtle.deriveKey(
     {
       name: "PBKDF2",
       hash: "SHA-256",
@@ -49,10 +61,11 @@ export async function encryptVault(
   passcode: string,
 ): Promise<EncryptedVaultV1> {
   const parsed = walletVaultPlaintextSchema.parse(plaintext);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const vaultCrypto = getVaultCrypto();
+  const salt = vaultCrypto.getRandomValues(new Uint8Array(16));
+  const iv = vaultCrypto.getRandomValues(new Uint8Array(12));
   const key = await deriveAesKey(passcode, salt, PBKDF2_ITERATIONS);
-  const ciphertext = await crypto.subtle.encrypt(
+  const ciphertext = await vaultCrypto.subtle.encrypt(
     {
       name: "AES-GCM",
       iv,
@@ -96,7 +109,7 @@ export async function decryptVault(
   const key = await deriveAesKey(passcode, salt, parsed.iterations);
 
   try {
-    const plaintext = await crypto.subtle.decrypt(
+    const plaintext = await getVaultCrypto().subtle.decrypt(
       {
         name: "AES-GCM",
         iv: asArrayBuffer(iv),

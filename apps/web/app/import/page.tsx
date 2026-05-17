@@ -40,8 +40,8 @@ export default function ImportWalletPage() {
       return;
     }
 
-    if (passcode.length < 4) {
-      setError("Passcode должен быть минимум 4 символа.");
+    if (passcode.length < 8) {
+      setError("Passcode должен быть минимум 8 символов.");
       return;
     }
 
@@ -124,6 +124,10 @@ export default function ImportWalletPage() {
             value={mnemonic}
             onChange={(event) => setMnemonic(event.target.value)}
             placeholder="Введите 12/24 слова через пробел"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
           />
         </label>
 
@@ -132,6 +136,7 @@ export default function ImportWalletPage() {
             <span className="text-sm text-slate-300">Passcode</span>
             <input
               type="password"
+              autoComplete="new-password"
               value={passcode}
               onChange={(event) => setPasscode(event.target.value)}
             />
@@ -140,6 +145,7 @@ export default function ImportWalletPage() {
             <span className="text-sm text-slate-300">Confirm passcode</span>
             <input
               type="password"
+              autoComplete="new-password"
               value={confirmPasscode}
               onChange={(event) => setConfirmPasscode(event.target.value)}
             />

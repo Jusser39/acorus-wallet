@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   encryptVault,
@@ -21,7 +21,7 @@ export default function CreateWalletPage() {
   const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const setWalletError = useWalletStore((state) => state.setError);
-  const [mnemonic, setMnemonic] = useState(() => generateWalletMnemonic());
+  const [mnemonic, setMnemonic] = useState("");
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
   const [walletName, setWalletName] = useState("Main wallet");
@@ -30,6 +30,14 @@ export default function CreateWalletPage() {
   const [error, setError] = useState<string | null>(null);
 
   const words = useMemo(() => mnemonic.split(" ").filter(Boolean), [mnemonic]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setMnemonic(generateWalletMnemonic());
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function handleCreate() {
     if (!userId) {
@@ -42,8 +50,13 @@ export default function CreateWalletPage() {
       return;
     }
 
-    if (passcode.length < 4) {
-      setError("Passcode должен быть минимум 4 символа.");
+    if (!mnemonic) {
+      setError("Seed phrase ещё генерируется. Подождите секунду и попробуйте снова.");
+      return;
+    }
+
+    if (passcode.length < 8) {
+      setError("Passcode должен быть минимум 8 символов.");
       return;
     }
 
@@ -124,14 +137,20 @@ export default function CreateWalletPage() {
           <input value={walletName} onChange={(event) => setWalletName(event.target.value)} />
         </label>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          {words.map((word, index) => (
-            <div key={`${word}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm">
-              <span className="mr-2 text-slate-500">{index + 1}.</span>
-              {word}
-            </div>
-          ))}
-        </div>
+        {words.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {words.map((word, index) => (
+              <div key={`${word}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm">
+                <span className="mr-2 text-slate-500">{index + 1}.</span>
+                {word}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-5 text-sm text-slate-300">
+            Генерируем seed phrase в браузере...
+          </div>
+        )}
 
         <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-200">
           <input
@@ -148,6 +167,7 @@ export default function CreateWalletPage() {
             <span className="text-sm text-slate-300">Passcode</span>
             <input
               type="password"
+              autoComplete="new-password"
               value={passcode}
               onChange={(event) => setPasscode(event.target.value)}
             />
@@ -156,6 +176,7 @@ export default function CreateWalletPage() {
             <span className="text-sm text-slate-300">Confirm passcode</span>
             <input
               type="password"
+              autoComplete="new-password"
               value={confirmPasscode}
               onChange={(event) => setConfirmPasscode(event.target.value)}
             />
@@ -167,7 +188,7 @@ export default function CreateWalletPage() {
         <button
           type="button"
           className="button-primary"
-          disabled={!isBootstrapped || loading}
+          disabled={!isBootstrapped || loading || !mnemonic}
           onClick={() => void handleCreate()}
         >
           {loading ? "Creating..." : "Create encrypted wallet"}
