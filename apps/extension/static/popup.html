@@ -21,6 +21,10 @@
         box-sizing: border-box;
       }
 
+      [hidden] {
+        display: none !important;
+      }
+
       button,
       input,
       textarea,
@@ -401,6 +405,76 @@
         color: #4b5563;
         font-size: 13px;
         line-height: 1.5;
+      }
+
+      .as-button {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .as-button.wide {
+        width: 100%;
+      }
+
+      .network-grid {
+        display: grid;
+        gap: 8px;
+        max-height: 280px;
+        overflow: auto;
+      }
+
+      .network-card {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 10px 12px;
+        color: #111827;
+        cursor: pointer;
+      }
+
+      .network-card.active {
+        border-color: rgba(99, 102, 241, 0.75);
+        box-shadow: 0 10px 26px rgba(99, 102, 241, 0.16);
+      }
+
+      .network-card span:last-child {
+        display: grid;
+        gap: 2px;
+      }
+
+      .network-card small {
+        color: #6b7280;
+        font-size: 11px;
+      }
+
+      .network-dot {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+      }
+
+      .compact {
+        max-width: 130px;
+      }
+
+      .receive-box {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        background: rgba(248, 250, 252, 0.9);
+        padding: 10px;
+      }
+
+      .token-row {
+        border: 0;
       }
     </style>
   </head>

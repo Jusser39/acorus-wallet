@@ -33,6 +33,18 @@ import {
   lockExtensionWallet,
   unlockExtensionWallet,
 } from "./extension-wallet";
+import {
+  addCustomEvmNetwork,
+  getActiveExtensionChainId,
+  resolveExtensionNetwork,
+  setActiveExtensionChainId,
+} from "./extension-chain-registry";
+import {
+  buildExtensionPortfolioSnapshot,
+  hideAsset,
+  unhideAsset,
+  watchAsset,
+} from "./extension-assets";
 import { buildApprovalRiskWarning } from "./request-risk";
 import {
   approveProposal,
@@ -160,6 +172,82 @@ async function handleRuntimeMessage(
         walletLastSyncedAt: walletState.lastSyncedAt,
         extensionVaultStatus,
       }),
+    };
+  }
+
+  if (input.kind === "get_extension_home") {
+    const activeChainId = await getActiveExtensionChainId();
+    return {
+      requestId,
+      ok: true,
+      result: await buildExtensionPortfolioSnapshot({ activeChainId }),
+    };
+  }
+
+  if (input.kind === "set_active_extension_chain") {
+    try {
+      const chainId = await setActiveExtensionChainId(input.chainId);
+      return {
+        requestId,
+        ok: true,
+        result: await buildExtensionPortfolioSnapshot({ activeChainId: chainId }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "unsupported_chain",
+        error instanceof Error ? error.message : "Unable to switch extension chain.",
+      );
+    }
+  }
+
+  if (input.kind === "add_custom_evm_chain") {
+    try {
+      const network = await addCustomEvmNetwork(input.chain);
+      await setActiveExtensionChainId(network.chainId);
+      return {
+        requestId,
+        ok: true,
+        result: network,
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "add_chain_failed",
+        error instanceof Error ? error.message : "Unable to add custom EVM chain.",
+      );
+    }
+  }
+
+  if (input.kind === "watch_asset") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await watchAsset(input.asset),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "watch_asset_failed",
+        error instanceof Error ? error.message : "Unable to watch asset.",
+      );
+    }
+  }
+
+  if (input.kind === "hide_asset") {
+    return {
+      requestId,
+      ok: true,
+      result: await hideAsset(input.assetId),
+    };
+  }
+
+  if (input.kind === "unhide_asset") {
+    return {
+      requestId,
+      ok: true,
+      result: await unhideAsset(input.assetId),
     };
   }
 
@@ -842,6 +930,81 @@ async function handleProviderMethod(
     };
   }
 
+  if (method === "acorus_addChain") {
+    const payload = normalizeRecord(params?.[0]);
+    const nativeCurrency = normalizeRecord(payload.nativeCurrency);
+
+    try {
+      const rawChainId = String(payload.chainId ?? "");
+      const chainId = Number.parseInt(
+        rawChainId,
+        rawChainId.startsWith("0x") ? 16 : 10,
+      );
+      const chain = await addCustomEvmNetwork({
+        chainId,
+        chainName: String(payload.chainName ?? ""),
+        nativeCurrency: {
+          name: String(nativeCurrency.name ?? ""),
+          symbol: String(nativeCurrency.symbol ?? ""),
+          decimals: Number(nativeCurrency.decimals ?? 18),
+        },
+        rpcUrls: toStringArray(payload.rpcUrls),
+        blockExplorerUrls: toStringArray(payload.blockExplorerUrls),
+        iconUrls: toStringArray(payload.iconUrls),
+      });
+
+      await setActiveExtensionChainId(chain.chainId);
+
+      if (session) {
+        await switchOriginSessionChain(origin, chain.chainId);
+      }
+
+      return {
+        requestId,
+        ok: true,
+        result: chain,
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "add_chain_failed",
+        error instanceof Error ? error.message : "Unable to add chain.",
+      );
+    }
+  }
+
+  if (method === "acorus_watchAsset") {
+    const payload = normalizeRecord(params?.[0]);
+    const options = normalizeRecord(payload.options);
+
+    try {
+      const activeChainId = session?.activeChainId ?? await getActiveExtensionChainId();
+      const asset = await watchAsset({
+        family: "evm",
+        chainId: activeChainId,
+        type: "erc20",
+        symbol: String(options.symbol ?? ""),
+        name: String(options.symbol ?? "Custom token"),
+        decimals: Number(options.decimals ?? 18),
+        tokenAddress: String(options.address ?? ""),
+        logoUrl: typeof options.image === "string" ? options.image : null,
+        isVerified: false,
+      });
+
+      return {
+        requestId,
+        ok: true,
+        result: Boolean(asset),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "watch_asset_failed",
+        error instanceof Error ? error.message : "Unable to add token.",
+      );
+    }
+  }
+
   if (method === "acorus_switchChain") {
     if (!session) {
       return {
@@ -881,18 +1044,21 @@ async function handleProviderMethod(
       };
     }
 
-    if (!session.chainIds.some((chainId) => String(chainId) === String(requestedChainId))) {
+    const network = await resolveExtensionNetwork(requestedChainId);
+
+    if (!network || network.family !== "evm") {
       return {
         requestId,
         ok: false,
         error: {
           code: "unsupported_chain",
           message:
-            "This preview-backed session was not approved for the requested chain id.",
+            "The requested EVM chain is not configured in Acorus Wallet.",
         },
       };
     }
 
+    await setActiveExtensionChainId(requestedChainId);
     const bridge = await switchOriginSessionChain(origin, requestedChainId);
     return {
       requestId,
@@ -1052,6 +1218,12 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 function isTrustedAcorusAppOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
@@ -1096,9 +1268,7 @@ function providerError(
 
 function isApprovalMethod(method: AcorusProviderMethod): boolean {
   return (
-    method === "acorus_addChain"
-    || method === "acorus_watchAsset"
-    || method === "acorus_multichainSend"
+    method === "acorus_multichainSend"
     || method === "acorus_swap"
     || method === "acorus_signMessage"
     || method === "acorus_signTypedData"

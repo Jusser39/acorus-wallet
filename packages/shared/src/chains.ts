@@ -33,6 +33,7 @@ export const DEFAULT_EVM_CHAIN_ID = 1;
 export const DEFAULT_SOLANA_CHAIN_ID = 101;
 export const DEFAULT_TRON_CHAIN_ID = "tron-mainnet";
 export const DEFAULT_BITCOIN_CHAIN_ID = "bitcoin-mainnet";
+export const DEFAULT_TON_CHAIN_ID = "ton-mainnet";
 
 export const EVM_CHAINS: EvmChainConfig[] = [
   {
@@ -83,6 +84,54 @@ export const EVM_CHAINS: EvmChainConfig[] = [
     rpcUrlEnv: "NEXT_PUBLIC_BASE_RPC_URL",
     blockExplorerUrl: "https://basescan.org",
   },
+  {
+    chainId: 43114,
+    family: "evm",
+    name: "Avalanche",
+    nativeSymbol: "AVAX",
+    rpcUrlEnv: "NEXT_PUBLIC_AVALANCHE_RPC_URL",
+    blockExplorerUrl: "https://snowtrace.io",
+  },
+  {
+    chainId: 59144,
+    family: "evm",
+    name: "Linea",
+    nativeSymbol: "ETH",
+    rpcUrlEnv: "NEXT_PUBLIC_LINEA_RPC_URL",
+    blockExplorerUrl: "https://lineascan.build",
+  },
+  {
+    chainId: 250,
+    family: "evm",
+    name: "Fantom",
+    nativeSymbol: "FTM",
+    rpcUrlEnv: "NEXT_PUBLIC_FANTOM_RPC_URL",
+    blockExplorerUrl: "https://ftmscan.com",
+  },
+  {
+    chainId: 1329,
+    family: "evm",
+    name: "Sei",
+    nativeSymbol: "SEI",
+    rpcUrlEnv: "NEXT_PUBLIC_SEI_RPC_URL",
+    blockExplorerUrl: "https://seitrace.com",
+  },
+  {
+    chainId: 204,
+    family: "evm",
+    name: "opBNB",
+    nativeSymbol: "BNB",
+    rpcUrlEnv: "NEXT_PUBLIC_OPBNB_RPC_URL",
+    blockExplorerUrl: "https://opbnbscan.com",
+  },
+  {
+    chainId: 324,
+    family: "evm",
+    name: "zkSync Era",
+    nativeSymbol: "ETH",
+    rpcUrlEnv: "NEXT_PUBLIC_ZKSYNC_RPC_URL",
+    blockExplorerUrl: "https://era.zksync.network",
+  },
 ];
 
 export const SOLANA_MAINNET_CHAIN: SolanaChainConfig = {
@@ -119,6 +168,17 @@ export const BITCOIN_MAINNET_CHAIN: UniversalChainConfig = {
   isSkeleton: true,
 };
 
+export const TON_MAINNET_CHAIN: UniversalChainConfig = {
+  family: "ton",
+  chainId: DEFAULT_TON_CHAIN_ID,
+  name: "TON",
+  nativeSymbol: "TON",
+  rpcUrlEnv: "NEXT_PUBLIC_TON_RPC_URL",
+  blockExplorerUrl: "https://tonscan.org",
+  isEnabled: false,
+  isSkeleton: true,
+};
+
 export const UNIVERSAL_CHAINS: UniversalChainConfig[] = [
   ...EVM_CHAINS.map((chain) => ({
     family: "evm" as const,
@@ -141,6 +201,7 @@ export const UNIVERSAL_CHAINS: UniversalChainConfig[] = [
   },
   TRON_MAINNET_CHAIN,
   BITCOIN_MAINNET_CHAIN,
+  TON_MAINNET_CHAIN,
 ];
 
 export function getEvmChainConfig(chainId: number): EvmChainConfig {
@@ -209,6 +270,10 @@ export function getDefaultChainIdForFamily(family: ChainFamily): ChainId {
 
   if (family === "utxo") {
     return DEFAULT_BITCOIN_CHAIN_ID;
+  }
+
+  if (family === "ton") {
+    return DEFAULT_TON_CHAIN_ID;
   }
 
   return DEFAULT_EVM_CHAIN_ID;

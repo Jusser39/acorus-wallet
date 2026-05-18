@@ -9,32 +9,98 @@ import {
 
 const root = getRoot("Popup root not found.");
 let lastCreatedMnemonic: string | null = null;
+let currentPopupState: BackgroundStateSnapshot = createSkeletonState();
+let currentHomeSnapshot: ExtensionPortfolioSnapshot | null = null;
+
+type ExtensionPortfolioSnapshot = {
+  updatedAt: string;
+  totalFiatValue: number | null;
+  activeChainId: string | number;
+  networks: Array<{
+    id: string;
+    family: string;
+    chainId: string | number;
+    name: string;
+    nativeSymbol: string;
+    iconSymbol: string;
+    accent: string;
+    capabilities: {
+      receive: boolean;
+      balance: boolean;
+      send: boolean;
+      swap: boolean;
+      dapp: boolean;
+    };
+  }>;
+  assets: Array<{
+    family: string;
+    chainId: string | number;
+    type: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    tokenAddress?: string | null;
+    balanceRaw: string;
+    balanceFormatted: string;
+    fiatValue?: number | null;
+    priceUsd?: number | null;
+    source?: string | null;
+  }>;
+  warnings: string[];
+};
 
 void loadPopupState();
 
 async function loadPopupState(): Promise<void> {
   let state = createSkeletonState();
+  let home: ExtensionPortfolioSnapshot | null = null;
 
   try {
-    const response = (await chrome.runtime.sendMessage({
-      kind: "get_state",
-      requestId: createRequestId("popup"),
-      surface: "popup",
-      origin: null,
-    })) as ExtensionRuntimeResponse;
+    const [stateResponse, homeResponse] = await Promise.all([
+      chrome.runtime.sendMessage({
+        kind: "get_state",
+        requestId: createRequestId("popup"),
+        surface: "popup",
+        origin: null,
+      }) as Promise<ExtensionRuntimeResponse>,
+      loadExtensionHome(),
+    ]);
 
-    if (response.ok && response.result) {
-      state = response.result as BackgroundStateSnapshot;
+    if (stateResponse.ok && stateResponse.result) {
+      state = stateResponse.result as BackgroundStateSnapshot;
     }
+    home = homeResponse;
   } catch {
     state = createSkeletonState();
+    home = null;
   }
 
-  root.innerHTML = renderPopup(state);
+  currentPopupState = state;
+  currentHomeSnapshot = home;
+  root.innerHTML = renderPopup(state, home);
   wirePopupActions();
 }
 
-function renderPopup(state: BackgroundStateSnapshot): string {
+async function loadExtensionHome(): Promise<ExtensionPortfolioSnapshot | null> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      kind: "get_extension_home",
+      requestId: createRequestId("popup_home"),
+      surface: "popup",
+    })) as ExtensionRuntimeResponse;
+
+    return response.ok && response.result
+      ? response.result as ExtensionPortfolioSnapshot
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderPopup(
+  state: BackgroundStateSnapshot,
+  home: ExtensionPortfolioSnapshot | null,
+): string {
   const vault = state.extensionVaultStatus;
   const selectedProfile =
     vault.profiles.find((profile) => profile.selected)
@@ -42,7 +108,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
     ?? vault.profiles[0]
     ?? state.walletExposedAccounts[0]
     ?? null;
-  const activeChain = selectedProfile?.chainIds[0] ?? state.activeOriginBridge?.activeChainId ?? 1;
+  const activeChain = home?.activeChainId ?? selectedProfile?.chainIds[0] ?? state.activeOriginBridge?.activeChainId ?? 1;
   const pendingCount =
     state.proposals.length + state.pendingRequests.length + state.signerUnlockQueue.length;
 
@@ -65,7 +131,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
       <div class="main">
         ${pendingCount > 0 ? renderPromptNotice(state) : ""}
         ${lastCreatedMnemonic ? renderSeedReveal(lastCreatedMnemonic) : ""}
-        ${vault.hasVault ? renderWalletHome(state, selectedProfile) : renderOnboarding()}
+        ${vault.hasVault ? renderWalletHome(state, selectedProfile, home) : renderOnboarding()}
         ${renderConnectedSites(state)}
         ${renderRecentActivity(state)}
       </div>
@@ -76,46 +142,70 @@ function renderPopup(state: BackgroundStateSnapshot): string {
 function renderWalletHome(
   state: BackgroundStateSnapshot,
   selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
+  home: ExtensionPortfolioSnapshot | null,
 ): string {
   const vault = state.extensionVaultStatus;
   const account = selectedProfile?.account ?? "No synced account";
   const unlockedLabel = vault.isUnlocked ? "Unlocked" : "Locked";
+  const activeNetwork = home?.networks.find(
+    (item) => String(item.chainId) === String(home.activeChainId),
+  ) ?? home?.networks[0] ?? null;
+  const visibleAssets = home?.assets
+    .filter((asset) =>
+      !activeNetwork
+      || String(asset.chainId) === String(activeNetwork.chainId),
+    )
+    .slice(0, 30) ?? [];
 
   return `
     <section class="account-card">
       <div class="account-row">
         <div>
-          <div class="account-name">${escapeHtml(selectedProfile?.name ?? "Main wallet")}</div>
-          <div class="address-pill">${shortAddress(account)} <span>⌘</span></div>
+          <button class="account-name as-button" type="button" data-open-url="options.html">
+            ${escapeHtml(selectedProfile?.name ?? "Main wallet")} ▾
+          </button>
+          <button class="address-pill as-button" type="button" data-copy="${escapeHtml(account)}">
+            ${shortAddress(account)} <span>⧉</span>
+          </button>
         </div>
-        <span class="badge ${vault.isUnlocked ? "green" : ""}">${unlockedLabel}</span>
+        <button class="network-pill as-button" type="button" data-action="open-network-panel" data-id="network">
+          ${escapeHtml(activeNetwork?.name ?? "All networks")} ▾
+        </button>
       </div>
 
-      <div class="balance">${vault.profiles.length ? "$44.89" : "$0.00"}</div>
-      <div class="balance-sub">${state.walletExposureMode === "wallet_backed" ? "Multichain vault active" : "Preview bridge mode"}</div>
+      <div class="balance">${formatFiat(home?.totalFiatValue)}</div>
+      <div class="balance-sub">${unlockedLabel} · ${state.walletExposureMode === "wallet_backed" ? "Multichain vault active" : "Preview bridge mode"}</div>
 
       <div class="quick-actions">
-        ${quickAction("↗", "Send", "/send")}
-        ${quickAction("⇄", "Swap", "/swap")}
-        ${quickAction("+", "Buy", "/receive")}
-        ${quickAction("⌂", "dApps", "/dapps")}
+        ${quickAction("＋", "Buy", "internal:buy")}
+        ${quickAction("⇄", "Swap", "internal:swap")}
+        ${quickAction("↗", "Send", "internal:send")}
+        ${quickAction("↙", "Receive", "internal:receive")}
       </div>
     </section>
+
+    ${renderNetworkPanel(home)}
+    ${renderExtensionActionPanel(state, home)}
 
     <section class="panel stack">
       <div class="tabs">
         <span class="tab" data-active="true">Tokens</span>
-        <span class="tab">DeFi</span>
-        <span class="tab">NFT</span>
         <span class="tab">Activity</span>
+        <span class="tab">dApps</span>
+        <span class="tab">NFT</span>
       </div>
       <div class="row">
         <span class="network-pill">All popular networks</span>
-        <span class="small">EVM · SOL · TRON · BTC · TON</span>
+        <span class="small">${home?.assets.length ?? 0} assets</span>
       </div>
       <div class="token-list">
-        ${renderTokenRows(state, selectedProfile)}
+        ${
+          visibleAssets.length
+            ? visibleAssets.map(renderAssetRow).join("")
+            : `<p class="copy">No live assets yet. Add a token or switch network.</p>`
+        }
       </div>
+      ${home?.warnings.length ? renderWarnings(home.warnings) : ""}
       <div class="row">
         ${
           vault.isUnlocked
@@ -127,6 +217,121 @@ function renderWalletHome(
         }
         <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/extension">Open site</button>
       </div>
+    </section>
+  `;
+}
+
+function renderAssetRow(asset: ExtensionPortfolioSnapshot["assets"][number]): string {
+  const assetId = [
+    asset.family,
+    String(asset.chainId),
+    asset.type,
+    asset.tokenAddress?.toLowerCase() ?? "native",
+    asset.symbol.toUpperCase(),
+  ].join(":");
+
+  return `
+    <button class="token-row as-button wide" type="button" data-asset-id="${escapeHtml(assetId)}">
+      <div class="token-icon">${escapeHtml(asset.symbol.slice(0, 4))}</div>
+      <div>
+        <div class="token-name">${escapeHtml(asset.name)}</div>
+        <div class="token-meta">
+          ${escapeHtml(asset.balanceFormatted ?? "0")} ${escapeHtml(asset.symbol)}
+          · ${escapeHtml(asset.source ?? "unknown")}
+        </div>
+      </div>
+      <div class="token-value">${formatFiat(asset.fiatValue)}</div>
+    </button>
+  `;
+}
+
+function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
+  if (!home) {
+    return "";
+  }
+
+  return `
+    <section class="panel stack" id="network-panel" hidden>
+      <div class="row">
+        <h2 class="section-title">Networks</h2>
+        <input class="field compact" id="network-search" placeholder="Search">
+      </div>
+      <div class="network-grid">
+        ${home.networks.map((network) => `
+          <button class="network-card ${String(network.chainId) === String(home.activeChainId) ? "active" : ""}"
+                  type="button"
+                  data-action="set-active-chain"
+                  data-id="${escapeHtml(String(network.chainId))}">
+            <span class="network-dot" style="background:${escapeHtml(network.accent)}"></span>
+            <span>
+              <strong>${escapeHtml(network.name)}</strong>
+              <small>${escapeHtml(network.family.toUpperCase())} · ${network.capabilities.send ? "send" : "receive only"}</small>
+            </span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderExtensionActionPanel(
+  state: BackgroundStateSnapshot,
+  home: ExtensionPortfolioSnapshot | null,
+): string {
+  return `
+    <section class="panel stack" id="action-panel" hidden>
+      <div class="row">
+        <h2 class="section-title" id="action-title">Action</h2>
+        <button class="icon-button" type="button" data-action="close-action-panel" data-id="action">×</button>
+      </div>
+      <div id="action-content">
+        ${renderReceiveComposer(state, home)}
+      </div>
+    </section>
+  `;
+}
+
+function renderReceiveComposer(
+  state: BackgroundStateSnapshot,
+  home: ExtensionPortfolioSnapshot | null,
+): string {
+  const vault = state.extensionVaultStatus;
+  const profiles = vault.profiles.length ? vault.profiles : state.walletExposedAccounts;
+  const networks = home?.networks ?? [];
+
+  return `
+    <div class="form">
+      <label class="small">Network</label>
+      <select class="field" id="receive-network">
+        ${networks.map((network) => `
+          <option value="${escapeHtml(String(network.chainId))}">
+            ${escapeHtml(network.name)}
+          </option>
+        `).join("")}
+      </select>
+      <div class="receive-box">
+        ${profiles.map((profile) => `
+          <div class="site-row">
+            <div>
+              <div class="token-name">${escapeHtml(profile.name)}</div>
+              <div class="token-meta">${escapeHtml(profile.chainFamily)} · ${shortAddress(profile.account)}</div>
+            </div>
+            <button class="ghost-button" type="button" data-copy="${escapeHtml(profile.account)}">Copy</button>
+          </div>
+        `).join("")}
+      </div>
+      <p class="copy">Send only assets from the selected network to the matching address family. Wrong network can permanently lose funds.</p>
+    </div>
+  `;
+}
+
+function renderWarnings(warnings: string[]): string {
+  return `
+    <section class="notice warning">
+      <strong>Network notes</strong>
+      <ul>
+        ${warnings.slice(0, 4).map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}
+      </ul>
     </section>
   `;
 }
@@ -220,60 +425,6 @@ function renderSeedReveal(mnemonic: string): string {
   `;
 }
 
-function renderTokenRows(
-  state: BackgroundStateSnapshot,
-  selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
-): string {
-  const profiles = state.extensionVaultStatus.profiles.length
-    ? state.extensionVaultStatus.profiles
-    : state.walletExposedAccounts;
-  const evmProfile = profiles.find((profile) => profile.chainFamily === "evm") ?? selectedProfile;
-  const solanaProfile = profiles.find((profile) => profile.chainFamily === "solana");
-  const tronProfile = profiles.find((profile) => profile.chainFamily === "tron");
-  const rows = [
-    {
-      symbol: "ETH",
-      name: "Ethereum",
-      meta: evmProfile ? `${shortAddress(evmProfile.account)} · -3.04%` : "EVM · ready",
-      value: "18.72 $",
-      accent: "#627EEA",
-    },
-    { symbol: "BNB", name: "BNB", meta: "BNB Chain · -2.01%", value: "18.34 $", accent: "#F3BA2F" },
-    { symbol: "AVAX", name: "AVAX", meta: "Avalanche · -1.37%", value: "5.32 $", accent: "#E84142" },
-    { symbol: "SHIB", name: "Binance-Peg SHIB", meta: "226 927.42 SHIB", value: "1.30 $", accent: "#f97316" },
-    { symbol: "POL", name: "POL", meta: "Polygon · 4.325 POL", value: "0.39 $", accent: "#8247E5" },
-    { symbol: "SOL", name: "Solana", meta: solanaProfile ? shortAddress(solanaProfile.account) : "ready", value: "0.00", accent: "#14F195" },
-    { symbol: "TRX", name: "Tron", meta: tronProfile ? shortAddress(tronProfile.account) : "ready", value: "0.00", accent: "#EF0027" },
-    { symbol: "BTC", name: "Bitcoin", meta: "UTXO provider", value: "0.00", accent: "#F7931A" },
-    { symbol: "TON", name: "TON", meta: "TON provider", value: "0.00", accent: "#0098EA" },
-    { symbol: "USDT", name: "Tether USD", meta: "0.0516 USDT", value: "0.05 $", accent: "#26A17B" },
-  ];
-
-  const synced = state.walletExposedAccounts
-    .filter((profile) => profile.account !== selectedProfile?.account)
-    .slice(0, 2)
-    .map((profile) => ({
-      symbol: profile.chainFamily.toUpperCase(),
-      name: profile.name,
-      meta: shortAddress(profile.account),
-      value: "Synced",
-      accent: "#38bdf8",
-    }));
-
-  return [...rows, ...synced]
-    .map((token) => `
-      <div class="token-row">
-        <div class="token-icon" style="background:linear-gradient(135deg,${token.accent},#8b5cf6)">${escapeHtml(token.symbol.slice(0, 3))}</div>
-        <div>
-          <div class="token-name">${escapeHtml(token.name)}</div>
-          <div class="token-meta">${escapeHtml(token.meta)}</div>
-        </div>
-        <div class="token-value">${escapeHtml(token.value)}</div>
-      </div>
-    `)
-    .join("");
-}
-
 function renderConnectedSites(state: BackgroundStateSnapshot): string {
   const activeSessions = state.sessions.filter((session) => session.status === "active");
   if (!activeSessions.length && !state.proposals.length) {
@@ -329,10 +480,16 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
 
 function wirePopupActions(): void {
   wireWalletForms();
-  const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url]");
+  const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url], [data-copy]");
 
   buttons.forEach((button) => {
     button.addEventListener("click", async () => {
+      const copyValue = button.dataset.copy;
+      if (copyValue) {
+        await navigator.clipboard.writeText(copyValue);
+        return;
+      }
+
       const openUrl = button.dataset.openUrl;
       if (openUrl) {
         await chrome.tabs.create({ url: openUrl.startsWith("http") ? openUrl : chrome.runtime.getURL(openUrl) });
@@ -342,6 +499,44 @@ function wirePopupActions(): void {
       const action = button.dataset.action;
       const targetId = button.dataset.id;
       const extra = button.dataset.extra;
+
+      if (action === "open-network-panel") {
+        root.querySelector<HTMLElement>("#network-panel")?.toggleAttribute("hidden");
+        return;
+      }
+
+      if (action === "set-active-chain" && targetId) {
+        await chrome.runtime.sendMessage({
+          kind: "set_active_extension_chain",
+          requestId: createRequestId("popup"),
+          surface: "popup",
+          chainId: /^\d+$/u.test(targetId) ? Number(targetId) : targetId,
+        });
+        await loadPopupState();
+        return;
+      }
+
+      if (action === "open-action-panel" && targetId) {
+        const panel = root.querySelector<HTMLElement>("#action-panel");
+        const title = root.querySelector<HTMLElement>("#action-title");
+        const content = root.querySelector<HTMLElement>("#action-content");
+
+        if (panel && title && content) {
+          panel.hidden = false;
+          title.textContent = `${targetId[0]?.toUpperCase() ?? ""}${targetId.slice(1)}`;
+          content.innerHTML = renderActionContent(targetId);
+          wireInlineButtons(content);
+        }
+        return;
+      }
+
+      if (action === "close-action-panel") {
+        const panel = root.querySelector<HTMLElement>("#action-panel");
+        if (panel) {
+          panel.hidden = true;
+        }
+        return;
+      }
 
       if (action === "clear-created-seed") {
         lastCreatedMnemonic = null;
@@ -369,6 +564,23 @@ function wirePopupActions(): void {
         await sendAction(action, targetId, extra);
       } finally {
         await loadPopupState();
+      }
+    });
+  });
+}
+
+function wireInlineButtons(scope: HTMLElement): void {
+  scope.querySelectorAll<HTMLButtonElement>("[data-open-url], [data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const copyValue = button.dataset.copy;
+      if (copyValue) {
+        await navigator.clipboard.writeText(copyValue);
+        return;
+      }
+
+      const openUrl = button.dataset.openUrl;
+      if (openUrl) {
+        await chrome.tabs.create({ url: openUrl.startsWith("http") ? openUrl : chrome.runtime.getURL(openUrl) });
       }
     });
   });
@@ -536,13 +748,53 @@ async function sendAction(
   }
 }
 
-function quickAction(icon: string, label: string, path: string): string {
+function quickAction(icon: string, label: string, target: string): string {
+  if (target.startsWith("internal:")) {
+    return `
+      <button class="quick-action" type="button" data-action="open-action-panel" data-id="${escapeHtml(target.replace("internal:", ""))}">
+        <span>${icon}</span>
+        <span>${escapeHtml(label)}</span>
+      </button>
+    `;
+  }
+
   return `
-    <button class="quick-action" type="button" data-open-url="http://24wallet.ru${path}">
+    <button class="quick-action" type="button" data-open-url="http://24wallet.ru${target}">
       <span>${icon}</span>
       <span>${escapeHtml(label)}</span>
     </button>
   `;
+}
+
+function renderActionContent(target: string): string {
+  switch (target) {
+    case "buy":
+      return `
+        <div class="form">
+          <p class="copy">Buy crypto through approved external on-ramp providers. Acorus does not custody fiat or sell crypto.</p>
+          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/buy">Open Buy</button>
+        </div>
+      `;
+    case "swap":
+      return `
+        <div class="form">
+          <p class="copy">Swap quotes route through the Acorus swap shell. Execution is enabled only where the adapter is safety-reviewed.</p>
+          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/swap">Open Swap</button>
+        </div>
+      `;
+    case "send":
+      return `
+        <div class="form">
+          <input class="field" placeholder="Recipient address">
+          <input class="field" placeholder="Amount">
+          <p class="copy">EVM send can execute after review. Non-EVM send remains disabled until adapter execution is reviewed.</p>
+          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/send">Review Send</button>
+        </div>
+      `;
+    case "receive":
+    default:
+      return renderReceiveComposer(currentPopupState, currentHomeSnapshot);
+  }
 }
 
 function actionButton(
@@ -585,6 +837,12 @@ function shortAddress(value: string): string {
   }
 
   return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function formatFiat(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${value.toFixed(2)} $`
+    : "—";
 }
 
 function getRoot(message: string): HTMLElement {

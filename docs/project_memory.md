@@ -849,3 +849,41 @@
 - Next logical step:
   - add deeper per-transaction simulation and allowance impact details before broadening execution to more dApp/provider families
 
+## Chrome Extension Multichain Parity Wave (2026-05-19)
+
+- Status: **implemented locally and validated for the extension package**
+- New extension behavior:
+  - added a typed extension-local storage helper layer
+  - added a multichain extension registry for Ethereum, BNB Smart Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, Linea, Fantom, Sei, opBNB, zkSync Era, Solana, Tron, Bitcoin, and TON
+  - added active extension chain state and popup network switching
+  - `wallet_addEthereumChain` / `acorus_addChain` now validates RPC `eth_chainId` and persists custom EVM networks instead of staying only in preview approval
+  - `wallet_watchAsset` / `acorus_watchAsset` now persists watched ERC-20 tokens in extension storage
+  - popup home now reads an extension portfolio snapshot instead of using hardcoded fake balances as the primary portfolio source
+  - popup now includes a Trust/MetaMask-style account/network header, quick Buy/Swap/Send/Receive actions, a token list with source labels, a receive composer, and safe action panels
+- Safety boundary maintained:
+  - no mnemonic, private key, passcode, decrypted vault, or raw signing payload is sent to backend/content/page code
+  - non-EVM balances/sends/swaps remain honestly marked unavailable/skeleton until safe adapters exist
+  - custom EVM RPC URLs are only saved after chain-id validation
+- Files added:
+  - `apps/extension/src/background/extension-storage.ts`
+  - `apps/extension/src/background/extension-chain-registry.ts`
+  - `apps/extension/src/background/extension-assets.ts`
+  - `apps/extension/src/background/extension-chain-registry.test.ts`
+  - `apps/extension/src/background/extension-assets.test.ts`
+  - `docs/chrome_extension_multichain_parity_plan.md`
+  - `docs/chrome_extension_multichain_parity_report.md`
+- Validation completed so far:
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm test`
+  - `pnpm build` after rerunning a transient Turbopack workspace-resolution failure
+  - `git diff --check`
+  - `pnpm extension:package`
+- Browser note:
+  - Codex in-app browser automation could not attach because no active browser pane was available, so visual verification is still pending outside the current automation surface
+- Next logical step:
+  - implement real non-EVM balance adapters first, then reviewed swap execution providers and richer transaction simulation
+

@@ -32,8 +32,14 @@ const EXTENSION_EVM_RPC_FALLBACKS: Record<number, string> = {
   10: "https://optimism-rpc.publicnode.com",
   56: "https://bsc-rpc.publicnode.com",
   137: "https://polygon-bor-rpc.publicnode.com",
+  204: "https://opbnb-rpc.publicnode.com",
+  250: "https://fantom-rpc.publicnode.com",
+  324: "https://zksync-era-rpc.publicnode.com",
+  1329: "https://sei-evm-rpc.publicnode.com",
   8453: "https://base-rpc.publicnode.com",
   42161: "https://arbitrum-one-rpc.publicnode.com",
+  43114: "https://avalanche-c-chain-rpc.publicnode.com",
+  59144: "https://linea-rpc.publicnode.com",
 };
 
 let unlockedSession: {

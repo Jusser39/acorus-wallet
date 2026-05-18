@@ -103,6 +103,62 @@ export type ExtensionRuntimeMessage =
       origin?: string | null;
     }
   | {
+      kind: "get_extension_home";
+      requestId: string;
+      surface: "popup" | "options";
+    }
+  | {
+      kind: "set_active_extension_chain";
+      requestId: string;
+      surface: "popup" | "options";
+      chainId: string | number;
+    }
+  | {
+      kind: "add_custom_evm_chain";
+      requestId: string;
+      surface: "popup" | "options" | "content";
+      chain: {
+        chainId: number;
+        chainName: string;
+        nativeCurrency: {
+          name: string;
+          symbol: string;
+          decimals: number;
+        };
+        rpcUrls: string[];
+        blockExplorerUrls?: string[];
+        iconUrls?: string[];
+      };
+    }
+  | {
+      kind: "watch_asset";
+      requestId: string;
+      surface: "popup" | "options" | "content";
+      asset: {
+        family: "evm" | "solana" | "tron" | "utxo" | "ton";
+        chainId: string | number;
+        type: "native" | "erc20" | "spl" | "trc20" | "utxo" | "jetton" | "unknown";
+        symbol: string;
+        name: string;
+        decimals: number;
+        tokenAddress?: string | null;
+        logoUrl?: string | null;
+        isVerified?: boolean;
+      };
+    }
+  | {
+      kind: "hide_asset";
+      requestId: string;
+      surface: "popup" | "options";
+      assetId: string;
+    }
+  | {
+      kind: "unhide_asset";
+      requestId: string;
+      surface: "popup" | "options";
+      assetId: string;
+    }
+  | {
       kind: "provider_request";
       requestId: string;
       surface: "content";
