@@ -535,6 +535,43 @@ async function handleProviderMethod(
     };
   }
 
+  if (method === "acorus_getPermissions") {
+    return {
+      requestId,
+      ok: true,
+      result: session?.permissions ?? [],
+    };
+  }
+
+  if (method === "acorus_requestPermissions") {
+    if (session) {
+      await touchOriginSession(origin);
+      return {
+        requestId,
+        ok: true,
+        result: session.permissions,
+      };
+    }
+
+    return handleProviderMethod(requestId, origin, "acorus_requestAccounts", params);
+  }
+
+  if (method === "acorus_revokePermissions") {
+    if (session) {
+      return {
+        requestId,
+        ok: true,
+        result: await revokeSessionInRegistry(session.id),
+      };
+    }
+
+    return {
+      requestId,
+      ok: true,
+      result: null,
+    };
+  }
+
   if (method === "acorus_switchChain") {
     if (!session) {
       return {
@@ -700,7 +737,9 @@ function parseRequestedChainId(value: unknown): ChainId | null {
 
 function isApprovalMethod(method: AcorusProviderMethod): boolean {
   return (
-    method === "acorus_signMessage"
+    method === "acorus_addChain"
+    || method === "acorus_watchAsset"
+    || method === "acorus_signMessage"
     || method === "acorus_signTypedData"
     || method === "acorus_signTransaction"
     || method === "acorus_sendTransaction"
@@ -709,6 +748,10 @@ function isApprovalMethod(method: AcorusProviderMethod): boolean {
 
 function getRequestKindForMethod(method: AcorusProviderMethod): DappRequestKind {
   switch (method) {
+    case "acorus_addChain":
+      return "add_chain";
+    case "acorus_watchAsset":
+      return "watch_asset";
     case "acorus_signMessage":
       return "sign_message";
     case "acorus_signTypedData":
@@ -854,6 +897,10 @@ function buildApprovalSummary(
   const payload = summarizePayload(params?.[0]);
 
   switch (method) {
+    case "acorus_addChain":
+      return `Add network review. Payload preview: ${payload}.`;
+    case "acorus_watchAsset":
+      return `Watch asset review on chain ${chain}. Token preview: ${payload}.`;
     case "acorus_signMessage":
       return `Sign message review on chain ${chain}. Payload preview: ${payload}.`;
     case "acorus_signTypedData":

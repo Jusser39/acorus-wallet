@@ -7,7 +7,12 @@ export const EVM_COMPATIBILITY_METHODS = [
   "eth_chainId",
   "net_version",
   "eth_coinbase",
+  "wallet_getPermissions",
+  "wallet_requestPermissions",
+  "wallet_revokePermissions",
+  "wallet_addEthereumChain",
   "wallet_switchEthereumChain",
+  "wallet_watchAsset",
   "personal_sign",
   "eth_signTypedData_v4",
   "eth_signTransaction",
@@ -89,8 +94,18 @@ export function mapEvmMethodToAcorusMethod(
     case "eth_chainId":
     case "net_version":
       return "acorus_chainId";
+    case "wallet_getPermissions":
+      return "acorus_getPermissions";
+    case "wallet_requestPermissions":
+      return "acorus_requestPermissions";
+    case "wallet_revokePermissions":
+      return "acorus_revokePermissions";
+    case "wallet_addEthereumChain":
+      return "acorus_addChain";
     case "wallet_switchEthereumChain":
       return "acorus_switchChain";
+    case "wallet_watchAsset":
+      return "acorus_watchAsset";
     case "personal_sign":
       return "acorus_signMessage";
     case "eth_signTypedData_v4":

@@ -3,6 +3,8 @@ import type { WalletProfileType } from "./types";
 
 export type DappRequestKind =
   | "connect"
+  | "add_chain"
+  | "watch_asset"
   | "sign_message"
   | "sign_typed_data"
   | "sign_transaction"
@@ -12,6 +14,8 @@ export type DappPermissionScope =
   | "view_accounts"
   | "view_chain"
   | "switch_chain"
+  | "add_chain"
+  | "watch_asset"
   | "sign_message"
   | "sign_typed_data"
   | "sign_transaction"
@@ -259,6 +263,16 @@ export const DAPP_PERMISSION_DEFINITIONS: DappPermission[] = [
     description: "Allow the site to request a network switch prompt.",
   },
   {
+    id: "add_chain",
+    label: "Add networks",
+    description: "Allow the site to request adding a custom EVM network.",
+  },
+  {
+    id: "watch_asset",
+    label: "Watch assets",
+    description: "Allow the site to request adding a visible token.",
+  },
+  {
     id: "sign_message",
     label: "Sign messages",
     description: "Allow the site to request personal message signatures later.",
@@ -303,6 +317,10 @@ export function getDappRequestKindLabel(kind: DappRequestKind): string {
   switch (kind) {
     case "connect":
       return "Connect";
+    case "add_chain":
+      return "Add network";
+    case "watch_asset":
+      return "Watch asset";
     case "sign_message":
       return "Sign message";
     case "sign_typed_data":
@@ -401,6 +419,10 @@ export function buildDappRequestSummary(input: {
       return `${subject} requested a transaction signature preview${chainSuffix}.`;
     case "send_transaction":
       return `${subject} requested a transaction broadcast preview${chainSuffix}.`;
+    case "add_chain":
+      return `${subject} requested a network add preview${chainSuffix}.`;
+    case "watch_asset":
+      return `${subject} requested a token watch preview${chainSuffix}.`;
     default:
       return `${subject} requested a preview action${chainSuffix}.`;
   }
@@ -616,6 +638,10 @@ export function getDappRequestPermissionScope(
       return "sign_transaction";
     case "send_transaction":
       return "send_transaction";
+    case "add_chain":
+      return "add_chain";
+    case "watch_asset":
+      return "watch_asset";
     case "connect":
     default:
       return "view_accounts";
@@ -665,6 +691,8 @@ export function ensureDappConnectionProposal(
         "view_accounts",
         "view_chain",
         "switch_chain",
+        "add_chain",
+        "watch_asset",
       ],
     ),
   ];
@@ -724,6 +752,8 @@ export function queueWalletConnectPairing(
         "view_accounts",
         "view_chain",
         "switch_chain",
+        "add_chain",
+        "watch_asset",
         "sign_message",
         "sign_typed_data",
         "sign_transaction",

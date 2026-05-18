@@ -4,9 +4,17 @@ const LIVE_METHODS = [
   "eth_requestAccounts",
   "eth_accounts",
   "eth_chainId",
+  "net_version",
+  "eth_coinbase",
+  "wallet_getPermissions",
+  "wallet_requestPermissions",
+  "wallet_revokePermissions",
+  "wallet_addEthereumChain",
   "wallet_switchEthereumChain",
+  "wallet_watchAsset",
   "personal_sign",
   "eth_signTypedData_v4",
+  "eth_signTransaction",
   "eth_sendTransaction",
 ];
 
@@ -17,15 +25,27 @@ const SHIPPED_ITEMS = [
   "Lock/unlock wallet session",
   "Per-site connect approval",
   "Connected sites and revoke controls",
+  "EVM permissions API",
+  "Add network approval",
+  "Add/watch token approval",
   "Preview sign/send request queue",
   "WalletConnect pairing preview shell",
   "Packaged ZIP download artifact",
 ];
 
+const BENCHMARK_ITEMS = [
+  ["MetaMask", "window.ethereum, permissions, chain switching, add network, add token, sign/send prompts"],
+  ["Trust Wallet", "multi-wallet, multi-chain, dApp access, swaps, NFTs, custom tokens/testnets"],
+  ["Rabby", "100+ EVM networks, pre-transaction review, scam protection, approval manager"],
+  ["Phantom", "browser extension, self-custody, multi-chain assets and NFT-first UX"],
+];
+
 const NEXT_ITEMS = [
-  "Real EVM signing after unlock",
+  "Real EVM signing and broadcast after unlock",
   "Solana injected provider",
   "Tron provider bridge",
+  "Transaction simulation and scam warnings",
+  "Approval/token allowance manager",
   "Hardware-backed biometrics where browser allows it",
   "Chrome Web Store publishing package",
 ];
@@ -107,6 +127,28 @@ export default function ExtensionPage() {
               <li key={item}>{item}</li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      <div className="panel space-y-5">
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-white">Competitor parity track</h2>
+          <p className="text-sm leading-6 text-slate-300">
+            Расширение строится как основной self-custody слой: сайт остается
+            интерфейсом, а создание кошелька, unlock, connect и approval flow
+            живут в Chrome extension.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {BENCHMARK_ITEMS.map(([name, details]) => (
+            <div
+              key={name}
+              className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <div className="text-sm font-semibold text-white">{name}</div>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{details}</p>
+            </div>
+          ))}
         </div>
       </div>
 

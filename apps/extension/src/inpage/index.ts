@@ -388,6 +388,16 @@ async function handleEvmCompatibilityRequest(
 
       return chainId;
     }
+    case "wallet_getPermissions":
+    case "wallet_requestPermissions":
+      return Array.isArray(result)
+        ? result.map((parentCapability) => ({ parentCapability }))
+        : [];
+    case "wallet_revokePermissions":
+    case "wallet_addEthereumChain":
+      return null;
+    case "wallet_watchAsset":
+      return Boolean(result);
     case "net_version": {
       const chainId = toNetVersion(result as DappBridgeSessionView["activeChainId"]);
 
