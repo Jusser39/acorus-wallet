@@ -10,6 +10,7 @@ import {
   type DappRequest,
   type DappRequestKind,
   type ChainId,
+  type ChainFamily,
   type DappShellSnapshot,
 } from "@acorus/shared";
 import {
@@ -720,6 +721,7 @@ async function handleProviderMethod(
 
   if (method === "acorus_requestAccounts") {
     const vaultStatus = await getExtensionVaultStatus();
+    const requestedFamily = parseRequestedFamily(params?.[0]);
 
     if (vaultStatus.hasVault && !vaultStatus.isUnlocked) {
       await setActivePromptOrigin(origin);
@@ -739,11 +741,15 @@ async function handleProviderMethod(
       return {
         requestId,
         ok: true,
-        result: bridge.accounts,
+        result: filterAccountsForFamily(
+          bridge.accounts,
+          requestedFamily,
+          vaultStatus.profiles,
+        ),
       };
     }
 
-    const bridge = await ensureOriginConnectionProposal(origin);
+    const bridge = await ensureOriginConnectionProposal(origin, requestedFamily);
     await setActivePromptOrigin(origin);
     openApprovalWindow();
     return waitForConnectionApproval({
@@ -757,6 +763,7 @@ async function handleProviderMethod(
   }
 
   if (method === "acorus_accounts") {
+    const requestedFamily = parseRequestedFamily(params?.[0]);
     if (!session || !hasDappPermission(session, "view_accounts")) {
       return {
         requestId,
@@ -765,10 +772,15 @@ async function handleProviderMethod(
       };
     }
 
+    const vaultStatus = await getExtensionVaultStatus();
     return {
       requestId,
       ok: true,
-      result: session.accounts,
+      result: filterAccountsForFamily(
+        session.accounts,
+        requestedFamily,
+        vaultStatus.profiles,
+      ),
     };
   }
 
@@ -1001,6 +1013,39 @@ function parseRequestedChainId(value: unknown): ChainId | null {
   return null;
 }
 
+function parseRequestedFamily(value: unknown): ChainFamily | null {
+  const candidate = normalizeRecord(value).family;
+
+  switch (candidate) {
+    case "evm":
+    case "solana":
+    case "tron":
+    case "utxo":
+    case "ton":
+      return candidate;
+    default:
+      return null;
+  }
+}
+
+function filterAccountsForFamily(
+  accounts: string[],
+  family: ChainFamily | null,
+  profiles: Array<{ account: string; chainFamily: ChainFamily }>,
+): string[] {
+  if (!family) {
+    return accounts;
+  }
+
+  const familyAccounts = new Set(
+    profiles
+      .filter((profile) => profile.chainFamily === family)
+      .map((profile) => profile.account),
+  );
+
+  return accounts.filter((account) => familyAccounts.has(account));
+}
+
 function normalizeRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null
     ? value as Record<string, unknown>
@@ -1012,8 +1057,14 @@ function isTrustedAcorusAppOrigin(origin: string): boolean {
     const url = new URL(origin);
     return (
       url.origin === "http://85.239.59.199:8080"
+      || url.origin === "http://24wallet.ru"
+      || url.origin === "https://24wallet.ru"
+      || url.origin === "http://www.24wallet.ru"
+      || url.origin === "https://www.24wallet.ru"
       || url.origin === "http://localhost:3000"
       || url.origin === "http://127.0.0.1:3000"
+      || url.origin === "http://localhost:3024"
+      || url.origin === "http://127.0.0.1:3024"
     );
   } catch {
     return false;

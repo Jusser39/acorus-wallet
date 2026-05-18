@@ -19,6 +19,7 @@ import {
   setDappSessionActiveChain,
   touchDappSession,
   type ChainId,
+  type ChainFamily,
   type DappRequestKind,
   type DappBridgeSessionView,
   type DappProviderExposureMode,
@@ -317,9 +318,10 @@ export async function getOriginBridgeState(
 
 export async function ensureOriginConnectionProposal(
   origin: string,
+  family?: ChainFamily | null,
 ): Promise<DappBridgeSessionView> {
   const current = await getDappShellState();
-  const walletState = resolveBridgeWalletState(await getWalletSyncState());
+  const walletState = resolveBridgeWalletState(await getWalletSyncState(), family);
   const ensured = ensureDappConnectionProposal(current, {
     origin,
     providerMode: walletState.providerMode,
@@ -402,6 +404,7 @@ function buildWalletSyncState(
 
 function resolveBridgeWalletState(
   walletState: DappWalletSyncState,
+  family?: ChainFamily | null,
 ): ResolvedBridgeWalletState {
   if (walletState.profiles.length === 0) {
     return {
@@ -411,13 +414,18 @@ function resolveBridgeWalletState(
     };
   }
 
-  const selectedProfile = walletState.profiles.find((profile) => profile.selected)
-    ?? walletState.profiles[0]
+  const eligibleProfiles = family
+    ? walletState.profiles.filter((profile) => profile.chainFamily === family)
+    : walletState.profiles;
+  const selectedProfile = eligibleProfiles.find((profile) => profile.selected)
+    ?? eligibleProfiles[0]
     ?? null;
 
   return {
     providerMode: "wallet_backed",
-    accounts: selectedProfile ? [selectedProfile.account] : [],
+    accounts: family
+      ? (selectedProfile ? [selectedProfile.account] : [])
+      : eligibleProfiles.map((profile) => profile.account),
     chainIds: selectedProfile
       ? [...new Set(selectedProfile.chainIds)]
       : [],

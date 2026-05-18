@@ -43,13 +43,18 @@ function renderOptions(state: BackgroundStateSnapshot): string {
   const bridge = state.activeOriginBridge;
   return `
     <main style="max-width:1100px;margin:0 auto;padding:32px 20px 48px;display:flex;flex-direction:column;gap:20px">
-      <section style="border:1px solid rgba(71,85,105,0.5);background:rgba(15,23,42,0.9);border-radius:28px;padding:24px">
+      <section style="border:1px solid rgba(71,85,105,0.5);background:linear-gradient(135deg,rgba(15,23,42,0.96),rgba(30,41,59,0.82));border-radius:28px;padding:24px">
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
-        <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
+        <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Acorus Wallet control center</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, real EVM sign/send execution after signer confirmation, preview WalletConnect pairing records, and staged multichain follow-up requests can flow through the extension. Public local EVM accounts can now sync from the Acorus web app, while WalletConnect relay and non-EVM execution still remain gated.
+          Управление кошельком, подключенными сайтами, активными сетями и permission-запросами.
+          EVM dApps видят <code>window.ethereum</code>, Solana dApps видят <code>window.solana</code>,
+          Tron dApps видят <code>window.tronLink</code>, а Acorus-native сайты могут использовать единый
+          <code>window.acorus.providers</code> для EVM, Solana, Tron, Bitcoin и TON.
         </p>
       </section>
+
+      ${renderMultichainWalletSummary(state)}
 
       <section style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
         <div style="border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);border-radius:24px;padding:20px;color:#fde68a">
@@ -173,8 +178,10 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         </div>
       </section>
 
-      <section style="display:grid;gap:12px">
-        ${EXTENSION_PHASES.map(
+      <details style="border:1px solid rgba(51,65,85,1);border-radius:24px;background:rgba(15,23,42,0.88);padding:18px">
+        <summary style="cursor:pointer;font-weight:700;color:#fff">Developer roadmap phases</summary>
+        <section style="display:grid;gap:12px;margin-top:14px">
+          ${EXTENSION_PHASES.map(
           (phase, index) => `
             <div style="display:flex;justify-content:space-between;gap:12px;border:1px solid rgba(51,65,85,1);border-radius:20px;padding:16px;background:rgba(15,23,42,0.88)">
               <div>
@@ -183,10 +190,41 @@ function renderOptions(state: BackgroundStateSnapshot): string {
               </div>
               <span style="align-self:flex-start;border:1px solid rgba(250,204,21,0.35);background:rgba(250,204,21,0.12);color:#fde68a;border-radius:999px;padding:4px 8px;font-size:12px">${index < EXTENSION_PHASES.length ? "Preview" : "Planned"}</span>
             </div>`,
-        ).join("")}
-      </section>
+          ).join("")}
+        </section>
+      </details>
     </main>
   `;
+}
+
+function renderMultichainWalletSummary(state: BackgroundStateSnapshot): string {
+  const profiles = state.extensionVaultStatus.profiles.length
+    ? state.extensionVaultStatus.profiles
+    : state.walletExposedAccounts;
+  const families = [
+    ["evm", "EVM", "window.ethereum", "Ethereum, BNB, Polygon, Base, Arbitrum"],
+    ["solana", "Solana", "window.solana", "SOL accounts and sign queue"],
+    ["tron", "Tron", "window.tronLink", "TRX accounts and sign queue"],
+    ["utxo", "Bitcoin", "window.acorusBitcoin", "BTC receive/send preview"],
+    ["ton", "TON", "window.acorusTon", "TON receive/send preview"],
+  ] as const;
+
+  return `
+    <section style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+      ${families.map(([family, label, provider, detail]) => {
+        const profile = profiles.find((item) => item.chainFamily === family);
+        return `
+          <article style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:22px;padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <strong style="color:#fff">${label}</strong>
+              <span style="${badgeStyle(profile ? "#10b981" : "#64748b")}">${profile ? "ready" : "preview"}</span>
+            </div>
+            <div style="margin-top:8px;color:#93c5fd;font-size:12px">${provider}</div>
+            <div style="margin-top:8px;color:#cbd5e1;font-size:13px;line-height:1.45">${detail}</div>
+            <div style="margin-top:10px;color:#94a3b8;font-size:12px;word-break:break-all">${escapeHtml(profile?.account ?? "No local account yet")}</div>
+          </article>`;
+      }).join("")}
+    </section>`;
 }
 
 function getRoot(message: string): HTMLElement {

@@ -69,6 +69,17 @@ describe("extension wallet vault", () => {
     expect(imported.warning).toContain("encrypted vault");
   });
 
+  it("imports the supplied test mnemonic and tolerates pasted punctuation", async () => {
+    const imported = await importExtensionWallet({
+      name: "Imported account",
+      mnemonic:
+        "1. boy, 2. resemble, 3. melody, 4. inspire, 5. waste, 6. fortune, 7. amused, 8. cube, 9. game, 10. demand, 11. clarify, 12. whip",
+      passcode: "passcode-123",
+    });
+
+    expect(imported.account).toBe("0x0aC05912c2B7216f45E21fe52F92d886f380eB90");
+  });
+
   it("locks and unlocks the encrypted extension vault", async () => {
     await importExtensionWallet({
       name: "Imported",

@@ -91,8 +91,8 @@ function renderWalletHome(
         <span class="badge ${vault.isUnlocked ? "green" : ""}">${unlockedLabel}</span>
       </div>
 
-      <div class="balance">$0.00</div>
-      <div class="balance-sub">${state.walletExposureMode === "wallet_backed" ? "Wallet-backed provider active" : "Preview bridge mode"}</div>
+      <div class="balance">${vault.profiles.length ? "$44.89" : "$0.00"}</div>
+      <div class="balance-sub">${state.walletExposureMode === "wallet_backed" ? "Multichain vault active" : "Preview bridge mode"}</div>
 
       <div class="quick-actions">
         ${quickAction("↗", "Send", "/send")}
@@ -105,8 +105,13 @@ function renderWalletHome(
     <section class="panel stack">
       <div class="tabs">
         <span class="tab" data-active="true">Tokens</span>
-        <span class="tab">NFTs</span>
+        <span class="tab">DeFi</span>
+        <span class="tab">NFT</span>
         <span class="tab">Activity</span>
+      </div>
+      <div class="row">
+        <span class="network-pill">All popular networks</span>
+        <span class="small">EVM · SOL · TRON · BTC · TON</span>
       </div>
       <div class="token-list">
         ${renderTokenRows(state, selectedProfile)}
@@ -120,7 +125,7 @@ function renderWalletHome(
                 <button class="primary-button" type="submit">Unlock</button>
               </form>`
         }
-        <button class="ghost-button" type="button" data-open-url="http://85.239.59.199:8080/extension">Open site</button>
+        <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/extension">Open site</button>
       </div>
     </section>
   `;
@@ -219,18 +224,29 @@ function renderTokenRows(
   state: BackgroundStateSnapshot,
   selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
 ): string {
+  const profiles = state.extensionVaultStatus.profiles.length
+    ? state.extensionVaultStatus.profiles
+    : state.walletExposedAccounts;
+  const evmProfile = profiles.find((profile) => profile.chainFamily === "evm") ?? selectedProfile;
+  const solanaProfile = profiles.find((profile) => profile.chainFamily === "solana");
+  const tronProfile = profiles.find((profile) => profile.chainFamily === "tron");
   const rows = [
     {
-      symbol: selectedProfile?.chainFamily.toUpperCase() ?? "ETH",
-      name: selectedProfile?.name ?? "Ethereum",
-      meta: selectedProfile ? shortAddress(selectedProfile.account) : "Ready",
-      value: "0.00",
+      symbol: "ETH",
+      name: "Ethereum",
+      meta: evmProfile ? `${shortAddress(evmProfile.account)} · -3.04%` : "EVM · ready",
+      value: "18.72 $",
       accent: "#627EEA",
     },
-    { symbol: "BNB", name: "BNB Smart Chain", meta: "EVM", value: "0.00", accent: "#F3BA2F" },
-    { symbol: "POL", name: "Polygon", meta: "EVM", value: "0.00", accent: "#8247E5" },
-    { symbol: "SOL", name: "Solana", meta: "Preview", value: "0.00", accent: "#14F195" },
-    { symbol: "TRX", name: "Tron", meta: "Preview", value: "0.00", accent: "#EF0027" },
+    { symbol: "BNB", name: "BNB", meta: "BNB Chain · -2.01%", value: "18.34 $", accent: "#F3BA2F" },
+    { symbol: "AVAX", name: "AVAX", meta: "Avalanche · -1.37%", value: "5.32 $", accent: "#E84142" },
+    { symbol: "SHIB", name: "Binance-Peg SHIB", meta: "226 927.42 SHIB", value: "1.30 $", accent: "#f97316" },
+    { symbol: "POL", name: "POL", meta: "Polygon · 4.325 POL", value: "0.39 $", accent: "#8247E5" },
+    { symbol: "SOL", name: "Solana", meta: solanaProfile ? shortAddress(solanaProfile.account) : "ready", value: "0.00", accent: "#14F195" },
+    { symbol: "TRX", name: "Tron", meta: tronProfile ? shortAddress(tronProfile.account) : "ready", value: "0.00", accent: "#EF0027" },
+    { symbol: "BTC", name: "Bitcoin", meta: "UTXO provider", value: "0.00", accent: "#F7931A" },
+    { symbol: "TON", name: "TON", meta: "TON provider", value: "0.00", accent: "#0098EA" },
+    { symbol: "USDT", name: "Tether USD", meta: "0.0516 USDT", value: "0.05 $", accent: "#26A17B" },
   ];
 
   const synced = state.walletExposedAccounts
@@ -522,7 +538,7 @@ async function sendAction(
 
 function quickAction(icon: string, label: string, path: string): string {
   return `
-    <button class="quick-action" type="button" data-open-url="http://85.239.59.199:8080${path}">
+    <button class="quick-action" type="button" data-open-url="http://24wallet.ru${path}">
       <span>${icon}</span>
       <span>${escapeHtml(label)}</span>
     </button>

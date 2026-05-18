@@ -63,14 +63,52 @@ declare global {
   interface Window {
     acorus?: {
       isAcorus: true;
+      providers: AcorusMultichainProviders;
       isConnected(): boolean;
       request(input: { method: string; params?: unknown[] }): Promise<unknown>;
     };
     ethereum?: AcorusEthereumProvider;
     acorusEthereum?: AcorusEthereumProvider;
+    solana?: AcorusSolanaProvider;
+    acorusSolana?: AcorusSolanaProvider;
+    tronLink?: AcorusTronProvider;
+    acorusTron?: AcorusTronProvider;
+    acorusBitcoin?: AcorusSimpleChainProvider;
+    acorusTon?: AcorusSimpleChainProvider;
     acorusEthereumInjected?: boolean;
   }
 }
+
+type AcorusMultichainProviderFamily = "evm" | "solana" | "tron" | "utxo" | "ton";
+
+type AcorusSimpleChainProvider = {
+  readonly isAcorus: true;
+  readonly family: AcorusMultichainProviderFamily;
+  readonly chainId: string | number;
+  connect(): Promise<{ publicKey?: string; address?: string; accounts: string[] }>;
+  request(input: { method: string; params?: unknown[] }): Promise<unknown>;
+};
+
+type AcorusSolanaProvider = AcorusSimpleChainProvider & {
+  readonly isPhantom: false;
+  readonly publicKey: { toString(): string } | null;
+  disconnect(): Promise<void>;
+  signMessage(message: Uint8Array | string): Promise<unknown>;
+};
+
+type AcorusTronProvider = {
+  readonly isAcorus: true;
+  readonly ready: boolean;
+  readonly request: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+};
+
+type AcorusMultichainProviders = {
+  evm: AcorusEthereumProvider;
+  solana: AcorusSolanaProvider;
+  tron: AcorusTronProvider;
+  bitcoin: AcorusSimpleChainProvider;
+  ton: AcorusSimpleChainProvider;
+};
 
 window.acorusEthereumInjected = true;
 
@@ -101,20 +139,6 @@ const ACORUS_EIP6963_INFO = {
 } as const;
 
 window.addEventListener("message", handleInpageResponse);
-
-window.acorus = {
-  isAcorus: true,
-  isConnected() {
-    return bridgeState.status === "connected";
-  },
-  async request(input) {
-    if (!isAcorusProviderMethod(input.method)) {
-      throw new Error("Unsupported Acorus provider method.");
-    }
-
-    return requestBridgeMethod(input.method, input.params ?? []);
-  },
-};
 
 function handleInpageResponse(event: MessageEvent<unknown>): void {
   if (event.source !== window) {
@@ -349,8 +373,40 @@ class AcorusEthereumProviderRuntime implements AcorusEthereumProvider {
 const ethereumProvider = new AcorusEthereumProviderRuntime();
 window.ethereum = ethereumProvider;
 window.acorusEthereum = ethereumProvider;
+const solanaProvider = createSolanaProvider();
+const tronProvider = createTronProvider();
+const bitcoinProvider = createSimpleChainProvider("utxo", "bitcoin-mainnet");
+const tonProvider = createSimpleChainProvider("ton", "ton-mainnet");
+window.solana = solanaProvider;
+window.acorusSolana = solanaProvider;
+window.tronLink = tronProvider;
+window.acorusTron = tronProvider;
+window.acorusBitcoin = bitcoinProvider;
+window.acorusTon = tonProvider;
+window.acorus = {
+  isAcorus: true,
+  providers: {
+    evm: ethereumProvider,
+    solana: solanaProvider,
+    tron: tronProvider,
+    bitcoin: bitcoinProvider,
+    ton: tonProvider,
+  },
+  isConnected() {
+    return bridgeState.status === "connected";
+  },
+  async request(input) {
+    if (!isAcorusProviderMethod(input.method)) {
+      throw new Error("Unsupported Acorus provider method.");
+    }
+
+    return requestBridgeMethod(input.method, input.params ?? []);
+  },
+};
 window.dispatchEvent(new Event("acorus#initialized"));
 window.dispatchEvent(new Event("ethereum#initialized"));
+window.dispatchEvent(new Event("solana#initialized"));
+window.dispatchEvent(new Event("tronLink#initialized"));
 announceEip6963Provider();
 window.addEventListener("eip6963:requestProvider", announceEip6963Provider);
 
@@ -383,7 +439,9 @@ async function handleEvmCompatibilityRequest(
 
   const result = await requestBridgeMethod(
     acorusMethod,
-    normalizeEvmRequestParams(paramsInput),
+    shouldScopeEvmMethodToFamily(method)
+      ? [{ family: "evm" }, ...normalizeEvmRequestParams(paramsInput)]
+      : normalizeEvmRequestParams(paramsInput),
   );
 
   switch (method) {
@@ -470,6 +528,146 @@ function emitEthereumStateChanges(
       ),
     );
   }
+}
+
+function shouldScopeEvmMethodToFamily(method: EvmCompatibilityMethod): boolean {
+  return (
+    method === "eth_requestAccounts"
+    || method === "eth_accounts"
+    || method === "eth_coinbase"
+    || method === "wallet_requestPermissions"
+  );
+}
+
+function createSolanaProvider(): AcorusSolanaProvider {
+  const provider: AcorusSolanaProvider = {
+    isAcorus: true,
+    isPhantom: false,
+    family: "solana",
+    chainId: 101,
+    get publicKey() {
+      const account = bridgeState.accounts.find((value) => !value.startsWith("0x"));
+      return account
+        ? {
+            toString() {
+              return account;
+            },
+          }
+        : null;
+    },
+    async connect() {
+      const accounts = await requestFamilyAccounts("solana");
+      return {
+        publicKey: accounts[0],
+        address: accounts[0],
+        accounts,
+      };
+    },
+    async disconnect() {
+      await requestBridgeMethod("acorus_revokePermissions", []);
+    },
+    async signMessage(message) {
+      return requestBridgeMethod("acorus_signMessage", [
+        {
+          family: "solana",
+          message: typeof message === "string" ? message : Array.from(message),
+        },
+      ]);
+    },
+    async request(input) {
+      if (input.method === "connect" || input.method === "solana_connect") {
+        return this.connect();
+      }
+
+      if (input.method === "disconnect" || input.method === "solana_disconnect") {
+        return this.disconnect();
+      }
+
+      if (input.method === "signMessage" || input.method === "solana_signMessage") {
+        return this.signMessage((input.params ?? [])[0] as Uint8Array | string);
+      }
+
+      return requestBridgeMethod("acorus_requestAccounts", [{ family: "solana" }]);
+    },
+  };
+
+  return provider;
+}
+
+function createTronProvider(): AcorusTronProvider {
+  return {
+    isAcorus: true,
+    get ready() {
+      return bridgeState.status === "connected";
+    },
+    async request(input) {
+      if (
+        input.method === "tron_requestAccounts"
+        || input.method === "request_accounts"
+        || input.method === "connect"
+      ) {
+        return {
+          code: 200,
+          message: "OK",
+          accounts: await requestFamilyAccounts("tron"),
+        };
+      }
+
+      if (input.method === "tron_signMessage") {
+        return requestBridgeMethod("acorus_signMessage", [
+          {
+            family: "tron",
+            message: (input.params ?? [])[0],
+          },
+        ]);
+      }
+
+      return requestBridgeMethod("acorus_requestAccounts", [{ family: "tron" }]);
+    },
+  };
+}
+
+function createSimpleChainProvider(
+  family: "utxo" | "ton",
+  chainId: string,
+): AcorusSimpleChainProvider {
+  return {
+    isAcorus: true,
+    family,
+    chainId,
+    async connect() {
+      const accounts = await requestFamilyAccounts(family);
+      return {
+        address: accounts[0],
+        accounts,
+      };
+    },
+    async request(input) {
+      if (input.method === "connect" || input.method.endsWith("_requestAccounts")) {
+        return this.connect();
+      }
+
+      if (input.method.toLowerCase().includes("sign")) {
+        return requestBridgeMethod("acorus_signMessage", [
+          {
+            family,
+            payload: input.params ?? [],
+          },
+        ]);
+      }
+
+      return requestBridgeMethod("acorus_accounts", [{ family }]);
+    },
+  };
+}
+
+async function requestFamilyAccounts(
+  family: AcorusMultichainProviderFamily,
+): Promise<string[]> {
+  const accounts = await requestBridgeMethod("acorus_requestAccounts", [{ family }]);
+  return Array.isArray(accounts)
+    ? accounts.filter((account): account is string => typeof account === "string")
+    : [];
 }
 
 function announceEip6963Provider(): void {

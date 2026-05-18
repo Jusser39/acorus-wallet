@@ -74,7 +74,9 @@ export async function importExtensionWallet(input: {
   const normalizedMnemonic = normalizeMnemonic(input.mnemonic);
 
   if (!validateWalletMnemonic(normalizedMnemonic)) {
-    throw new Error("Invalid seed phrase.");
+    throw new Error(
+      "Invalid seed phrase. Paste 12/18/24 BIP-39 words only, separated by spaces.",
+    );
   }
 
   return installExtensionWallet({
@@ -275,7 +277,12 @@ async function installExtensionWallet(input: {
 }
 
 function normalizeMnemonic(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b\d{1,2}[.)]\s*/gu, " ")
+    .replace(/[,;|/\\]+/gu, " ")
+    .replace(/\s+/gu, " ");
 }
 
 function requireUnlockedSession(): NonNullable<typeof unlockedSession> {

@@ -37,6 +37,7 @@ type ConnectLabState = {
   permissions: string;
   lastResult: string;
   lastError: string | null;
+  multichain: Record<string, string>;
 };
 
 const DEFAULT_STATE: ConnectLabState = {
@@ -48,11 +49,31 @@ const DEFAULT_STATE: ConnectLabState = {
   permissions: "Not requested",
   lastResult: "Open the extension, unlock it, then run a check.",
   lastError: null,
+  multichain: {},
 };
 
 declare global {
   interface Window {
     ethereum?: EthereumProvider;
+    solana?: {
+      isAcorus?: boolean;
+      isPhantom?: boolean;
+      connect?: () => Promise<unknown>;
+      request?: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+    tronLink?: {
+      isAcorus?: boolean;
+      ready?: boolean;
+      request?: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+    acorusBitcoin?: {
+      connect?: () => Promise<unknown>;
+      request?: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+    acorusTon?: {
+      connect?: () => Promise<unknown>;
+      request?: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
   }
 }
 
@@ -248,6 +269,72 @@ export function ExtensionConnectLab() {
     });
   }
 
+  async function detectMultichainProviders() {
+    setState((current) => ({
+      ...current,
+      multichain: {
+        EVM: window.ethereum ? "window.ethereum detected" : "missing",
+        Solana: window.solana ? "window.solana detected" : "missing",
+        Tron: window.tronLink ? "window.tronLink detected" : "missing",
+        Bitcoin: window.acorusBitcoin ? "window.acorusBitcoin detected" : "missing",
+        TON: window.acorusTon ? "window.acorusTon detected" : "missing",
+      },
+      lastResult: "Multichain provider surfaces checked.",
+      lastError: null,
+    }));
+  }
+
+  async function connectSolana() {
+    await runGenericProviderCall("Solana connect", () =>
+      window.solana?.connect?.()
+      ?? window.solana?.request?.({ method: "solana_connect" })
+      ?? Promise.reject(new Error("window.solana is unavailable.")),
+    );
+  }
+
+  async function connectTron() {
+    await runGenericProviderCall("Tron connect", () =>
+      window.tronLink?.request?.({ method: "tron_requestAccounts" })
+      ?? Promise.reject(new Error("window.tronLink is unavailable.")),
+    );
+  }
+
+  async function connectBitcoin() {
+    await runGenericProviderCall("Bitcoin connect", () =>
+      window.acorusBitcoin?.connect?.()
+      ?? Promise.reject(new Error("window.acorusBitcoin is unavailable.")),
+    );
+  }
+
+  async function connectTon() {
+    await runGenericProviderCall("TON connect", () =>
+      window.acorusTon?.connect?.()
+      ?? Promise.reject(new Error("window.acorusTon is unavailable.")),
+    );
+  }
+
+  async function runGenericProviderCall(label: string, call: () => Promise<unknown>) {
+    setIsBusy(true);
+    setState((current) => ({ ...current, lastError: null, lastResult: `${label}...` }));
+
+    try {
+      const result = await call();
+      setState((current) => ({
+        ...current,
+        lastResult: `${label}: ${formatResult(result)}`,
+        lastError: null,
+      }));
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        lastResult: `${label} rejected or failed.`,
+        lastError: error instanceof Error ? error.message : `${label} failed.`,
+      }));
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   return (
     <section className="premium-card grid gap-5 p-5 lg:grid-cols-[0.9fr,1.1fr]">
       <div className="space-y-4">
@@ -289,6 +376,11 @@ export function ExtensionConnectLab() {
           <LabButton disabled={isBusy} label="Switch Polygon" onClick={() => void switchToPolygon()} />
           <LabButton disabled={isBusy} label="Add Base" onClick={() => void addBaseNetwork()} />
           <LabButton disabled={isBusy} label="Sign message" onClick={() => void signProbeMessage()} primary />
+          <LabButton disabled={isBusy} label="Detect multichain" onClick={() => void detectMultichainProviders()} />
+          <LabButton disabled={isBusy} label="Connect Solana" onClick={() => void connectSolana()} />
+          <LabButton disabled={isBusy} label="Connect Tron" onClick={() => void connectTron()} />
+          <LabButton disabled={isBusy} label="Connect Bitcoin" onClick={() => void connectBitcoin()} />
+          <LabButton disabled={isBusy} label="Connect TON" onClick={() => void connectTon()} />
         </div>
 
         <div className="mt-4 space-y-3">
@@ -296,6 +388,14 @@ export function ExtensionConnectLab() {
           <ResultBox label="Provider rdns" value={state.providerRdns} />
           <ResultBox label="Accounts" value={state.accounts.join(", ") || "No exposed accounts"} />
           <ResultBox label="Permissions" value={state.permissions} />
+          <ResultBox
+            label="Multichain providers"
+            value={
+              Object.entries(state.multichain)
+                .map(([family, status]) => `${family}: ${status}`)
+                .join("\n") || "Not checked"
+            }
+          />
           <ResultBox label="Last result" value={state.lastResult} />
           {state.lastError ? (
             <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-100">
