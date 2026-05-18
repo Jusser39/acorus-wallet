@@ -19,14 +19,20 @@ import {
   isAcorusProviderMethod,
   type ExtensionRuntimeMessage,
   type ExtensionRuntimeResponse,
+  type SignerUnlockIntent,
 } from "../shared/protocol";
 import {
   createExtensionWallet,
+  executeExtensionSendTransaction,
+  executeExtensionSignMessage,
+  executeExtensionSignTransaction,
+  executeExtensionSignTypedData,
   getExtensionVaultStatus,
   importExtensionWallet,
   lockExtensionWallet,
   unlockExtensionWallet,
 } from "./extension-wallet";
+import { buildApprovalRiskWarning } from "./request-risk";
 import {
   approveProposal,
   approveRequestInQueue,
@@ -54,6 +60,14 @@ const pendingProviderApprovals = new Map<
     resolve: (response: ExtensionRuntimeResponse) => void;
   }
 >();
+const pendingProviderExecutions = new Map<
+  string,
+  {
+    method: AcorusProviderMethod;
+    params: unknown[];
+  }
+>();
+const pendingSignerUnlocks = new Map<string, SignerUnlockIntent>();
 const pendingConnectionApprovals = new Map<
   string,
   {
@@ -111,6 +125,10 @@ async function handleRuntimeMessage(
     const walletState = await getWalletSyncState();
     const extensionVaultStatus = await getExtensionVaultStatus();
     const activeOrigin = await resolveActiveOrigin(input.origin, sender);
+    const queuedSignerUnlocks = getSignerUnlockQueue();
+    const signerRequestIds = new Set(
+      queuedSignerUnlocks.map((intent) => intent.requestId),
+    );
     const walletExposureMode = walletState.profiles.length > 0
       ? "wallet_backed"
       : "preview_accounts";
@@ -122,8 +140,11 @@ async function handleRuntimeMessage(
         activeOrigin,
         proposals: state.proposals,
         sessions: state.sessions,
-        pendingRequests: state.pendingRequests,
+        pendingRequests: state.pendingRequests.filter(
+          (request) => !signerRequestIds.has(request.id),
+        ),
         approvalResults: state.approvalResults,
+        signerUnlockQueue: queuedSignerUnlocks,
         activeOriginBridge: activeOrigin
           ? createDappBridgeSessionView(state, activeOrigin)
           : null,
@@ -132,6 +153,7 @@ async function handleRuntimeMessage(
           walletExposureMode === "wallet_backed"
             ? "wallet_bridge"
             : "preview_bridge",
+        executionEnabled: true,
         walletExposureMode,
         walletExposedAccounts: walletState.profiles,
         walletLastSyncedAt: walletState.lastSyncedAt,
@@ -353,16 +375,35 @@ async function handleRuntimeMessage(
   if (input.kind === "approve_request") {
     const current = await getDappShellState();
     const request = getPendingDappRequest(current, input.requestIdTarget);
-    const next = await approveRequestInQueue(input.requestIdTarget);
 
-    if (request) {
-      resolvePendingProviderApproval(request, next.updatedAt);
+    if (!request) {
+      return providerError(
+        requestId,
+        "request_not_found",
+        "The pending request no longer exists.",
+      );
+    }
+
+    const existingIntent = getSignerUnlockIntentByRequestId(request.id);
+
+    if (!existingIntent) {
+      pendingSignerUnlocks.set(
+        createSignerUnlockIntentId(request.id),
+        buildSignerUnlockIntent(request),
+      );
+    }
+    await setActivePromptOrigin(request.origin.origin);
+    if (input.surface !== "popup") {
+      openApprovalWindow();
     }
 
     return {
       requestId,
       ok: true,
-      result: next,
+      result: {
+        requestId: request.id,
+        signerUnlockQueued: true,
+      },
     };
   }
 
@@ -372,12 +413,113 @@ async function handleRuntimeMessage(
     const next = await rejectRequestInQueue(input.requestIdTarget);
 
     if (request) {
+      pendingProviderExecutions.delete(request.id);
       rejectPendingProviderApproval(
         request.id,
         "user_rejected",
         "The request was rejected in Acorus Wallet.",
       );
     }
+
+    return {
+      requestId,
+      ok: true,
+      result: next,
+    };
+  }
+
+  if (input.kind === "confirm_signer_unlock") {
+    const intent = pendingSignerUnlocks.get(input.intentId);
+
+    if (!intent) {
+      return providerError(
+        requestId,
+        "signer_unlock_not_found",
+        "The signer confirmation prompt is no longer available.",
+      );
+    }
+
+    const vaultStatus = await getExtensionVaultStatus();
+
+    if (!vaultStatus.isUnlocked) {
+      return providerError(
+        requestId,
+        "wallet_locked",
+        "Unlock Acorus Wallet extension before confirming signing.",
+      );
+    }
+
+    const current = await getDappShellState();
+    const request = getPendingDappRequest(current, intent.requestId);
+
+    if (!request) {
+      pendingProviderExecutions.delete(intent.requestId);
+      pendingSignerUnlocks.delete(input.intentId);
+      return providerError(
+        requestId,
+        "request_not_found",
+        "The pending request was removed before signing confirmation completed.",
+      );
+    }
+
+    const execution = pendingProviderExecutions.get(intent.requestId);
+    const approvedAt = new Date().toISOString();
+    let providerResult: unknown = createApprovedPreviewDappResult(request, approvedAt);
+
+    try {
+      providerResult = await executeApprovedRequest(request, execution, approvedAt);
+    } catch (error) {
+      await rejectRequestInQueue(intent.requestId);
+      pendingProviderExecutions.delete(intent.requestId);
+      pendingSignerUnlocks.delete(input.intentId);
+      rejectPendingProviderApproval(
+        intent.requestId,
+        "execution_failed",
+        error instanceof Error
+          ? error.message
+          : "The extension failed to execute the approved request.",
+      );
+
+      return providerError(
+        requestId,
+        "execution_failed",
+        error instanceof Error
+          ? error.message
+          : "The extension failed to execute the approved request.",
+      );
+    }
+
+    const next = await approveRequestInQueue(intent.requestId);
+    pendingProviderExecutions.delete(intent.requestId);
+    pendingSignerUnlocks.delete(input.intentId);
+    resolvePendingProviderApproval(request, providerResult);
+
+    return {
+      requestId,
+      ok: true,
+      result: next,
+    };
+  }
+
+  if (input.kind === "reject_signer_unlock") {
+    const intent = pendingSignerUnlocks.get(input.intentId);
+
+    if (!intent) {
+      return providerError(
+        requestId,
+        "signer_unlock_not_found",
+        "The signer confirmation prompt is no longer available.",
+      );
+    }
+
+    const next = await rejectRequestInQueue(intent.requestId);
+    pendingProviderExecutions.delete(intent.requestId);
+    pendingSignerUnlocks.delete(input.intentId);
+    rejectPendingProviderApproval(
+      intent.requestId,
+      "user_rejected",
+      "The request was rejected during signer confirmation.",
+    );
 
     return {
       requestId,
@@ -394,6 +536,8 @@ async function handleRuntimeMessage(
     const next = await revokeSessionInRegistry(input.sessionId);
 
     for (const request of affectedRequests) {
+      pendingProviderExecutions.delete(request.id);
+      pendingSignerUnlocks.delete(createSignerUnlockIntentId(request.id));
       rejectPendingProviderApproval(
         request.id,
         "session_revoked",
@@ -766,13 +910,20 @@ async function handleProviderMethod(
       account: session.accounts[0] ?? null,
       chainId: getDappSessionActiveChainId(session),
       summary: buildApprovalSummary(method, params, session),
-      warning:
-        "Approval can complete in the extension, but the final signature or broadcast remains preview-only in this wave.",
+      warning: buildApprovalRiskWarning({
+        method,
+        params,
+      }),
     });
 
     if (queued.created) {
       await setDappShellState(queued.snapshot);
     }
+
+    pendingProviderExecutions.set(queued.request.id, {
+      method,
+      params,
+    });
 
     return waitForProviderApproval(queued.request);
   }
@@ -1012,7 +1163,7 @@ function rejectPendingConnectionApproval(
 
 function resolvePendingProviderApproval(
   request: DappRequest,
-  approvedAt: string,
+  result: unknown,
 ): void {
   const pending = pendingProviderApprovals.get(request.id);
 
@@ -1024,7 +1175,7 @@ function resolvePendingProviderApproval(
   pending.resolve({
     requestId: request.id,
     ok: true,
-    result: createApprovedPreviewDappResult(request, approvedAt),
+    result,
   });
 }
 
@@ -1048,6 +1199,123 @@ function rejectPendingProviderApproval(
       message,
     },
   });
+}
+
+function createSignerUnlockIntentId(requestId: string): string {
+  return `signer_unlock_${requestId}`;
+}
+
+function buildSignerUnlockIntent(request: DappRequest): SignerUnlockIntent {
+  return {
+    id: createSignerUnlockIntentId(request.id),
+    requestId: request.id,
+    kind: request.kind,
+    origin: request.origin.origin,
+    summary: request.summary,
+    warning: request.warning ?? null,
+    account: request.account ?? null,
+    chainId: request.chainId ?? null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function getSignerUnlockIntentByRequestId(
+  requestId: string,
+): SignerUnlockIntent | null {
+  const intentId = createSignerUnlockIntentId(requestId);
+  return pendingSignerUnlocks.get(intentId) ?? null;
+}
+
+function getSignerUnlockQueue(): SignerUnlockIntent[] {
+  return Array.from(pendingSignerUnlocks.values()).sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt),
+  );
+}
+
+async function executeApprovedRequest(
+  request: DappRequest,
+  execution:
+    | {
+        method: AcorusProviderMethod;
+        params: unknown[];
+      }
+    | undefined,
+  approvedAt: string,
+): Promise<unknown> {
+  if (!execution) {
+    return createApprovedPreviewDappResult(request, approvedAt);
+  }
+
+  switch (execution.method) {
+    case "acorus_signMessage":
+      return createApprovedLiveDappResult(request, approvedAt, {
+        signature: await executeExtensionSignMessage({
+          params: execution.params,
+          chainId: request.chainId ?? null,
+          account: request.account ?? null,
+        }),
+      });
+    case "acorus_signTypedData":
+      return createApprovedLiveDappResult(request, approvedAt, {
+        signature: await executeExtensionSignTypedData({
+          params: execution.params,
+          chainId: request.chainId ?? null,
+          account: request.account ?? null,
+        }),
+      });
+    case "acorus_signTransaction":
+      return createApprovedLiveDappResult(request, approvedAt, {
+        signature: await executeExtensionSignTransaction({
+          params: execution.params,
+          chainId: request.chainId ?? null,
+          account: request.account ?? null,
+        }),
+      });
+    case "acorus_sendTransaction":
+      return createApprovedLiveDappResult(request, approvedAt, {
+        transactionHash: await executeExtensionSendTransaction({
+          params: execution.params,
+          chainId: request.chainId ?? null,
+          account: request.account ?? null,
+        }),
+      });
+    default:
+      return createApprovedPreviewDappResult(request, approvedAt);
+  }
+}
+
+function createApprovedLiveDappResult(
+  request: DappRequest,
+  approvedAt: string,
+  input: {
+    signature?: string | null;
+    transactionHash?: string | null;
+  },
+): {
+  requestId: string;
+  kind: DappRequestKind;
+  status: "approved_live";
+  account: string | null;
+  chainId: ChainId | null;
+  summary: string;
+  warning: string;
+  approvedAt: string;
+  signature: string | null;
+  transactionHash: string | null;
+} {
+  return {
+    requestId: request.id,
+    kind: request.kind,
+    status: "approved_live",
+    account: request.account ?? null,
+    chainId: request.chainId ?? null,
+    summary: request.summary,
+    warning:
+      "Approved and executed inside Acorus Wallet extension after explicit signer confirmation.",
+    approvedAt,
+    signature: input.signature ?? null,
+    transactionHash: input.transactionHash ?? null,
+  };
 }
 
 function buildApprovalSummary(
@@ -1074,7 +1342,7 @@ function buildApprovalSummary(
     case "acorus_signTransaction":
       return `Sign transaction review on chain ${chain}. Transaction preview: ${payload}.`;
     case "acorus_sendTransaction":
-      return `Send transaction review on chain ${chain}. Broadcast remains preview-only. Payload preview: ${payload}.`;
+      return `Send transaction review on chain ${chain}. Broadcast requires signer confirmation in the extension. Payload preview: ${payload}.`;
     default:
       return `Request review on chain ${chain}. Payload preview: ${payload}.`;
   }

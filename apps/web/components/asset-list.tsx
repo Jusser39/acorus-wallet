@@ -15,6 +15,8 @@ interface Props {
   loading?: boolean;
   onHideToken?: (asset: PortfolioAssetView) => void;
   busyTokenKey?: string | null;
+  selectedAssetKey?: string | null;
+  onSelectAsset?: (asset: PortfolioAssetView) => void;
 }
 
 function formatFiat(value: number, currency: FiatCurrency): string {
@@ -117,22 +119,24 @@ export function AssetList({
   loading,
   onHideToken,
   busyTokenKey,
+  selectedAssetKey,
+  onSelectAsset,
 }: Props) {
   if (loading) {
-    return (
-      <div className="space-y-3">
-        {[0, 1, 2].map((item) => (
-          <div key={item} className="animate-pulse rounded-2xl border border-slate-700/50 bg-white/5 p-4 backdrop-blur-sm">
-            <div className="h-5 w-24 rounded bg-slate-700/50" />
-          </div>
-        ))}
-      </div>
+      return (
+        <div className="space-y-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="premium-card animate-pulse p-4">
+              <div className="h-5 w-24 rounded bg-slate-700/50" />
+            </div>
+          ))}
+        </div>
     );
   }
 
   if (!assets.length) {
     return (
-      <div className="rounded-2xl border border-slate-700/50 bg-white/5 p-4 text-sm text-slate-400 backdrop-blur-sm">
+      <div className="premium-card p-4 text-sm text-slate-400">
         No assets found for this chain.
       </div>
     );
@@ -151,18 +155,36 @@ export function AssetList({
               ? `/tokens/${chainId}/${asset.tokenAddress}?family=solana&symbol=${encodeURIComponent(asset.symbol)}`
               : null;
         const isBusy = busyTokenKey === tokenActionKey(asset);
+        const selectionKey = tokenActionKey(asset);
+        const isSelected = selectedAssetKey === selectionKey;
 
         return (
           <div
             key={key}
-            className="rounded-2xl border border-slate-700/50 bg-white/5 p-4 transition-all duration-150 hover:border-slate-600 hover:bg-white/8"
+            role={onSelectAsset ? "button" : undefined}
+            tabIndex={onSelectAsset ? 0 : undefined}
+            onClick={() => onSelectAsset?.(asset)}
+            onKeyDown={(event) => {
+              if (!onSelectAsset) {
+                return;
+              }
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelectAsset(asset);
+              }
+            }}
+            className={`premium-card p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-fuchsia-300/20 ${
+              isSelected
+                ? "border-fuchsia-300/35 shadow-[0_18px_44px_rgba(255,70,183,0.22)]"
+                : ""
+            }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 {detailHref ? (
                   <Link href={detailHref} className="block">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-600 text-xs font-bold text-white shadow-inner">
+                      <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
                         {asset.symbol.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -188,7 +210,7 @@ export function AssetList({
                   </Link>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-600 text-xs font-bold text-white shadow-inner">
+                    <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
                       {asset.symbol.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -225,7 +247,10 @@ export function AssetList({
                     <button
                       type="button"
                       disabled={isBusy}
-                      onClick={() => onHideToken(asset)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onHideToken(asset);
+                      }}
                       className="rounded-full border border-slate-600 px-2.5 py-1 text-xs text-slate-200 transition hover:border-slate-400 hover:text-white disabled:opacity-60"
                     >
                       {isBusy ? "Hiding…" : "Hide"}

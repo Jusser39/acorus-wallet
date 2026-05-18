@@ -22,7 +22,7 @@ export function CapabilityStatusBoard() {
         const summary = summarizeCapabilityProfile(profile);
 
         return (
-          <div key={family} className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+          <div key={family} className="premium-card p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm text-slate-400">{profile.nativeSymbol || "Network"}</p>

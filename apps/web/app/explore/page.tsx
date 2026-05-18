@@ -26,7 +26,7 @@ function formatUsd(value: number | null | undefined): string {
 
 function TokenCard({ token, rank }: { token: ExploreTokenItem; rank?: number }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+    <div className="premium-card flex items-center gap-3 p-4">
       {rank != null && (
         <span className="w-6 text-center text-xs font-semibold text-slate-500">{rank}</span>
       )}
@@ -40,7 +40,7 @@ function TokenCard({ token, rank }: { token: ExploreTokenItem; rank?: number }) 
           height={32}
         />
       ) : (
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-slate-300">
+        <div className="token-orb h-8 w-8 text-xs font-bold">
           {token.symbol.slice(0, 2)}
         </div>
       )}
@@ -65,7 +65,7 @@ function TokenCard({ token, rank }: { token: ExploreTokenItem; rank?: number }) 
 
 function MemeCard({ token }: { token: ExploreTokenItem }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-amber-900/40 bg-amber-950/20">
+    <div className="premium-card overflow-hidden">
       {token.bannerUrl || token.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -78,7 +78,7 @@ function MemeCard({ token }: { token: ExploreTokenItem }) {
       ) : null}
       <div className="space-y-3 p-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-900/40 text-xs font-bold text-amber-400">
+        <div className="token-orb h-8 w-8 text-xs font-bold">
           {token.chainKey?.slice(0, 3).toUpperCase() ?? token.symbol.slice(0, 2)}
         </div>
         <div className="min-w-0 flex-1">
@@ -143,10 +143,12 @@ export default async function ExplorePage() {
 
   return (
     <section className="page space-y-8">
-      <div className="app-surface grid gap-5 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div className="app-surface subtle-grid grid gap-5 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Explore</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">Market radar</h1>
+          <span className="section-kicker">Explore</span>
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            Market radar
+          </h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-300">
             Trending search, top market-cap assets and boosted meme discovery
             from CoinGecko and DexScreener. Built as the first wallet-native
@@ -154,15 +156,15 @@ export default async function ExplorePage() {
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-emerald-100">
+          <div className="data-card rounded-2xl px-3 py-2 text-emerald-100">
             <p className="text-lg font-semibold">{trending.length}</p>
             <p>Trending</p>
           </div>
-          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-cyan-100">
+          <div className="data-card rounded-2xl px-3 py-2 text-cyan-100">
             <p className="text-lg font-semibold">{top.length}</p>
             <p>Top</p>
           </div>
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-amber-100">
+          <div className="data-card rounded-2xl px-3 py-2 text-amber-100">
             <p className="text-lg font-semibold">{memes.length}</p>
             <p>Memes</p>
           </div>

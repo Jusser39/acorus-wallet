@@ -52,11 +52,12 @@ export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];
 export type BackgroundStateSnapshot = {
   phase: "permission_shell";
   providerInjection: "stub_only" | "preview_bridge" | "wallet_bridge";
-  executionEnabled: false;
+  executionEnabled: boolean;
   proposals: DappSessionProposal[];
   sessions: DappSession[];
   pendingRequests: DappRequest[];
   approvalResults: DappApprovalResult[];
+  signerUnlockQueue: SignerUnlockIntent[];
   activeOriginBridge?: DappBridgeSessionView | null;
   walletExposureMode: "preview_accounts" | "wallet_backed";
   walletExposedAccounts: DappWalletExposure[];
@@ -75,6 +76,18 @@ export type ExtensionVaultStatus = {
   unlockedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+};
+
+export type SignerUnlockIntent = {
+  id: string;
+  requestId: string;
+  kind: DappRequest["kind"];
+  origin: string;
+  summary: string;
+  warning?: string | null;
+  account?: string | null;
+  chainId?: string | number | null;
+  createdAt: string;
 };
 
 export type ExtensionRuntimeMessage =
@@ -188,6 +201,18 @@ export type ExtensionRuntimeMessage =
       requestKind: Exclude<DappRequest["kind"], "connect">;
       chainId?: number | null;
       summary?: string;
+    }
+  | {
+      kind: "confirm_signer_unlock";
+      requestId: string;
+      surface: "popup" | "options";
+      intentId: string;
+    }
+  | {
+      kind: "reject_signer_unlock";
+      requestId: string;
+      surface: "popup" | "options";
+      intentId: string;
     };
 
 export type ExtensionWalletCreateResult = {
@@ -250,6 +275,7 @@ export const EXTENSION_PHASES = [
   "Universal account controls",
   "WalletConnect pairing shell",
   "Multichain session request shell",
+  "Signer unlock layer",
 ] as const;
 
 export function createRequestId(prefix = "acorus"): string {
@@ -272,6 +298,7 @@ export function createSkeletonState(input?: {
   sessions?: DappSession[];
   pendingRequests?: DappRequest[];
   approvalResults?: DappApprovalResult[];
+  signerUnlockQueue?: SignerUnlockIntent[];
   activeOriginBridge?: DappBridgeSessionView | null;
   lastUpdatedAt?: string;
   providerInjection?: BackgroundStateSnapshot["providerInjection"];
@@ -279,15 +306,17 @@ export function createSkeletonState(input?: {
   walletExposedAccounts?: BackgroundStateSnapshot["walletExposedAccounts"];
   walletLastSyncedAt?: string | null;
   extensionVaultStatus?: ExtensionVaultStatus;
+  executionEnabled?: boolean;
 }): BackgroundStateSnapshot {
   return {
     phase: "permission_shell",
     providerInjection: input?.providerInjection ?? "stub_only",
-    executionEnabled: false,
+    executionEnabled: input?.executionEnabled ?? true,
     proposals: input?.proposals ?? [],
     sessions: input?.sessions ?? [],
     pendingRequests: input?.pendingRequests ?? [],
     approvalResults: input?.approvalResults ?? [],
+    signerUnlockQueue: input?.signerUnlockQueue ?? [],
     activeOriginBridge: input?.activeOriginBridge ?? null,
     walletExposureMode: input?.walletExposureMode ?? "preview_accounts",
     walletExposedAccounts: input?.walletExposedAccounts ?? [],

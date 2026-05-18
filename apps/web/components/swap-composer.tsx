@@ -214,40 +214,61 @@ export function SwapComposer(props: {
     toChainId: toNetwork.chainId,
   });
 
+  function selectFromAsset(optionId: string) {
+    setState((current) => ({
+      ...current,
+      fromAssetOptionId: optionId,
+      quote: null,
+      error: null,
+      step: "compose",
+    }));
+  }
+
+  function selectToAsset(optionId: string) {
+    setState((current) => ({
+      ...current,
+      toAssetOptionId: optionId,
+      quote: null,
+      error: null,
+      step: "compose",
+    }));
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center">
-      <div className="app-surface space-y-5 rounded-[2rem] p-3">
+      <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
         <div className="px-3 pt-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-teal-200">
+              <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
                 Universal swap
-              </p>
-              <h1 className="mt-1 text-3xl font-semibold text-white">
+              </span>
+              <h1 className="mt-3 text-3xl font-semibold text-slate-950">
                 Multichain quote
               </h1>
             </div>
-            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
-              Preview mode
+            <span className="rounded-full border border-slate-900/8 bg-white/72 px-3 py-1 text-xs font-semibold text-slate-700">
+              Step · {state.step}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-slate-600">
             Build routes across EVM, Solana, Tron and planned chains from one
             composer. Execution remains disabled while providers and signing
             flows are safety-reviewed.
           </p>
         </div>
 
-        <div className="mx-1 rounded-[1.5rem] border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
+        <div className="mx-1 rounded-[1.5rem] border border-fuchsia-300/30 bg-fuchsia-400/10 p-4 text-sm text-fuchsia-900">
           Quote preview only. No approvals, signatures or broadcasts happen here.
         </div>
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-2">
+        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-600">
               From network
             </span>
             <select
+              className="light-field"
               value={fromNetwork.id}
               onChange={(event) => updateFromNetwork(event.target.value)}
             >
@@ -260,10 +281,11 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-600">
               To network
             </span>
             <select
+              className="light-field"
               value={toNetwork.id}
               onChange={(event) => updateToNetwork(event.target.value)}
             >
@@ -278,7 +300,7 @@ export function SwapComposer(props: {
 
         <div className="flex flex-wrap items-center gap-2 px-2">
           <ChainFamilyBadge family={fromNetwork.family} />
-          <span className="text-sm text-slate-500">→</span>
+          <span className="text-sm text-slate-400">→</span>
           <ChainFamilyBadge family={toNetwork.family} />
           {fromNetwork.isSkeleton || toNetwork.isSkeleton ? <SkeletonBadge /> : null}
           {crossChain ? (
@@ -292,22 +314,15 @@ export function SwapComposer(props: {
           )}
         </div>
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-2">
+        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-600">
               From asset
             </span>
             <select
+              className="light-field"
               value={selectedFromAsset?.id ?? ""}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  fromAssetOptionId: event.target.value,
-                  quote: null,
-                  error: null,
-                  step: "compose",
-                }))
-              }
+              onChange={(event) => selectFromAsset(event.target.value)}
             >
               {fromAssets.map((asset) => (
                 <option key={asset.id} value={asset.id}>
@@ -319,20 +334,13 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-600">
               To asset
             </span>
             <select
+              className="light-field"
               value={selectedToAsset?.id ?? ""}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  toAssetOptionId: event.target.value,
-                  quote: null,
-                  error: null,
-                  step: "compose",
-                }))
-              }
+              onChange={(event) => selectToAsset(event.target.value)}
             >
               {toAssets.map((asset) => (
                 <option key={asset.id} value={asset.id}>
@@ -341,12 +349,67 @@ export function SwapComposer(props: {
               ))}
             </select>
           </label>
+
+          <div className="space-y-2 md:col-span-2">
+            <span className="px-2 text-sm font-medium text-slate-600">Quick pick</span>
+            <div className="token-quick-grid">
+              {fromAssets.slice(0, 6).map((asset) => (
+                <button
+                  key={asset.id}
+                  type="button"
+                  className="token-quick-button"
+                  data-selected={asset.id === selectedFromAsset?.id}
+                  onClick={() => selectFromAsset(asset.id)}
+                >
+                  <span className="token-quick-button__orb">
+                    {asset.asset.symbol.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-left text-sm font-semibold">
+                      {asset.asset.symbol}
+                    </span>
+                    <span className="block truncate text-left text-xs text-slate-500">
+                      {asset.balanceFormatted ?? asset.chainLabel}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <span className="px-2 text-sm font-medium text-slate-600">Receive quick pick</span>
+            <div className="token-quick-grid">
+              {toAssets.slice(0, 6).map((asset) => (
+                <button
+                  key={asset.id}
+                  type="button"
+                  className="token-quick-button"
+                  data-selected={asset.id === selectedToAsset?.id}
+                  onClick={() => selectToAsset(asset.id)}
+                >
+                  <span className="token-quick-button__orb">
+                    {asset.asset.symbol.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-left text-sm font-semibold">
+                      {asset.asset.symbol}
+                    </span>
+                    <span className="block truncate text-left text-xs text-slate-500">
+                      {asset.balanceFormatted ?? asset.chainLabel}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-black/20 p-2 md:grid-cols-[1fr_180px]">
+        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-[1fr_180px]">
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">Amount</span>
+            <span className="px-2 text-sm font-medium text-slate-600">Amount</span>
             <input
+              className="light-field"
               inputMode="decimal"
               placeholder="0.00"
               value={state.amountFormatted}
@@ -363,10 +426,11 @@ export function SwapComposer(props: {
           </label>
 
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-300">
+            <span className="px-2 text-sm font-medium text-slate-600">
               Slippage %
             </span>
             <input
+              className="light-field"
               inputMode="decimal"
               value={(state.slippageBps / 100).toString()}
               onChange={(event) => {
@@ -385,7 +449,7 @@ export function SwapComposer(props: {
         </div>
 
         {state.error ? (
-          <div className="mx-1 rounded-[1.5rem] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
+          <div className="mx-1 rounded-[1.5rem] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-700">
             {state.error}
           </div>
         ) : null}
@@ -421,7 +485,7 @@ export function SwapComposer(props: {
         <SwapRoutePreview quote={state.quote} />
 
         {!state.quote ? (
-          <div className="panel space-y-3">
+          <div className="premium-card space-y-3 p-5">
             <h2 className="text-xl font-semibold text-white">
               Quote only
             </h2>
@@ -434,7 +498,7 @@ export function SwapComposer(props: {
         ) : null}
 
         {state.quote ? (
-          <div className="panel space-y-3">
+          <div className="premium-card space-y-3 p-5">
             <h2 className="text-xl font-semibold text-white">
               Extension execution gate
             </h2>

@@ -113,6 +113,16 @@ export function SendComposer(props: Props) {
     state.toAddress.trim().length > 0 &&
     state.amountFormatted.trim().length > 0;
 
+  function selectAsset(optionId: string) {
+    setState((current) => ({
+      ...current,
+      assetOptionId: optionId,
+      draft: null,
+      error: null,
+      step: "compose",
+    }));
+  }
+
   function handleNetworkChange(networkId: string) {
     const next = networkOptions.find((n) => n.id === networkId);
     if (!next) return;
@@ -222,12 +232,15 @@ export function SendComposer(props: Props) {
   return (
     <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       {/* Compose panel */}
-      <div className="panel space-y-6">
+      <div className="app-surface space-y-6 rounded-[2rem] p-5">
         <div>
-          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">
-            Universal send composer
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="section-kicker">Universal send</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200">
+              Step · {state.step}
+            </span>
+          </div>
+          <h2 className="mt-3 text-3xl font-semibold">
             Send {selectedNetwork.nativeSymbol || selectedNetwork.label}
           </h2>
           <p className="mt-2 text-sm text-slate-400">
@@ -256,15 +269,7 @@ export function SendComposer(props: Props) {
             <span className="text-sm font-medium text-slate-300">Asset</span>
             <select
               value={selectedAsset?.id ?? ""}
-              onChange={(e) =>
-                setState((current) => ({
-                  ...current,
-                  assetOptionId: e.target.value,
-                  draft: null,
-                  error: null,
-                  step: "compose",
-                }))
-              }
+              onChange={(e) => selectAsset(e.target.value)}
             >
               {assetOptions.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -274,6 +279,33 @@ export function SendComposer(props: Props) {
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-medium text-slate-300">Quick token pick</span>
+          <div className="token-quick-grid">
+            {assetOptions.slice(0, 8).map((assetOption) => (
+              <button
+                key={assetOption.id}
+                type="button"
+                className="token-quick-button token-quick-button--dark"
+                data-selected={assetOption.id === selectedAsset?.id}
+                onClick={() => selectAsset(assetOption.id)}
+              >
+                <span className="token-quick-button__orb">
+                  {assetOption.asset.symbol.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-left text-sm font-semibold">
+                    {assetOption.asset.symbol}
+                  </span>
+                  <span className="block truncate text-left text-xs text-slate-400">
+                    {assetOption.balanceFormatted ?? assetOption.chainLabel}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Badges */}
@@ -389,7 +421,7 @@ export function SendComposer(props: Props) {
 
       {/* Preview panel */}
       <aside className="space-y-5">
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <h3 className="text-lg font-semibold">Draft preview</h3>
 
           {!state.draft && state.step === "compose" ? (
@@ -498,7 +530,7 @@ export function SendComposer(props: Props) {
           ) : null}
         </div>
 
-        <div className="panel space-y-3 text-xs text-slate-500">
+        <div className="premium-card space-y-3 p-5 text-xs text-slate-500">
           <p className="font-medium text-slate-400">What is a send draft?</p>
           <p>
             A send draft validates your inputs — address format, amount, balance

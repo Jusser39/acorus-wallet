@@ -2,6 +2,10 @@
 
 ## Executed actions
 
+1. Reworked the product-facing web shell toward the requested Uniswap-like direction: added a light token hero with floating selectable token bubbles, updated the top wallet navigation to a brighter glass style, and reused the hero on `/swap`.
+2. Added visual token quick-pick grids inside `SwapComposer` and `SendComposer`, so assets can now be selected by clicking token cards instead of only using dropdown fields.
+3. Added wallet-side token selection state: asset rows can now be highlighted and the selected token is surfaced in a spotlight card with send/receive/detail actions.
+
 1. Checked VPS access and detected that Node/pnpm/docker are not installed there yet.
 2. Created local workspace at `C:\Users\NZXT\acorus-wallet`.
 3. Installed pnpm and scaffolded Next.js app plus monorepo structure.
@@ -389,3 +393,21 @@
 142. Extended `packages/shared/src/dapp.ts` so requests now carry transport metadata, active sessions can spawn preview-only follow-up requests with explicit chain/account context, and preview summaries/warnings are generated consistently per transport.
 143. Added a new extension runtime path for queuing session request previews, normalized stored extension snapshots so older request/proposal/session state picks up transport defaults safely, and wired the options shell with a session request studio for approved peers.
 144. Updated popup/options plus web `/dapps`, `/extension`, and the extension roadmap so the product now advertises transport-aware multichain session request staging honestly while keeping live signing, WalletConnect relay, and broadcast disabled.
+145. Fetched the latest GitHub state, reviewed the remote-only commits between local `907d526` and remote `c374bff`, then fast-forwarded local `main` to the new head while preserving unfinished local work in `git stash` as `copilot-pre-sync-local-work`.
+146. Re-ran workspace dependency linking with `pnpm install --frozen-lockfile`, which restored the new extension/shared workspace graph so `@acorus/shared` resolved correctly inside the freshly added extension wallet tests.
+147. Audited the refreshed codebase, roadmap, extension roadmap, and UX surfaces after the remote sync to re-center the next implementation slice around premium wallet UX plus the future extension signer unlock path.
+148. Applied a premium DeFi visual refresh across `apps/web/app/globals.css`, homepage, wallet navigation, wallet dashboard, portfolio summary, asset list, explore, extension landing page, send composer, swap composer, product feature cards, wallet health, and capability board using richer gradient glass surfaces and tighter action-first hierarchy.
+149. Validation after the sync and UI wave: `pnpm test` passed across shared, wallet-core, api, extension, and web; `pnpm --filter @acorus/web build` also passed on the refreshed shell.
+150. Repo-wide `pnpm lint` remains blocked by pre-existing TypeScript issues under `apps/api`; those errors were not introduced by the new UI wave and were intentionally left untouched during this styling-focused pass.
+151. Implemented the extension signer unlock layer: approving a queued dApp request now moves it into a separate signer confirmation gate in background memory instead of resolving the dApp immediately.
+152. Updated extension protocol/background/popup/options so signer-gated requests disappear from the generic request queue, surface in a dedicated confirmation section, and only resolve back to the site after explicit confirm/reject actions.
+153. Refreshed `/extension` and `docs/chrome_extension_roadmap.md` so the public roadmap now states that a signer-confirmation gate is live while real signing output and broadcast still remain disabled.
+154. Validation for the signer unlock wave: `pnpm --filter @acorus/extension test` and `pnpm --filter @acorus/extension build` both passed.
+155. Wired the signer-confirmation path to real extension-side EVM execution: approved `acorus_signMessage`, `acorus_signTypedData`, `acorus_signTransaction`, and `acorus_sendTransaction` requests now execute inside the extension wallet and resolve back to the requesting page with a real signature or transaction hash only after explicit confirmation.
+156. Fixed the extension state contract so execution availability is no longer hard-coded as disabled, then updated popup/options copy to distinguish live EVM execution from preview-only WalletConnect pairing and staged multichain session requests.
+157. Refreshed `/dapps`, `/extension`, README, architecture, and `docs/chrome_extension_roadmap.md` so product and repo documentation now match the current boundary: live EVM sign/send execution after signer confirmation, but no WalletConnect relay or broader non-EVM provider execution yet.
+158. Re-ran `pnpm --filter @acorus/extension test` and `pnpm --filter @acorus/extension build`; both passed on the live-execution-aligned state.
+159. Added `apps/extension/src/background/request-risk.ts` plus dedicated tests so the extension can classify risky approval payloads locally before user confirmation.
+160. Extended the approval flow to generate request-specific warnings for sign-message phishing risk, typed-data domain/verifying-contract context, generic contract calls, ERC-20 `approve`, and NFT `setApprovalForAll`.
+161. Updated popup/options request cards and signer-confirmation cards so the computed risk warning remains visible across both approval stages instead of collapsing to one generic signer-gate message.
+162. Re-ran `pnpm --filter @acorus/extension test` and `pnpm --filter @acorus/extension build`; both passed after the approval-risk review wave.

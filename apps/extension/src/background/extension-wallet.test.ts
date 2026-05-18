@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createExtensionWallet,
+  executeExtensionSignMessage,
+  executeExtensionSignTypedData,
   getExtensionVaultStatus,
   importExtensionWallet,
   lockExtensionWallet,
@@ -86,5 +88,69 @@ describe("extension wallet vault", () => {
     expect(unlocked.profiles[0]?.account.toLowerCase()).toBe(
       "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
     );
+  });
+
+  it("signs a personal message only while the extension wallet is unlocked", async () => {
+    await importExtensionWallet({
+      name: "Imported",
+      mnemonic: "test test test test test test test test test test test junk",
+      passcode: "strong-passcode",
+    });
+
+    const signature = await executeExtensionSignMessage({
+      params: ["Hello Acorus", "0xF39Fd6e51aad88F6F4ce6AB8827279cffFb92266"],
+      chainId: 1,
+      account: "0xF39Fd6e51aad88F6F4ce6AB8827279cffFb92266",
+    });
+
+    expect(signature).toMatch(/^0x[0-9a-f]+$/iu);
+
+    await lockExtensionWallet();
+
+    await expect(() =>
+      executeExtensionSignMessage({
+        params: ["Hello again"],
+        chainId: 1,
+      }),
+    ).rejects.toThrow(/unlock/i);
+  });
+
+  it("signs typed data inside the extension vault boundary", async () => {
+    await importExtensionWallet({
+      name: "Imported",
+      mnemonic: "test test test test test test test test test test test junk",
+      passcode: "strong-passcode",
+    });
+
+    const signature = await executeExtensionSignTypedData({
+      params: [
+        "0xF39Fd6e51aad88F6F4ce6AB8827279cffFb92266",
+        JSON.stringify({
+          domain: {
+            name: "Acorus",
+            version: "1",
+            chainId: 1,
+          },
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+            ],
+            Message: [
+              { name: "contents", type: "string" },
+            ],
+          },
+          primaryType: "Message",
+          message: {
+            contents: "Acorus typed data",
+          },
+        }),
+      ],
+      chainId: 1,
+      account: "0xF39Fd6e51aad88F6F4ce6AB8827279cffFb92266",
+    });
+
+    expect(signature).toMatch(/^0x[0-9a-f]+$/iu);
   });
 });

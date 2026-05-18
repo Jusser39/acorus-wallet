@@ -138,12 +138,13 @@ export function DappSessionShell() {
             window.ethereum
           </code>{" "}
           requests can route through the extension bridge after approval. Sign
-          and transaction requests now also enter a live approval-review queue,
-          while real signature output and broadcast still stay disabled. Public
-          local EVM addresses can now sync from the Acorus web app into the
-          extension bridge without exposing seed or passcode, and the bridge can
-          keep exposure narrowed to one selected account per connected site. A
-          WalletConnect URI can now be imported into a preview pairing shell
+          and transaction requests now also enter a live approval-review queue
+          and can return a real EVM signature or transaction hash only after a
+          second signer confirmation inside the extension. Public local EVM
+          addresses can now sync from the Acorus web app into the extension
+          bridge without exposing seed or passcode, and the bridge can keep
+          exposure narrowed to one selected account per connected site. A
+          WalletConnect URI can still be imported into a preview pairing shell
           that immediately redacts the pairing secret and stores only safe peer
           metadata, while approved peers can stage follow-up multichain requests
           into the same review queue.
@@ -175,11 +176,12 @@ export function DappSessionShell() {
 
       <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
         No website can access keys, mnemonic, passcode, or signing output in
-        this wave. The bridge is now live for both native Acorus methods and an
-        EVM-compatible layer using approved session accounts; sign/send
-        execution remains preview-only, WalletConnect pairing secrets are
-        redacted on import, preview session requests stay queue-only, and
-        multi-account exposure stays opt-in per site.
+        this wallet. The bridge is now live for both native Acorus methods and
+        an EVM-compatible layer using approved session accounts; approved EVM
+        sign/send requests can resolve with a real signature or transaction hash
+        only after a second extension-side confirmation, WalletConnect pairing
+        secrets are redacted on import, staged session requests stay queue-only,
+        and multi-account exposure stays opt-in per site.
       </div>
 
       <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
@@ -349,7 +351,7 @@ export function DappSessionShell() {
             ) : (
               <p className="text-xs text-slate-400">
                 Requests target the selected peer&apos;s current exposed account and
-                chain, then land in the same preview approval queue used by the
+                chain, then land in the same approval queue used by the
                 extension runtime.
               </p>
             )}

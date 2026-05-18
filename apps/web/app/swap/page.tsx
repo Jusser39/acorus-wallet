@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ExtensionWalletCard } from "@/components/extension-wallet-card";
 import { SwapComposer } from "@/components/swap-composer";
+import { TokenDiscoveryHero } from "@/components/token-discovery-hero";
 import { useActiveProfile } from "@/store/wallet-store";
 
 export default function SwapPage() {
@@ -24,6 +25,16 @@ export default function SwapPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          <TokenDiscoveryHero
+            compact
+            eyebrow="Universal swap"
+            title="Выбирайте монеты прямо на сцене и собирайте quote без чёрного плоского shell"
+            description="Свап-экран переведён в более лёгкий product-style: floating token stage сверху и кликабельный token picker в самом composer ниже."
+            primaryHref="/swap"
+            primaryLabel="Stay on swap"
+            secondaryHref="/wallet"
+            secondaryLabel="Open wallet"
+          />
           <ExtensionWalletCard title="Extension swap account" />
           <SwapComposer
             portfolioAssets={[]}

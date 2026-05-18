@@ -22,19 +22,22 @@ function severityClass(severity: WalletHealthSeverity): string {
 
 export function WalletHealthCard({ summary }: Props) {
   return (
-    <div className="panel space-y-4">
+    <div className="premium-card space-y-4 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-slate-400">Wallet health</p>
           <h2 className="text-xl font-semibold">{summary.label}</h2>
         </div>
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-lg font-semibold text-emerald-200">
+        <div className="token-orb flex h-16 w-16 items-center justify-center text-lg font-semibold">
           {summary.score}
         </div>
       </div>
 
-      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-        <div className="h-full rounded-full bg-emerald-400" style={{ width: `${summary.score}%` }} />
+      <div className="h-2 overflow-hidden rounded-full bg-slate-900/80">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#ff46b7,#8b5cf6,#38bdf8)]"
+          style={{ width: `${summary.score}%` }}
+        />
       </div>
 
       {summary.issues.length ? (
@@ -53,7 +56,7 @@ export function WalletHealthCard({ summary }: Props) {
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+        <div className="data-card rounded-2xl p-3 text-sm text-emerald-100">
           Core wallet checks look good for this profile.
         </div>
       )}

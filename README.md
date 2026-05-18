@@ -6,7 +6,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 
 - Next.js App Router web/PWA shell
 - Fastify API for anonymous users, wallet profiles, contacts, transaction records, chains, tokens, and price stubs
-- `apps/extension` Manifest V3 extension shell with live preview-backed dApp bridge, session registry, and permission queue
+- `apps/extension` Manifest V3 extension shell with live dApp bridge, session registry, permission queue, and extension-side EVM sign/send execution behind explicit signer confirmation
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap/dapp types, practice content
 - Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
@@ -78,7 +78,7 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
 - Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
 - No WalletConnect, NFT send/burn, real swap execution, or cross-chain swap execution yet
-- Universal dApp bridge now includes preview-backed `window.ethereum` compatibility in the extension for common EVM wallet methods, and sign/transaction requests can enter an explicit approval-review queue, but real signing output, send execution, WalletConnect, and wallet-backed provider execution remain disabled
+- Universal dApp bridge now includes `window.ethereum` compatibility in the extension for common EVM wallet methods, and approved EVM sign/transaction requests can execute inside the extension after an explicit signer-confirmation step; WalletConnect relay, WalletConnect execution, and broader non-EVM provider execution still remain disabled
 
 ## Docs
 

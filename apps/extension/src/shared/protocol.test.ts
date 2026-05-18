@@ -15,16 +15,17 @@ describe("extension protocol", () => {
     expect(ACORUS_PROVIDER_METHODS).toContain("acorus_requestAccounts");
   });
 
-  it("creates a skeleton state with execution disabled", () => {
+  it("creates a skeleton state with live execution available", () => {
     const state = createSkeletonState({
       activeOrigin: "https://app.example",
     });
 
     expect(state.phase).toBe("permission_shell");
-    expect(state.executionEnabled).toBe(false);
+    expect(state.executionEnabled).toBe(true);
     expect(state.activeOrigin).toBe("https://app.example");
     expect(state.proposals).toEqual([]);
     expect(state.pendingRequests).toEqual([]);
+    expect(state.signerUnlockQueue).toEqual([]);
     expect(state.walletExposureMode).toBe("preview_accounts");
     expect(state.walletExposedAccounts).toEqual([]);
   });
@@ -47,8 +48,8 @@ describe("extension protocol", () => {
     ).toBe(true);
   });
 
-  it("tracks the WalletConnect pairing shell phase", () => {
+  it("tracks the signer unlock phase", () => {
     expect(EXTENSION_PHASES).toContain("WalletConnect pairing shell");
-    expect(EXTENSION_PHASES.at(-1)).toBe("Multichain session request shell");
+    expect(EXTENSION_PHASES.at(-1)).toBe("Signer unlock layer");
   });
 });

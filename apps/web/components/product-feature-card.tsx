@@ -17,7 +17,7 @@ export function ProductFeatureCard(props: {
   return (
     <Link
       href={feature.href}
-      className="group rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)] transition hover:-translate-y-0.5 hover:border-violet-400/40 hover:bg-slate-900"
+      className="premium-card group p-5 transition hover:-translate-y-0.5 hover:border-fuchsia-300/30"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -29,7 +29,7 @@ export function ProductFeatureCard(props: {
           </p>
         </div>
 
-        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-200">
+        <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-0.5 text-xs font-semibold text-fuchsia-100">
           {feature.badge}
         </span>
       </div>
@@ -39,7 +39,7 @@ export function ProductFeatureCard(props: {
           {getFeatureStatusLabel(feature.status)}
         </span>
 
-        <span className="text-violet-200 transition group-hover:translate-x-0.5">
+        <span className="text-fuchsia-200 transition group-hover:translate-x-0.5">
           Open →
         </span>
       </div>

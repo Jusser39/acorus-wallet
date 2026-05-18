@@ -28,7 +28,9 @@ const SHIPPED_ITEMS = [
   "EVM permissions API",
   "Add network approval",
   "Add/watch token approval",
-  "Preview sign/send request queue",
+  "Live sign/send request queue",
+  "Signer confirmation gate inside extension",
+  "Real EVM signature + transaction broadcast after signer confirmation",
   "WalletConnect pairing preview shell",
   "Packaged ZIP download artifact",
 ];
@@ -41,10 +43,10 @@ const BENCHMARK_ITEMS = [
 ];
 
 const NEXT_ITEMS = [
-  "Real EVM signing and broadcast after unlock",
-  "Solana injected provider",
+  "Approval risk simulation and allowance warnings",
+  "WalletConnect live relay and request execution",
+  "Additional multichain provider packs",
   "Tron provider bridge",
-  "Transaction simulation and scam warnings",
   "Approval/token allowance manager",
   "Hardware-backed biometrics where browser allows it",
   "Chrome Web Store publishing package",
@@ -53,11 +55,9 @@ const NEXT_ITEMS = [
 export default function ExtensionPage() {
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
-      <div className="app-surface grid gap-6 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_420px] lg:items-center">
+      <div className="app-surface subtle-grid grid gap-6 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_420px] lg:items-center">
         <div className="space-y-5">
-          <span className="inline-flex rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-sm text-teal-100">
-            Chrome extension wallet
-          </span>
+          <span className="section-kicker">Chrome extension wallet</span>
           <div className="space-y-3">
             <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               Acorus Wallet Extension
@@ -79,7 +79,7 @@ export default function ExtensionPage() {
           </div>
         </div>
 
-        <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/44 p-4">
+        <div className="premium-card p-4">
           <div className="text-sm font-semibold text-white">Install steps</div>
           <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
             <li>1. Download ZIP and unpack it locally.</li>
@@ -92,7 +92,7 @@ export default function ExtensionPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <h2 className="text-xl font-semibold text-white">Wallet core</h2>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {SHIPPED_ITEMS.map((item) => (
@@ -101,7 +101,7 @@ export default function ExtensionPage() {
           </ul>
         </div>
 
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <h2 className="text-xl font-semibold text-white">Provider methods</h2>
           <div className="flex flex-wrap gap-2">
             {LIVE_METHODS.map((method) => (
@@ -115,12 +115,13 @@ export default function ExtensionPage() {
           </div>
           <p className="text-sm leading-6 text-slate-300">
             Connect/account/chain reads are live through extension approval.
-            Signature and transaction requests enter review mode; real signing
-            remains gated until the next security-reviewed wave.
+            Supported EVM signature and transaction requests now execute inside
+            the extension after a dedicated signer confirmation step. WalletConnect
+            pairing and staged multichain follow-up requests remain preview-only.
           </p>
         </div>
 
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <h2 className="text-xl font-semibold text-white">Next build wave</h2>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {NEXT_ITEMS.map((item) => (
@@ -130,7 +131,7 @@ export default function ExtensionPage() {
         </div>
       </div>
 
-      <div className="panel space-y-5">
+      <div className="premium-card space-y-5 p-5">
         <div className="space-y-2">
           <h2 className="text-xl font-semibold text-white">Competitor parity track</h2>
           <p className="text-sm leading-6 text-slate-300">
@@ -143,7 +144,7 @@ export default function ExtensionPage() {
           {BENCHMARK_ITEMS.map(([name, details]) => (
             <div
               key={name}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              className="data-card rounded-2xl p-4"
             >
               <div className="text-sm font-semibold text-white">{name}</div>
               <p className="mt-2 text-sm leading-6 text-slate-300">{details}</p>

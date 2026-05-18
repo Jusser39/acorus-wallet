@@ -56,6 +56,7 @@ export default function WalletPage() {
   const [hiddenSaving, setHiddenSaving] = useState(false);
   const [busyTokenKey, setBusyTokenKey] = useState<string | null>(null);
   const [addingSolana, setAddingSolana] = useState(false);
+  const [selectedAssetKey, setSelectedAssetKey] = useState<string | null>(null);
 
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
   const isLocked = activeProfile?.type === "local" && !unlockedVault;
@@ -294,7 +295,7 @@ export default function WalletPage() {
   if (!activeProfile) {
     return (
       <section className="page">
-        <div className="panel space-y-3">
+        <div className="premium-card space-y-3 p-5">
           <h1 className="text-2xl font-semibold">No active wallet</h1>
           <p className="text-sm text-slate-300">
             Create, import or add a view-only/practice wallet on the home page.
@@ -313,22 +314,53 @@ export default function WalletPage() {
       : activeProfile.publicAddress;
   const nativeBalance = portfolio?.assets.find((asset) => asset.type === "native")?.balanceFormatted ?? "0";
   const tokenAssets = portfolio?.assets.filter((asset) => asset.type !== "native") ?? [];
+  const selectedAsset =
+    tokenAssets.find((asset) =>
+      selectedAssetKey === (
+        asset.tokenAddress
+          ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
+          : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`
+      ),
+    ) ?? tokenAssets[0] ?? null;
+  const selectedAssetDetailHref =
+    selectedAsset && activeProfile.chainFamily === "evm" && selectedAsset.type === "erc20" && selectedAsset.tokenAddress
+      ? `/tokens/${selectedAsset.chainId}/${selectedAsset.tokenAddress}`
+      : null;
+
+  useEffect(() => {
+    if (!tokenAssets.length) {
+      if (selectedAssetKey !== null) {
+        setSelectedAssetKey(null);
+      }
+      return;
+    }
+
+    const keys = tokenAssets.map((asset) =>
+      asset.tokenAddress
+        ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
+        : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`,
+    );
+
+    if (!selectedAssetKey || !keys.includes(selectedAssetKey)) {
+      setSelectedAssetKey(keys[0] ?? null);
+    }
+  }, [selectedAssetKey, tokenAssets]);
 
   return (
     <section className="page grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
       <div className="space-y-6">
-        <div className="panel space-y-5">
+        <div className="app-surface space-y-5 rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-emerald-300">
+              <span className="section-kicker">
                 {activeProfile.type.replace("_", " ")} · {activeProfile.chainFamily}
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold">{activeProfile.name}</h1>
+              </span>
+              <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{activeProfile.name}</h1>
               <p className="mt-2 text-sm text-slate-300">
                 {formatAddress(activeProfile.publicAddress)}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button type="button" className="button-secondary" onClick={() => void handleCopyAddress()}>
                 {copied ? "Copied" : "Copy address"}
               </button>
@@ -343,6 +375,22 @@ export default function WalletPage() {
                   {isEvm ? "Send" : "Send draft"}
                 </Link>
               )}
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="data-card rounded-2xl p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Mode</p>
+              <p className="mt-2 text-sm font-semibold text-white">
+                {isViewOnly ? "View only" : activeProfile.type === "practice" ? "Practice" : "Self-custody"}
+              </p>
+            </div>
+            <div className="data-card rounded-2xl p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Primary chain</p>
+              <p className="mt-2 text-sm font-semibold text-white">{chain?.name ?? "Unknown chain"}</p>
+            </div>
+            <div className="data-card rounded-2xl p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Send status</p>
+              <p className="mt-2 text-sm font-semibold text-white">{sendAvailability.ctaLabel}</p>
             </div>
           </div>
 
@@ -395,7 +443,8 @@ export default function WalletPage() {
 
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-semibold text-white">
+              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Launchpad</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">
                 Actions
               </h2>
               <p className="mt-1 text-sm text-slate-300">
@@ -408,24 +457,24 @@ export default function WalletPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+            <div className="premium-card p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-sm text-slate-400">Native balance · {chain?.name ?? `Chain ${selectedChainId}`}</p>
                 <button
                   type="button"
-                  className="text-sm text-emerald-300"
+                  className="text-sm text-fuchsia-200"
                   disabled={hiddenSaving}
                   onClick={() => void handleHiddenBalanceToggle()}
                 >
                   {hiddenBalance ? "Show balance" : "Hide balance"}
                 </button>
               </div>
-              <p className="mt-4 text-4xl font-semibold">
+              <p className="metric-emphasis mt-4 text-4xl font-semibold">
                 {hiddenBalance ? "••••" : `${parseFloat(nativeBalance).toFixed(4)} ${chain?.nativeSymbol ?? ""}`}
               </p>
               <p className="mt-3 text-sm text-slate-400">Currency: {currency}</p>
             </div>
-            <div className="panel flex flex-col items-center justify-center gap-3">
+            <div className="premium-card flex flex-col items-center justify-center gap-3 p-5">
               <QRCodeSVG value={walletAddress} size={148} bgColor="transparent" fgColor="#ffffff" />
               <p className="text-center text-xs text-slate-300">
                 {isSolana ? "Receive only on Solana-compatible routes." : "Only send assets on the selected network."}
@@ -458,15 +507,66 @@ export default function WalletPage() {
           {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         </div>
 
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Assets</h2>
             <div className="flex items-center gap-3">
-              {!isSolana ? <Link href="/tokens/add" className="text-sm text-emerald-300">+ Add token</Link> : null}
-              <Link href="/tokens/manage" className="text-sm text-emerald-300">Manage</Link>
-              <Link href="/history" className="text-sm text-emerald-300">History</Link>
+              {!isSolana ? <Link href="/tokens/add" className="text-sm text-fuchsia-200">+ Add token</Link> : null}
+              <Link href="/tokens/manage" className="text-sm text-fuchsia-200">Manage</Link>
+              <Link href="/history" className="text-sm text-fuchsia-200">History</Link>
             </div>
           </div>
+          {selectedAsset ? (
+            <div className="asset-spotlight">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="token-orb flex h-14 w-14 shrink-0 items-center justify-center text-sm font-black">
+                    {selectedAsset.symbol.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                      Selected asset
+                    </p>
+                    <h3 className="mt-2 truncate text-xl font-semibold text-white">
+                      {selectedAsset.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {selectedAsset.symbol} · {selectedAsset.balanceFormatted}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">24h move</p>
+                  <p className={`mt-2 text-lg font-semibold ${
+                    (selectedAsset.change24hPercent ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300"
+                  }`}>
+                    {selectedAsset.change24hPercent == null ? "—" : `${selectedAsset.change24hPercent >= 0 ? "+" : ""}${selectedAsset.change24hPercent.toFixed(2)}%`}
+                  </p>
+                  {!hiddenBalance && selectedAsset.fiatValue != null ? (
+                    <p className="mt-1 text-sm text-slate-400">
+                      {new Intl.NumberFormat(
+                        currency === "RUB" ? "ru-RU" : currency === "EUR" ? "de-DE" : "en-US",
+                        { style: "currency", currency, maximumFractionDigits: 2 },
+                      ).format(selectedAsset.fiatValue)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href="/send" className="button-primary inline-flex !px-4 !py-2.5 !text-sm">
+                  Send
+                </Link>
+                <Link href="/receive" className="button-secondary inline-flex !px-4 !py-2.5 !text-sm">
+                  Receive
+                </Link>
+                {selectedAssetDetailHref ? (
+                  <Link href={selectedAssetDetailHref} className="button-secondary inline-flex !px-4 !py-2.5 !text-sm">
+                    View details
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <AssetList
             assets={tokenAssets}
             hidden={hiddenBalance}
@@ -476,6 +576,14 @@ export default function WalletPage() {
             loading={loading}
             onHideToken={(asset) => void handleHideToken(asset)}
             busyTokenKey={busyTokenKey}
+            selectedAssetKey={selectedAssetKey}
+            onSelectAsset={(asset) =>
+              setSelectedAssetKey(
+                asset.tokenAddress
+                  ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
+                  : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`,
+              )
+            }
           />
         </div>
       </div>
@@ -484,7 +592,7 @@ export default function WalletPage() {
         {healthSummary ? <WalletHealthCard summary={healthSummary} /> : null}
 
         {capabilityProfile && capabilitySummary ? (
-          <div className="panel space-y-4">
+          <div className="premium-card space-y-4 p-5">
             <div>
               <p className="text-sm text-slate-400">Multichain capabilities</p>
               <h2 className="text-xl font-semibold">{capabilityProfile.name}</h2>
@@ -498,7 +606,7 @@ export default function WalletPage() {
           </div>
         ) : null}
 
-        <div className="panel space-y-4">
+        <div className="premium-card space-y-4 p-5">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>

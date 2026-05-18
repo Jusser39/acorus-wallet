@@ -36,6 +36,18 @@
   - `packages/shared` now models dApp transport (`injected` vs `walletconnect`) plus redacted WalletConnect pairing previews that never persist raw symKeys
   - `apps/extension` options can now queue preview-only WalletConnect pairing proposals into the same permission/session registry used by websites
   - `/dapps` and `/extension` now describe and demo WalletConnect pairing previews while keeping live relay, real signatures, and broadcast disabled
+- Interactive token-selection UI wave implemented locally (2026-05-18)
+  - homepage and `/swap` now use a light premium token stage with floating selectable token orbs closer to the requested Uniswap-like visual direction
+  - `swap` and `send` composers now expose quick-pick token grids so assets can be selected visually instead of only through dropdowns
+  - wallet asset list now supports active token highlighting plus a selected-asset spotlight card for faster send/receive/detail actions
+- Extension live EVM signer execution wave implemented locally (2026-05-18)
+  - approved EVM `signMessage`, `signTypedData`, `signTransaction`, and `sendTransaction` requests now execute inside the extension after a second signer confirmation
+  - the extension still keeps mnemonic, private key, passcode, and decrypted vault material strictly inside extension memory
+  - WalletConnect pairing import and multichain session-request staging remain preview/staged-only surfaces
+- Extension approval risk review wave implemented locally (2026-05-18)
+  - pending requests and signer-confirmation cards now surface richer warnings for message signing, typed-data signing, direct contract calls, ERC-20 `approve`, and NFT `setApprovalForAll`
+  - extension review now highlights spender/operator exposure before final confirmation instead of showing only a generic signer-gate warning
+  - the new helper remains analysis-only: it never sends payloads to the backend and does not weaken the extension custody boundary
 - Multichain Session Request Shell wave implemented locally (2026-05-17)
   - `packages/shared` now carries request transport metadata plus helpers for queueing follow-up preview requests from active sessions with explicit chain/account context
   - `apps/extension` options can now queue preview-only follow-up requests for approved injected sites and WalletConnect peers into the same approval queue
@@ -67,7 +79,7 @@
 ## Constraints
 
 - Solana skeleton runtime and unified multichain adapter foundation are live; real Solana send, Tron/BTC balances/send, real swap execution, and NFT flows are still not implemented
-- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, preview dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, sign/transaction approval review, preview-backed `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, single-account exposure controls for connected sites, a preview-only WalletConnect pairing shell with redacted secrets, and a multichain session-request staging layer for approved peers; live WalletConnect relay / real signature output / real dApp send execution / NFT module are still not implemented
+- Universal swap quote shell is now live as preview-only; dashboard action grid plus Explore/Security/dApps/Extension/Quests shells are live; `apps/extension` now includes a Manifest V3 extension shell, dApp session/permission queue surfaces, a live connect/accounts/chainId bridge, real EVM sign/transaction execution behind a signer-confirmation gate, `window.ethereum` compatibility, wallet-backed public EVM account sync from the Acorus web app, single-account exposure controls for connected sites, a preview-only WalletConnect pairing shell with redacted secrets, and a staged multichain session-request layer for approved peers; live WalletConnect relay / broader non-EVM provider execution / NFT module are still not implemented
 - No backend seed storage, cloud seed backup, or custodial recovery
 
 ## Universal dApp Signing / Transaction Approval Wave (2026-05-16)
@@ -745,4 +757,95 @@
   - `/health` returns `store: "prisma"` on loopback and public `:8080`
   - public routes `/dapps` and `/extension` return HTTP 200 after rollout
   - persistence verification still passes after `docker compose restart api`
+
+## Premium Shell Refresh + Remote Sync (2026-05-18)
+
+- Status: **implemented locally on top of latest GitHub main**
+- Remote sync:
+  - local `main` fast-forwarded from `907d526` to `c374bff`
+  - reviewed remote waves that landed meanwhile: seed/header hardening, multichain wallet readiness flows, NFT center preview, capability matrix, wallet app shell refresh, extension wallet creation/connect compatibility, multichain extension site bridge, explore feed improvements, nginx internal port polish
+  - unfinished pre-sync local work preserved in `git stash` as `copilot-pre-sync-local-work`
+- UX/design refresh shipped locally:
+  - `apps/web/app/globals.css` now defines a stronger premium DeFi visual system with magenta/violet/cyan gradients, deeper glass surfaces, upgraded buttons, richer cards, and denser contrast
+  - homepage hero, onboarding cards, wallet navigation, wallet dashboard shell, portfolio summary, asset list, explore market cards, extension landing page, send composer, swap composer, product cards, wallet health, and capability board were refreshed toward a Uniswap-like premium layout
+  - the product now presents balance/action-first surfaces more clearly while keeping capability warnings and preview/live boundaries explicit
+- Safety boundary maintained:
+  - no backend seed/private key custody changes
+  - no change to client-side-only signing boundary
+  - no fake live execution added to disabled adapters
+- Validation completed for this milestone:
+  - `pnpm install --frozen-lockfile`
+  - `pnpm test`
+  - `pnpm --filter @acorus/web build`
+- Known repo baseline issue:
+  - repo-wide `pnpm lint` is still blocked by pre-existing TypeScript errors in `apps/api` after the remote sync; this UI refresh did not change API code or try to fold those unrelated fixes into the styling wave
+- Next logical step:
+  - implement extension-side signer unlock / real EVM signing gate after explicit user confirmation, while keeping mnemonic/private key strictly inside the extension vault boundary
+
+## Extension Signer Unlock Layer (2026-05-18)
+
+- Status: **implemented locally and validated for the extension package**
+- New extension behavior:
+  - approving a dApp sign/send-style request no longer resolves the site promise immediately
+  - the request first moves into a dedicated signer-confirmation gate inside the extension UI
+  - popup/options now show a separate signer queue with explicit confirm/reject controls
+  - if the extension wallet is locked, the gate stays visible until the user unlocks it and confirms intentionally
+- Safety boundary maintained:
+  - no raw signature bytes released
+  - no transaction hash released from a live broadcast
+  - no mnemonic/private key exposure outside extension memory
+  - this intermediate gate-only slice was later superseded by the live EVM execution wave below
+- Files updated for this wave:
+  - `apps/extension/src/shared/protocol.ts`
+  - `apps/extension/src/shared/protocol.test.ts`
+  - `apps/extension/src/background/index.ts`
+  - `apps/extension/src/popup/index.ts`
+  - `apps/extension/src/options/index.ts`
+  - `apps/web/app/extension/page.tsx`
+  - `docs/chrome_extension_roadmap.md`
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+- Next logical step:
+  - connect the signer gate to real EVM signing/broadcast execution inside the extension vault, with the same explicit confirmation path and no custody boundary regression
+
+## Extension Live EVM Signer Execution (2026-05-18)
+
+- Status: **implemented locally and validated for the extension package**
+- New extension behavior:
+  - approved `acorus_signMessage`, `acorus_signTypedData`, `acorus_signTransaction`, and `acorus_sendTransaction` requests now execute inside the extension only after the signer gate is confirmed
+  - the requesting page can now receive the final signature or transaction hash for that approved EVM request
+  - `BackgroundStateSnapshot.executionEnabled` now reflects the live execution capability instead of advertising a stale disabled state
+- Safety boundary maintained:
+  - mnemonic, private key, passcode, and decrypted vault material stay inside the extension boundary only
+  - only the final approved request result is returned to the requesting page
+  - WalletConnect pairing stays redacted on import, and staged multichain session requests remain queue-only
+- Product/docs alignment:
+  - popup, options, `/dapps`, `/extension`, README, architecture, and extension roadmap now describe live EVM execution honestly
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+- Next logical step:
+  - add approval-time risk simulation, allowance warnings, and richer transaction review before expanding execution to more provider families
+
+## Extension Approval Risk Review (2026-05-18)
+
+- Status: **implemented locally and validated for the extension package**
+- New review behavior:
+  - `apps/extension` now derives request-specific warning copy before approval for:
+    - generic sign-message phishing risk
+    - typed-data domain / verifying-contract context when present
+    - contract-call detection for signed or broadcast EVM transactions
+    - ERC-20 `approve` spender + unlimited-allowance detection
+    - NFT `setApprovalForAll` operator warnings
+  - both the pending request queue and the signer-confirmation queue now show the computed warning so risk context survives the second confirmation step
+- Safety boundary maintained:
+  - warnings are generated entirely inside the extension runtime
+  - no mnemonic, private key, passcode, decrypted vault, or raw signing material is persisted outside the extension
+  - this remains a review layer only; no backend simulation service or custody change was introduced
+- Validation completed for this wave:
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+- Next logical step:
+  - add deeper per-transaction simulation and allowance impact details before broadening execution to more dApp/provider families
 

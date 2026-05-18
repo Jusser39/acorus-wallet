@@ -28,29 +28,34 @@ export function WalletNav() {
   const setError = useWalletStore((state) => state.setError);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/58 backdrop-blur-2xl">
+    <header className="sticky top-0 z-40 border-b border-slate-900/6 bg-white/72 backdrop-blur-2xl">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"
-            className="app-pill inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white"
+            className="inline-flex items-center gap-3 rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(148,163,184,0.18)]"
           >
-            <span className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-teal-200 via-emerald-300 to-rose-300 text-sm font-black text-slate-950">
+            <span className="token-orb size-8 text-sm font-black">
               A
             </span>
-            <span>Acorus</span>
+            <span className="flex flex-col leading-none">
+              <span>Acorus</span>
+              <span className="mt-1 text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                wallet
+              </span>
+            </span>
           </Link>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-300">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
             {activeProfile ? (
-              <span className="app-pill max-w-full truncate rounded-full px-3 py-2 text-xs text-slate-200">
-                <span className="font-semibold text-white">{activeProfile.name}</span>{" "}
-                <span className="text-slate-500">/</span>{" "}
+              <span className="max-w-full truncate rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(148,163,184,0.14)]">
+                <span className="font-semibold text-slate-950">{activeProfile.name}</span>{" "}
+                <span className="text-slate-400">•</span>{" "}
                 {activeProfile.chainFamily.toUpperCase()}{" "}
-                <span className="text-slate-500">/</span>{" "}
+                <span className="text-slate-400">•</span>{" "}
                 {formatAddress(activeProfile.publicAddress)}
               </span>
             ) : (
-              <span className="app-pill rounded-full px-3 py-2 text-xs">
+              <span className="rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(148,163,184,0.14)]">
                 No active wallet
               </span>
             )}
@@ -59,7 +64,7 @@ export function WalletNav() {
                 value={activeProfile?.id ?? ""}
                 onChange={(event) => setActiveProfileId(event.target.value || null)}
                 aria-label="Select wallet profile"
-                className="w-auto min-w-44 rounded-full px-3 py-2 text-xs text-white"
+                className="light-field w-auto min-w-44 rounded-full px-3 py-2 text-xs"
               >
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
@@ -70,14 +75,14 @@ export function WalletNav() {
             ) : null}
             <button
               type="button"
-              className="app-pill rounded-full px-4 py-2 text-xs font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
+              className="rounded-full border border-slate-900/8 bg-white/82 px-4 py-2 text-xs font-semibold text-slate-900 shadow-[0_12px_28px_rgba(148,163,184,0.14)] transition hover:-translate-y-0.5 hover:border-fuchsia-300/30 hover:bg-white"
               onClick={() => lockWallet()}
             >
               Lock
             </button>
           </div>
         </div>
-        <nav className="app-pill flex gap-1 overflow-x-auto rounded-full p-1">
+        <nav className="flex gap-1 overflow-x-auto rounded-full border border-slate-900/8 bg-white/82 p-1.5 shadow-[0_16px_42px_rgba(148,163,184,0.16)]">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -86,8 +91,8 @@ export function WalletNav() {
                 href={item.href}
                 className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
                   isActive
-                    ? "bg-white text-slate-950 shadow-[0_10px_26px_rgba(255,255,255,0.12)]"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    ? "bg-[linear-gradient(135deg,rgba(255,70,183,0.94),rgba(139,92,246,0.94),rgba(56,189,248,0.94))] text-white shadow-[0_16px_38px_rgba(139,92,246,0.28)]"
+                    : "text-slate-700 hover:bg-slate-900/5 hover:text-slate-950"
                 }`}
               >
                 {item.label}

@@ -12,7 +12,7 @@ like MetaMask, Trust Wallet, or Uniswap Extension.
 - preview-backed `window.ethereum` compatibility is now active for common EVM wallet methods
 - preview-only WalletConnect pairing records can now be queued from the extension options shell with immediate secret redaction
 - preview-only multichain session requests can now be queued for approved peers so WalletConnect and injected transports share one follow-up review queue
-- real signing output, real transaction broadcast, live WalletConnect relay, and wallet-backed provider execution are still disabled
+- real EVM signing output and transaction broadcast now execute inside the extension after a second signer confirmation; live WalletConnect relay and non-EVM provider execution are still disabled
 
 ## Why extension matters
 A wallet becomes useful across crypto websites when it can:
@@ -116,6 +116,13 @@ Responsible for:
 - reuse the same approval queue for injected sites and WalletConnect peers
 - real client-side sign and broadcast execution later
 
+### Phase 6: Signer unlock + EVM execution layer
+- move approved requests from the generic queue into a dedicated signer-confirmation gate
+- require explicit extension-side confirmation before any signature or transaction result returns to the dApp
+- keep pending signing material, mnemonic, and private key inside the extension boundary only
+- execute supported EVM sign/send methods inside the extension only after confirmation
+- keep WalletConnect relay and non-EVM provider execution for later waves
+
 ## Safety requirements
 - No private key in content script
 - No seed in webpage
@@ -127,8 +134,8 @@ Responsible for:
 - Suspicious contracts flagged
 
 ## Not now
-This roadmap now includes a live preview-backed connect/runtime bridge plus
-preview-backed `window.ethereum` compatibility plus redacted WalletConnect
-pairing previews and multichain session-request staging, but it still does not
-implement real signing output, real broadcast, live WalletConnect relay, or
-wallet-backed provider execution.
+This roadmap now includes a live connect/runtime bridge, `window.ethereum`
+compatibility, redacted WalletConnect pairing previews, multichain
+session-request staging, a signer-confirmation gate, and real EVM
+signing/broadcast execution inside the extension. It still does not implement
+live WalletConnect relay or broader non-EVM provider execution.

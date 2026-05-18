@@ -36,7 +36,7 @@ function formatChange(pct: number | null): string {
 export function PortfolioSummaryCard({ summary, loading, hidden, currency }: Props) {
   if (loading) {
     return (
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 animate-pulse">
+      <div className="premium-card animate-pulse p-5">
         <p className="text-sm text-slate-400">Loading portfolio…</p>
         <div className="mt-4 h-10 w-48 rounded bg-slate-700/50" />
       </div>
@@ -45,7 +45,7 @@ export function PortfolioSummaryCard({ summary, loading, hidden, currency }: Pro
 
   if (!summary) {
     return (
-      <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+      <div className="premium-card p-5">
         <p className="text-sm text-slate-400">Portfolio data unavailable.</p>
       </div>
     );
@@ -59,19 +59,35 @@ export function PortfolioSummaryCard({ summary, loading, hidden, currency }: Pro
         : "text-rose-400";
 
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 space-y-2">
-      <p className="text-sm text-slate-400">Total portfolio value</p>
-      <p className="text-4xl font-semibold">
-        {hidden ? "••••" : formatFiat(summary.totalValue, currency)}
-      </p>
-      {summary.change24hPercent != null && !hidden && (
-        <p className={`text-sm ${changeColor}`}>
-          {formatChange(summary.change24hPercent)} (24h)
-        </p>
-      )}
-      <p className="text-xs text-slate-500">
-        Updated {new Date(summary.updatedAt).toLocaleTimeString()}
-      </p>
+    <div className="premium-card space-y-5 p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-400">Total portfolio value</p>
+          <p className="metric-emphasis mt-3 text-4xl font-semibold sm:text-5xl">
+            {hidden ? "••••" : formatFiat(summary.totalValue, currency)}
+          </p>
+        </div>
+        <div className="data-card rounded-2xl px-4 py-3 text-right">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">24h move</p>
+          <p className={`mt-2 text-lg font-semibold ${hidden ? "text-slate-300" : changeColor}`}>
+            {hidden ? "••••" : summary.change24hPercent != null ? formatChange(summary.change24hPercent) : "—"}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="data-card rounded-2xl p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Visibility</p>
+          <p className="mt-2 text-sm font-medium text-white">
+            {hidden ? "Balance hidden" : "Balance visible"}
+          </p>
+        </div>
+        <div className="data-card rounded-2xl p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Updated</p>
+          <p className="mt-2 text-sm font-medium text-white">
+            {new Date(summary.updatedAt).toLocaleTimeString()}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

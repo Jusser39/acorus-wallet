@@ -146,8 +146,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
                 Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(request.transport))}</strong>
               </div>
               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">${escapeHtml(request.summary)}</div>
+              ${request.warning ? `<div style="font-size:12px;color:#fbbf24;line-height:1.6">${escapeHtml(request.warning)}</div>` : ""}
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${actionButton("approve-request", request.id, "Approve preview", true)}
+                ${actionButton("approve-request", request.id, "Approve to signer gate", true)}
                 ${actionButton("reject-request", request.id, "Reject", false)}
               </div>
             </article>`,
@@ -201,6 +202,9 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         )
         .join("")
     : emptyCard("No decisions recorded yet.");
+  const signerUnlocks = state.signerUnlockQueue.length
+    ? renderSignerUnlockQueue(state)
+    : "";
 
   const walletSync = state.walletExposedAccounts.length
     ? state.walletExposedAccounts
@@ -231,7 +235,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
           <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
           <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
         </div>
-        <span style="align-self:flex-start;border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:3px 8px;font-size:12px">${index < EXTENSION_PHASES.length ? "Preview" : "Later"}</span>
+        <span style="align-self:flex-start;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:999px;padding:3px 8px;font-size:12px">Live</span>
       </div>`,
   ).join("");
 
@@ -241,7 +245,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
         <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
         <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, sign/transaction approval review, and preview-only WalletConnect pairing records. When the Acorus web app is open in the same browser profile, public local EVM wallet addresses can sync into the bridge without exposing seed, passcode, or signing output.
+          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, preview WalletConnect pairing records, and a two-step signer confirmation gate that executes supported EVM sign/send requests inside the extension.
         </p>
       </section>
 
@@ -250,7 +254,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
 
       <section style="display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
         <div style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:18px;padding:14px 16px;font-size:14px">
-          Execution enabled: <strong>${String(state.executionEnabled)}</strong>
+          Live EVM sign/send: <strong>${state.executionEnabled ? "enabled" : "disabled"}</strong>
         </div>
         <div style="border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#fde68a;border-radius:18px;padding:14px 16px;font-size:14px">
           Proposals: <strong>${state.proposals.length}</strong>
@@ -301,6 +305,15 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Request queue</div>
         ${requests}
       </section>
+
+      ${
+        state.signerUnlockQueue.length
+          ? `<section style="display:grid;gap:12px">
+              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#fbbf24">Signer gate</div>
+              ${signerUnlocks}
+            </section>`
+          : ""
+      }
 
       <section style="display:grid;gap:12px">
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Connected peers</div>
@@ -509,6 +522,26 @@ async function sendAction(
       sessionId: targetId,
       profileId: extra,
     });
+    return;
+  }
+
+  if (action === "confirm-signer-unlock") {
+    await chrome.runtime.sendMessage({
+      kind: "confirm_signer_unlock",
+      requestId: createRequestId("popup"),
+      surface: "popup",
+      intentId: targetId,
+    });
+    return;
+  }
+
+  if (action === "reject-signer-unlock") {
+    await chrome.runtime.sendMessage({
+      kind: "reject_signer_unlock",
+      requestId: createRequestId("popup"),
+      surface: "popup",
+      intentId: targetId,
+    });
   }
 }
 
@@ -556,6 +589,33 @@ function renderSessionAccountActions(
           ))
         .join("")}
     </div>`;
+}
+
+function renderSignerUnlockQueue(state: BackgroundStateSnapshot): string {
+  return state.signerUnlockQueue
+    .map((intent) => `
+      <article style="border:1px solid rgba(245,158,11,0.45);border-radius:18px;padding:14px 16px;background:rgba(120,53,15,0.16);display:grid;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+          <div>
+            <div style="font-weight:600;color:#fff">${escapeHtml(getDappRequestKindLabel(intent.kind))}</div>
+            <div style="margin-top:4px;font-size:12px;color:#fcd34d">${escapeHtml(intent.origin)}</div>
+          </div>
+          <span style="${badgeStyle(state.extensionVaultStatus.isUnlocked ? "#10b981" : "#f59e0b")}">${state.extensionVaultStatus.isUnlocked ? "ready" : "unlock required"}</span>
+        </div>
+        <div style="font-size:13px;color:#fde68a;line-height:1.5">${escapeHtml(intent.summary)}</div>
+        ${intent.warning ? `<div style="font-size:12px;color:#fbbf24;line-height:1.6">${escapeHtml(intent.warning)}</div>` : ""}
+        <div style="font-size:12px;color:#fcd34d">Account: <strong>${escapeHtml(intent.account ?? "none")}</strong> · Chain: <strong>${escapeHtml(String(intent.chainId ?? "multi"))}</strong></div>
+        ${
+          state.extensionVaultStatus.isUnlocked
+            ? `<div style="font-size:12px;color:#fde68a">Confirm inside the extension to release only the approved signature or transaction result back to the site. No private key leaves the wallet.</div>`
+            : `<div style="font-size:12px;color:#fde68a">Unlock the extension wallet first, then confirm this request. The site still does not receive raw signing material.</div>`
+        }
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${actionButton("confirm-signer-unlock", intent.id, "Confirm", true)}
+          ${actionButton("reject-signer-unlock", intent.id, "Reject", false)}
+        </div>
+      </article>`)
+    .join("");
 }
 
 function emptyCard(message: string): string {

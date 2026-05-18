@@ -47,7 +47,7 @@ function renderOptions(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Extension</div>
         <h1 style="margin:12px 0 0;font-size:34px;line-height:1.15">Universal dApp permission shell</h1>
         <p style="margin:12px 0 0;color:#cbd5e1;font-size:15px;line-height:1.6">
-          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, sign/transaction approval review, preview-only WalletConnect pairing records, and multichain follow-up session requests can flow through the extension after approval. Public local EVM accounts can now sync from the Acorus web app, while real signing, live WalletConnect relay, and send execution remain disabled.
+          This options shell now mirrors the live bridge state. Connect, accounts, chainId, switchChain, common <code>window.ethereum</code> methods, real EVM sign/send execution after signer confirmation, preview WalletConnect pairing records, and staged multichain follow-up requests can flow through the extension. Public local EVM accounts can now sync from the Acorus web app, while WalletConnect relay and non-EVM execution still remain gated.
         </p>
       </section>
 
@@ -96,6 +96,19 @@ function renderOptions(state: BackgroundStateSnapshot): string {
             <h2 style="margin:0 0 10px;font-size:20px">Request queue</h2>
             <div style="display:grid;gap:12px">${renderRequests(state)}</div>
           </section>
+
+          ${
+            state.signerUnlockQueue.length
+              ? `<section style="border:1px solid rgba(245,158,11,0.45);background:rgba(120,53,15,0.16);border-radius:24px;padding:20px">
+                   <h2 style="margin:0 0 10px;font-size:20px;color:#fde68a">Signer confirmation gate</h2>
+                   <p style="margin:0 0 12px;color:#fcd34d;font-size:14px;line-height:1.6">
+                     Approved requests pause here until the user explicitly confirms inside the extension wallet.
+                     After confirmation, the requesting dApp receives only the final signature or transaction hash for that approved request — never raw key material.
+                   </p>
+                   <div style="display:grid;gap:12px">${renderSignerUnlockQueue(state)}</div>
+                 </section>`
+              : ""
+          }
 
           <section style="border:1px solid rgba(51,65,85,1);background:rgba(15,23,42,0.88);border-radius:24px;padding:20px">
             <h2 style="margin:0 0 10px;font-size:20px">Connected peers</h2>
@@ -232,9 +245,34 @@ function renderRequests(state: BackgroundStateSnapshot): string {
           </div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(request.transport))}</strong></div>
           <div style="font-size:14px;color:#cbd5e1;line-height:1.5">${escapeHtml(request.summary)}</div>
+          ${request.warning ? `<div style="font-size:13px;color:#fbbf24;line-height:1.6">${escapeHtml(request.warning)}</div>` : ""}
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${actionButton("approve-request", request.id, "Approve preview", true)}
+            ${actionButton("approve-request", request.id, "Approve to signer gate", true)}
             ${actionButton("reject-request", request.id, "Reject", false)}
+          </div>
+        </article>`,
+    )
+    .join("");
+}
+
+function renderSignerUnlockQueue(state: BackgroundStateSnapshot): string {
+  return state.signerUnlockQueue
+    .map(
+      (intent) => `
+        <article style="border:1px solid rgba(245,158,11,0.45);border-radius:18px;padding:14px 16px;background:rgba(120,53,15,0.14);display:grid;gap:10px">
+          <div style="display:flex;justify-content:space-between;gap:12px">
+            <div>
+              <div style="font-weight:600;color:#fff">${escapeHtml(getDappRequestKindLabel(intent.kind))}</div>
+              <div style="margin-top:4px;font-size:12px;color:#fcd34d">${escapeHtml(intent.origin)}</div>
+            </div>
+            <span style="${badgeStyle(state.extensionVaultStatus.isUnlocked ? "#10b981" : "#f59e0b")}">${state.extensionVaultStatus.isUnlocked ? "ready" : "unlock required"}</span>
+          </div>
+          <div style="font-size:14px;color:#fde68a;line-height:1.5">${escapeHtml(intent.summary)}</div>
+          ${intent.warning ? `<div style="font-size:13px;color:#fbbf24;line-height:1.6">${escapeHtml(intent.warning)}</div>` : ""}
+          <div style="font-size:13px;color:#fcd34d">Account: <strong>${escapeHtml(intent.account ?? "none")}</strong> · Chain: <strong>${escapeHtml(String(intent.chainId ?? "multi"))}</strong></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${actionButton("confirm-signer-unlock", intent.id, "Confirm", true)}
+            ${actionButton("reject-signer-unlock", intent.id, "Reject", false)}
           </div>
         </article>`,
     )
@@ -522,6 +560,26 @@ async function sendAction(
       sessionId: targetId,
       profileId: extra,
     });
+    return;
+  }
+
+  if (action === "confirm-signer-unlock") {
+    await chrome.runtime.sendMessage({
+      kind: "confirm_signer_unlock",
+      requestId: createRequestId("options"),
+      surface: "options",
+      intentId: targetId,
+    });
+    return;
+  }
+
+  if (action === "reject-signer-unlock") {
+    await chrome.runtime.sendMessage({
+      kind: "reject_signer_unlock",
+      requestId: createRequestId("options"),
+      surface: "options",
+      intentId: targetId,
+    });
   }
 }
 
@@ -547,7 +605,7 @@ function renderWalletConnectComposer(): string {
         <textarea id="walletconnect-uri" rows="3" placeholder="wc:topic@2?relay-protocol=irn&symKey=..." style="border:1px solid rgba(71,85,105,0.8);background:rgba(2,6,23,0.72);color:#fff;border-radius:16px;padding:12px 14px;font-size:14px;resize:vertical"></textarea>
       </label>
       <div style="font-size:12px;color:#94a3b8;line-height:1.6">
-        Acorus stores only redacted peer metadata in the preview queue. Live WalletConnect relay, real signatures, and broadcast remain disabled.
+        Acorus stores only redacted peer metadata in the preview queue. Live WalletConnect relay and WalletConnect-side execution remain disabled.
       </div>
       <div>
         <button id="walletconnect-pair-button" type="submit" style="border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:999px;padding:10px 14px;font-size:12px;cursor:pointer">
