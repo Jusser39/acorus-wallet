@@ -5,6 +5,7 @@ export const EVM_COMPATIBILITY_METHODS = [
   "eth_requestAccounts",
   "eth_accounts",
   "eth_chainId",
+  "web3_clientVersion",
   "net_version",
   "eth_coinbase",
   "wallet_getPermissions",
@@ -92,6 +93,7 @@ export function mapEvmMethodToAcorusMethod(
     case "eth_coinbase":
       return "acorus_accounts";
     case "eth_chainId":
+    case "web3_clientVersion":
     case "net_version":
       return "acorus_chainId";
     case "wallet_getPermissions":

@@ -16,6 +16,10 @@ import {
 const INPAGE_SCRIPT_ID = "acorus-extension-inpage";
 const TRUSTED_WALLET_SYNC_ORIGINS = new Set([
   "http://85.239.59.199:8080",
+  "http://24wallet.ru",
+  "https://24wallet.ru",
+  "http://www.24wallet.ru",
+  "https://www.24wallet.ru",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);
@@ -30,6 +34,10 @@ chrome.storage.onChanged.addListener((_changes, areaName) => {
 void syncOriginState();
 
 function injectInpageProvider(): void {
+  if (window.acorusEthereumInjected) {
+    return;
+  }
+
   if (document.getElementById(INPAGE_SCRIPT_ID)) {
     return;
   }

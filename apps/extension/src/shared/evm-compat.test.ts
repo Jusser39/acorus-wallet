@@ -17,6 +17,7 @@ describe("evm compatibility helpers", () => {
     expect(isEvmCompatibilityMethod("acorus_requestAccounts")).toBe(false);
     expect(EVM_COMPATIBILITY_METHODS).toContain("personal_sign");
     expect(EVM_COMPATIBILITY_METHODS).toContain("wallet_watchAsset");
+    expect(EVM_COMPATIBILITY_METHODS).toContain("web3_clientVersion");
   });
 
   it("maps compatibility methods to acorus bridge methods", () => {
@@ -31,6 +32,9 @@ describe("evm compatibility helpers", () => {
     );
     expect(mapEvmMethodToAcorusMethod("wallet_getPermissions")).toBe(
       "acorus_getPermissions",
+    );
+    expect(mapEvmMethodToAcorusMethod("web3_clientVersion")).toBe(
+      "acorus_chainId",
     );
   });
 

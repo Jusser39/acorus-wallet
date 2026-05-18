@@ -25,8 +25,14 @@ const manifest = {
     type: "module",
   },
   permissions: ["storage", "activeTab", "scripting"],
-  host_permissions: [],
+  host_permissions: ["<all_urls>"],
   content_scripts: [
+    {
+      matches: ["<all_urls>"],
+      js: ["inpage/index.js"],
+      run_at: "document_start",
+      world: "MAIN",
+    },
     {
       matches: ["<all_urls>"],
       js: ["content/index.js"],

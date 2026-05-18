@@ -7,6 +7,7 @@ describe("api client", () => {
   });
 
   it("uses same-origin API paths by default", async () => {
+    vi.stubGlobal("window", {});
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(
@@ -27,7 +28,31 @@ describe("api client", () => {
     );
   });
 
+  it("uses internal API URL during server rendering", async () => {
+    vi.stubGlobal("window", undefined);
+    vi.stubEnv("INTERNAL_API_URL", "http://api:4000/");
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ id: "user-1" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await createAnonymousUser();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api:4000/api/users/anonymous",
+      expect.objectContaining({
+        method: "POST",
+        cache: "no-store",
+      }),
+    );
+  });
+
   it("posts hide token requests to the same-origin API", async () => {
+    vi.stubGlobal("window", {});
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(

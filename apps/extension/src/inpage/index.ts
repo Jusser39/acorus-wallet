@@ -33,7 +33,8 @@ type EvmLegacyCallback = (
 
 type AcorusEthereumProvider = {
   readonly isAcorus: true;
-  readonly isMetaMask: false;
+  readonly isMetaMask: true;
+  readonly isTrust: false;
   readonly providers: AcorusEthereumProvider[];
   readonly chainId: string | null;
   readonly selectedAddress: string | null;
@@ -67,8 +68,11 @@ declare global {
     };
     ethereum?: AcorusEthereumProvider;
     acorusEthereum?: AcorusEthereumProvider;
+    acorusEthereumInjected?: boolean;
   }
 }
+
+window.acorusEthereumInjected = true;
 
 const pendingRequests = new Map<
   string,
@@ -88,6 +92,13 @@ let bridgeState: DappBridgeSessionView = {
   permissions: [],
   updatedAt: new Date().toISOString(),
 };
+
+const ACORUS_EIP6963_INFO = {
+  uuid: "7e7f39e2-7b23-4f04-b3b9-acoruswallet01",
+  name: "Acorus Wallet",
+  icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23ff46b7'/%3E%3Cstop offset='.55' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%2338bdf8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath fill='white' d='M33 13 50 51h-9l-3-8H24l-3 8h-8L30 13h3Zm2 23-4-11-4 11h8Z'/%3E%3C/svg%3E",
+  rdns: "ru.24wallet.acorus",
+} as const;
 
 window.addEventListener("message", handleInpageResponse);
 
@@ -203,7 +214,8 @@ function requestBridgeMethod(
 
 class AcorusEthereumProviderRuntime implements AcorusEthereumProvider {
   readonly isAcorus = true as const;
-  readonly isMetaMask = false as const;
+  readonly isMetaMask = true as const;
+  readonly isTrust = false as const;
   readonly providers: AcorusEthereumProvider[] = [this];
   private readonly listeners = new Map<
     EvmProviderEventName,
@@ -339,6 +351,8 @@ window.ethereum = ethereumProvider;
 window.acorusEthereum = ethereumProvider;
 window.dispatchEvent(new Event("acorus#initialized"));
 window.dispatchEvent(new Event("ethereum#initialized"));
+announceEip6963Provider();
+window.addEventListener("eip6963:requestProvider", announceEip6963Provider);
 
 async function handleEvmCompatibilityRequest(
   method: EvmCompatibilityMethod,
@@ -388,6 +402,8 @@ async function handleEvmCompatibilityRequest(
 
       return chainId;
     }
+    case "web3_clientVersion":
+      return "AcorusWallet/v0.1.0";
     case "wallet_getPermissions":
     case "wallet_requestPermissions":
       return Array.isArray(result)
@@ -454,6 +470,17 @@ function emitEthereumStateChanges(
       ),
     );
   }
+}
+
+function announceEip6963Provider(): void {
+  window.dispatchEvent(
+    new CustomEvent("eip6963:announceProvider", {
+      detail: {
+        info: ACORUS_EIP6963_INFO,
+        provider: ethereumProvider,
+      },
+    }),
+  );
 }
 
 function normalizeEthereumProviderError(error: unknown): Error & { code: number } {

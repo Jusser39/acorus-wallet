@@ -68,7 +68,19 @@ export interface OnboardingProgressInput {
   completed: boolean;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+function getApiBaseUrl(): string {
+  const publicBaseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+
+  if (publicBaseUrl) {
+    return publicBaseUrl;
+  }
+
+  if (typeof window === "undefined") {
+    return process.env.INTERNAL_API_URL?.replace(/\/$/, "") ?? "http://api:4000";
+  }
+
+  return "";
+}
 
 type ApiErrorPayload = {
   error?: string;
@@ -106,7 +118,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers,
     cache: "no-store",
