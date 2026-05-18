@@ -1,3 +1,5 @@
+import { ExtensionConnectLab } from "../../components/extension-connect-lab";
+
 const DOWNLOAD_HREF = "/downloads/acorus-wallet-extension.zip";
 
 const LIVE_METHODS = [
@@ -90,6 +92,8 @@ export default function ExtensionPage() {
           </ol>
         </div>
       </div>
+
+      <ExtensionConnectLab />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="premium-card space-y-4 p-5">
