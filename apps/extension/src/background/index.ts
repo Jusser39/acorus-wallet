@@ -902,6 +902,7 @@ async function handleProviderMethod(
       };
     }
 
+    const providerParams = params ?? [];
     const queued = queueDappRequest(state, {
       id: requestId,
       sessionId: session.id,
@@ -909,10 +910,10 @@ async function handleProviderMethod(
       origin,
       account: session.accounts[0] ?? null,
       chainId: getDappSessionActiveChainId(session),
-      summary: buildApprovalSummary(method, params, session),
+      summary: buildApprovalSummary(method, providerParams, session),
       warning: buildApprovalRiskWarning({
         method,
-        params,
+        params: providerParams,
       }),
     });
 
@@ -922,7 +923,7 @@ async function handleProviderMethod(
 
     pendingProviderExecutions.set(queued.request.id, {
       method,
-      params,
+      params: providerParams,
     });
 
     return waitForProviderApproval(queued.request);

@@ -55,6 +55,13 @@ declare namespace chrome {
     };
   }
 
+  namespace tabs {
+    function create(input: {
+      url: string;
+      active?: boolean;
+    }): Promise<unknown>;
+  }
+
   namespace windows {
     function create(input: {
       url: string;

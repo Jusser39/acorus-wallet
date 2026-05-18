@@ -392,8 +392,8 @@ async function prepareExtensionTransaction(input: {
     throw new Error("The transaction 'from' account does not match the unlocked extension wallet.");
   }
 
-  const request = await publicClient.prepareTransactionRequest({
-    account,
+  const requestInput: Record<string, unknown> = { account };
+  for (const [key, value] of Object.entries({
     to: transaction.to,
     data: transaction.data,
     value: transaction.value,
@@ -402,7 +402,15 @@ async function prepareExtensionTransaction(input: {
     gasPrice: transaction.gasPrice,
     maxFeePerGas: transaction.maxFeePerGas,
     maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
-  });
+  })) {
+    if (value !== undefined) {
+      requestInput[key] = value;
+    }
+  }
+
+  const request = await publicClient.prepareTransactionRequest(
+    requestInput as Parameters<typeof publicClient.prepareTransactionRequest>[0],
+  );
 
   return {
     walletClient,

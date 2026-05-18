@@ -1,7 +1,6 @@
 import { getDappConnectionTransportLabel, getDappRequestKindLabel } from "@acorus/shared";
 import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
-  EXTENSION_PHASES,
   createRequestId,
   createSkeletonState,
   type BackgroundStateSnapshot,
@@ -36,339 +35,325 @@ async function loadPopupState(): Promise<void> {
 }
 
 function renderPopup(state: BackgroundStateSnapshot): string {
-  const bridge = state.activeOriginBridge;
   const vault = state.extensionVaultStatus;
-  const walletOnboarding = vault.hasVault
-    ? `
-      <section style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.1);border-radius:24px;padding:18px;display:grid;gap:10px">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-          <div>
-            <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#86efac">Extension wallet ready</div>
-            <h2 style="margin:8px 0 0;font-size:20px;color:#fff">Chrome extension is the wallet</h2>
-          </div>
-          <span style="${badgeStyle(vault.isUnlocked ? "#10b981" : "#f59e0b")}">${vault.isUnlocked ? "unlocked" : "locked"}</span>
-        </div>
-        <div style="font-size:13px;color:#d1fae5;line-height:1.5">
-          Sites connect to this extension through <strong>window.ethereum</strong>. The web app is now a client surface, not the place that must own wallet creation.
-        </div>
-        <div style="font-size:12px;color:#a7f3d0;line-height:1.5">
-          Active profile: <strong>${escapeHtml(vault.profiles.find((profile) => profile.selected)?.account ?? "none")}</strong>
-        </div>
-        ${
-          vault.isUnlocked
-            ? `<button data-action="lock-extension-wallet" data-id="vault" style="${buttonStyle(false)}">Lock wallet</button>`
-            : `<form id="unlock-wallet-form" style="display:grid;gap:10px">
-                <input name="passcode" placeholder="Passcode" type="password" autocomplete="current-password" style="${inputStyle()}">
-                <button type="submit" style="${buttonStyle(true)}">Unlock wallet</button>
-              </form>`
-        }
-      </section>`
-    : `
-      <section style="border:1px solid rgba(94,234,212,0.28);background:linear-gradient(180deg,rgba(20,184,166,0.14),rgba(15,23,42,0.88));border-radius:24px;padding:18px;display:grid;gap:14px">
-        <div>
-          <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#99f6e4">Start here</div>
-          <h2 style="margin:8px 0 0;font-size:22px;color:#fff">Create the wallet inside Chrome extension</h2>
-          <p style="margin:8px 0 0;color:#cbd5e1;font-size:13px;line-height:1.5">
-            This matches how MetaMask-style wallets work: seed phrase and encrypted vault live in the extension, then sites request connect/sign through the injected provider.
-          </p>
-        </div>
-        <form id="create-wallet-form" style="display:grid;gap:10px">
-          <input name="name" placeholder="Wallet name" value="Main wallet" style="${inputStyle()}">
-          <input name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password" style="${inputStyle()}">
-          <button type="submit" style="${buttonStyle(true)}">Create extension wallet</button>
-        </form>
-        <details style="border-top:1px solid rgba(148,163,184,0.18);padding-top:12px">
-          <summary style="cursor:pointer;color:#e2e8f0;font-size:13px">Import existing seed phrase</summary>
-          <form id="import-wallet-form" style="display:grid;gap:10px;margin-top:12px">
-            <input name="name" placeholder="Wallet name" value="Imported wallet" style="${inputStyle()}">
-            <textarea name="mnemonic" placeholder="Seed phrase" rows="3" style="${inputStyle()}"></textarea>
-            <input name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password" style="${inputStyle()}">
-            <button type="submit" style="${buttonStyle(false)}">Import into extension</button>
-          </form>
-        </details>
-      </section>`;
-  const seedReveal = lastCreatedMnemonic
-    ? `
-      <section style="border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);border-radius:24px;padding:18px;display:grid;gap:12px">
-        <div style="font-weight:700;color:#fef3c7">Save these words offline now</div>
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-          ${lastCreatedMnemonic
-            .split(" ")
-            .map((word, index) => `<div style="border:1px solid rgba(245,158,11,0.28);border-radius:12px;padding:8px;color:#fff;background:rgba(2,6,23,0.36);font-size:12px"><span style="color:#fbbf24">${index + 1}.</span> ${escapeHtml(word)}</div>`)
-            .join("")}
-        </div>
-        <button data-action="clear-created-seed" data-id="seed" style="${buttonStyle(false)}">I saved it</button>
-      </section>`
-    : "";
-  const proposals = state.proposals.length
-    ? state.proposals
-        .map(
-          (proposal) => `
-            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.72);display:grid;gap:10px">
-              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-                <div>
-                  <div style="font-weight:600;color:#fff">${escapeHtml(proposal.origin.title)}</div>
-                  <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(proposal.origin.origin)}</div>
-                </div>
-                <span style="${badgeStyle(proposal.origin.trustLevel === "trusted" ? "#10b981" : "#f59e0b")}">${proposal.origin.trustLevel}</span>
-              </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(proposal.transport))}</strong>
-               </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Permissions: ${escapeHtml(proposal.requestedPermissions.join(", "))}
-                </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Account to expose: <strong>${escapeHtml(proposal.requestedAccounts[0] ?? "none")}</strong>
-               </div>
-               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                 ${actionButton("approve-proposal", proposal.id, "Approve account", true)}
-                 ${actionButton("reject-proposal", proposal.id, "Reject", false)}
-               </div>
-             </article>`,
-        )
-        .join("")
-    : emptyCard("No connection proposals are waiting in the queue.");
-
-  const requests = state.pendingRequests.length
-    ? state.pendingRequests
-        .map(
-          (request) => `
-            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.72);display:grid;gap:10px">
-              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-                <div>
-                  <div style="font-weight:600;color:#fff">${escapeHtml(getDappRequestKindLabel(request.kind))}</div>
-                  <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(request.origin.title)}</div>
-                </div>
-                <span style="${badgeStyle("#0ea5e9")}">${request.chainId ?? "multi"}</span>
-              </div>
-              <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(request.transport))}</strong>
-              </div>
-              <div style="font-size:13px;color:#cbd5e1;line-height:1.5">${escapeHtml(request.summary)}</div>
-              ${request.warning ? `<div style="font-size:12px;color:#fbbf24;line-height:1.6">${escapeHtml(request.warning)}</div>` : ""}
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${actionButton("approve-request", request.id, "Approve to signer gate", true)}
-                ${actionButton("reject-request", request.id, "Reject", false)}
-              </div>
-            </article>`,
-        )
-        .join("")
-    : emptyCard("No signing or transaction prompts are waiting.");
-
-  const sessions = state.sessions.length
-    ? state.sessions
-        .map(
-          (session) => `
-            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.72);display:grid;gap:10px">
-              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-                <div>
-                  <div style="font-weight:600;color:#fff">${escapeHtml(session.origin.title)}</div>
-                  <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(session.origin.origin)}</div>
-                </div>
-                <span style="${badgeStyle(session.status === "active" ? "#10b981" : "#ef4444")}">${session.status}</span>
-              </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Transport: <strong>${escapeHtml(getDappConnectionTransportLabel(session.transport))}</strong>
-               </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Permissions: ${escapeHtml(session.permissions.join(", "))}
-                </div>
-               <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-                 Exposed account: <strong>${escapeHtml(session.accounts[0] ?? "none")}</strong>
-               </div>
-               ${renderSessionAccountActions(session.id, session.accounts[0] ?? null, state)}
-               ${
-                 session.status === "active"
-                   ? `<div>${actionButton("revoke-session", session.id, "Revoke session", false)}</div>`
-                  : ""
-              }
-            </article>`,
-        )
-        .join("")
-    : emptyCard("No connected sites are stored.");
-
-  const approvals = state.approvalResults.length
-    ? state.approvalResults
-        .slice(0, 4)
-        .map(
-          (result) => `
-            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:12px 14px;background:rgba(2,6,23,0.72)">
-              <div style="display:flex;justify-content:space-between;gap:12px">
-                <div style="font-size:13px;color:#fff">${result.decision} ${result.targetKind}</div>
-                <div style="font-size:12px;color:#94a3b8">${escapeHtml(result.targetId)}</div>
-              </div>
-            </article>`,
-        )
-        .join("")
-    : emptyCard("No decisions recorded yet.");
-  const signerUnlocks = state.signerUnlockQueue.length
-    ? renderSignerUnlockQueue(state)
-    : "";
-
-  const walletSync = state.walletExposedAccounts.length
-    ? state.walletExposedAccounts
-        .map(
-          (profile) => `
-            <article style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:12px 14px;background:rgba(2,6,23,0.72)">
-              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-                <div>
-                  <div style="font-weight:600;color:#fff">${escapeHtml(profile.name)}</div>
-                  <div style="margin-top:4px;font-size:12px;color:#94a3b8">${escapeHtml(profile.account)}</div>
-                </div>
-                <span style="${badgeStyle(profile.selected ? "#10b981" : "#0ea5e9")}">${profile.selected ? "selected" : "synced"}</span>
-              </div>
-              ${
-                profile.selected
-                  ? `<div style="margin-top:10px;font-size:12px;color:#86efac">Default for new dApp connections</div>`
-                  : `<div style="margin-top:10px">${actionButton("select-wallet-profile", profile.profileId, "Use by default", true)}</div>`
-              }
-            </article>`,
-        )
-        .join("")
-    : emptyCard("Open the Acorus web app in the same browser profile to sync local EVM wallet addresses into the extension bridge.");
-
-  const phases = EXTENSION_PHASES.map(
-    (phase, index) => `
-      <div style="display:flex;justify-content:space-between;gap:12px;border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(15,23,42,0.88)">
-        <div>
-          <div style="font-size:12px;color:#94a3b8">Phase ${index + 1}</div>
-          <div style="font-weight:600;color:#fff;margin-top:4px">${phase}</div>
-        </div>
-        <span style="align-self:flex-start;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:999px;padding:3px 8px;font-size:12px">Live</span>
-      </div>`,
-  ).join("");
+  const selectedProfile =
+    vault.profiles.find((profile) => profile.selected)
+    ?? state.walletExposedAccounts.find((profile) => profile.selected)
+    ?? vault.profiles[0]
+    ?? state.walletExposedAccounts[0]
+    ?? null;
+  const activeChain = selectedProfile?.chainIds[0] ?? state.activeOriginBridge?.activeChainId ?? 1;
+  const pendingCount =
+    state.proposals.length + state.pendingRequests.length + state.signerUnlockQueue.length;
 
   return `
-    <main style="padding:20px;display:flex;flex-direction:column;gap:16px">
-      <section style="border:1px solid rgba(71,85,105,0.5);background:rgba(15,23,42,0.9);border-radius:24px;padding:18px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Acorus Wallet</div>
-        <h1 style="margin:10px 0 0;font-size:24px;line-height:1.2">Universal dApp permission shell</h1>
-        <p style="margin:10px 0 0;color:#cbd5e1;font-size:14px;line-height:1.5">
-          The live bridge now supports <code>window.ethereum</code> compatibility on top of connect, accounts, chainId, switchChain, preview WalletConnect pairing records, and a two-step signer confirmation gate that executes supported EVM sign/send requests inside the extension.
-        </p>
-      </section>
-
-      ${seedReveal}
-      ${walletOnboarding}
-
-      <section style="display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))">
-        <div style="border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#d1fae5;border-radius:18px;padding:14px 16px;font-size:14px">
-          Live EVM sign/send: <strong>${state.executionEnabled ? "enabled" : "disabled"}</strong>
+    <main class="wallet-shell">
+      <header class="wallet-header">
+        <div class="brand">
+          <div class="brand-mark">A</div>
+          <div>
+            <div class="brand-title">Acorus</div>
+            <div class="brand-subtitle">${escapeHtml(selectedProfile?.name ?? "Multichain wallet")}</div>
+          </div>
         </div>
-        <div style="border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#fde68a;border-radius:18px;padding:14px 16px;font-size:14px">
-          Proposals: <strong>${state.proposals.length}</strong>
+        <div class="row">
+          <span class="network-pill">${chainName(activeChain)}</span>
+          <button class="icon-button" type="button" data-open-url="options.html" title="Settings">⚙</button>
         </div>
-        <div style="border:1px solid rgba(56,189,248,0.35);background:rgba(14,165,233,0.12);color:#bae6fd;border-radius:18px;padding:14px 16px;font-size:14px">
-          Requests: <strong>${state.pendingRequests.length}</strong>
-        </div>
-        <div style="border:1px solid rgba(168,85,247,0.35);background:rgba(168,85,247,0.12);color:#e9d5ff;border-radius:18px;padding:14px 16px;font-size:14px">
-          Bridge: <strong>${bridge?.status ?? "disconnected"}</strong>
-        </div>
-      </section>
+      </header>
 
-      <section style="border:1px solid rgba(51,65,85,1);border-radius:18px;padding:14px 16px;background:rgba(15,23,42,0.88);display:grid;gap:8px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Active origin bridge</div>
-        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="font-size:14px;color:#fff">${escapeHtml(bridge?.origin ?? "No active origin")}</div>
-          <span style="${badgeStyle(bridge?.status === "connected" ? "#10b981" : bridge?.status === "approval_required" ? "#f59e0b" : "#64748b")}">${bridge?.status ?? "disconnected"}</span>
-        </div>
-        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          Provider mode: <strong>${escapeHtml(bridge?.providerMode ?? "stub_only")}</strong> · Active chain: <strong>${escapeHtml(String(bridge?.activeChainId ?? "n/a"))}</strong>
-        </div>
-        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          Wallet sync: <strong>${escapeHtml(state.walletExposureMode)}</strong> · Synced accounts: <strong>${state.walletExposedAccounts.length}</strong> · Default exposed account: <strong>${escapeHtml(state.walletExposedAccounts.find((profile) => profile.selected)?.account ?? "none")}</strong>
-        </div>
-        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          WalletConnect preview: <strong>queue from Options</strong> · pairing secrets are redacted immediately and never persisted
-        </div>
-        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          Methods live now: <strong>acorus_requestAccounts</strong>, <strong>acorus_accounts</strong>, <strong>acorus_chainId</strong>, <strong>acorus_switchChain</strong>, <strong>acorus_signMessage</strong>, <strong>acorus_signTypedData</strong>, <strong>acorus_signTransaction</strong>, <strong>acorus_sendTransaction</strong>
-        </div>
-        <div style="font-size:13px;color:#cbd5e1;line-height:1.5">
-          EVM compatibility: <strong>${escapeHtml(EVM_COMPATIBILITY_METHODS.join(", "))}</strong>
-        </div>
-        <div style="font-size:12px;color:#94a3b8;line-height:1.5">${escapeHtml(bridge?.warning ?? "The bridge is idle until a site requests approval.")}</div>
-      </section>
-
-      <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Synced wallet accounts</div>
-        ${walletSync}
-      </section>
-
-      <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Connection proposals</div>
-        ${proposals}
-      </section>
-
-      <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Request queue</div>
-        ${requests}
-      </section>
-
-      ${
-        state.signerUnlockQueue.length
-          ? `<section style="display:grid;gap:12px">
-              <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#fbbf24">Signer gate</div>
-              ${signerUnlocks}
-            </section>`
-          : ""
-      }
-
-      <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Connected peers</div>
-        ${sessions}
-      </section>
-
-      <section style="display:grid;gap:12px">
-        <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8">Recent decisions</div>
-        ${approvals}
-      </section>
-
-      <section style="display:grid;gap:10px">
-        ${phases}
-      </section>
+      <div class="main">
+        ${pendingCount > 0 ? renderPromptNotice(state) : ""}
+        ${lastCreatedMnemonic ? renderSeedReveal(lastCreatedMnemonic) : ""}
+        ${vault.hasVault ? renderWalletHome(state, selectedProfile) : renderOnboarding()}
+        ${renderConnectedSites(state)}
+        ${renderRecentActivity(state)}
+      </div>
     </main>
+  `;
+}
+
+function renderWalletHome(
+  state: BackgroundStateSnapshot,
+  selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
+): string {
+  const vault = state.extensionVaultStatus;
+  const account = selectedProfile?.account ?? "No synced account";
+  const unlockedLabel = vault.isUnlocked ? "Unlocked" : "Locked";
+
+  return `
+    <section class="account-card">
+      <div class="account-row">
+        <div>
+          <div class="account-name">${escapeHtml(selectedProfile?.name ?? "Main wallet")}</div>
+          <div class="address-pill">${shortAddress(account)} <span>⌘</span></div>
+        </div>
+        <span class="badge ${vault.isUnlocked ? "green" : ""}">${unlockedLabel}</span>
+      </div>
+
+      <div class="balance">$0.00</div>
+      <div class="balance-sub">${state.walletExposureMode === "wallet_backed" ? "Wallet-backed provider active" : "Preview bridge mode"}</div>
+
+      <div class="quick-actions">
+        ${quickAction("↗", "Send", "/send")}
+        ${quickAction("⇄", "Swap", "/swap")}
+        ${quickAction("+", "Buy", "/receive")}
+        ${quickAction("⌂", "dApps", "/dapps")}
+      </div>
+    </section>
+
+    <section class="panel stack">
+      <div class="tabs">
+        <span class="tab" data-active="true">Tokens</span>
+        <span class="tab">NFTs</span>
+        <span class="tab">Activity</span>
+      </div>
+      <div class="token-list">
+        ${renderTokenRows(state, selectedProfile)}
+      </div>
+      <div class="row">
+        ${
+          vault.isUnlocked
+            ? `<button class="ghost-button" type="button" data-action="lock-extension-wallet" data-id="vault">Lock wallet</button>`
+            : `<form id="unlock-wallet-form" class="form" style="flex:1">
+                <input class="field" name="passcode" placeholder="Passcode" type="password" autocomplete="current-password">
+                <button class="primary-button" type="submit">Unlock</button>
+              </form>`
+        }
+        <button class="ghost-button" type="button" data-open-url="http://85.239.59.199:8080/extension">Open site</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderOnboarding(): string {
+  return `
+    <section class="onboarding-card stack">
+      <div>
+        <h1 style="margin:0;font-size:24px;letter-spacing:-0.03em">Create your wallet</h1>
+        <p class="copy" style="margin-top:8px">
+          Seed phrase and encrypted vault stay inside this Chrome extension.
+          Sites connect through the injected provider, like a normal wallet.
+        </p>
+      </div>
+      <form id="create-wallet-form" class="form">
+        <input class="field" name="name" placeholder="Wallet name" value="Main wallet">
+        <input class="field" name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password">
+        <button class="primary-button" type="submit">Create wallet</button>
+      </form>
+      <details>
+        <summary style="cursor:pointer;font-weight:700">Import existing seed phrase</summary>
+        <form id="import-wallet-form" class="form" style="margin-top:12px">
+          <input class="field" name="name" placeholder="Wallet name" value="Imported wallet">
+          <textarea class="field" name="mnemonic" placeholder="Seed phrase" rows="3"></textarea>
+          <input class="field" name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password">
+          <button class="ghost-button" type="submit">Import wallet</button>
+        </form>
+      </details>
+    </section>
+  `;
+}
+
+function renderPromptNotice(state: BackgroundStateSnapshot): string {
+  const signer = state.signerUnlockQueue[0];
+  if (signer) {
+    return `
+      <section class="notice warning">
+        <strong>${escapeHtml(getDappRequestKindLabel(signer.kind))}</strong><br>
+        ${escapeHtml(signer.summary)}
+        <div class="row" style="margin-top:10px">
+          ${actionButton("confirm-signer-unlock", signer.id, "Confirm", true)}
+          ${actionButton("reject-signer-unlock", signer.id, "Reject", false, true)}
+        </div>
+      </section>
+    `;
+  }
+
+  const request = state.pendingRequests[0];
+  if (request) {
+    return `
+      <section class="notice warning">
+        <strong>${escapeHtml(getDappRequestKindLabel(request.kind))} request</strong><br>
+        ${escapeHtml(request.origin.title)} wants approval on ${chainName(request.chainId)}.
+        <div class="row" style="margin-top:10px">
+          ${actionButton("approve-request", request.id, "Review", true)}
+          ${actionButton("reject-request", request.id, "Reject", false, true)}
+        </div>
+      </section>
+    `;
+  }
+
+  const proposal = state.proposals[0];
+  if (!proposal) {
+    return "";
+  }
+
+  return `
+    <section class="notice warning">
+      <strong>Connect request</strong><br>
+      ${escapeHtml(proposal.origin.title)} wants to see your selected account.
+      <div class="row" style="margin-top:10px">
+        ${actionButton("approve-proposal", proposal.id, "Connect", true)}
+        ${actionButton("reject-proposal", proposal.id, "Reject", false, true)}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedReveal(mnemonic: string): string {
+  return `
+    <section class="notice warning">
+      <strong>Save these words offline now.</strong>
+      <div class="seed-grid" style="margin-top:10px">
+        ${mnemonic
+          .split(" ")
+          .map((word, index) => `<div class="seed-word"><span class="muted">${index + 1}.</span> ${escapeHtml(word)}</div>`)
+          .join("")}
+      </div>
+      <button class="ghost-button" data-action="clear-created-seed" data-id="seed" style="margin-top:10px" type="button">I saved it</button>
+    </section>
+  `;
+}
+
+function renderTokenRows(
+  state: BackgroundStateSnapshot,
+  selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
+): string {
+  const rows = [
+    {
+      symbol: selectedProfile?.chainFamily.toUpperCase() ?? "ETH",
+      name: selectedProfile?.name ?? "Ethereum",
+      meta: selectedProfile ? shortAddress(selectedProfile.account) : "Ready",
+      value: "0.00",
+      accent: "#627EEA",
+    },
+    { symbol: "BNB", name: "BNB Smart Chain", meta: "EVM", value: "0.00", accent: "#F3BA2F" },
+    { symbol: "POL", name: "Polygon", meta: "EVM", value: "0.00", accent: "#8247E5" },
+    { symbol: "SOL", name: "Solana", meta: "Preview", value: "0.00", accent: "#14F195" },
+    { symbol: "TRX", name: "Tron", meta: "Preview", value: "0.00", accent: "#EF0027" },
+  ];
+
+  const synced = state.walletExposedAccounts
+    .filter((profile) => profile.account !== selectedProfile?.account)
+    .slice(0, 2)
+    .map((profile) => ({
+      symbol: profile.chainFamily.toUpperCase(),
+      name: profile.name,
+      meta: shortAddress(profile.account),
+      value: "Synced",
+      accent: "#38bdf8",
+    }));
+
+  return [...rows, ...synced]
+    .map((token) => `
+      <div class="token-row">
+        <div class="token-icon" style="background:linear-gradient(135deg,${token.accent},#8b5cf6)">${escapeHtml(token.symbol.slice(0, 3))}</div>
+        <div>
+          <div class="token-name">${escapeHtml(token.name)}</div>
+          <div class="token-meta">${escapeHtml(token.meta)}</div>
+        </div>
+        <div class="token-value">${escapeHtml(token.value)}</div>
+      </div>
+    `)
+    .join("");
+}
+
+function renderConnectedSites(state: BackgroundStateSnapshot): string {
+  const activeSessions = state.sessions.filter((session) => session.status === "active");
+  if (!activeSessions.length && !state.proposals.length) {
+    return `
+      <section class="panel">
+        <h2 class="section-title">Connected sites</h2>
+        <p class="copy">No dApps connected yet. Open Acorus or another dApp and connect through the extension.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="panel stack">
+      <h2 class="section-title">Connected sites</h2>
+      ${activeSessions
+        .slice(0, 3)
+        .map((session) => `
+          <div class="site-row">
+            <div>
+              <div class="token-name">${escapeHtml(session.origin.title)}</div>
+              <div class="token-meta">${escapeHtml(getDappConnectionTransportLabel(session.transport))} · ${escapeHtml(String(session.activeChainId ?? "multi"))}</div>
+            </div>
+            ${actionButton("revoke-session", session.id, "Disconnect", false, true)}
+          </div>
+        `)
+        .join("")}
+    </section>
+  `;
+}
+
+function renderRecentActivity(state: BackgroundStateSnapshot): string {
+  const latest = state.approvalResults[0];
+  const activeBridge = state.activeOriginBridge;
+  return `
+    <section class="panel stack">
+      <h2 class="section-title">Activity</h2>
+      <div class="row">
+        <span class="small">Provider</span>
+        <span class="badge">${escapeHtml(state.providerInjection.replace("_", " "))}</span>
+      </div>
+      <div class="row">
+        <span class="small">EVM methods</span>
+        <span class="small">${EVM_COMPATIBILITY_METHODS.length} compatible</span>
+      </div>
+      <div class="row">
+        <span class="small">Active site</span>
+        <span class="small">${escapeHtml(activeBridge?.origin ?? "none")}</span>
+      </div>
+      <p class="copy">${latest ? `${latest.decision} ${latest.targetKind}` : "No approvals yet."}</p>
+    </section>
   `;
 }
 
 function wirePopupActions(): void {
   wireWalletForms();
-  const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action]");
+  const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url]");
 
   buttons.forEach((button) => {
-      button.addEventListener("click", async () => {
-        const action = button.dataset.action;
-        const targetId = button.dataset.id;
-        const extra = button.dataset.extra;
+    button.addEventListener("click", async () => {
+      const openUrl = button.dataset.openUrl;
+      if (openUrl) {
+        await chrome.tabs.create({ url: openUrl.startsWith("http") ? openUrl : chrome.runtime.getURL(openUrl) });
+        return;
+      }
 
-        if (action === "clear-created-seed") {
-          lastCreatedMnemonic = null;
-          await loadPopupState();
-          return;
-        }
+      const action = button.dataset.action;
+      const targetId = button.dataset.id;
+      const extra = button.dataset.extra;
 
-        if (action === "lock-extension-wallet") {
-          await chrome.runtime.sendMessage({
-            kind: "lock_extension_wallet",
-            requestId: createRequestId("popup"),
-            surface: "popup",
-          });
-          await loadPopupState();
-          return;
-        }
+      if (action === "clear-created-seed") {
+        lastCreatedMnemonic = null;
+        await loadPopupState();
+        return;
+      }
 
-        if (!action || !targetId) {
-          return;
-        }
+      if (action === "lock-extension-wallet") {
+        await chrome.runtime.sendMessage({
+          kind: "lock_extension_wallet",
+          requestId: createRequestId("popup"),
+          surface: "popup",
+        });
+        await loadPopupState();
+        return;
+      }
 
-        button.disabled = true;
+      if (!action || !targetId) {
+        return;
+      }
 
-        try {
-          await sendAction(action, targetId, extra);
-        } finally {
-          await loadPopupState();
-        }
+      button.disabled = true;
+
+      try {
+        await sendAction(action, targetId, extra);
+      } finally {
+        await loadPopupState();
+      }
     });
   });
 }
@@ -437,16 +422,6 @@ function wireWalletForms(): void {
 
       await loadPopupState();
     });
-}
-
-function getRoot(message: string): HTMLElement {
-  const element = document.getElementById("app");
-
-  if (!element) {
-    throw new Error(message);
-  }
-
-  return element;
 }
 
 async function sendAction(
@@ -545,90 +520,71 @@ async function sendAction(
   }
 }
 
+function quickAction(icon: string, label: string, path: string): string {
+  return `
+    <button class="quick-action" type="button" data-open-url="http://85.239.59.199:8080${path}">
+      <span>${icon}</span>
+      <span>${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
 function actionButton(
   action: string,
   id: string,
   label: string,
   primary: boolean,
-  extra?: string,
+  danger = false,
 ): string {
-  return `<button data-action="${action}" data-id="${id}"${extra ? ` data-extra="${extra}"` : ""} style="border:1px solid ${primary ? "rgba(56,189,248,0.35)" : "rgba(71,85,105,0.7)"};background:${primary ? "rgba(14,165,233,0.12)" : "rgba(2,6,23,0.75)"};color:${primary ? "#bae6fd" : "#e2e8f0"};border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer">${label}</button>`;
+  const className = danger ? "danger-button" : primary ? "primary-button" : "ghost-button";
+  return `<button data-action="${action}" data-id="${escapeHtml(id)}" class="${className}" type="button">${escapeHtml(label)}</button>`;
 }
 
-function inputStyle(): string {
-  return "width:100%;box-sizing:border-box;border:1px solid rgba(148,163,184,0.25);background:rgba(2,6,23,0.58);color:#fff;border-radius:16px;padding:10px 12px;font-size:13px;outline:none";
+function chainName(chainId: string | number | null | undefined): string {
+  switch (Number(chainId)) {
+    case 1:
+      return "Ethereum";
+    case 56:
+      return "BNB Chain";
+    case 137:
+      return "Polygon";
+    case 8453:
+      return "Base";
+    case 42161:
+      return "Arbitrum";
+    case 101:
+      return "Solana";
+    default:
+      return chainId ? `Chain ${chainId}` : "Multichain";
+  }
 }
 
-function buttonStyle(primary: boolean): string {
-  return `border:1px solid ${primary ? "rgba(94,234,212,0.45)" : "rgba(148,163,184,0.35)"};background:${primary ? "linear-gradient(135deg,#5eead4,#a7f3d0)" : "rgba(2,6,23,0.75)"};color:${primary ? "#020617" : "#e2e8f0"};border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer`;
-}
-
-function renderSessionAccountActions(
-  sessionId: string,
-  currentAccount: string | null,
-  state: BackgroundStateSnapshot,
-): string {
-  const alternatives = state.walletExposedAccounts.filter(
-    (profile) => profile.account !== currentAccount,
-  );
-
-  if (alternatives.length === 0) {
-    return "";
+function shortAddress(value: string): string {
+  if (!value || value === "No synced account") {
+    return value;
   }
 
-  return `
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${alternatives
-        .map((profile) =>
-          actionButton(
-            "set-session-account",
-            sessionId,
-            `Use ${escapeHtml(profile.name)}`,
-            false,
-            profile.profileId,
-          ))
-        .join("")}
-    </div>`;
+  if (value.length <= 14) {
+    return value;
+  }
+
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
-function renderSignerUnlockQueue(state: BackgroundStateSnapshot): string {
-  return state.signerUnlockQueue
-    .map((intent) => `
-      <article style="border:1px solid rgba(245,158,11,0.45);border-radius:18px;padding:14px 16px;background:rgba(120,53,15,0.16);display:grid;gap:10px">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
-          <div>
-            <div style="font-weight:600;color:#fff">${escapeHtml(getDappRequestKindLabel(intent.kind))}</div>
-            <div style="margin-top:4px;font-size:12px;color:#fcd34d">${escapeHtml(intent.origin)}</div>
-          </div>
-          <span style="${badgeStyle(state.extensionVaultStatus.isUnlocked ? "#10b981" : "#f59e0b")}">${state.extensionVaultStatus.isUnlocked ? "ready" : "unlock required"}</span>
-        </div>
-        <div style="font-size:13px;color:#fde68a;line-height:1.5">${escapeHtml(intent.summary)}</div>
-        ${intent.warning ? `<div style="font-size:12px;color:#fbbf24;line-height:1.6">${escapeHtml(intent.warning)}</div>` : ""}
-        <div style="font-size:12px;color:#fcd34d">Account: <strong>${escapeHtml(intent.account ?? "none")}</strong> · Chain: <strong>${escapeHtml(String(intent.chainId ?? "multi"))}</strong></div>
-        ${
-          state.extensionVaultStatus.isUnlocked
-            ? `<div style="font-size:12px;color:#fde68a">Confirm inside the extension to release only the approved signature or transaction result back to the site. No private key leaves the wallet.</div>`
-            : `<div style="font-size:12px;color:#fde68a">Unlock the extension wallet first, then confirm this request. The site still does not receive raw signing material.</div>`
-        }
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${actionButton("confirm-signer-unlock", intent.id, "Confirm", true)}
-          ${actionButton("reject-signer-unlock", intent.id, "Reject", false)}
-        </div>
-      </article>`)
-    .join("");
-}
+function getRoot(message: string): HTMLElement {
+  const element = document.getElementById("app");
 
-function emptyCard(message: string): string {
-  return `<div style="border:1px dashed rgba(71,85,105,0.8);border-radius:18px;padding:14px 16px;background:rgba(2,6,23,0.42);color:#94a3b8;font-size:13px">${message}</div>`;
-}
+  if (!element) {
+    throw new Error(message);
+  }
 
-function badgeStyle(color: string): string {
-  return `align-self:flex-start;border:1px solid ${color}55;background:${color}22;color:#e2e8f0;border-radius:999px;padding:3px 8px;font-size:12px`;
+  return element;
 }
 
 function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }

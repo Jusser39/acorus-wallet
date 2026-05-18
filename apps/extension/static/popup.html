@@ -7,11 +7,400 @@
     <style>
       body {
         margin: 0;
-        min-width: 360px;
-        min-height: 560px;
-        background: #020617;
-        color: #f8fafc;
-        font-family: Arial, Helvetica, sans-serif;
+        min-width: 390px;
+        width: 390px;
+        min-height: 600px;
+        background: #ffffff;
+        color: #111827;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Arial, Helvetica, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .wallet-shell {
+        min-height: 600px;
+        background:
+          radial-gradient(circle at 18% -8%, rgba(59, 130, 246, 0.12), transparent 30%),
+          radial-gradient(circle at 100% 0%, rgba(255, 70, 183, 0.13), transparent 28%),
+          linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+      }
+
+      .wallet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px 10px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand-mark,
+      .token-icon {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        color: #ffffff;
+        font-weight: 800;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        background: linear-gradient(135deg, #ff46b7, #8b5cf6 55%, #38bdf8);
+        box-shadow: 0 10px 24px rgba(139, 92, 246, 0.26);
+      }
+
+      .brand-title {
+        font-size: 16px;
+        font-weight: 760;
+        line-height: 1.1;
+      }
+
+      .brand-subtitle,
+      .muted {
+        color: #6b7280;
+      }
+
+      .brand-subtitle {
+        margin-top: 2px;
+        max-width: 190px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+      }
+
+      .icon-button,
+      .network-pill,
+      .ghost-button,
+      .primary-button,
+      .danger-button {
+        border: 0;
+        border-radius: 999px;
+      }
+
+      .icon-button {
+        width: 34px;
+        height: 34px;
+        background: #f1f3f6;
+        color: #111827;
+        font-size: 18px;
+      }
+
+      .network-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        max-width: 140px;
+        background: #f1f3f6;
+        padding: 8px 10px;
+        color: #111827;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .main {
+        display: grid;
+        gap: 14px;
+        padding: 0 16px 16px;
+      }
+
+      .account-card,
+      .panel,
+      .notice,
+      .onboarding-card {
+        border: 1px solid #eaedf2;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.06);
+      }
+
+      .account-card {
+        border-radius: 28px;
+        padding: 18px;
+      }
+
+      .account-row,
+      .row,
+      .tabs,
+      .quick-actions,
+      .site-row {
+        display: flex;
+        align-items: center;
+      }
+
+      .account-row,
+      .row,
+      .site-row {
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .account-name {
+        font-size: 18px;
+        font-weight: 760;
+      }
+
+      .address-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        max-width: 210px;
+        border-radius: 999px;
+        background: #f1f3f6;
+        padding: 6px 9px;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .balance {
+        margin-top: 20px;
+        font-size: 42px;
+        font-weight: 760;
+        letter-spacing: -0.04em;
+      }
+
+      .balance-sub {
+        margin-top: 3px;
+        color: #16a34a;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .quick-actions {
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .quick-action {
+        display: grid;
+        justify-items: center;
+        gap: 7px;
+        width: 74px;
+        border: 0;
+        background: transparent;
+        color: #111827;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .quick-action span:first-child {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: #f1f3f6;
+        font-size: 20px;
+      }
+
+      .tabs {
+        gap: 18px;
+        border-bottom: 1px solid #eaedf2;
+        padding: 0 2px;
+      }
+
+      .tab {
+        position: relative;
+        padding: 10px 0;
+        color: #6b7280;
+        font-size: 14px;
+        font-weight: 720;
+      }
+
+      .tab[data-active="true"] {
+        color: #111827;
+      }
+
+      .tab[data-active="true"]::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 3px;
+        border-radius: 999px;
+        background: #111827;
+      }
+
+      .panel,
+      .notice,
+      .onboarding-card {
+        border-radius: 22px;
+        padding: 14px;
+      }
+
+      .notice {
+        border-color: #fee2e2;
+        background: #fff1f2;
+        color: #991b1b;
+        line-height: 1.45;
+        font-size: 13px;
+      }
+
+      .notice.warning {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .token-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .token-row {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+      }
+
+      .token-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #627eea, #8b5cf6);
+        font-size: 13px;
+      }
+
+      .token-name {
+        font-size: 15px;
+        font-weight: 720;
+      }
+
+      .token-meta,
+      .small {
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      .token-value {
+        text-align: right;
+        font-size: 14px;
+        font-weight: 720;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: #eef2ff;
+        padding: 4px 8px;
+        color: #3730a3;
+        font-size: 11px;
+        font-weight: 760;
+      }
+
+      .badge.green {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .primary-button,
+      .ghost-button,
+      .danger-button {
+        padding: 10px 13px;
+        font-size: 13px;
+        font-weight: 760;
+      }
+
+      .primary-button {
+        background: #0500ff;
+        color: #ffffff;
+      }
+
+      .ghost-button {
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #111827;
+      }
+
+      .danger-button {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .form {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        width: 100%;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #ffffff;
+        padding: 11px 12px;
+        color: #111827;
+        outline: none;
+      }
+
+      .field:focus {
+        border-color: #0500ff;
+        box-shadow: 0 0 0 4px rgba(5, 0, 255, 0.08);
+      }
+
+      .seed-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .seed-word {
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        background: #fffbeb;
+        padding: 8px;
+        color: #111827;
+        font-size: 12px;
+      }
+
+      .section-title {
+        margin: 0 0 10px;
+        font-size: 14px;
+        font-weight: 760;
+      }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .copy {
+        margin: 0;
+        color: #4b5563;
+        font-size: 13px;
+        line-height: 1.5;
       }
     </style>
   </head>
