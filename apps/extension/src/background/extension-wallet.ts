@@ -1,5 +1,7 @@
 import { getChainsByFamily, type DappWalletExposure } from "@acorus/shared";
 import {
+  clearSensitiveMemoryBestEffort,
+  decryptVault,
   encryptVault,
   generateWalletMnemonic,
   getEvmAddressFromMnemonic,
@@ -14,6 +16,12 @@ import type {
 
 const EXTENSION_VAULT_KEY = "acorus_extension_encrypted_vault";
 const EXTENSION_VAULT_META_KEY = "acorus_extension_vault_meta";
+
+let unlockedSession: {
+  mnemonic: string;
+  evmAddress: string;
+  unlockedAt: string;
+} | null = null;
 
 type ExtensionVaultMeta = {
   activeProfileId: string;
@@ -67,8 +75,10 @@ export async function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {
 
   return {
     hasVault: Boolean(vault && meta),
+    isUnlocked: Boolean(unlockedSession),
     activeProfileId: meta?.activeProfileId ?? null,
     profiles: meta?.profiles ?? [],
+    unlockedAt: unlockedSession?.unlockedAt ?? null,
     createdAt: meta?.createdAt ?? null,
     updatedAt: meta?.updatedAt ?? null,
   };
@@ -76,6 +86,36 @@ export async function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {
 
 export async function getExtensionWalletProfiles(): Promise<DappWalletExposure[]> {
   return (await getExtensionVaultStatus()).profiles;
+}
+
+export async function unlockExtensionWallet(input: {
+  passcode: string;
+}): Promise<ExtensionVaultStatus> {
+  const result = await chrome.storage.local.get([
+    EXTENSION_VAULT_KEY,
+    EXTENSION_VAULT_META_KEY,
+  ]);
+  const vault = result[EXTENSION_VAULT_KEY] as EncryptedVaultV1 | undefined;
+  const meta = normalizeVaultMeta(result[EXTENSION_VAULT_META_KEY]);
+
+  if (!vault || !meta) {
+    throw new Error("No extension wallet vault exists yet.");
+  }
+
+  const plaintext = await decryptVault(vault, input.passcode);
+  unlockedSession = {
+    mnemonic: plaintext.mnemonic,
+    evmAddress: plaintext.evmAddress,
+    unlockedAt: new Date().toISOString(),
+  };
+  clearSensitiveMemoryBestEffort(plaintext);
+
+  return getExtensionVaultStatus();
+}
+
+export async function lockExtensionWallet(): Promise<ExtensionVaultStatus> {
+  unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
+  return getExtensionVaultStatus();
 }
 
 async function installExtensionWallet(input: {
@@ -119,6 +159,11 @@ async function installExtensionWallet(input: {
     [EXTENSION_VAULT_KEY]: encryptedVault,
     [EXTENSION_VAULT_META_KEY]: meta,
   });
+  unlockedSession = {
+    mnemonic: input.mnemonic,
+    evmAddress,
+    unlockedAt: new Date().toISOString(),
+  };
 
   return {
     profileId,

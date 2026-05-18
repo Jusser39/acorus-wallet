@@ -46,7 +46,7 @@ function renderPopup(state: BackgroundStateSnapshot): string {
             <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#86efac">Extension wallet ready</div>
             <h2 style="margin:8px 0 0;font-size:20px;color:#fff">Chrome extension is the wallet</h2>
           </div>
-          <span style="${badgeStyle("#10b981")}">vault encrypted</span>
+          <span style="${badgeStyle(vault.isUnlocked ? "#10b981" : "#f59e0b")}">${vault.isUnlocked ? "unlocked" : "locked"}</span>
         </div>
         <div style="font-size:13px;color:#d1fae5;line-height:1.5">
           Sites connect to this extension through <strong>window.ethereum</strong>. The web app is now a client surface, not the place that must own wallet creation.
@@ -54,6 +54,14 @@ function renderPopup(state: BackgroundStateSnapshot): string {
         <div style="font-size:12px;color:#a7f3d0;line-height:1.5">
           Active profile: <strong>${escapeHtml(vault.profiles.find((profile) => profile.selected)?.account ?? "none")}</strong>
         </div>
+        ${
+          vault.isUnlocked
+            ? `<button data-action="lock-extension-wallet" data-id="vault" style="${buttonStyle(false)}">Lock wallet</button>`
+            : `<form id="unlock-wallet-form" style="display:grid;gap:10px">
+                <input name="passcode" placeholder="Passcode" type="password" autocomplete="current-password" style="${inputStyle()}">
+                <button type="submit" style="${buttonStyle(true)}">Unlock wallet</button>
+              </form>`
+        }
       </section>`
     : `
       <section style="border:1px solid rgba(94,234,212,0.28);background:linear-gradient(180deg,rgba(20,184,166,0.14),rgba(15,23,42,0.88));border-radius:24px;padding:18px;display:grid;gap:14px">
@@ -327,6 +335,16 @@ function wirePopupActions(): void {
           return;
         }
 
+        if (action === "lock-extension-wallet") {
+          await chrome.runtime.sendMessage({
+            kind: "lock_extension_wallet",
+            requestId: createRequestId("popup"),
+            surface: "popup",
+          });
+          await loadPopupState();
+          return;
+        }
+
         if (!action || !targetId) {
           return;
         }
@@ -343,6 +361,25 @@ function wirePopupActions(): void {
 }
 
 function wireWalletForms(): void {
+  root
+    .querySelector<HTMLFormElement>("#unlock-wallet-form")
+    ?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      const response = (await chrome.runtime.sendMessage({
+        kind: "unlock_extension_wallet",
+        requestId: createRequestId("popup"),
+        surface: "popup",
+        passcode: String(formData.get("passcode") ?? ""),
+      })) as ExtensionRuntimeResponse;
+
+      if (!response.ok) {
+        window.alert(response.error?.message ?? "Unable to unlock wallet.");
+      }
+
+      await loadPopupState();
+    });
+
   root
     .querySelector<HTMLFormElement>("#create-wallet-form")
     ?.addEventListener("submit", async (event) => {

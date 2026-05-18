@@ -3,6 +3,8 @@ import {
   createExtensionWallet,
   getExtensionVaultStatus,
   importExtensionWallet,
+  lockExtensionWallet,
+  unlockExtensionWallet,
 } from "./extension-wallet";
 
 const storage = new Map<string, unknown>();
@@ -63,5 +65,26 @@ describe("extension wallet vault", () => {
       "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
     );
     expect(imported.warning).toContain("encrypted vault");
+  });
+
+  it("locks and unlocks the encrypted extension vault", async () => {
+    await importExtensionWallet({
+      name: "Imported",
+      mnemonic: "test test test test test test test test test test test junk",
+      passcode: "strong-passcode",
+    });
+
+    expect((await getExtensionVaultStatus()).isUnlocked).toBe(true);
+    await lockExtensionWallet();
+    expect((await getExtensionVaultStatus()).isUnlocked).toBe(false);
+
+    const unlocked = await unlockExtensionWallet({
+      passcode: "strong-passcode",
+    });
+
+    expect(unlocked.isUnlocked).toBe(true);
+    expect(unlocked.profiles[0]?.account.toLowerCase()).toBe(
+      "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    );
   });
 });

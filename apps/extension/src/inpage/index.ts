@@ -490,6 +490,7 @@ function mapAcorusErrorCode(code: string): number {
       return 4200;
     case "not_connected":
     case "session_revoked":
+    case "wallet_locked":
       return 4900;
     case "unsupported_chain":
       return 4902;

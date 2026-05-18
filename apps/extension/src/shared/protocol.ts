@@ -56,8 +56,10 @@ export type BackgroundStateSnapshot = {
 
 export type ExtensionVaultStatus = {
   hasVault: boolean;
+  isUnlocked: boolean;
   activeProfileId: string | null;
   profiles: DappWalletExposure[];
+  unlockedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 };
@@ -146,6 +148,17 @@ export type ExtensionRuntimeMessage =
       name: string;
       mnemonic: string;
       passcode: string;
+    }
+  | {
+      kind: "unlock_extension_wallet";
+      requestId: string;
+      surface: "popup" | "options";
+      passcode: string;
+    }
+  | {
+      kind: "lock_extension_wallet";
+      requestId: string;
+      surface: "popup" | "options";
     }
   | {
       kind: "queue_walletconnect_pairing";
@@ -270,8 +283,10 @@ export function createSkeletonState(input?: {
       input?.extensionVaultStatus
       ?? {
         hasVault: false,
+        isUnlocked: false,
         activeProfileId: null,
         profiles: [],
+        unlockedAt: null,
         createdAt: null,
         updatedAt: null,
       },

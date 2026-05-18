@@ -1,157 +1,119 @@
-const EXTENSION_PHASES = [
-  "Manifest V3 extension shell",
-  "Background service worker",
-  "Content script bridge",
-  "Live preview inpage provider",
-  "Popup wallet UI",
-  "Permission prompts",
-  "Connected sites",
-  "Permission queue shell",
-  "EVM provider compatibility",
-  "Universal account controls",
-  "WalletConnect pairing shell",
-  "Multichain session request shell",
+const DOWNLOAD_HREF = "/downloads/acorus-wallet-extension.zip";
+
+const LIVE_METHODS = [
+  "eth_requestAccounts",
+  "eth_accounts",
+  "eth_chainId",
+  "wallet_switchEthereumChain",
+  "personal_sign",
+  "eth_signTypedData_v4",
+  "eth_sendTransaction",
+];
+
+const SHIPPED_ITEMS = [
+  "Manifest V3 Chrome extension",
+  "Injected window.ethereum provider",
+  "Create/import encrypted extension vault",
+  "Lock/unlock wallet session",
+  "Per-site connect approval",
+  "Connected sites and revoke controls",
+  "Preview sign/send request queue",
+  "WalletConnect pairing preview shell",
+  "Packaged ZIP download artifact",
+];
+
+const NEXT_ITEMS = [
+  "Real EVM signing after unlock",
+  "Solana injected provider",
+  "Tron provider bridge",
+  "Hardware-backed biometrics where browser allows it",
+  "Chrome Web Store publishing package",
 ];
 
 export default function ExtensionPage() {
   return (
-    <section className="page space-y-6">
-      <div className="glass-panel space-y-3">
-        <p className="text-sm uppercase tracking-[0.22em] text-slate-400">
-          Chrome Extension
-        </p>
-        <h1 className="text-3xl font-semibold text-white">
-          Browser wallet preview bridge
-        </h1>
-        <p className="text-sm text-slate-300">
-          Acorus Wallet now injects a browser bridge with common{" "}
-          <code className="rounded bg-slate-800 px-1 py-0.5 text-slate-100">
-            window.ethereum
-          </code>{" "}
-          compatibility on top of the native Acorus methods. Connection
-          approval, account listing, active chain reads, switch-chain prompts,
-          and sign/transaction review requests can all flow through the
-          extension after explicit approval. When the Acorus web app is open in
-          the same browser profile, public local EVM wallet addresses can sync
-          into the bridge without exposing seed phrase, passcode, or signing
-          output. The bridge now defaults to one selected public account per
-          site instead of exposing every synced address at once. The options
-          shell can now queue preview-only WalletConnect pairings while
-          redacting the imported symKey immediately, and it can stage
-          transport-aware multichain follow-up requests for any approved peer.
-          Real signatures, live WalletConnect relay, and broadcast remain
-          disabled.
-        </p>
+    <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
+      <div className="app-surface grid gap-6 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_420px] lg:items-center">
+        <div className="space-y-5">
+          <span className="inline-flex rounded-full border border-teal-300/25 bg-teal-300/10 px-3 py-1 text-sm text-teal-100">
+            Chrome extension wallet
+          </span>
+          <div className="space-y-3">
+            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Acorus Wallet Extension
+            </h1>
+            <p className="text-lg leading-8 text-slate-300">
+              Основной кошелек теперь живет в расширении: seed phrase, encrypted
+              vault, unlock state, dApp connect и approval prompts. Сайт
+              подключается к расширению через injected provider, как в MetaMask,
+              Trust Wallet и других production-кошельках.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <a className="button-primary inline-flex" href={DOWNLOAD_HREF} download>
+              Download extension ZIP
+            </a>
+            <a className="button-secondary inline-flex" href="/dapps">
+              Test dApp bridge
+            </a>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/44 p-4">
+          <div className="text-sm font-semibold text-white">Install steps</div>
+          <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+            <li>1. Download ZIP and unpack it locally.</li>
+            <li>2. Open <code className="rounded bg-black/30 px-1">chrome://extensions</code>.</li>
+            <li>3. Enable Developer mode.</li>
+            <li>4. Click Load unpacked and choose the unpacked folder.</li>
+            <li>5. Open the Acorus popup and create or import the wallet.</li>
+          </ol>
+        </div>
       </div>
 
-      <div className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
-        Websites can never reach mnemonic, private keys, passcode, real signing
-        output, or transaction broadcast in this wave, even when they talk to
-        the EVM-compatible provider surface. The new sync layer shares public
-        approved EVM addresses only, and WalletConnect pairing secrets are
-        redacted before they reach stored extension state.
-      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="panel space-y-4">
+          <h2 className="text-xl font-semibold text-white">Wallet core</h2>
+          <ul className="space-y-2 text-sm leading-6 text-slate-300">
+            {SHIPPED_ITEMS.map((item) => (
+              <li key={item}>✓ {item}</li>
+            ))}
+          </ul>
+        </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
-          <h2 className="text-lg font-semibold text-white">Read + connect live</h2>
-          <div className="mt-4 flex flex-wrap gap-2 text-sm text-cyan-100">
-            {[
-              "acorus_requestAccounts",
-              "acorus_accounts",
-              "acorus_chainId",
-              "acorus_switchChain",
-              "eth_requestAccounts",
-              "eth_accounts",
-              "eth_chainId",
-              "net_version",
-              "eth_coinbase",
-              "wallet_switchEthereumChain",
-            ].map((method) => (
+        <div className="panel space-y-4">
+          <h2 className="text-xl font-semibold text-white">Provider methods</h2>
+          <div className="flex flex-wrap gap-2">
+            {LIVE_METHODS.map((method) => (
               <span
                 key={method}
-                className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1"
+                className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100"
               >
                 {method}
               </span>
             ))}
           </div>
-          <p className="mt-4 text-sm text-slate-300">
-            The extension now speaks both its native Acorus provider contract
-            and a familiar EVM wallet shape for connection, accounts, and chain
-            metadata. Returned data now comes from approved session state, with
-            wallet-backed public EVM addresses available after the Acorus web
-            app syncs them into the extension. One selected public account is
-            exposed by default for each approved site, and follow-up requests can
-            now stay explicitly tied to the selected peer, account, and chain.
+          <p className="text-sm leading-6 text-slate-300">
+            Connect/account/chain reads are live through extension approval.
+            Signature and transaction requests enter review mode; real signing
+            remains gated until the next security-reviewed wave.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
-          <h2 className="text-lg font-semibold text-white">
-            Approval review live
-          </h2>
-          <div className="mt-4 flex flex-wrap gap-2 text-sm text-violet-100">
-            {[
-              "acorus_signMessage",
-              "acorus_signTypedData",
-              "acorus_signTransaction",
-              "acorus_sendTransaction",
-              "personal_sign",
-              "eth_signTypedData_v4",
-              "eth_signTransaction",
-              "eth_sendTransaction",
-            ].map((method) => (
-              <span
-                key={method}
-                className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1"
-              >
-                {method}
-              </span>
+        <div className="panel space-y-4">
+          <h2 className="text-xl font-semibold text-white">Next build wave</h2>
+          <ul className="space-y-2 text-sm leading-6 text-slate-300">
+            {NEXT_ITEMS.map((item) => (
+              <li key={item}>{item}</li>
             ))}
-          </div>
-          <p className="mt-4 text-sm text-slate-300">
-            These methods enter the extension request queue and resolve only
-            after explicit approve or reject actions. Returned results still
-            stay preview-only, so websites never receive real signature bytes
-            or a broadcast transaction hash in this wave. The same queue can now
-            be seeded from approved WalletConnect peers in the options shell.
-          </p>
-        </div>
-
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
-          <h2 className="text-lg font-semibold text-white">
-            WalletConnect preview shell
-          </h2>
-          <ul className="mt-4 space-y-2 text-sm text-slate-300">
-            <li>Queue a pairing proposal from a pasted URI</li>
-            <li>Redact symKey immediately and persist safe peer metadata only</li>
-            <li>Review connected peers under the same account controls</li>
-            <li>Keep live relay, signatures, and broadcast disabled</li>
           </ul>
         </div>
       </div>
 
-      <div className="grid gap-3">
-        {EXTENSION_PHASES.map((phase, index) => (
-          <div
-            key={phase}
-            className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-[0_18px_48px_rgba(2,6,23,0.18)]"
-          >
-            <div>
-              <div className="text-sm text-slate-400">
-                Phase {index + 1}
-              </div>
-              <div className="font-semibold text-white">
-                {phase}
-              </div>
-            </div>
-
-            <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2 py-0.5 text-xs font-semibold text-slate-300">
-              {index < EXTENSION_PHASES.length ? "Preview" : "Planned"}
-            </span>
-          </div>
-        ))}
+      <div className="warning-box text-sm leading-6">
+        Download artifact is generated by <code>pnpm extension:package</code>.
+        The ZIP contains the unpacked Chrome extension build only. Seed phrase
+        and private data are never included in the downloadable package.
       </div>
     </section>
   );

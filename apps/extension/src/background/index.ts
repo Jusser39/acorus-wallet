@@ -24,6 +24,8 @@ import {
   createExtensionWallet,
   getExtensionVaultStatus,
   importExtensionWallet,
+  lockExtensionWallet,
+  unlockExtensionWallet,
 } from "./extension-wallet";
 import {
   approveProposal,
@@ -193,6 +195,38 @@ async function handleRuntimeMessage(
         },
       };
     }
+  }
+
+  if (input.kind === "unlock_extension_wallet") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await unlockExtensionWallet({
+          passcode: input.passcode,
+        }),
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "wallet_unlock_failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to unlock the extension wallet.",
+        },
+      };
+    }
+  }
+
+  if (input.kind === "lock_extension_wallet") {
+    return {
+      requestId,
+      ok: true,
+      result: await lockExtensionWallet(),
+    };
   }
 
   if (input.kind === "sync_wallet_profiles") {
@@ -427,6 +461,21 @@ async function handleProviderMethod(
   const session = getActiveDappSession(state, origin);
 
   if (method === "acorus_requestAccounts") {
+    const vaultStatus = await getExtensionVaultStatus();
+
+    if (vaultStatus.hasVault && !vaultStatus.isUnlocked) {
+      await setActivePromptOrigin(origin);
+      openApprovalWindow();
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "wallet_locked",
+          message: "Unlock Acorus Wallet extension before connecting this site.",
+        },
+      };
+    }
+
     if (session && hasDappPermission(session, "view_accounts")) {
       const bridge = await touchOriginSession(origin);
       return {

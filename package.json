@@ -11,6 +11,7 @@
     "dev:web": "pnpm --filter @acorus/web dev",
     "dev:api": "pnpm --filter @acorus/api dev",
     "extension:build": "pnpm --filter @acorus/extension build",
+    "extension:package": "pnpm extension:build && node ./scripts/package-extension.mjs",
     "extension:open:chrome": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/open-extension-chrome.ps1",
     "build": "pnpm -r --workspace-concurrency=1 build",
     "lint": "pnpm -r lint",
@@ -21,8 +22,10 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.19.41",
     "@vitest/coverage-v8": "^4.1.6",
+    "adm-zip": "^0.5.17",
     "eslint": "^9.39.4",
     "jsdom": "^29.1.1",
     "prettier": "^3.8.3",
