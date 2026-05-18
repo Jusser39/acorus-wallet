@@ -172,7 +172,7 @@ export default async function ExplorePage() {
       {/* Trending */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-white">Trending Now</h2>
+          <h2 className="text-xl font-semibold text-white">Trending Tokens</h2>
           <span className="rounded-full border border-emerald-800 bg-emerald-900/30 px-2 py-0.5 text-xs font-semibold text-emerald-400">
             Live
           </span>
@@ -218,7 +218,7 @@ export default async function ExplorePage() {
           </span>
         </div>
         <p className="text-xs text-amber-400/80">
-          ⚠️ Boosted tokens are paid promotions. Not investment advice. Always DYOR.
+          Boosted tokens are paid promotions. Not investment advice. Always DYOR.
         </p>
         {memes.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
