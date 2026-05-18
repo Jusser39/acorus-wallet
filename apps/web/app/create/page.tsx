@@ -9,6 +9,7 @@ import {
   getSolanaAddressFromMnemonic,
 } from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
+import { createExtensionWallet } from "@/lib/extension-bridge";
 import { saveEncryptedVault } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
 
@@ -27,6 +28,12 @@ export default function CreateWalletPage() {
   const [walletName, setWalletName] = useState("Main wallet");
   const [savedSeed, setSavedSeed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [extensionLoading, setExtensionLoading] = useState(false);
+  const [extensionResult, setExtensionResult] = useState<{
+    mnemonic: string;
+    account: string;
+    warning: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const words = useMemo(() => mnemonic.split(" ").filter(Boolean), [mnemonic]);
@@ -117,6 +124,43 @@ export default function CreateWalletPage() {
     }
   }
 
+  async function handleCreateInExtension() {
+    if (passcode.length < 8) {
+      setError("Passcode должен быть минимум 8 символов.");
+      return;
+    }
+
+    if (passcode !== confirmPasscode) {
+      setError("Passcode и подтверждение не совпадают.");
+      return;
+    }
+
+    setExtensionLoading(true);
+    setError(null);
+
+    try {
+      const created = await createExtensionWallet({
+        name: walletName,
+        passcode,
+      });
+      setExtensionResult({
+        mnemonic: created.mnemonic,
+        account: created.account,
+        warning: created.warning,
+      });
+      setPasscode("");
+      setConfirmPasscode("");
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Не удалось создать кошелек в расширении.",
+      );
+    } finally {
+      setExtensionLoading(false);
+    }
+  }
+
   return (
     <section className="page grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <div className="panel space-y-5">
@@ -196,6 +240,40 @@ export default function CreateWalletPage() {
       </div>
 
       <aside className="panel space-y-4">
+        <h2 className="text-xl font-semibold">Create in extension</h2>
+        <p className="text-sm leading-6 text-slate-300">
+          Production flow: сайт отправляет команду, seed и encrypted vault
+          создаются внутри Chrome extension. Так же работает модель
+          MetaMask/Trust: сайт не становится хранилищем ключей.
+        </p>
+        <button
+          type="button"
+          className="button-primary w-full"
+          disabled={extensionLoading}
+          onClick={() => void handleCreateInExtension()}
+        >
+          {extensionLoading ? "Creating in extension..." : "Create in extension"}
+        </button>
+        {extensionResult ? (
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">
+            <p className="font-semibold">Extension wallet created</p>
+            <p className="mt-2 break-all">{extensionResult.account}</p>
+            <p className="mt-3 text-amber-100">{extensionResult.warning}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {extensionResult.mnemonic.split(" ").map((word, index) => (
+                <span
+                  key={`${word}-${index}`}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                >
+                  {index + 1}. {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="h-px bg-white/10" />
+
         <h2 className="text-xl font-semibold">Security checklist</h2>
         <ul className="space-y-3 text-sm leading-6 text-slate-300">
           <li>Подпись транзакций будет выполняться только на клиенте.</li>

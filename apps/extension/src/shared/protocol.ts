@@ -24,6 +24,12 @@ export type ExtensionSurface =
 
 export const ACORUS_PROVIDER_METHODS = [
   "acorus_ping",
+  "acorus_getVaultStatus",
+  "acorus_createWallet",
+  "acorus_importWallet",
+  "acorus_unlockWallet",
+  "acorus_lockWallet",
+  "acorus_receiveAddress",
   "acorus_requestAccounts",
   "acorus_accounts",
   "acorus_chainId",
@@ -33,6 +39,8 @@ export const ACORUS_PROVIDER_METHODS = [
   "acorus_revokePermissions",
   "acorus_addChain",
   "acorus_watchAsset",
+  "acorus_multichainSend",
+  "acorus_swap",
   "acorus_signMessage",
   "acorus_signTypedData",
   "acorus_signTransaction",

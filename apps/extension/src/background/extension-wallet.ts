@@ -1,4 +1,8 @@
-import { getChainsByFamily, type DappWalletExposure } from "@acorus/shared";
+import {
+  DEFAULT_TRON_CHAIN_ID,
+  getChainsByFamily,
+  type DappWalletExposure,
+} from "@acorus/shared";
 import {
   clearSensitiveMemoryBestEffort,
   decryptVault,
@@ -6,6 +10,8 @@ import {
   generateWalletMnemonic,
   getEvmAddressFromMnemonic,
   validateWalletMnemonic,
+  getSolanaAddressFromMnemonic,
+  getTronAddressFromMnemonic,
   type EncryptedVaultV1,
 } from "@acorus/wallet-core";
 import type {
@@ -130,6 +136,8 @@ async function installExtensionWallet(input: {
   }
 
   const evmAddress = getEvmAddressFromMnemonic(input.mnemonic);
+  const solanaAddress = getSolanaAddressFromMnemonic(input.mnemonic);
+  const tronAddress = getTronAddressFromMnemonic(input.mnemonic);
   const encryptedVault = await encryptVault(
     {
       mnemonic: input.mnemonic,
@@ -140,17 +148,35 @@ async function installExtensionWallet(input: {
   );
   const createdAt = encryptedVault.createdAt;
   const profileId = `extension_evm_${evmAddress.toLowerCase()}`;
-  const profile: DappWalletExposure = {
+  const profiles: DappWalletExposure[] = [
+  {
     profileId,
     name,
     account: evmAddress,
     chainFamily: "evm",
     chainIds: getChainsByFamily("evm").map((chain) => chain.chainId),
     selected: true,
-  };
+  },
+  {
+    profileId: `extension_solana_${solanaAddress}`,
+    name: `${name} · Solana`,
+    account: solanaAddress,
+    chainFamily: "solana",
+    chainIds: getChainsByFamily("solana").map((chain) => chain.chainId),
+    selected: false,
+  },
+  {
+    profileId: `extension_tron_${tronAddress}`,
+    name: `${name} · Tron`,
+    account: tronAddress,
+    chainFamily: "tron",
+    chainIds: [DEFAULT_TRON_CHAIN_ID],
+    selected: false,
+  },
+  ];
   const meta: ExtensionVaultMeta = {
     activeProfileId: profileId,
-    profiles: [profile],
+    profiles,
     createdAt,
     updatedAt: createdAt,
   };
@@ -213,7 +239,13 @@ function isDappWalletExposure(value: unknown): value is DappWalletExposure {
     typeof candidate.profileId === "string"
     && typeof candidate.name === "string"
     && typeof candidate.account === "string"
-    && candidate.chainFamily === "evm"
+    && (
+      candidate.chainFamily === "evm"
+      || candidate.chainFamily === "solana"
+      || candidate.chainFamily === "tron"
+      || candidate.chainFamily === "utxo"
+      || candidate.chainFamily === "ton"
+    )
     && Array.isArray(candidate.chainIds)
     && typeof candidate.selected === "boolean"
   );

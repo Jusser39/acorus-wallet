@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { getChainById, getUniversalChainsByFamily, type ChainId } from "@acorus/shared";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getPracticeAddress } from "@/lib/practice";
 import { getUniversalReceiveInfo } from "@/lib/receive";
+import { getExtensionReceiveAddress } from "@/lib/extension-bridge";
 import { formatAddress } from "@/lib/utils";
 
 export default function ReceivePage() {
@@ -14,6 +15,8 @@ export default function ReceivePage() {
   const selectedChainId = useWalletStore((state) => state.selectedChainId);
   const setSelectedChainId = useWalletStore((state) => state.setSelectedChainId);
   const [copied, setCopied] = useState(false);
+  const [extensionAddress, setExtensionAddress] = useState<string | null>(null);
+  const [extensionError, setExtensionError] = useState<string | null>(null);
 
   const availableChains = useMemo(
     () => (activeProfile ? getUniversalChainsByFamily(activeProfile.chainFamily) : []),
@@ -27,6 +30,37 @@ export default function ReceivePage() {
     ),
     [availableChains, selectedChainId],
   );
+
+  useEffect(() => {
+    if (!activeProfile || !chain) {
+      return;
+    }
+
+    let active = true;
+    setExtensionError(null);
+
+    void getExtensionReceiveAddress({
+      family: activeProfile.chainFamily,
+      chainId: chain.chainId,
+    })
+      .then((result) => {
+        if (!active) return;
+        setExtensionAddress(result?.address ?? null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setExtensionAddress(null);
+        setExtensionError(
+          error instanceof Error
+            ? error.message
+            : "Extension receive address is unavailable.",
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeProfile, chain]);
 
   if (!activeProfile) {
     return (
@@ -45,7 +79,9 @@ export default function ReceivePage() {
   }
 
   const address =
-    activeProfile.type === "practice"
+    extensionAddress
+      ? extensionAddress
+      : activeProfile.type === "practice"
       ? getPracticeAddress(activeProfile.chainFamily)
       : activeProfile.publicAddress;
   const receiveInfo =
@@ -92,7 +128,18 @@ export default function ReceivePage() {
           <p className="text-sm text-slate-400">Address</p>
           <p className="mt-3 break-all text-lg font-medium">{address}</p>
           <p className="mt-2 text-sm text-slate-400">{formatAddress(address)}</p>
+          {extensionAddress ? (
+            <p className="mt-3 text-sm text-emerald-300">
+              Address served by Acorus Extension vault.
+            </p>
+          ) : null}
         </div>
+
+        {extensionError ? (
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+            {extensionError}
+          </div>
+        ) : null}
 
         <div className="warning-box text-sm">
           {receiveInfo?.warning

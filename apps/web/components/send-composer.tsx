@@ -16,6 +16,7 @@ import {
   type SendComposerState,
 } from "@/lib/send-ui";
 import { SendDraftPreview } from "@/components/send-draft-preview";
+import { requestExtensionSend } from "@/lib/extension-bridge";
 import {
   AssetTypeBadge,
   ChainFamilyBadge,
@@ -66,7 +67,9 @@ export function SendComposer(props: Props) {
   });
 
   const [executing, setExecuting] = useState(false);
+  const [extensionSubmitting, setExtensionSubmitting] = useState(false);
   const [executionResult, setExecutionResult] = useState<SendExecutionResult | null>(null);
+  const [extensionResult, setExtensionResult] = useState<string | null>(null);
 
   const selectedNetwork =
     findSendNetworkOption({ family: state.family, chainId: state.chainId }) ??
@@ -188,6 +191,31 @@ export function SendComposer(props: Props) {
       await props.onExecutionResult?.(fallback);
     } finally {
       setExecuting(false);
+    }
+  }
+
+  async function handleRequestExtensionSend() {
+    if (!state.draft) return;
+    setExtensionSubmitting(true);
+    setExtensionResult(null);
+
+    try {
+      await requestExtensionSend({
+        family: state.draft.family,
+        chainId: state.draft.chainId,
+        fromAddress: state.draft.fromAddress,
+        toAddress: state.draft.toAddress,
+        amountFormatted: state.draft.amountFormatted,
+        asset: state.draft.asset,
+        supportStatus: state.draft.supportStatus,
+      });
+      setExtensionResult("Send request approved in extension preview queue.");
+    } catch (error) {
+      setExtensionResult(
+        error instanceof Error ? error.message : "Extension send request failed.",
+      );
+    } finally {
+      setExtensionSubmitting(false);
     }
   }
 
@@ -388,6 +416,25 @@ export function SendComposer(props: Props) {
             <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-4 text-sm text-slate-400">
               Draft is valid but this network is coming soon. No transaction will
               be submitted.
+            </div>
+          ) : null}
+
+          {state.draft?.canProceed ? (
+            <div className="space-y-3 rounded-2xl border border-teal-400/20 bg-teal-400/10 p-4 text-sm text-teal-100">
+              <p className="font-medium">Confirm through Acorus Extension</p>
+              <p>
+                The website prepares the multichain draft; the extension opens
+                the approval flow and keeps wallet control outside the page.
+              </p>
+              <button
+                type="button"
+                className="button-primary w-full"
+                disabled={extensionSubmitting}
+                onClick={() => void handleRequestExtensionSend()}
+              >
+                {extensionSubmitting ? "Sending to extension..." : "Send with extension"}
+              </button>
+              {extensionResult ? <p>{extensionResult}</p> : null}
             </div>
           ) : null}
 

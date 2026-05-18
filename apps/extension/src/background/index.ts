@@ -460,6 +460,120 @@ async function handleProviderMethod(
   const state = await getDappShellState();
   const session = getActiveDappSession(state, origin);
 
+  if (method === "acorus_getVaultStatus") {
+    return {
+      requestId,
+      ok: true,
+      result: await getExtensionVaultStatus(),
+    };
+  }
+
+  if (method === "acorus_createWallet") {
+    if (!isTrustedAcorusAppOrigin(origin)) {
+      return trustedAppOnlyError(requestId);
+    }
+
+    try {
+      const payload = normalizeRecord(params?.[0]);
+      const created = await createExtensionWallet({
+        name: String(payload.name ?? "Acorus Wallet"),
+        passcode: String(payload.passcode ?? ""),
+      });
+      await refreshDappShellWalletState();
+      return { requestId, ok: true, result: created };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "wallet_create_failed",
+        error instanceof Error ? error.message : "Unable to create extension wallet.",
+      );
+    }
+  }
+
+  if (method === "acorus_importWallet") {
+    if (!isTrustedAcorusAppOrigin(origin)) {
+      return trustedAppOnlyError(requestId);
+    }
+
+    try {
+      const payload = normalizeRecord(params?.[0]);
+      const imported = await importExtensionWallet({
+        name: String(payload.name ?? "Acorus Wallet"),
+        mnemonic: String(payload.mnemonic ?? ""),
+        passcode: String(payload.passcode ?? ""),
+      });
+      await refreshDappShellWalletState();
+      return { requestId, ok: true, result: imported };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "wallet_import_failed",
+        error instanceof Error ? error.message : "Unable to import extension wallet.",
+      );
+    }
+  }
+
+  if (method === "acorus_unlockWallet") {
+    if (!isTrustedAcorusAppOrigin(origin)) {
+      return trustedAppOnlyError(requestId);
+    }
+
+    try {
+      const payload = normalizeRecord(params?.[0]);
+      return {
+        requestId,
+        ok: true,
+        result: await unlockExtensionWallet({
+          passcode: String(payload.passcode ?? ""),
+        }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "wallet_unlock_failed",
+        error instanceof Error ? error.message : "Unable to unlock extension wallet.",
+      );
+    }
+  }
+
+  if (method === "acorus_lockWallet") {
+    if (!isTrustedAcorusAppOrigin(origin)) {
+      return trustedAppOnlyError(requestId);
+    }
+
+    return {
+      requestId,
+      ok: true,
+      result: await lockExtensionWallet(),
+    };
+  }
+
+  if (method === "acorus_receiveAddress") {
+    const payload = normalizeRecord(params?.[0]);
+    const family = typeof payload.family === "string" ? payload.family : null;
+    const vaultStatus = await getExtensionVaultStatus();
+    const profile = vaultStatus.profiles.find((item) =>
+      (!family || item.chainFamily === family)
+      && (
+        payload.chainId === undefined
+        || item.chainIds.some((chainId) => String(chainId) === String(payload.chainId))
+      ),
+    ) ?? vaultStatus.profiles.find((item) => !family || item.chainFamily === family) ?? null;
+
+    return {
+      requestId,
+      ok: true,
+      result: profile
+        ? {
+            address: profile.account,
+            profileId: profile.profileId,
+            chainFamily: profile.chainFamily,
+            chainIds: profile.chainIds,
+          }
+        : null,
+    };
+  }
+
   if (method === "acorus_requestAccounts") {
     const vaultStatus = await getExtensionVaultStatus();
 
@@ -735,10 +849,54 @@ function parseRequestedChainId(value: unknown): ChainId | null {
   return null;
 }
 
+function normalizeRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function isTrustedAcorusAppOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      url.origin === "http://85.239.59.199:8080"
+      || url.origin === "http://localhost:3000"
+      || url.origin === "http://127.0.0.1:3000"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function trustedAppOnlyError(requestId: string): ExtensionRuntimeResponse {
+  return providerError(
+    requestId,
+    "trusted_app_only",
+    "This wallet-management method is only available to the trusted Acorus web app.",
+  );
+}
+
+function providerError(
+  requestId: string,
+  code: string,
+  message: string,
+): ExtensionRuntimeResponse {
+  return {
+    requestId,
+    ok: false,
+    error: {
+      code,
+      message,
+    },
+  };
+}
+
 function isApprovalMethod(method: AcorusProviderMethod): boolean {
   return (
     method === "acorus_addChain"
     || method === "acorus_watchAsset"
+    || method === "acorus_multichainSend"
+    || method === "acorus_swap"
     || method === "acorus_signMessage"
     || method === "acorus_signTypedData"
     || method === "acorus_signTransaction"
@@ -752,6 +910,10 @@ function getRequestKindForMethod(method: AcorusProviderMethod): DappRequestKind 
       return "add_chain";
     case "acorus_watchAsset":
       return "watch_asset";
+    case "acorus_multichainSend":
+      return "multichain_send";
+    case "acorus_swap":
+      return "swap";
     case "acorus_signMessage":
       return "sign_message";
     case "acorus_signTypedData":
@@ -901,6 +1063,10 @@ function buildApprovalSummary(
       return `Add network review. Payload preview: ${payload}.`;
     case "acorus_watchAsset":
       return `Watch asset review on chain ${chain}. Token preview: ${payload}.`;
+    case "acorus_multichainSend":
+      return `Multichain send review. Active chain ${chain}. Draft preview: ${payload}.`;
+    case "acorus_swap":
+      return `Swap review. Active chain ${chain}. Route preview: ${payload}.`;
     case "acorus_signMessage":
       return `Sign message review on chain ${chain}. Payload preview: ${payload}.`;
     case "acorus_signTypedData":

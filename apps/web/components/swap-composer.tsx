@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AssetBalance } from "@acorus/shared";
 import { getSwapQuote } from "@/lib/api";
+import { requestExtensionSwap } from "@/lib/extension-bridge";
 import { buildSendNetworkOptions } from "@/lib/send-networks";
 import { buildSwapAssetOptions } from "@/lib/swap-assets";
 import { isCrossChainSwap, type SwapComposerState } from "@/lib/swap-ui";
@@ -36,6 +37,8 @@ export function SwapComposer(props: {
     error: null,
   });
   const [quoting, setQuoting] = useState(false);
+  const [extensionSubmitting, setExtensionSubmitting] = useState(false);
+  const [extensionResult, setExtensionResult] = useState<string | null>(null);
 
   const fromNetwork =
     networks.find(
@@ -169,6 +172,33 @@ export function SwapComposer(props: {
       }));
     } finally {
       setQuoting(false);
+    }
+  }
+
+  async function handleRequestExtensionSwap() {
+    if (!state.quote || !selectedFromAsset || !selectedToAsset) {
+      return;
+    }
+
+    setExtensionSubmitting(true);
+    setExtensionResult(null);
+
+    try {
+      await requestExtensionSwap({
+        from: selectedFromAsset.asset,
+        to: selectedToAsset.asset,
+        amountFormatted: state.amountFormatted,
+        slippageBps: state.slippageBps,
+        quote: state.quote,
+        userAddress: props.userAddress ?? null,
+      });
+      setExtensionResult("Swap request approved in extension preview queue.");
+    } catch (error) {
+      setExtensionResult(
+        error instanceof Error ? error.message : "Extension swap request failed.",
+      );
+    } finally {
+      setExtensionSubmitting(false);
     }
   }
 
@@ -372,12 +402,19 @@ export function SwapComposer(props: {
 
           <button
             type="button"
-            className="button-secondary opacity-60"
-            disabled
+            className="button-secondary"
+            disabled={!state.quote || extensionSubmitting}
+            onClick={() => void handleRequestExtensionSwap()}
           >
-            Execute coming later
+            {extensionSubmitting ? "Opening extension..." : "Swap with extension"}
           </button>
         </div>
+
+        {extensionResult ? (
+          <div className="mx-1 rounded-[1.5rem] border border-teal-400/20 bg-teal-400/10 p-4 text-sm text-teal-100">
+            {extensionResult}
+          </div>
+        ) : null}
       </div>
 
       <aside className="space-y-6">
@@ -399,10 +436,11 @@ export function SwapComposer(props: {
         {state.quote ? (
           <div className="panel space-y-3">
             <h2 className="text-xl font-semibold text-white">
-              Execution disabled
+              Extension execution gate
             </h2>
             <p className="text-sm text-slate-300">
-              No approvals, signatures or broadcasts are available in this wave.
+              The website can now send the prepared route to Acorus Extension
+              for approval. Broadcast remains gated per network adapter.
             </p>
           </div>
         ) : null}

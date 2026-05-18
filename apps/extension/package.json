@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "pnpm --filter @acorus/shared build",
+    "prebuild": "pnpm --filter @acorus/wallet-core build",
     "build": "tsup --config tsup.config.ts && node ./scripts/postbuild.mjs",
     "lint": "tsc --noEmit -p tsconfig.json",
-    "pretest": "pnpm --filter @acorus/shared build",
+    "pretest": "pnpm --filter @acorus/wallet-core build",
     "test": "vitest run"
   },
   "dependencies": {

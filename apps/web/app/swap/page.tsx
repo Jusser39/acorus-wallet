@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExtensionWalletCard } from "@/components/extension-wallet-card";
 import { SwapComposer } from "@/components/swap-composer";
 import { useActiveProfile } from "@/store/wallet-store";
 
@@ -22,10 +23,13 @@ export default function SwapPage() {
           </Link>
         </div>
       ) : (
-        <SwapComposer
-          portfolioAssets={[]}
-          userAddress={activeProfile.publicAddress}
-        />
+        <div className="space-y-6">
+          <ExtensionWalletCard title="Extension swap account" />
+          <SwapComposer
+            portfolioAssets={[]}
+            userAddress={activeProfile.publicAddress}
+          />
+        </div>
       )}
     </section>
   );

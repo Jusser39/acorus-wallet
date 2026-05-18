@@ -23,6 +23,7 @@ import {
 import { loadWalletAssetSnapshot } from "@/lib/assets";
 import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
 import { SendComposer } from "@/components/send-composer";
+import { ExtensionWalletCard } from "@/components/extension-wallet-card";
 import { formatAddress, formatAmount } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -496,7 +497,12 @@ export default function SendPage() {
 
   if (isSolanaProfile || isNonEvmFamily) {
     return (
-      <section className="page">
+      <section className="page space-y-6">
+        <ExtensionWalletCard
+          title="Extension send account"
+          family={activeProfile.chainFamily}
+          chainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
+        />
         <SendComposer
           profile={activeProfile}
           portfolio={null}
@@ -511,6 +517,7 @@ export default function SendPage() {
   return (
     <section className="page space-y-8">
       {/* Universal Send Composer — Wave 5 execution layer */}
+      <ExtensionWalletCard title="Extension send account" family="evm" chainId={evmSelectedChainId} />
       <SendComposer
         profile={activeProfile}
         portfolio={null}

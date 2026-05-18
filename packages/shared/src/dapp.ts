@@ -5,6 +5,8 @@ export type DappRequestKind =
   | "connect"
   | "add_chain"
   | "watch_asset"
+  | "multichain_send"
+  | "swap"
   | "sign_message"
   | "sign_typed_data"
   | "sign_transaction"
@@ -16,6 +18,8 @@ export type DappPermissionScope =
   | "switch_chain"
   | "add_chain"
   | "watch_asset"
+  | "multichain_send"
+  | "swap"
   | "sign_message"
   | "sign_typed_data"
   | "sign_transaction"
@@ -273,6 +277,16 @@ export const DAPP_PERMISSION_DEFINITIONS: DappPermission[] = [
     description: "Allow the site to request adding a visible token.",
   },
   {
+    id: "multichain_send",
+    label: "Send assets",
+    description: "Allow the site to request multichain send approvals.",
+  },
+  {
+    id: "swap",
+    label: "Swap assets",
+    description: "Allow the site to request swap approvals.",
+  },
+  {
     id: "sign_message",
     label: "Sign messages",
     description: "Allow the site to request personal message signatures later.",
@@ -321,6 +335,10 @@ export function getDappRequestKindLabel(kind: DappRequestKind): string {
       return "Add network";
     case "watch_asset":
       return "Watch asset";
+    case "multichain_send":
+      return "Send";
+    case "swap":
+      return "Swap";
     case "sign_message":
       return "Sign message";
     case "sign_typed_data":
@@ -423,6 +441,10 @@ export function buildDappRequestSummary(input: {
       return `${subject} requested a network add preview${chainSuffix}.`;
     case "watch_asset":
       return `${subject} requested a token watch preview${chainSuffix}.`;
+    case "multichain_send":
+      return `${subject} requested a multichain send preview${chainSuffix}.`;
+    case "swap":
+      return `${subject} requested a swap preview${chainSuffix}.`;
     default:
       return `${subject} requested a preview action${chainSuffix}.`;
   }
@@ -642,6 +664,10 @@ export function getDappRequestPermissionScope(
       return "add_chain";
     case "watch_asset":
       return "watch_asset";
+    case "multichain_send":
+      return "multichain_send";
+    case "swap":
+      return "swap";
     case "connect":
     default:
       return "view_accounts";
@@ -693,6 +719,8 @@ export function ensureDappConnectionProposal(
         "switch_chain",
         "add_chain",
         "watch_asset",
+        "multichain_send",
+        "swap",
       ],
     ),
   ];
@@ -754,6 +782,8 @@ export function queueWalletConnectPairing(
         "switch_chain",
         "add_chain",
         "watch_asset",
+        "multichain_send",
+        "swap",
         "sign_message",
         "sign_typed_data",
         "sign_transaction",

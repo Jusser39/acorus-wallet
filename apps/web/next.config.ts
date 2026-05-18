@@ -20,7 +20,6 @@ const nextConfig: NextConfig = {
           "manifest-src 'self'",
           "worker-src 'self' blob:",
           "form-action 'self'",
-          "upgrade-insecure-requests",
         ].join("; "),
       },
       {
