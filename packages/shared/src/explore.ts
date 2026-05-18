@@ -12,6 +12,12 @@ export type ExploreTokenItem = {
   chainId?: number | null;
   tokenAddress?: string | null;
   pairUrl?: string | null;
+  chainKey?: string | null;
+  description?: string | null;
+  bannerUrl?: string | null;
+  websiteUrl?: string | null;
+  twitterUrl?: string | null;
+  telegramUrl?: string | null;
   riskLevel?: "low" | "medium" | "high" | "unknown";
   riskFlags?: string[];
   rank?: number | null;

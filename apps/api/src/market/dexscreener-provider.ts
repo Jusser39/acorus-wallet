@@ -204,7 +204,12 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
       totalAmount?: number;
       icon?: string;
       header?: string;
+      openGraph?: string;
       description?: string;
+      links?: Array<{
+        type?: string;
+        url?: string;
+      }>;
     }
 
     try {
@@ -213,16 +218,33 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
         this.timeoutMs,
       );
 
-      return boosts.slice(0, 10).map((item): ExploreTokenItem => {
-        const firstWord = item.header?.split(/\s+/)[0] ?? "";
-        const symbol = firstWord.length > 0 ? firstWord.toUpperCase() : "???";
+      return boosts.slice(0, 24).map((item, index): ExploreTokenItem => {
+        const fallbackSymbol =
+          item.chainId === "solana"
+            ? "SOL"
+            : item.chainId === "bsc"
+              ? "BSC"
+              : item.chainId === "ethereum"
+                ? "ETH"
+                : "DEX";
+        const symbol = `${fallbackSymbol}-${index + 1}`;
+        const websiteUrl = item.links?.find((link) => !link.type && link.url)?.url ?? null;
+        const twitterUrl = item.links?.find((link) => link.type === "twitter")?.url ?? null;
+        const telegramUrl = item.links?.find((link) => link.type === "telegram")?.url ?? null;
+
         return {
           id: item.tokenAddress ?? item.url ?? symbol,
           symbol,
-          name: item.header ?? "Unknown",
-          logoUrl: item.icon ?? null,
+          name: summarizeBoostName(item),
+          logoUrl: item.openGraph ?? item.header ?? null,
+          bannerUrl: item.header ?? null,
+          description: item.description ?? null,
+          chainKey: item.chainId ?? null,
           tokenAddress: item.tokenAddress ?? null,
           pairUrl: item.url ?? null,
+          websiteUrl,
+          twitterUrl,
+          telegramUrl,
           riskLevel: "unknown",
           riskFlags: ["boosted"],
           trendingScore: item.totalAmount ?? null,
@@ -233,4 +255,27 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
       return [];
     }
   }
+}
+
+function summarizeBoostName(item: {
+  description?: string;
+  chainId?: string;
+  tokenAddress?: string;
+}): string {
+  const clean = item.description
+    ?.replace(/\s+/gu, " ")
+    .trim()
+    .split(/[.!?\n]/u)[0]
+    ?.trim();
+
+  if (clean && clean.length >= 4) {
+    return clean.length > 54 ? `${clean.slice(0, 51)}...` : clean;
+  }
+
+  const chain = item.chainId ? item.chainId.toUpperCase() : "DEX";
+  const token = item.tokenAddress
+    ? `${item.tokenAddress.slice(0, 6)}...${item.tokenAddress.slice(-4)}`
+    : "boosted token";
+
+  return `${chain} ${token}`;
 }

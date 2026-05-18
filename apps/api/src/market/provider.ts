@@ -37,6 +37,7 @@ export interface MarketDataProvider {
   discoverToken?(chainId: number, tokenAddress: string): Promise<ProviderDiscoveryPayload>;
   healthCheck?(): Promise<boolean>;
   getTrending?(): Promise<ExploreTokenItem[]>;
+  getTopMarkets?(currency: FiatCurrency, limit?: number): Promise<ExploreTokenItem[]>;
   getMemeBoosts?(): Promise<ExploreTokenItem[]>;
 }
 
@@ -212,6 +213,36 @@ export class MockMarketDataProvider implements MarketDataProvider {
       { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", price: 35, change24h: 6.1, rank: 5, riskLevel: "low", riskFlags: [], source: "mock" },
     ];
   }
+
+  async getTopMarkets(currency: FiatCurrency, limit = 20): Promise<ExploreTokenItem[]> {
+    const fallback = await this.getPrices([
+      "BTC",
+      "ETH",
+      "USDT",
+      "BNB",
+      "SOL",
+      "USDC",
+      "TRX",
+      "DOGE",
+      "ADA",
+      "LINK",
+    ].slice(0, limit).map((symbol) => ({ symbol, chainId: 1, currency })));
+
+    return fallback.map((item, index) => ({
+      id: item.symbol.toLowerCase(),
+      symbol: item.symbol,
+      name: item.symbol,
+      price: item.price,
+      change24h: item.change24h?.percent ?? null,
+      marketCapUsd: item.marketCap ?? null,
+      volume24hUsd: item.volume24h ?? null,
+      chainId: null,
+      rank: index + 1,
+      source: "mock",
+      riskLevel: "unknown",
+      riskFlags: ["fallback"],
+    }));
+  }
 }
 
 export class CompositeMarketDataProvider implements MarketDataProvider {
@@ -325,6 +356,19 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
     return this.mockProvider.getTrending!();
+  }
+
+  async getTopMarkets(currency: FiatCurrency, limit = 20): Promise<ExploreTokenItem[]> {
+    for (const provider of this.providers) {
+      if (provider.getTopMarkets) {
+        try {
+          return await provider.getTopMarkets(currency, limit);
+        } catch {
+          continue;
+        }
+      }
+    }
+    return this.mockProvider.getTopMarkets(currency, limit);
   }
 
   async getMemeBoosts(): Promise<ExploreTokenItem[]> {

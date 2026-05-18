@@ -74,6 +74,19 @@ interface CoinGeckoMarketChartResponse {
   prices?: Array<[number, number]>;
 }
 
+interface CoinGeckoMarketCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  image?: string | null;
+  current_price?: number | null;
+  market_cap?: number | null;
+  market_cap_rank?: number | null;
+  total_volume?: number | null;
+  price_change_percentage_24h?: number | null;
+  price_change_percentage_24h_in_currency?: number | null;
+}
+
 export class CoinGeckoMarketDataProvider implements MarketDataProvider {
   id = "coingecko";
   private readonly baseUrl: string;
@@ -331,5 +344,45 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         source: "coingecko",
       };
     });
+  }
+
+  async getTopMarkets(
+    currency: string,
+    limit = 20,
+  ): Promise<ExploreTokenItem[]> {
+    const vsCurrency = coingeckoCurrency(currency);
+    const perPage = Math.min(Math.max(limit, 1), 50);
+    const url = `${this.baseUrl}/coins/markets?${new URLSearchParams({
+      vs_currency: vsCurrency,
+      order: "market_cap_desc",
+      per_page: String(perPage),
+      page: "1",
+      sparkline: "false",
+      price_change_percentage: "24h",
+    }).toString()}`;
+    const response = await httpGet<CoinGeckoMarketCoin[]>(
+      url,
+      this.timeoutMs,
+      this.getHeaders(),
+    );
+
+    return response.map((coin, index): ExploreTokenItem => ({
+      id: coin.id,
+      symbol: coin.symbol.toUpperCase(),
+      name: coin.name,
+      logoUrl: coin.image ?? null,
+      price: coin.current_price ?? null,
+      change24h:
+        coin.price_change_percentage_24h_in_currency
+        ?? coin.price_change_percentage_24h
+        ?? null,
+      marketCapUsd: coin.market_cap ?? null,
+      volume24hUsd: coin.total_volume ?? null,
+      chainId: null,
+      rank: coin.market_cap_rank ?? index + 1,
+      riskLevel: "unknown",
+      riskFlags: [],
+      source: "coingecko_markets",
+    }));
   }
 }
