@@ -13,7 +13,6 @@ import {
   type DappWalletSyncEnvelope,
 } from "@acorus/shared";
 
-const INPAGE_SCRIPT_ID = "acorus-extension-inpage";
 const TRUSTED_WALLET_SYNC_ORIGINS = new Set([
   "http://85.239.59.199:8080",
   "http://24wallet.ru",
@@ -24,7 +23,6 @@ const TRUSTED_WALLET_SYNC_ORIGINS = new Set([
   "http://127.0.0.1:3000",
 ]);
 
-injectInpageProvider();
 window.addEventListener("message", handleWindowMessage);
 chrome.storage.onChanged.addListener((_changes, areaName) => {
   if (areaName === "local") {
@@ -32,23 +30,6 @@ chrome.storage.onChanged.addListener((_changes, areaName) => {
   }
 });
 void syncOriginState();
-
-function injectInpageProvider(): void {
-  if (window.acorusEthereumInjected) {
-    return;
-  }
-
-  if (document.getElementById(INPAGE_SCRIPT_ID)) {
-    return;
-  }
-
-  const script = document.createElement("script");
-  script.id = INPAGE_SCRIPT_ID;
-  script.type = "module";
-  script.src = chrome.runtime.getURL("inpage/index.js");
-  script.async = false;
-  (document.head ?? document.documentElement).appendChild(script);
-}
 
 function handleWindowMessage(event: MessageEvent<unknown>): void {
   if (event.source !== window) {

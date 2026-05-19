@@ -887,3 +887,38 @@
 - Next logical step:
   - implement real non-EVM balance adapters first, then reviewed swap execution providers and richer transaction simulation
 
+## Extension Parity Stabilization (2026-05-19)
+
+- Status: **implemented locally after `ad77ae9`**
+- Stabilization changes:
+  - `wallet_addEthereumChain` now queues an approval request and does not save custom networks until popup confirmation
+  - `wallet_watchAsset` now queues an approval request and does not save watched ERC-20 tokens until popup confirmation
+  - add-chain approval validates RPC `eth_chainId` before persistence and rejects with `user_rejected` on user rejection
+  - receive UI now filters copyable addresses by selected family: EVM, Solana, Tron; BTC/TON stay coming soon without leaking another family address
+  - content script no longer injects the inpage script because Manifest V3 MAIN-world injection owns `window.ethereum` / `window.acorus`
+  - popup network selector now includes `All networks` for portfolio viewing only
+  - wallet-core can build custom viem chains and extension EVM sign/send preparation can pass saved custom RPC config into the client
+  - custom EVM RPC validation now uses an 8 second timeout and blocks private/localhost RPC URLs outside dev mode
+- Tests added:
+  - approval queue behavior for add-chain/watch-asset
+  - source guard for no duplicate inpage injection
+  - receive composer family-filter guard
+  - custom EVM viem chain config
+- Docs added:
+  - `docs/chrome_extension_parity_stabilization_plan.md`
+  - `docs/chrome_extension_parity_stabilization_report.md`
+- Validation completed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Next logical step:
+  - manually reload the packed extension in Chrome and run dApp smoke tests for add-chain, watch-asset, switch-chain, receive copy, and custom-chain sign/send review
+

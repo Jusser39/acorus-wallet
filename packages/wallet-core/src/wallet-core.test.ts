@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createDefaultAdapterRegistry,
   createDefaultSwapQuoteEngine,
+  createCustomViemChain,
+  createEvmPublicClient,
   deriveEvmAccountFromMnemonic,
   deriveSolanaAddressFromMnemonic,
   buildExplorerTxUrl,
@@ -68,6 +70,26 @@ describe("wallet-core", () => {
         "test test test test test test test test test test test junk",
       ).address,
     ).toBe("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+  });
+
+  it("builds custom EVM viem chain config", () => {
+    const customChain = {
+      chainId: 9999,
+      name: "Acorus Testnet",
+      nativeCurrency: {
+        name: "Acorus",
+        symbol: "ACR",
+        decimals: 18,
+      },
+      rpcUrl: "https://rpc.example.test",
+      blockExplorerUrl: "https://explorer.example.test",
+    };
+    const chain = createCustomViemChain(customChain);
+    const client = createEvmPublicClient(9999, {}, { customChain });
+
+    expect(chain.id).toBe(9999);
+    expect(chain.rpcUrls.default.http).toEqual(["https://rpc.example.test"]);
+    expect(client.chain?.id).toBe(9999);
   });
 
   it("derives a stable Solana address from mnemonic", () => {

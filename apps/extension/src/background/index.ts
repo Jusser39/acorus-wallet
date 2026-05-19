@@ -101,7 +101,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-async function handleRuntimeMessage(
+export async function handleRuntimeMessage(
   message: unknown,
   sender: chrome.MessageSender,
 ): Promise<ExtensionRuntimeResponse> {
@@ -474,6 +474,38 @@ async function handleRuntimeMessage(
     }
 
     const existingIntent = getSignerUnlockIntentByRequestId(request.id);
+
+    if (request.kind === "add_chain" || request.kind === "watch_asset") {
+      const execution = pendingProviderExecutions.get(request.id);
+      const approvedAt = new Date().toISOString();
+
+      try {
+        const providerResult = await executeApprovedRequest(request, execution, approvedAt);
+        const next = await approveRequestInQueue(request.id);
+        pendingProviderExecutions.delete(request.id);
+        resolvePendingProviderApproval(request, providerResult);
+
+        return {
+          requestId,
+          ok: true,
+          result: next,
+        };
+      } catch (error) {
+        await rejectRequestInQueue(request.id);
+        pendingProviderExecutions.delete(request.id);
+        rejectPendingProviderApproval(
+          request.id,
+          "execution_failed",
+          error instanceof Error ? error.message : "The extension failed to approve the request.",
+        );
+
+        return providerError(
+          requestId,
+          "execution_failed",
+          error instanceof Error ? error.message : "The extension failed to approve the request.",
+        );
+      }
+    }
 
     if (!existingIntent) {
       pendingSignerUnlocks.set(
@@ -930,81 +962,6 @@ async function handleProviderMethod(
     };
   }
 
-  if (method === "acorus_addChain") {
-    const payload = normalizeRecord(params?.[0]);
-    const nativeCurrency = normalizeRecord(payload.nativeCurrency);
-
-    try {
-      const rawChainId = String(payload.chainId ?? "");
-      const chainId = Number.parseInt(
-        rawChainId,
-        rawChainId.startsWith("0x") ? 16 : 10,
-      );
-      const chain = await addCustomEvmNetwork({
-        chainId,
-        chainName: String(payload.chainName ?? ""),
-        nativeCurrency: {
-          name: String(nativeCurrency.name ?? ""),
-          symbol: String(nativeCurrency.symbol ?? ""),
-          decimals: Number(nativeCurrency.decimals ?? 18),
-        },
-        rpcUrls: toStringArray(payload.rpcUrls),
-        blockExplorerUrls: toStringArray(payload.blockExplorerUrls),
-        iconUrls: toStringArray(payload.iconUrls),
-      });
-
-      await setActiveExtensionChainId(chain.chainId);
-
-      if (session) {
-        await switchOriginSessionChain(origin, chain.chainId);
-      }
-
-      return {
-        requestId,
-        ok: true,
-        result: chain,
-      };
-    } catch (error) {
-      return providerError(
-        requestId,
-        "add_chain_failed",
-        error instanceof Error ? error.message : "Unable to add chain.",
-      );
-    }
-  }
-
-  if (method === "acorus_watchAsset") {
-    const payload = normalizeRecord(params?.[0]);
-    const options = normalizeRecord(payload.options);
-
-    try {
-      const activeChainId = session?.activeChainId ?? await getActiveExtensionChainId();
-      const asset = await watchAsset({
-        family: "evm",
-        chainId: activeChainId,
-        type: "erc20",
-        symbol: String(options.symbol ?? ""),
-        name: String(options.symbol ?? "Custom token"),
-        decimals: Number(options.decimals ?? 18),
-        tokenAddress: String(options.address ?? ""),
-        logoUrl: typeof options.image === "string" ? options.image : null,
-        isVerified: false,
-      });
-
-      return {
-        requestId,
-        ok: true,
-        result: Boolean(asset),
-      };
-    } catch (error) {
-      return providerError(
-        requestId,
-        "watch_asset_failed",
-        error instanceof Error ? error.message : "Unable to add token.",
-      );
-    }
-  }
-
   if (method === "acorus_switchChain") {
     if (!session) {
       return {
@@ -1268,7 +1225,9 @@ function providerError(
 
 function isApprovalMethod(method: AcorusProviderMethod): boolean {
   return (
-    method === "acorus_multichainSend"
+    method === "acorus_addChain"
+    || method === "acorus_watchAsset"
+    || method === "acorus_multichainSend"
     || method === "acorus_swap"
     || method === "acorus_signMessage"
     || method === "acorus_signTypedData"
@@ -1469,6 +1428,30 @@ async function executeApprovedRequest(
   }
 
   switch (execution.method) {
+    case "acorus_addChain": {
+      const chain = await addCustomEvmNetwork(parseAddChainRequest(execution.params));
+      await setActiveExtensionChainId(chain.chainId);
+
+      return createApprovedLiveDappResult(request, approvedAt, {
+        metadata: {
+          chainId: chain.chainId,
+          chainName: chain.name,
+        },
+      });
+    }
+    case "acorus_watchAsset": {
+      const asset = await watchAsset(parseWatchAssetRequest(
+        execution.params,
+        request.chainId ?? 1,
+      ));
+
+      return createApprovedLiveDappResult(request, approvedAt, {
+        metadata: {
+          assetId: asset.id,
+          symbol: asset.symbol,
+        },
+      });
+    }
     case "acorus_signMessage":
       return createApprovedLiveDappResult(request, approvedAt, {
         signature: await executeExtensionSignMessage({
@@ -1512,6 +1495,7 @@ function createApprovedLiveDappResult(
   input: {
     signature?: string | null;
     transactionHash?: string | null;
+    metadata?: Record<string, unknown> | null;
   },
 ): {
   requestId: string;
@@ -1524,6 +1508,7 @@ function createApprovedLiveDappResult(
   approvedAt: string;
   signature: string | null;
   transactionHash: string | null;
+  metadata: Record<string, unknown> | null;
 } {
   return {
     requestId: request.id,
@@ -1537,6 +1522,49 @@ function createApprovedLiveDappResult(
     approvedAt,
     signature: input.signature ?? null,
     transactionHash: input.transactionHash ?? null,
+    metadata: input.metadata ?? null,
+  };
+}
+
+function parseAddChainRequest(params: unknown[]): Parameters<typeof addCustomEvmNetwork>[0] {
+  const payload = normalizeRecord(params[0]);
+  const nativeCurrency = normalizeRecord(payload.nativeCurrency);
+  const rawChainId = String(payload.chainId ?? "");
+
+  return {
+    chainId: Number.parseInt(
+      rawChainId,
+      rawChainId.startsWith("0x") ? 16 : 10,
+    ),
+    chainName: String(payload.chainName ?? ""),
+    nativeCurrency: {
+      name: String(nativeCurrency.name ?? ""),
+      symbol: String(nativeCurrency.symbol ?? ""),
+      decimals: Number(nativeCurrency.decimals ?? 18),
+    },
+    rpcUrls: toStringArray(payload.rpcUrls),
+    blockExplorerUrls: toStringArray(payload.blockExplorerUrls),
+    iconUrls: toStringArray(payload.iconUrls),
+  };
+}
+
+function parseWatchAssetRequest(
+  params: unknown[],
+  activeChainId: ChainId,
+): Parameters<typeof watchAsset>[0] {
+  const payload = normalizeRecord(params[0]);
+  const options = normalizeRecord(payload.options);
+
+  return {
+    family: "evm",
+    chainId: activeChainId,
+    type: "erc20",
+    symbol: String(options.symbol ?? ""),
+    name: String(options.symbol ?? "Custom token"),
+    decimals: Number(options.decimals ?? 18),
+    tokenAddress: String(options.address ?? ""),
+    logoUrl: typeof options.image === "string" ? options.image : null,
+    isVerified: false,
   };
 }
 
@@ -1549,10 +1577,14 @@ function buildApprovalSummary(
   const payload = summarizePayload(params?.[0]);
 
   switch (method) {
-    case "acorus_addChain":
-      return `Add network review. Payload preview: ${payload}.`;
-    case "acorus_watchAsset":
-      return `Watch asset review on chain ${chain}. Token preview: ${payload}.`;
+    case "acorus_addChain": {
+      const addChain = parseAddChainPreview(params ?? []);
+      return `Confirm network add: ${addChain.chainName || "Unknown network"} · chainId ${addChain.chainId || "n/a"} · symbol ${addChain.symbol || "n/a"} · RPC ${addChain.rpcUrl || "n/a"} · explorer ${addChain.explorerUrl || "n/a"}.`;
+    }
+    case "acorus_watchAsset": {
+      const asset = parseWatchAssetPreview(params ?? []);
+      return `Confirm token add on chain ${chain}: ${asset.symbol || "UNKNOWN"} · ${asset.address || "no address"} · decimals ${asset.decimals}.`;
+    }
     case "acorus_multichainSend":
       return `Multichain send review. Active chain ${chain}. Draft preview: ${payload}.`;
     case "acorus_swap":
@@ -1568,6 +1600,38 @@ function buildApprovalSummary(
     default:
       return `Request review on chain ${chain}. Payload preview: ${payload}.`;
   }
+}
+
+function parseAddChainPreview(params: unknown[]): {
+  chainId: string;
+  chainName: string;
+  rpcUrl: string;
+  explorerUrl: string;
+  symbol: string;
+} {
+  const payload = normalizeRecord(params[0]);
+  const nativeCurrency = normalizeRecord(payload.nativeCurrency);
+  return {
+    chainId: String(payload.chainId ?? ""),
+    chainName: String(payload.chainName ?? ""),
+    rpcUrl: toStringArray(payload.rpcUrls)[0] ?? "",
+    explorerUrl: toStringArray(payload.blockExplorerUrls)[0] ?? "",
+    symbol: String(nativeCurrency.symbol ?? ""),
+  };
+}
+
+function parseWatchAssetPreview(params: unknown[]): {
+  address: string;
+  symbol: string;
+  decimals: string;
+} {
+  const payload = normalizeRecord(params[0]);
+  const options = normalizeRecord(payload.options);
+  return {
+    address: String(options.address ?? ""),
+    symbol: String(options.symbol ?? ""),
+    decimals: String(options.decimals ?? ""),
+  };
 }
 
 function summarizePayload(value: unknown): string {

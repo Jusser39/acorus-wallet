@@ -37,6 +37,7 @@ export type CustomEvmNetworkInput = {
 
 const CUSTOM_EVM_NETWORKS_KEY = "acorus_custom_evm_networks";
 const ACTIVE_EXTENSION_CHAIN_KEY = "acorus_active_extension_chain";
+const CUSTOM_RPC_TIMEOUT_MS = 8_000;
 
 const DEFAULT_ACCENTS: Record<string, string> = {
   "1": "#627EEA",
@@ -155,12 +156,17 @@ export async function listExtensionNetworks(): Promise<ExtensionNetwork[]> {
 }
 
 export async function getActiveExtensionChainId(): Promise<ChainId> {
-  return readStorageValue<ChainId>(ACTIVE_EXTENSION_CHAIN_KEY, 1);
+  return readStorageValue<ChainId>(ACTIVE_EXTENSION_CHAIN_KEY, "all");
 }
 
 export async function setActiveExtensionChainId(
   chainId: ChainId,
 ): Promise<ChainId> {
+  if (chainId === "all") {
+    await writeStorageValue(ACTIVE_EXTENSION_CHAIN_KEY, chainId);
+    return chainId;
+  }
+
   const networks = await listExtensionNetworks();
 
   if (!networks.some((network) => String(network.chainId) === String(chainId))) {
@@ -282,8 +288,14 @@ function validateCustomEvmNetworkInput(input: CustomEvmNetworkInput): void {
     throw new Error("Native currency symbol must be 1-8 characters.");
   }
 
-  if (!input.rpcUrls.length || !input.rpcUrls[0]?.startsWith("https://")) {
+  const rpcUrl = input.rpcUrls[0];
+
+  if (!rpcUrl?.startsWith("https://")) {
     throw new Error("Custom EVM network requires an HTTPS RPC URL.");
+  }
+
+  if (isPrivateRpcUrl(rpcUrl) && !isDevModeEnabled()) {
+    throw new Error("Private or localhost RPC URLs are blocked outside development mode.");
   }
 }
 
@@ -291,16 +303,20 @@ async function assertRpcMatchesChainId(
   chainId: number,
   rpcUrl: string,
 ): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CUSTOM_RPC_TIMEOUT_MS);
+
   const response = await fetch(rpcUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
+    signal: controller.signal,
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
       method: "eth_chainId",
       params: [],
     }),
-  });
+  }).finally(() => clearTimeout(timeout));
 
   if (!response.ok) {
     throw new Error("RPC endpoint did not respond.");
@@ -312,4 +328,40 @@ async function assertRpcMatchesChainId(
   if (remote !== chainId) {
     throw new Error(`RPC chainId mismatch. Expected ${chainId}, got ${remote}.`);
   }
+}
+
+function isPrivateRpcUrl(rpcUrl: string): boolean {
+  try {
+    const hostname = new URL(rpcUrl).hostname.toLowerCase();
+
+    if (
+      hostname === "localhost"
+      || hostname === "127.0.0.1"
+      || hostname === "::1"
+      || hostname.endsWith(".local")
+    ) {
+      return true;
+    }
+
+    const parts = hostname.split(".").map((part) => Number(part));
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) {
+      return false;
+    }
+
+    const [first = 0, second = 0] = parts;
+    return (
+      first === 10
+      || first === 127
+      || (first === 172 && second >= 16 && second <= 31)
+      || (first === 192 && second === 168)
+      || (first === 169 && second === 254)
+      || first === 0
+    );
+  } catch {
+    return true;
+  }
+}
+
+function isDevModeEnabled(): boolean {
+  return false;
 }

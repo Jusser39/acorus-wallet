@@ -14,9 +14,10 @@ import { deriveEvmAccountFromMnemonic } from "../mnemonic";
 async function buildFeeEstimate(
   chainId: number,
   env: Record<string, string | undefined> | undefined,
+  clientOptions: Parameters<typeof createEvmPublicClient>[2] | undefined,
   estimateGas: () => Promise<bigint>,
 ): Promise<EvmFeeEstimate> {
-  const client = createEvmPublicClient(chainId, env);
+  const client = createEvmPublicClient(chainId, env, clientOptions);
   const [gasLimit, gasPrice] = await Promise.all([estimateGas(), client.getGasPrice()]);
 
   return {
@@ -29,7 +30,7 @@ async function buildFeeEstimate(
 export async function estimateNativeTransferGas(
   params: EstimateNativeTransferParams,
 ): Promise<bigint> {
-  const client = createEvmPublicClient(params.chainId, params.env);
+  const client = createEvmPublicClient(params.chainId, params.env, params.clientOptions);
 
   return client.estimateGas({
     account: params.from,
@@ -41,7 +42,7 @@ export async function estimateNativeTransferGas(
 export async function estimateNativeTransferFee(
   params: EstimateNativeTransferParams,
 ): Promise<EvmFeeEstimate> {
-  return buildFeeEstimate(params.chainId, params.env, () =>
+  return buildFeeEstimate(params.chainId, params.env, params.clientOptions, () =>
     estimateNativeTransferGas(params),
   );
 }
@@ -49,7 +50,7 @@ export async function estimateNativeTransferFee(
 export async function estimateErc20TransferGas(
   params: EstimateErc20TransferParams,
 ): Promise<bigint> {
-  const client = createEvmPublicClient(params.chainId, params.env);
+  const client = createEvmPublicClient(params.chainId, params.env, params.clientOptions);
 
   return client.estimateGas({
     account: params.from,
@@ -65,7 +66,7 @@ export async function estimateErc20TransferGas(
 export async function estimateErc20TransferFee(
   params: EstimateErc20TransferParams,
 ): Promise<EvmFeeEstimate> {
-  return buildFeeEstimate(params.chainId, params.env, () =>
+  return buildFeeEstimate(params.chainId, params.env, params.clientOptions, () =>
     estimateErc20TransferGas(params),
   );
 }
@@ -73,7 +74,12 @@ export async function estimateErc20TransferFee(
 export async function sendNativeTransaction(
   params: SendNativeParams,
 ): Promise<Hash> {
-  const client = createEvmWalletClient(params.mnemonic, params.chainId, params.env);
+  const client = createEvmWalletClient(
+    params.mnemonic,
+    params.chainId,
+    params.env,
+    params.clientOptions,
+  );
 
   return client.sendTransaction({
     to: params.to,
@@ -87,11 +93,16 @@ export async function sendErc20Transaction(
   params: SendErc20Params,
 ): Promise<Hash> {
   const account = deriveEvmAccountFromMnemonic(params.mnemonic);
-  const publicClient = createEvmPublicClient(params.chainId, params.env);
+  const publicClient = createEvmPublicClient(
+    params.chainId,
+    params.env,
+    params.clientOptions,
+  );
   const walletClient = createEvmWalletClient(
     params.mnemonic,
     params.chainId,
     params.env,
+    params.clientOptions,
   );
   const request = await publicClient.simulateContract({
     account,

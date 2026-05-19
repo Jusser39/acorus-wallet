@@ -153,6 +153,7 @@ function renderWalletHome(
   const visibleAssets = home?.assets
     .filter((asset) =>
       !activeNetwork
+      || String(home?.activeChainId) === "all"
       || String(asset.chainId) === String(activeNetwork.chainId),
     )
     .slice(0, 30) ?? [];
@@ -169,7 +170,7 @@ function renderWalletHome(
           </button>
         </div>
         <button class="network-pill as-button" type="button" data-action="open-network-panel" data-id="network">
-          ${escapeHtml(activeNetwork?.name ?? "All networks")} ▾
+          ${escapeHtml(String(home?.activeChainId) === "all" ? "All networks" : activeNetwork?.name ?? "All networks")} ▾
         </button>
       </div>
 
@@ -257,6 +258,16 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
         <input class="field compact" id="network-search" placeholder="Search">
       </div>
       <div class="network-grid">
+        <button class="network-card ${String(home.activeChainId) === "all" ? "active" : ""}"
+                type="button"
+                data-action="set-active-chain"
+                data-id="all">
+          <span class="network-dot" style="background:#111827"></span>
+          <span>
+            <strong>All networks</strong>
+            <small>portfolio · all assets</small>
+          </span>
+        </button>
         ${home.networks.map((network) => `
           <button class="network-card ${String(network.chainId) === String(home.activeChainId) ? "active" : ""}"
                   type="button"
@@ -298,31 +309,78 @@ function renderReceiveComposer(
   const vault = state.extensionVaultStatus;
   const profiles = vault.profiles.length ? vault.profiles : state.walletExposedAccounts;
   const networks = home?.networks ?? [];
+  const selectedNetwork = networks.find((network) =>
+    String(network.chainId) === String(home?.activeChainId),
+  ) ?? networks[0] ?? null;
+  const selectedFamily = selectedNetwork?.family ?? "evm";
 
   return `
     <div class="form">
       <label class="small">Network</label>
       <select class="field" id="receive-network">
         ${networks.map((network) => `
-          <option value="${escapeHtml(String(network.chainId))}">
+          <option value="${escapeHtml(String(network.chainId))}" data-family="${escapeHtml(network.family)}" ${network.family === selectedFamily ? "selected" : ""}>
             ${escapeHtml(network.name)}
           </option>
         `).join("")}
       </select>
       <div class="receive-box">
-        ${profiles.map((profile) => `
-          <div class="site-row">
-            <div>
-              <div class="token-name">${escapeHtml(profile.name)}</div>
-              <div class="token-meta">${escapeHtml(profile.chainFamily)} · ${shortAddress(profile.account)}</div>
-            </div>
-            <button class="ghost-button" type="button" data-copy="${escapeHtml(profile.account)}">Copy</button>
-          </div>
-        `).join("")}
+        ${renderReceiveAddressRows(profiles, selectedFamily)}
       </div>
-      <p class="copy">Send only assets from the selected network to the matching address family. Wrong network can permanently lose funds.</p>
+      <p class="copy" id="receive-warning">${escapeHtml(buildReceiveWarning(selectedNetwork))}</p>
     </div>
   `;
+}
+
+function renderReceiveAddressRows(
+  profiles: BackgroundStateSnapshot["walletExposedAccounts"],
+  family: string,
+): string {
+  if (family === "utxo" || family === "ton") {
+    return `
+      <div class="site-row" data-receive-family="${escapeHtml(family)}">
+        <div>
+          <div class="token-name">${family.toUpperCase()} receive</div>
+          <div class="token-meta">Coming soon</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const matching = profiles.filter((profile) => profile.chainFamily === family);
+
+  if (!matching.length) {
+    return `
+      <div class="site-row" data-receive-family="${escapeHtml(family)}">
+        <div>
+          <div class="token-name">${escapeHtml(family.toUpperCase())} address</div>
+          <div class="token-meta">Coming soon</div>
+        </div>
+      </div>
+    `;
+  }
+
+  return matching.map((profile) => `
+    <div class="site-row" data-receive-family="${escapeHtml(profile.chainFamily)}">
+      <div>
+        <div class="token-name">${escapeHtml(profile.name)}</div>
+        <div class="token-meta">${escapeHtml(profile.chainFamily)} · ${shortAddress(profile.account)}</div>
+      </div>
+      <button class="ghost-button" type="button" data-copy="${escapeHtml(profile.account)}">Copy</button>
+    </div>
+  `).join("");
+}
+
+function buildReceiveWarning(network: ExtensionPortfolioSnapshot["networks"][number] | null): string {
+  if (!network) {
+    return "Select a network before copying a receive address.";
+  }
+
+  if (network.family === "utxo" || network.family === "ton") {
+    return `${network.name} receive is coming soon in this extension build. Do not send funds here yet.`;
+  }
+
+  return `Send only ${network.name} assets to this ${network.family.toUpperCase()} address family. Wrong network can permanently lose funds.`;
 }
 
 function renderWarnings(warnings: string[]): string {
@@ -381,12 +439,18 @@ function renderPromptNotice(state: BackgroundStateSnapshot): string {
 
   const request = state.pendingRequests[0];
   if (request) {
+    const approveLabel =
+      request.kind === "add_chain" || request.kind === "watch_asset"
+        ? "Confirm"
+        : "Review";
+
     return `
       <section class="notice warning">
         <strong>${escapeHtml(getDappRequestKindLabel(request.kind))} request</strong><br>
-        ${escapeHtml(request.origin.title)} wants approval on ${chainName(request.chainId)}.
+        ${escapeHtml(request.origin.title)} wants approval on ${chainName(request.chainId)}.<br>
+        ${escapeHtml(request.summary)}
         <div class="row" style="margin-top:10px">
-          ${actionButton("approve-request", request.id, "Review", true)}
+          ${actionButton("approve-request", request.id, approveLabel, true)}
           ${actionButton("reject-request", request.id, "Reject", false, true)}
         </div>
       </section>
@@ -480,6 +544,7 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
 
 function wirePopupActions(): void {
   wireWalletForms();
+  wireReceiveNetworkSelector();
   const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url], [data-copy]");
 
   buttons.forEach((button) => {
@@ -526,6 +591,7 @@ function wirePopupActions(): void {
           title.textContent = `${targetId[0]?.toUpperCase() ?? ""}${targetId.slice(1)}`;
           content.innerHTML = renderActionContent(targetId);
           wireInlineButtons(content);
+          wireReceiveNetworkSelector(content);
         }
         return;
       }
@@ -567,6 +633,32 @@ function wirePopupActions(): void {
       }
     });
   });
+}
+
+function wireReceiveNetworkSelector(scope: ParentNode = root): void {
+  scope
+    .querySelector<HTMLSelectElement>("#receive-network")
+    ?.addEventListener("change", (event) => {
+      const select = event.currentTarget as HTMLSelectElement;
+      const selected = select.selectedOptions[0];
+      const family = selected?.dataset.family ?? "evm";
+      const networks = currentHomeSnapshot?.networks ?? [];
+      const network = networks.find((item) => String(item.chainId) === select.value) ?? null;
+      const profiles = currentPopupState.extensionVaultStatus.profiles.length
+        ? currentPopupState.extensionVaultStatus.profiles
+        : currentPopupState.walletExposedAccounts;
+      const box = scope.querySelector<HTMLElement>(".receive-box");
+      const warning = scope.querySelector<HTMLElement>("#receive-warning");
+
+      if (box) {
+        box.innerHTML = renderReceiveAddressRows(profiles, family);
+        wireInlineButtons(box);
+      }
+
+      if (warning) {
+        warning.textContent = buildReceiveWarning(network);
+      }
+    });
 }
 
 function wireInlineButtons(scope: HTMLElement): void {

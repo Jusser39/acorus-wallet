@@ -17,6 +17,7 @@ import {
   validateWalletMnemonic,
   getSolanaAddressFromMnemonic,
   getTronAddressFromMnemonic,
+  type CustomEvmChainConfig,
   type EncryptedVaultV1,
 } from "@acorus/wallet-core";
 import type {
@@ -24,6 +25,7 @@ import type {
   ExtensionWalletCreateResult,
   ExtensionWalletImportResult,
 } from "../shared/protocol";
+import { resolveExtensionNetwork } from "./extension-chain-registry";
 
 const EXTENSION_VAULT_KEY = "acorus_extension_encrypted_vault";
 const EXTENSION_VAULT_META_KEY = "acorus_extension_vault_meta";
@@ -395,8 +397,14 @@ async function prepareExtensionTransaction(input: {
   const transaction = extractTransactionPayload(input.params);
   const chainId = resolveEvmChainId(transaction.chainId, input.chainId);
   const env = buildExtensionEvmEnv(chainId);
-  const publicClient = createEvmPublicClient(chainId, env);
-  const walletClient = createEvmWalletClient(session.mnemonic, chainId, env);
+  const clientOptions = await buildExtensionEvmClientOptions(chainId);
+  const publicClient = createEvmPublicClient(chainId, env, clientOptions);
+  const walletClient = createEvmWalletClient(
+    session.mnemonic,
+    chainId,
+    env,
+    clientOptions,
+  );
 
   if (
     transaction.from
@@ -483,11 +491,19 @@ function resolveEvmChainId(
 function buildExtensionEvmEnv(
   chainId: number,
 ): Record<string, string | undefined> {
-  const chain = getEvmChainConfig(chainId);
   const runtimeEnv =
     typeof process === "undefined"
       ? {}
       : process.env;
+
+  let chain: ReturnType<typeof getEvmChainConfig>;
+  try {
+    chain = getEvmChainConfig(chainId);
+  } catch {
+    return {
+      ...runtimeEnv,
+    };
+  }
 
   return {
     ...runtimeEnv,
@@ -495,6 +511,35 @@ function buildExtensionEvmEnv(
       runtimeEnv[chain.rpcUrlEnv]
       ?? EXTENSION_EVM_RPC_FALLBACKS[chainId],
   };
+}
+
+async function buildExtensionEvmClientOptions(
+  chainId: number,
+): Promise<{ customChain?: CustomEvmChainConfig | null } | undefined> {
+  try {
+    getEvmChainConfig(chainId);
+    return undefined;
+  } catch {
+    const network = await resolveExtensionNetwork(chainId);
+
+    if (!network || network.family !== "evm" || !network.rpcUrl) {
+      return undefined;
+    }
+
+    return {
+      customChain: {
+        chainId,
+        name: network.name,
+        nativeCurrency: {
+          name: network.nativeSymbol,
+          symbol: network.nativeSymbol,
+          decimals: 18,
+        },
+        rpcUrl: network.rpcUrl,
+        blockExplorerUrl: network.blockExplorerUrl || null,
+      },
+    };
+  }
 }
 
 function normalizeOptionalHex(value: unknown): `0x${string}` | undefined {

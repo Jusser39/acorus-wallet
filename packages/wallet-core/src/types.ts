@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { ChainFamily } from "@acorus/shared";
+import type { EvmClientOptions } from "./evm/client";
 
 export type EncryptedVaultV1 = {
   version: 1;
@@ -49,6 +50,7 @@ export interface SendNativeParams {
   to: Address;
   amountWei: bigint;
   env?: Record<string, string | undefined>;
+  clientOptions?: EvmClientOptions;
 }
 
 export interface SendErc20Params {
@@ -58,6 +60,7 @@ export interface SendErc20Params {
   to: Address;
   amountUnits: bigint;
   env?: Record<string, string | undefined>;
+  clientOptions?: EvmClientOptions;
 }
 
 export interface EstimateNativeTransferParams {
@@ -66,6 +69,7 @@ export interface EstimateNativeTransferParams {
   value: bigint;
   chainId: number;
   env?: Record<string, string | undefined>;
+  clientOptions?: EvmClientOptions;
 }
 
 export interface EstimateErc20TransferParams {
@@ -75,6 +79,7 @@ export interface EstimateErc20TransferParams {
   amountUnits: bigint;
   chainId: number;
   env?: Record<string, string | undefined>;
+  clientOptions?: EvmClientOptions;
 }
 
 export interface EvmFeeEstimate {

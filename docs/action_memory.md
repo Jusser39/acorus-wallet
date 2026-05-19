@@ -421,3 +421,13 @@
 170. Browser visual automation was attempted through the Codex browser integration, but no active browser pane was available; verification continued through tests and extension build output.
 171. Ran the full workspace validation: `pnpm test` passed; the first `pnpm build` hit a transient Turbopack workspace-resolution error for `@acorus/shared`, then `pnpm --filter @acorus/web build` and a second `pnpm build` both passed.
 172. Ran `git diff --check` successfully and packaged the extension with `pnpm extension:package`, refreshing `apps/web/public/downloads/acorus-wallet-extension.zip`.
+173. Started the Extension Parity Stabilization wave after commit `ad77ae9`, focusing on approval prompts, safe receive behavior, duplicate inpage injection, all-network popup mode, and custom EVM client execution.
+174. Moved `acorus_addChain` and `acorus_watchAsset` back into the extension approval queue so dApps no longer cause silent persistence; popup approval now executes validation/storage for these non-signer requests without requiring signer unlock.
+175. Added explicit add-chain/watch-asset request summaries, user rejection propagation, custom RPC `eth_chainId` validation with an 8 second timeout, and default blocking for localhost/private RPC URLs.
+176. Removed content-script inpage DOM injection so Manifest V3 MAIN-world injection is the single source for `window.ethereum` / `window.acorus`.
+177. Added popup `All networks` mode and fixed receive composer rendering so selected EVM/Solana/Tron networks expose only the matching address family while BTC/TON remain coming soon.
+178. Extended wallet-core EVM clients with `createCustomViemChain` and custom client options, then wired extension sign/send transaction preparation to saved custom EVM network configs.
+179. Added stabilization tests for add-chain/watch-asset approval queue behavior, no duplicate inpage injection, receive composer family filtering, and custom viem chain config.
+180. Stabilized Vitest config for slow local crypto/jsdom execution on Windows by adding explicit wallet-core/extension test timeouts and a web jsdom setup that restores localStorage before each test.
+181. Completed validation for the stabilization wave: shared build, wallet-core build, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
+182. Refreshed the downloadable extension archive at `apps/web/public/downloads/acorus-wallet-extension.zip` after the successful extension package run.
