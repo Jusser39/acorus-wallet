@@ -45,11 +45,19 @@ export function getSendAvailability(input: {
   }
 
   if (chainFamily === "solana") {
-    return {
-      canSend: false,
-      reason: "Solana send is coming in the next wave.",
-      ctaLabel: "Solana send coming soon",
-    };
+    if (profileType === "practice") {
+      return { canSend: true, ctaLabel: "Send SOL (practice)" };
+    }
+
+    if (!isUnlocked) {
+      return {
+        canSend: false,
+        reason: "Unlock your wallet to send SOL.",
+        ctaLabel: "Unlock to send SOL",
+      };
+    }
+
+    return { canSend: true, ctaLabel: "Send SOL" };
   }
 
   if (chainFamily === "tron") {

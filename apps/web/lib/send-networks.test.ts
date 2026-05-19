@@ -12,11 +12,11 @@ describe("buildSendNetworkOptions", () => {
     }
   });
 
-  it("marks solana as coming_soon", () => {
+  it("marks solana as supported", () => {
     const options = buildSendNetworkOptions();
     const solana = options.find((n) => n.family === "solana");
     expect(solana).toBeTruthy();
-    expect(solana!.sendStatus).toBe("coming_soon");
+    expect(solana!.sendStatus).toBe("supported");
   });
 
   it("marks tron and utxo as skeleton", () => {

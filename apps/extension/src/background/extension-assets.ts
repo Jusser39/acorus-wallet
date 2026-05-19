@@ -4,6 +4,12 @@ import type {
   ChainId,
 } from "@acorus/shared";
 import {
+  getCuratedTokens,
+} from "@acorus/shared";
+import {
+  getSolanaPortfolioBalances,
+} from "@acorus/wallet-core";
+import {
   listExtensionNetworks,
   resolveExtensionNetwork,
   type ExtensionNetwork,
@@ -47,6 +53,7 @@ const DEFAULT_PUBLIC_EVM_RPCS: Record<number, string> = {
   43114: "https://avalanche-c-chain-rpc.publicnode.com",
   59144: "https://linea-rpc.publicnode.com",
 };
+const DEFAULT_SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
 
 export async function listWatchedAssets(): Promise<WatchedAsset[]> {
   return readStorageValue<WatchedAsset[]>(WATCHED_ASSETS_KEY, []);
@@ -101,6 +108,22 @@ export async function buildExtensionPortfolioSnapshot(input?: {
     const profile = vault.profiles.find((item) => item.chainFamily === network.family);
 
     if (!profile) {
+      continue;
+    }
+
+    if (network.family === "solana") {
+      const solanaAssets = await resolveSolanaPortfolioAssets(
+        profile.account,
+        network,
+        warnings,
+      );
+
+      for (const solanaAsset of solanaAssets) {
+        if (!hidden.has(buildAssetId(solanaAsset))) {
+          assets.push(solanaAsset);
+        }
+      }
+
       continue;
     }
 
@@ -322,6 +345,29 @@ async function resolveAssetBalance(input: {
 }): Promise<AssetBalance> {
   const { asset, ownerAddress, network, warnings } = input;
 
+  if (network.family === "solana") {
+    if (asset.type === "native") {
+      const [native] = await resolveSolanaPortfolioAssets(
+        ownerAddress,
+        network,
+        warnings,
+      );
+
+      if (native) {
+        return native;
+      }
+    }
+
+    return {
+      ...asset,
+      balanceRaw: "0",
+      balanceFormatted: "0",
+      fiatValue: null,
+      priceUsd: null,
+      source: "unavailable",
+    };
+  }
+
   if (network.family !== "evm") {
     warnings.push(`${network.name}: live balance is not enabled in extension yet.`);
     return {
@@ -381,6 +427,76 @@ async function resolveAssetBalance(input: {
     priceUsd: null,
     source: "unavailable",
   };
+}
+
+async function resolveSolanaPortfolioAssets(
+  ownerAddress: string,
+  network: ExtensionNetwork,
+  warnings: string[],
+): Promise<AssetBalance[]> {
+  try {
+    const balances = await getSolanaPortfolioBalances({
+      address: ownerAddress,
+      rpcUrl: resolveSolanaRpcUrl(network),
+      tokens: getCuratedTokens(101).map((token) => ({
+        id: `${token.chainId}:${token.address}`,
+        chainId: token.chainId,
+        tokenAddress: token.address,
+        symbol: token.symbol,
+        name: token.name,
+        decimals: token.decimals,
+        logoUrl: token.logoUrl,
+        isVerified: token.verified,
+        createdAt: "2026-05-19T00:00:00.000Z",
+        updatedAt: "2026-05-19T00:00:00.000Z",
+      })),
+    });
+
+    return balances.map((asset) => ({
+      family: "solana",
+      chainId: asset.chainId,
+      type: asset.type,
+      symbol: asset.symbol,
+      name: asset.name,
+      decimals: asset.decimals,
+      tokenAddress: asset.tokenAddress ?? null,
+      logoUrl: asset.logoUrl ?? null,
+      isVerified: asset.isVerified,
+      balanceRaw: asset.balanceRaw,
+      balanceFormatted: asset.balanceFormatted,
+      fiatValue: null,
+      priceUsd: null,
+      source: "live_solana_rpc",
+    }));
+  } catch (error) {
+    warnings.push(
+      `${network.name}: ${error instanceof Error ? error.message : "Solana RPC unavailable"}`,
+    );
+
+    return [{
+      family: "solana",
+      chainId: 101,
+      type: "native",
+      symbol: "SOL",
+      name: "Solana",
+      decimals: 9,
+      tokenAddress: null,
+      isVerified: true,
+      balanceRaw: "0",
+      balanceFormatted: "0",
+      fiatValue: null,
+      priceUsd: null,
+      source: "unavailable",
+    }];
+  }
+}
+
+function resolveSolanaRpcUrl(network: ExtensionNetwork): string {
+  return network.rpcUrl
+    ?? (typeof process === "undefined"
+      ? undefined
+      : process.env?.NEXT_PUBLIC_SOLANA_RPC_URL)
+    ?? DEFAULT_SOLANA_RPC_URL;
 }
 
 function resolveRpcUrl(network: ExtensionNetwork): string {

@@ -38,7 +38,21 @@ describe("popup receive composer", () => {
     expect(source).toContain("renderApprovalDetailCard");
     expect(source).toContain("Add Network");
     expect(source).toContain("Watch Asset");
+    expect(source).toContain("multichain_send");
+    expect(source).toContain("Send ${escapeHtml(details.assetSymbol)}");
     expect(source).toContain("rpcHostname");
     expect(source).not.toContain("JSON.stringify(request");
+  });
+
+  it("contains a gated Solana send composer", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("solana-send-form");
+    expect(source).toContain("queue_solana_send");
+    expect(source).toContain("family === \"solana\"");
+    expect(source).toContain("Send execution for this network is coming soon.");
   });
 });

@@ -80,8 +80,8 @@ export async function listExtensionNetworks(): Promise<ExtensionNetwork[]> {
       accent: DEFAULT_ACCENTS["101"] ?? "#14F195",
       capabilities: {
         receive: true,
-        balance: false,
-        send: false,
+        balance: true,
+        send: true,
         swap: false,
         dapp: true,
       },

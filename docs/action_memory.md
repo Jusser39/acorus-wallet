@@ -438,3 +438,11 @@
 187. Added extension portfolio price enrichment through public `/api/market/prices` using only chain id, symbol, and token address metadata with safe fallback on API failure.
 188. Added `/extension-smoke` as a manual dApp/provider smoke harness for injected provider detection and core EIP-1193 checks.
 189. Completed validation for the multichain UX/pricing/smoke wave: shared build, wallet-core build, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
+190. Fixed production nginx HTTPS routing for `24wallet.ru` and `www.24wallet.ru`, backed up touched configs to `/root/backups/acorus-wallet-nginx-https-fix_20260519_130515/`, issued a Let's Encrypt certificate, reloaded nginx, and verified wallet HTTP/HTTPS responses without moving the CRM vhost.
+191. Added wallet-core Solana live wallet helpers for RPC timeout, explorer links, amount parsing/formatting, native SOL send draft validation, client-side SOL send execution, and Solana message signing.
+192. Enabled Solana live portfolio in the extension snapshot by reading SOL and SPL token balances through Solana RPC and marking Solana balance/send capabilities as ready while keeping swap disabled.
+193. Added extension popup Solana send composer, `queue_solana_send` runtime message, internal `multichain_send` approval queueing, Solana send approval detail cards, and execution through the unlocked extension vault after signer confirmation.
+194. Expanded the injected Solana provider subset with `isConnected`, connect/disconnect events, public key access, and sign-message flow, then added Solana diagnostics to `/extension-smoke`.
+195. Updated web send status/policy tests so Solana is treated as supported instead of coming soon; Tron/BTC/TON remain gated.
+196. Completed local validation for the HTTPS/Solana MVP wave: shared build, wallet-core build/test, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
+197. Deployed this wave to `/opt/acorus-wallet-release-current` by uploading a clean git archive to the VPS, copied the existing production `.env`, rebuilt/recreated the Acorus Docker Compose services, and verified `https://24wallet.ru/extension-smoke` returns `200 OK`.

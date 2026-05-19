@@ -960,3 +960,34 @@
 - Next logical step:
   - fix the server HTTPS vhost for `24wallet.ru`, then reload the packed extension and run `/extension-smoke` in Chrome
 
+## Production HTTPS Fix + Solana Live Wallet MVP (2026-05-19)
+
+- Status: **implemented locally; HTTPS fixed on VPS**
+- Production routing:
+  - fixed `24wallet.ru` / `www.24wallet.ru` HTTPS so nginx serves the Acorus wallet instead of the CRM catch-all
+  - created nginx backup at `/root/backups/acorus-wallet-nginx-https-fix_20260519_130515/`
+  - issued Let's Encrypt certificate for `24wallet.ru` and `www.24wallet.ru`
+  - verified HTTP/HTTPS wallet responses and confirmed CRM still responds on `bstcrm.ru`
+  - deployed release `/opt/acorus-wallet-release-current` and verified `/extension-smoke` returns `200 OK`
+- Solana MVP:
+  - wallet-core now has Solana RPC timeout, explorer helpers, amount parsing/formatting, send draft validation, message signing, and native SOL send execution
+  - extension portfolio snapshots now include live SOL/SPL balances through Solana RPC with safe unavailable fallback
+  - popup Send now has a Solana-native composer that queues `multichain_send` approval before execution
+  - injected `window.solana` exposes connect/disconnect/publicKey/isConnected/signMessage as an Acorus subset
+  - `/extension-smoke` now includes Solana diagnostics
+- Out of scope:
+  - swap execution, SPL token transfer execution, Tron/BTC/TON send, WalletConnect relay
+- Validation completed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+

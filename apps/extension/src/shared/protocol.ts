@@ -159,6 +159,13 @@ export type ExtensionRuntimeMessage =
       assetId: string;
     }
   | {
+      kind: "queue_solana_send";
+      requestId: string;
+      surface: "popup" | "options";
+      toAddress: string;
+      amountFormatted: string;
+    }
+  | {
       kind: "provider_request";
       requestId: string;
       surface: "content";

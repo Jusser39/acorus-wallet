@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { DappShellSnapshot } from "@acorus/shared";
 import { listWatchedAssets } from "./extension-assets";
 import { listExtensionNetworks } from "./extension-chain-registry";
@@ -106,6 +108,16 @@ describe("extension approval stabilization", () => {
     await waitForPendingRequest("watch_asset");
 
     expect(await listWatchedAssets()).toEqual([]);
+  });
+
+  it("contains Solana send approval queue and live execution hook", async () => {
+    const source = await readFile(resolve(process.cwd(), "src/background/index.ts"), "utf8");
+
+    expect(source).toContain("queue_solana_send");
+    expect(source).toContain("queueInternalSolanaSendRequest");
+    expect(source).toContain("kind: \"multichain_send\"");
+    expect(source).toContain("executeExtensionSolanaSend");
+    expect(source).toContain("pendingProviderExecutions.set");
   });
 });
 

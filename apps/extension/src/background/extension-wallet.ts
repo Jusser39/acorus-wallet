@@ -17,8 +17,11 @@ import {
   validateWalletMnemonic,
   getSolanaAddressFromMnemonic,
   getTronAddressFromMnemonic,
+  executeSolanaSend,
+  signSolanaMessage,
   type CustomEvmChainConfig,
   type EncryptedVaultV1,
+  type SolanaSendExecutionInput,
 } from "@acorus/wallet-core";
 import type {
   ExtensionVaultStatus,
@@ -43,6 +46,7 @@ const EXTENSION_EVM_RPC_FALLBACKS: Record<number, string> = {
   43114: "https://avalanche-c-chain-rpc.publicnode.com",
   59144: "https://linea-rpc.publicnode.com",
 };
+const EXTENSION_SOLANA_RPC_FALLBACK = "https://api.mainnet-beta.solana.com";
 
 let unlockedSession: {
   mnemonic: string;
@@ -153,6 +157,14 @@ export async function executeExtensionSignMessage(input: {
   account?: string | null;
 }): Promise<string> {
   const session = requireUnlockedSession();
+
+  if (isSolanaSignMessageParams(input.params)) {
+    return signSolanaMessage({
+      mnemonic: session.mnemonic,
+      message: input.params[0].message,
+    });
+  }
+
   const account = requireUnlockedEvmAccount(session, input.account);
   const payload = extractMessagePayload(input.params);
 
@@ -161,6 +173,26 @@ export async function executeExtensionSignMessage(input: {
       ? { message: { raw: payload as `0x${string}` } }
       : { message: payload },
   );
+}
+
+export async function executeExtensionSolanaSend(input: {
+  params: unknown[];
+  account?: string | null;
+}): Promise<string> {
+  const session = requireUnlockedSession();
+  const payload = parseSolanaSendPayload(input.params);
+  const result = await executeSolanaSend({
+    ...payload,
+    mnemonic: session.mnemonic,
+    expectedFromAddress: input.account ?? payload.fromAddress,
+    rpcUrl: payload.rpcUrl ?? EXTENSION_SOLANA_RPC_FALLBACK,
+  });
+
+  if (result.status !== "submitted" || !result.txHash) {
+    throw new Error(result.errorMessage ?? "Solana send was not submitted.");
+  }
+
+  return result.txHash;
 }
 
 export async function executeExtensionSignTypedData(input: {
@@ -511,6 +543,58 @@ function buildExtensionEvmEnv(
       runtimeEnv[chain.rpcUrlEnv]
       ?? EXTENSION_EVM_RPC_FALLBACKS[chainId],
   };
+}
+
+function isSolanaSignMessageParams(
+  params: unknown[],
+): params is [{ family: "solana"; message: string | number[] | Uint8Array }] {
+  const first = params[0];
+
+  if (typeof first !== "object" || first === null) {
+    return false;
+  }
+
+  const payload = first as { family?: unknown; message?: unknown };
+  return (
+    payload.family === "solana"
+    && (
+      typeof payload.message === "string"
+      || Array.isArray(payload.message)
+      || payload.message instanceof Uint8Array
+    )
+  );
+}
+
+function parseSolanaSendPayload(params: unknown[]): Omit<
+  SolanaSendExecutionInput,
+  "mnemonic"
+> {
+  const payload = normalizeRecord(params[0]);
+
+  return {
+    fromAddress: String(payload.fromAddress ?? payload.from ?? ""),
+    toAddress: String(payload.toAddress ?? payload.to ?? ""),
+    amountRaw: typeof payload.amountRaw === "string"
+      ? payload.amountRaw
+      : undefined,
+    amountFormatted: typeof payload.amountFormatted === "string"
+      ? payload.amountFormatted
+      : typeof payload.amount === "string"
+        ? payload.amount
+        : undefined,
+    rpcUrl: typeof payload.rpcUrl === "string"
+      ? payload.rpcUrl
+      : undefined,
+    expectedFromAddress: typeof payload.expectedFromAddress === "string"
+      ? payload.expectedFromAddress
+      : null,
+  };
+}
+
+function normalizeRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null
+    ? value as Record<string, unknown>
+    : {};
 }
 
 async function buildExtensionEvmClientOptions(

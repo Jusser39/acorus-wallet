@@ -49,6 +49,15 @@ export function ExtensionSmokeClient() {
     }
   }
 
+  async function runSolana(label: string, action: () => Promise<unknown>) {
+    try {
+      const result = await action();
+      appendResult({ label, ok: true, output: stringify(result) });
+    } catch (error) {
+      appendResult({ label, ok: false, output: stringifyError(error) });
+    }
+  }
+
   function appendResult(result: SmokeResult) {
     setResults((items) => [result, ...items].slice(0, 12));
   }
@@ -144,6 +153,35 @@ export function ExtensionSmokeClient() {
           </div>
         </section>
       </div>
+
+      <section className="premium-card p-5">
+        <h2 className="text-xl font-semibold">Solana diagnostics</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Uses the Acorus Solana provider subset: connect, publicKey, signMessage.
+          Transaction send stays disabled here unless you intentionally test from
+          the extension popup.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <button
+            className="button-secondary"
+            onClick={() => void runSolana("solana.connect", async () => window.solana?.connect?.())}
+          >
+            Solana connect
+          </button>
+          <button
+            className="button-secondary"
+            onClick={() => void runSolana("solana.publicKey", async () => window.solana?.publicKey?.toString?.() ?? null)}
+          >
+            Get public key
+          </button>
+          <button
+            className="button-secondary"
+            onClick={() => void runSolana("solana.signMessage", async () => window.solana?.signMessage?.("Acorus Solana smoke test"))}
+          >
+            Sign message
+          </button>
+        </div>
+      </section>
 
       <section className="premium-card p-5">
         <h2 className="text-xl font-semibold">Results</h2>

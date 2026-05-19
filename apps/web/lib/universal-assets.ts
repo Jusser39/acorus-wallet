@@ -77,7 +77,7 @@ export function isSkeletonFamily(family: ChainFamily): boolean {
 }
 
 export function getUnsupportedActionText(family: ChainFamily): string {
-  if (family === "solana") return "Solana send coming soon";
+  if (family === "solana") return "Solana send available in the extension";
   if (family === "tron") return "Tron send not implemented";
   if (family === "utxo") return "Bitcoin send not implemented";
   if (family === "ton") return "TON send not implemented";

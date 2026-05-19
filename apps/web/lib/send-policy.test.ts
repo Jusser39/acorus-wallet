@@ -40,14 +40,14 @@ describe("getSendAvailability", () => {
     }
   });
 
-  it("returns canSend=false for Solana local wallet (not implemented)", () => {
+  it("returns canSend=true for Solana local wallet when unlocked", () => {
     const result = getSendAvailability({
       profileType: "local",
       chainFamily: "solana",
       isUnlocked: true,
     });
-    expect(result.canSend).toBe(false);
-    expect(result.ctaLabel).toMatch(/solana/i);
+    expect(result.canSend).toBe(true);
+    expect(result.ctaLabel).toMatch(/SOL/i);
   });
 
   it("returns canSend=false for Tron and Bitcoin", () => {

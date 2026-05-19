@@ -630,6 +630,20 @@ function renderApprovalDetailCard(
     `;
   }
 
+  if (details?.kind === "multichain_send") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>Send ${escapeHtml(details.assetSymbol)}</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Network</dt><dd>${escapeHtml(details.family.toUpperCase())} · ${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
+          <div><dt>From</dt><dd>${escapeHtml(shortAddress(details.fromAddress))}</dd></div>
+          <div><dt>To</dt><dd>${escapeHtml(shortAddress(details.toAddress))}</dd></div>
+          <div><dt>Amount</dt><dd>${escapeHtml(details.amountFormatted)} ${escapeHtml(details.assetSymbol)}</dd></div>
+        </dl>
+      </div>
+    `;
+  }
+
   return `<span>${escapeHtml(request.summary)}</span>`;
 }
 
@@ -761,6 +775,7 @@ function wirePopupActions(): void {
           content.innerHTML = renderActionContent(targetId);
           wireInlineButtons(content);
           wireReceiveNetworkSelector(content);
+          wireSendForm(content);
         }
         return;
       }
@@ -844,6 +859,54 @@ function wireReceiveNetworkSelector(scope: ParentNode = root): void {
         warning.textContent = buildReceiveWarning(network);
       }
     });
+}
+
+function wireSendForm(scope: ParentNode = root): void {
+  const form = scope.querySelector<HTMLFormElement>("#solana-send-form");
+
+  if (!form) {
+    return;
+  }
+
+  const networkSelect = form.querySelector<HTMLSelectElement>("#send-network");
+  const note = form.querySelector<HTMLElement>("#send-support-note");
+  const button = form.querySelector<HTMLButtonElement>("button[type='submit']");
+  const updateSupport = () => {
+    const family = networkSelect?.selectedOptions[0]?.dataset.family ?? "";
+    const supported = family === "solana";
+
+    if (note) {
+      note.textContent = supported
+        ? "Solana send is live after explicit popup confirmation."
+        : "Send execution for this network is coming soon.";
+    }
+
+    if (button) {
+      button.disabled = !supported;
+    }
+  };
+
+  networkSelect?.addEventListener("change", updateSupport);
+  updateSupport();
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const response = await chrome.runtime.sendMessage({
+      kind: "queue_solana_send",
+      requestId: createRequestId("popup_solana_send"),
+      surface: "popup",
+      toAddress: String(formData.get("toAddress") ?? ""),
+      amountFormatted: String(formData.get("amountFormatted") ?? ""),
+    }) as ExtensionRuntimeResponse;
+
+    if (!response.ok) {
+      window.alert(response.error?.message ?? "Unable to queue Solana send.");
+      return;
+    }
+
+    await loadPopupState();
+  });
 }
 
 function wireInlineButtons(scope: HTMLElement): void {
@@ -1060,18 +1123,37 @@ function renderActionContent(target: string): string {
         </div>
       `;
     case "send":
-      return `
-        <div class="form">
-          <input class="field" placeholder="Recipient address">
-          <input class="field" placeholder="Amount">
-          <p class="copy">EVM send can execute after review. Non-EVM send remains disabled until adapter execution is reviewed.</p>
-          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/send">Review Send</button>
-        </div>
-      `;
+      return renderSendComposer();
     case "receive":
     default:
       return renderReceiveComposer(currentPopupState, currentHomeSnapshot);
   }
+}
+
+function renderSendComposer(): string {
+  const networks = currentHomeSnapshot?.networks ?? [];
+  const solana = networks.find((network) => network.family === "solana");
+
+  return `
+    <form class="form" id="solana-send-form">
+      <label class="small">Network</label>
+      <select class="field" id="send-network" name="chainId">
+        ${networks
+          .filter((network) => network.family !== "utxo" && network.family !== "ton")
+          .map((network) => `
+            <option value="${escapeHtml(String(network.chainId))}" data-family="${escapeHtml(network.family)}" ${String(network.chainId) === String(solana?.chainId) ? "selected" : ""}>
+              ${escapeHtml(network.name)}
+            </option>
+          `)
+          .join("")}
+      </select>
+      <input class="field" name="toAddress" placeholder="Solana recipient address" autocomplete="off">
+      <input class="field" name="amountFormatted" placeholder="Amount in SOL" inputmode="decimal">
+      <p class="copy" id="send-support-note">Solana send is live after explicit popup confirmation.</p>
+      <button class="primary-button" type="submit">Review Solana Send</button>
+      <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/send">Open full send</button>
+    </form>
+  `;
 }
 
 function actionButton(

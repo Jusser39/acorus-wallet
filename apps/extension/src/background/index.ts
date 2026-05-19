@@ -1,5 +1,6 @@
 import {
   createApprovedPreviewDappResult,
+  createDappOriginMetadata,
   createDappBridgeSessionView,
   getActiveDappSession,
   getDappSessionActiveChainId,
@@ -26,6 +27,7 @@ import {
 import {
   createExtensionWallet,
   executeExtensionSendTransaction,
+  executeExtensionSolanaSend,
   executeExtensionSignMessage,
   executeExtensionSignTransaction,
   executeExtensionSignTypedData,
@@ -250,6 +252,26 @@ export async function handleRuntimeMessage(
       ok: true,
       result: await unhideAsset(input.assetId),
     };
+  }
+
+  if (input.kind === "queue_solana_send") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueInternalSolanaSendRequest({
+          requestId,
+          toAddress: input.toAddress,
+          amountFormatted: input.amountFormatted,
+        }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "solana_send_queue_failed",
+        error instanceof Error ? error.message : "Unable to queue Solana send.",
+      );
+    }
   }
 
   if (input.kind === "create_extension_wallet") {
@@ -1490,9 +1512,102 @@ async function executeApprovedRequest(
           account: request.account ?? null,
         }),
       });
+    case "acorus_multichainSend": {
+      const payload = normalizeRecord(execution.params[0]);
+      if (payload.family === "solana") {
+        return createApprovedLiveDappResult(request, approvedAt, {
+          transactionHash: await executeExtensionSolanaSend({
+            params: execution.params,
+            account: request.account ?? null,
+          }),
+        });
+      }
+
+      return createApprovedPreviewDappResult(request, approvedAt);
+    }
     default:
       return createApprovedPreviewDappResult(request, approvedAt);
   }
+}
+
+async function queueInternalSolanaSendRequest(input: {
+  requestId: string;
+  toAddress: string;
+  amountFormatted: string;
+}): Promise<{ requestId: string; queued: true }> {
+  const vaultStatus = await getExtensionVaultStatus();
+
+  if (!vaultStatus.isUnlocked) {
+    throw new Error("Unlock Acorus Wallet extension before sending SOL.");
+  }
+
+  const profile = vaultStatus.profiles.find((item) => item.chainFamily === "solana");
+
+  if (!profile) {
+    throw new Error("Solana profile is not available in this wallet.");
+  }
+
+  const origin = "chrome-extension://acorus-popup";
+  const state = await getDappShellState();
+  const session = state.sessions.find((item) => item.id === "session_internal_solana_send")
+    ?? {
+      id: "session_internal_solana_send",
+      origin: createDappOriginMetadata({
+        origin,
+        title: "Acorus Wallet Popup",
+        trustLevel: "trusted",
+      }),
+      transport: "injected" as const,
+      providerMode: "wallet_backed" as const,
+      accounts: [profile.account],
+      chainIds: [101],
+      activeChainId: 101,
+      permissions: ["multichain_send" as const],
+      status: "active" as const,
+      connectedAt: new Date().toISOString(),
+      lastUsedAt: null,
+      warning: "Internal extension send approval.",
+    };
+  const stateWithSession = state.sessions.some((item) => item.id === session.id)
+    ? state
+    : {
+      ...state,
+      sessions: [session, ...state.sessions],
+    };
+  const providerParams = [{
+    family: "solana",
+    fromAddress: profile.account,
+    toAddress: input.toAddress,
+    amountFormatted: input.amountFormatted,
+  }];
+  const queued = queueDappRequest(stateWithSession, {
+    id: input.requestId,
+    sessionId: session.id,
+    kind: "multichain_send",
+    origin,
+    account: profile.account,
+    chainId: 101,
+    summary:
+      `Send ${input.amountFormatted || "0"} SOL on Solana to ${input.toAddress}.`,
+    warning:
+      "Confirm only if the address and amount are correct. Solana transfers cannot be reversed.",
+    reviewDetails: buildRequestReviewDetails(
+      "acorus_multichainSend",
+      providerParams,
+      101,
+    ),
+  });
+
+  await setDappShellState(queued.snapshot);
+  pendingProviderExecutions.set(queued.request.id, {
+    method: "acorus_multichainSend",
+    params: providerParams,
+  });
+
+  return {
+    requestId: queued.request.id,
+    queued: true,
+  };
 }
 
 function createApprovedLiveDappResult(
@@ -1681,6 +1796,23 @@ function buildRequestReviewDetails(
       decimals: Number.isFinite(decimals) ? decimals : null,
       riskLabels: ["Token not verified"],
     };
+  }
+
+  if (method === "acorus_multichainSend") {
+    const payload = normalizeRecord(params[0]);
+    if (payload.family === "solana") {
+      return {
+        kind: "multichain_send",
+        family: "solana",
+        chainId: activeChainId ?? 101,
+        fromAddress: String(payload.fromAddress ?? payload.from ?? ""),
+        toAddress: String(payload.toAddress ?? payload.to ?? ""),
+        assetSymbol: "SOL",
+        amountFormatted: String(payload.amountFormatted ?? payload.amount ?? ""),
+        estimatedFeeFormatted: null,
+        riskLabels: ["Irreversible transfer"],
+      };
+    }
   }
 
   return null;

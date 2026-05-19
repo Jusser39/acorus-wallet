@@ -7,6 +7,9 @@ import {
 } from "../solana/derive";
 import { getSolanaNativeBalance } from "../solana/balance";
 import { getSolanaSplTokenBalances } from "../solana/tokens";
+import {
+  createSolanaSendDraft,
+} from "../solana/send";
 
 export function createSolanaAdapter(): ChainAdapter {
   const chainId = 101;
@@ -31,7 +34,7 @@ export function createSolanaAdapter(): ChainAdapter {
       tokenBalances: true,
       receive: true,
       sendDraft: true,
-      broadcast: false,
+      broadcast: true,
       history: false,
       swap: false,
       dapp: false,
@@ -123,45 +126,12 @@ export function createSolanaAdapter(): ChainAdapter {
     },
 
     async createSendDraft(input): Promise<SendDraft> {
-      return {
-        family: "solana",
-        chainId,
+      return createSolanaSendDraft({
         fromAddress: input.fromAddress,
         toAddress: input.toAddress,
-        normalizedToAddress: input.toAddress,
-        asset: input.asset,
-        amountRaw: input.amountRaw ?? "0",
-        amountFormatted: input.amountFormatted ?? "0",
-        supportStatus: "coming_soon",
-        feeEstimate: {
-          feeAsset: {
-            family: "solana",
-            chainId,
-            type: "native",
-            symbol: "SOL",
-            name: "Solana",
-            decimals: 9,
-            tokenAddress: null,
-            isVerified: true,
-          },
-          feeRaw: null,
-          feeFormatted: null,
-          source: "unavailable",
-        },
-        issues: [
-          {
-            code: "solana_send_coming_soon",
-            severity: "warning",
-            message:
-              "Solana send is not enabled yet. This draft is for validation/preview only.",
-          },
-        ],
-        warnings: ["Solana send is coming soon."],
-        errors: [],
-        canProceed: false,
-        canBroadcast: false,
-        createdAt: new Date().toISOString(),
-      };
+        amountRaw: input.amountRaw,
+        amountFormatted: input.amountFormatted,
+      });
     },
 
     async broadcastSend(): Promise<SendExecutionResult> {
@@ -171,8 +141,9 @@ export function createSolanaAdapter(): ChainAdapter {
         status: "unsupported",
         txHash: null,
         explorerUrl: null,
-        errorCode: "solana_broadcast_not_enabled",
-        errorMessage: "Solana broadcast is not implemented yet.",
+        errorCode: "extension_vault_required",
+        errorMessage:
+          "Solana broadcast is enabled only through the extension vault approval flow.",
         broadcastProvider: "solana",
         submittedAt: new Date().toISOString(),
       };

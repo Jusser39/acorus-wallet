@@ -9,7 +9,7 @@ import type { SendNetworkOption } from "./send-ui";
 
 function getFamilySendStatus(family: ChainFamily): SendNetworkOption["sendStatus"] {
   if (family === "evm") return "supported";
-  if (family === "solana") return "coming_soon";
+  if (family === "solana") return "supported";
   return "skeleton";
 }
 

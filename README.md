@@ -6,8 +6,8 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 
 - Next.js App Router web/PWA shell
 - Fastify API for anonymous users, wallet profiles, contacts, transaction records, chains, tokens, and price stubs
-- `apps/extension` Manifest V3 extension shell with live dApp bridge, session registry, permission queue, and extension-side EVM sign/send execution behind explicit signer confirmation
-- `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana read-only foundations, and skeleton Tron/UTXO adapters
+- `apps/extension` Manifest V3 extension shell with live dApp bridge, session registry, permission queue, extension-side EVM sign/send execution, and native Solana send execution behind explicit signer confirmation
+- `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana balance/SPL/native-send foundations, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap/dapp types, practice content
 - Universal swap quote shell with quote preview, route preview, warnings, and disabled execution state
 - Wallet dashboard action grid plus preview shells for Explore, Security Center, dApps, Chrome Extension, and Quests
@@ -75,8 +75,8 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 
 - This is **not** a custodial wallet
 - No backend seed backup
-- Real broadcast is currently live only for EVM; non-EVM adapters remain capability-gated until their send implementations are safety-reviewed
-- Solana foundation exists for derivation/balances/receive/send-draft, while Tron and Bitcoin/UTXO remain honest skeleton adapters
+- Real broadcast is currently live for EVM and native SOL through explicit extension confirmation; SPL transfer, Tron, Bitcoin/UTXO, and TON execution remain capability-gated until their send implementations are safety-reviewed
+- Solana foundation exists for derivation/balances/SPL discovery/receive/native-send, while Tron and Bitcoin/UTXO remain honest skeleton adapters
 - No WalletConnect, NFT send/burn, real swap execution, or cross-chain swap execution yet
 - Universal dApp bridge now includes `window.ethereum` compatibility in the extension for common EVM wallet methods, and approved EVM sign/transaction requests can execute inside the extension after an explicit signer-confirmation step; WalletConnect relay, WalletConnect execution, and broader non-EVM provider execution still remain disabled
 

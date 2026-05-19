@@ -16,6 +16,11 @@ import {
   getEvmAddressFromMnemonic,
   getRpcUrl,
   isValidSolanaAddress,
+  buildSolanaExplorerAddressUrl,
+  buildSolanaExplorerTxUrl,
+  createSolanaSendDraft,
+  formatLamports,
+  parseSolanaAmountToLamports,
   SendDraftEngine,
   validateWalletMnemonic,
 } from "./index";
@@ -131,6 +136,53 @@ describe("wallet-core", () => {
 
   it("rejects invalid Solana address", () => {
     expect(isValidSolanaAddress("not-a-solana-address")).toBe(false);
+  });
+
+  it("validates Solana addresses through the live wallet helper", () => {
+    expect(isValidSolanaAddress("11111111111111111111111111111111")).toBe(true);
+    expect(isValidSolanaAddress("bad-address")).toBe(false);
+  });
+
+  it("parses and formats SOL lamport amounts", () => {
+    expect(parseSolanaAmountToLamports({ amountFormatted: "1.25" })).toBe(1_250_000_000n);
+    expect(formatLamports(1_250_000_000n)).toBe("1.25");
+  });
+
+  it("builds Solana explorer URLs", () => {
+    expect(buildSolanaExplorerTxUrl("abc 123")).toBe("https://solscan.io/tx/abc%20123");
+    expect(buildSolanaExplorerAddressUrl("11111111111111111111111111111111")).toBe(
+      "https://solscan.io/account/11111111111111111111111111111111",
+    );
+  });
+
+  it("validates Solana send drafts", async () => {
+    const draft = await createSolanaSendDraft({
+      fromAddress: "11111111111111111111111111111111",
+      toAddress: "bad-address",
+      amountFormatted: "0",
+      balanceLamports: "10000",
+      estimatedFeeLamports: "5000",
+    });
+
+    expect(draft.canBroadcast).toBe(false);
+    expect(draft.errors).toEqual(expect.arrayContaining([
+      "Invalid Solana recipient address.",
+      "Amount must be greater than zero.",
+    ]));
+  });
+
+  it("creates valid Solana send drafts when balance covers amount and fee", async () => {
+    const draft = await createSolanaSendDraft({
+      fromAddress: "11111111111111111111111111111111",
+      toAddress: "11111111111111111111111111111111",
+      amountFormatted: "0.000001",
+      balanceLamports: "10000",
+      estimatedFeeLamports: "5000",
+    });
+
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canBroadcast).toBe(true);
+    expect(draft.amountRaw).toBe("1000");
   });
 
   it("does not leak mnemonic in encrypted payload", async () => {
@@ -365,7 +417,7 @@ describe("wallet-core", () => {
     expect(draft.errors.some((item) => item.includes("Insufficient balance"))).toBe(true);
   });
 
-  it("returns coming soon draft for Solana", async () => {
+  it("returns supported draft for Solana", async () => {
     const registry = createDefaultAdapterRegistry();
     const engine = new SendDraftEngine(registry);
 
@@ -399,8 +451,8 @@ describe("wallet-core", () => {
       },
     });
 
-    expect(draft.supportStatus).toBe("coming_soon");
-    expect(draft.canBroadcast).toBe(false);
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canBroadcast).toBe(true);
   });
 
   it("returns skeleton draft for Tron", async () => {

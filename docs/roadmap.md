@@ -2,7 +2,7 @@
 
 1. Universal adapter contract completion for send, history, swap, and dapp capabilities
 2. EVM adapter expansion: universal swap + dapp session/signing on top of the existing live send path
-3. Solana adapter completion: broadcast, history, swap, and dapp capabilities inside the same universal shell
+3. Solana adapter completion: SPL transfer, history, swap, and broader dapp capabilities on top of the live SOL balance/send MVP
 4. Tron adapter completion: derive, balances, send, history, swap, and dapp capability rollout
 5. Bitcoin/UTXO adapter completion: derive, balances, send, history, and asset-safe action gating
 6. TON and next-family adapter onboarding through the same adapter contract

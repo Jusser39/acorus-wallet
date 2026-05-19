@@ -37,7 +37,7 @@ describe("frontend universal send draft", () => {
     expect(draft.canProceed).toBe(true);
   });
 
-  it("returns coming soon for Solana draft", async () => {
+  it("returns supported for Solana draft", async () => {
     const draft = await createUniversalSendDraft({
       family: "solana",
       chainId: 101,
@@ -68,7 +68,7 @@ describe("frontend universal send draft", () => {
       },
     });
 
-    expect(draft.supportStatus).toBe("coming_soon");
-    expect(draft.canBroadcast).toBe(false);
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canBroadcast).toBe(true);
   });
 });

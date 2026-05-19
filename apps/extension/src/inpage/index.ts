@@ -92,6 +92,7 @@ type AcorusSimpleChainProvider = {
 type AcorusSolanaProvider = AcorusSimpleChainProvider & {
   readonly isPhantom: false;
   readonly publicKey: { toString(): string } | null;
+  readonly isConnected: boolean;
   disconnect(): Promise<void>;
   signMessage(message: Uint8Array | string): Promise<unknown>;
 };
@@ -555,8 +556,14 @@ function createSolanaProvider(): AcorusSolanaProvider {
           }
         : null;
     },
+    get isConnected() {
+      return Boolean(this.publicKey);
+    },
     async connect() {
       const accounts = await requestFamilyAccounts("solana");
+      window.dispatchEvent(new CustomEvent("acorusSolana#connect", {
+        detail: { publicKey: accounts[0] ?? null },
+      }));
       return {
         publicKey: accounts[0],
         address: accounts[0],
@@ -565,6 +572,7 @@ function createSolanaProvider(): AcorusSolanaProvider {
     },
     async disconnect() {
       await requestBridgeMethod("acorus_revokePermissions", []);
+      window.dispatchEvent(new Event("acorusSolana#disconnect"));
     },
     async signMessage(message) {
       return requestBridgeMethod("acorus_signMessage", [

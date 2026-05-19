@@ -8,6 +8,8 @@ describe("ExtensionSmokeClient", () => {
 
     expect(screen.getByText("Manual dApp provider harness")).toBeTruthy();
     expect(screen.getByText("window.ethereum")).toBeTruthy();
+    expect(screen.getByText("Solana diagnostics")).toBeTruthy();
+    expect(screen.getByText("Solana connect")).toBeTruthy();
     expect(screen.getAllByText("missing").length).toBeGreaterThan(0);
   });
 });

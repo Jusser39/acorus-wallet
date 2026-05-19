@@ -125,6 +125,17 @@ export type DappRequestReviewDetails =
       symbol: string;
       decimals: number | null;
       riskLabels: string[];
+    }
+  | {
+      kind: "multichain_send";
+      family: ChainFamily;
+      chainId: ChainId | null;
+      fromAddress: string;
+      toAddress: string;
+      assetSymbol: string;
+      amountFormatted: string;
+      estimatedFeeFormatted?: string | null;
+      riskLabels: string[];
     };
 
 export type DappApprovalResult = {
