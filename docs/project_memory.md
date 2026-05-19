@@ -1174,3 +1174,28 @@
   - Permit2 execution is still not implemented in this wave
   - Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swap providers remain out of scope
 
+## Token Detail Explore Swap Surface (2026-05-20)
+
+- Status: **implemented locally, full workspace validation passed**
+- GitHub baseline was fast-forwarded from `0a4fd03` to `099b0ca` before editing, preserving the newer production 0x activation commits.
+- Official docs reviewed:
+  - 0x Swap API AllowanceHolder flow: `/swap/allowance-holder/price`, allowance, `/swap/allowance-holder/quote`, then wallet transaction execution.
+  - Uniswap Swapping API high-level flow: approval check, quote, and signed transaction/order flow.
+- Implemented Explore internal routing so token cards now open Acorus token detail pages.
+- Added token route helpers for EVM contracts, Solana/DexScreener chain keys, native symbols, and skeleton BTC/TRON/TON pages.
+- Reworked the token detail page into a trading detail surface with price, market metrics, risk notes, hoverable chart, interval controls, and embedded EVM 0x swap composer.
+- Extended market chart range support to `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`.
+- Non-EVM token pages remain honest: discovery/detail works, swap execution is gated until the relevant adapter wave.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/web test -- lib/token-routes.test.ts`
+  - `pnpm --filter @acorus/api test -- src/api.test.ts`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+

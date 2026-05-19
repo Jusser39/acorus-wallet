@@ -19,7 +19,7 @@ export type MarketDataSourceStatus =
   | "fallback_mock"
   | "unavailable";
 
-export type ChartRange = "1D" | "7D" | "1M" | "3M" | "1Y";
+export type ChartRange = "1H" | "1D" | "1W" | "1M" | "1Y" | "ALL";
 
 export type RiskLevel = "low" | "medium" | "high" | "unknown";
 

@@ -13,7 +13,7 @@ export type MarketPriceRequest = {
 };
 
 export type MarketChartRequest = MarketPriceRequest & {
-  range: "1D" | "7D" | "1M" | "3M" | "1Y";
+  range: "1H" | "1D" | "1W" | "1M" | "1Y" | "ALL";
 };
 
 /** Minimal discovery payload returned by a provider's discoverToken method. */
@@ -151,14 +151,8 @@ export class MockMarketDataProvider implements MarketDataProvider {
   async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
     const now = Date.now();
     const basePrice = priceFor(request.symbol, request.currency);
-    const pointsCount =
-      request.range === "1D" ? 24 : request.range === "7D" ? 28 : 30;
-    const stepMs =
-      request.range === "1D"
-        ? 60 * 60 * 1000
-        : request.range === "7D"
-          ? 6 * 60 * 60 * 1000
-          : 24 * 60 * 60 * 1000;
+    const pointsCount = getMockChartPointCount(request.range);
+    const stepMs = getMockChartStepMs(request.range);
 
     const seed = request.symbol
       .split("")
@@ -242,6 +236,40 @@ export class MockMarketDataProvider implements MarketDataProvider {
       riskLevel: "unknown",
       riskFlags: ["fallback"],
     }));
+  }
+}
+
+function getMockChartPointCount(range: MarketChartRequest["range"]): number {
+  switch (range) {
+    case "1H":
+      return 30;
+    case "1D":
+      return 24;
+    case "1W":
+      return 28;
+    case "1M":
+      return 30;
+    case "1Y":
+      return 52;
+    case "ALL":
+      return 60;
+  }
+}
+
+function getMockChartStepMs(range: MarketChartRequest["range"]): number {
+  switch (range) {
+    case "1H":
+      return 2 * 60 * 1000;
+    case "1D":
+      return 60 * 60 * 1000;
+    case "1W":
+      return 6 * 60 * 60 * 1000;
+    case "1M":
+      return 24 * 60 * 60 * 1000;
+    case "1Y":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "ALL":
+      return 30 * 24 * 60 * 60 * 1000;
   }
 }
 

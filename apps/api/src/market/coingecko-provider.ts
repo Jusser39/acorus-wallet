@@ -20,12 +20,13 @@ const COINGECKO_PLATFORM_MAP: Record<number, string> = {
   43114: "avalanche",
 };
 
-const RANGE_TO_DAYS: Record<"1D" | "7D" | "1M" | "3M" | "1Y", string> = {
+const RANGE_TO_DAYS: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", string> = {
+  "1H": "1",
   "1D": "1",
-  "7D": "7",
+  "1W": "7",
   "1M": "30",
-  "3M": "90",
   "1Y": "365",
+  ALL: "max",
 };
 
 // Major symbol to CoinGecko ID mappings

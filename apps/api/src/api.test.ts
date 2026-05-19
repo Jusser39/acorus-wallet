@@ -238,7 +238,7 @@ describe("api", () => {
 
     const chartResponse = await app.inject({
       method: "GET",
-      url: "/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=7D",
+      url: "/api/market/chart?chainId=101&currency=USD&symbol=SOL&range=1W",
     });
 
     expect(chartResponse.statusCode).toBe(200);
@@ -279,7 +279,7 @@ describe("api", () => {
   it("market chart returns cache-first sourceStatus", async () => {
     const first = await app.inject({
       method: "GET",
-      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D",
+      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=1W",
     });
     expect(first.statusCode).toBe(200);
     expect(first.json()).toMatchObject({
@@ -291,7 +291,7 @@ describe("api", () => {
 
     const second = await app.inject({
       method: "GET",
-      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=7D",
+      url: "/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=1W",
     });
     expect(second.statusCode).toBe(200);
     expect(second.json()).toMatchObject({
@@ -300,6 +300,25 @@ describe("api", () => {
         sourceStatus: "cached",
       },
     });
+  });
+
+  it("market chart accepts token-page intervals", async () => {
+    for (const range of ["1H", "1D", "1W", "1M", "1Y", "ALL"]) {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/market/chart?chainId=1&currency=USD&symbol=ETH&range=${range}`,
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({
+        ok: true,
+        chart: {
+          range,
+          points: expect.any(Array),
+        },
+      });
+      expect(res.json().chart.points.length).toBeGreaterThan(0);
+    }
   });
 
   it("discover-token returns ok:true with null-or-object", async () => {

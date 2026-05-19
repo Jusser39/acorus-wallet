@@ -32,11 +32,17 @@ type TokenOption = {
 export function SwapComposer(props: {
   portfolioAssets?: AssetBalance[];
   userAddress?: string | null;
+  initialChainId?: number;
+  initialSellToken?: string;
+  initialBuyToken?: string;
+  compact?: boolean;
+  title?: string;
+  description?: string;
 }) {
   const [status, setStatus] = useState<EvmSwapStatus | null>(null);
-  const [chainId, setChainId] = useState(1);
-  const [sellToken, setSellToken] = useState("native");
-  const [buyToken, setBuyToken] = useState("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+  const [chainId, setChainId] = useState(props.initialChainId ?? 1);
+  const [sellToken, setSellToken] = useState(props.initialSellToken ?? "native");
+  const [buyToken, setBuyToken] = useState(props.initialBuyToken ?? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   const [sellAmount, setSellAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(50);
   const [approvalMode, setApprovalMode] = useState<"exact" | "infinite">("exact");
@@ -73,11 +79,22 @@ export function SwapComposer(props: {
 
   useEffect(() => {
     const nextTokens = buildEvmTokenOptions(chainId, props.portfolioAssets);
-    setSellToken(nextTokens[0]?.value ?? "native");
-    setBuyToken(nextTokens[1]?.value ?? nextTokens[0]?.value ?? "native");
+    const nextSellToken = resolveInitialTokenValue(
+      nextTokens,
+      props.initialSellToken,
+      props.initialBuyToken ?? nextTokens[1]?.value,
+    ) ?? nextTokens[0]?.value ?? "native";
+    const nextBuyToken = resolveInitialTokenValue(
+      nextTokens,
+      props.initialBuyToken,
+      nextSellToken,
+    ) ?? nextTokens.find((token) => token.value.toLowerCase() !== nextSellToken.toLowerCase())?.value ?? nextSellToken;
+
+    setSellToken(nextSellToken);
+    setBuyToken(nextBuyToken);
     setQuote(null);
     setError(null);
-  }, [chainId, props.portfolioAssets]);
+  }, [chainId, props.portfolioAssets, props.initialBuyToken, props.initialSellToken]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -318,17 +335,17 @@ export function SwapComposer(props: {
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center">
+    <div className={props.compact ? "grid gap-5" : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"}>
       <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
         <div className="px-3 pt-3">
           <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
             0x EVM swap
           </span>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-            Swap with Acorus extension
+            {props.title ?? "Swap with Acorus extension"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Quotes stay backend-only, approvals stay wallet-only, and extension execution stays explicit.
+            {props.description ?? "Quotes stay backend-only, approvals stay wallet-only, and extension execution stays explicit."}
           </p>
         </div>
 
@@ -562,6 +579,22 @@ function buildEvmTokenOptions(
   }
 
   return Array.from(byValue.values());
+}
+
+function resolveInitialTokenValue(
+  tokens: TokenOption[],
+  preferred?: string,
+  avoid?: string,
+): string | null {
+  const byPreferred = preferred
+    ? tokens.find((token) => token.value.toLowerCase() === preferred.toLowerCase())
+    : null;
+
+  if (byPreferred && byPreferred.value.toLowerCase() !== avoid?.toLowerCase()) {
+    return byPreferred.value;
+  }
+
+  return tokens.find((token) => token.value.toLowerCase() !== avoid?.toLowerCase())?.value ?? null;
 }
 
 function parseChainId(value: string | number | null): number | null {

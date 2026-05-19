@@ -523,7 +523,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   // ---- User Tokens ----
   const fiatCurrencySchema = z.enum(["USD", "EUR", "RUB"]);
-  const chartRangeSchema = z.enum(["1D", "7D", "1M", "3M", "1Y"]);
+  const chartRangeSchema = z.enum(["1H", "1D", "1W", "1M", "1Y", "ALL"]);
 
   const createUserTokenSchema = z.object({
     userId: z.string().min(1),
@@ -713,7 +713,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         currency: fiatCurrencySchema.default("USD"),
         symbol: z.string().min(1),
         tokenAddress: z.string().optional(),
-        range: chartRangeSchema.default("7D"),
+        range: chartRangeSchema.default("1W"),
       })
       .parse(request.query);
 
