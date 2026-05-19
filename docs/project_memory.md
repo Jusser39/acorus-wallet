@@ -1198,4 +1198,10 @@
   - `pnpm test`
   - `pnpm build`
   - `git diff --check`
+- Production deployed:
+  - commit `3dfc9cb70357c97206a430b0cdf17429964359eb`
+  - backup `/root/backups/acorus-token-pages-deploy_20260519_232021`
+  - Docker Compose `api`, `web`, and `nginx` rebuilt/recreated
+  - `https://24wallet.ru/explore`, EVM token page, Solana token page, `range=ALL` chart API, and 0x status were verified
+  - `https://bstcrm.ru/healthz` still returned `200` with GET
 

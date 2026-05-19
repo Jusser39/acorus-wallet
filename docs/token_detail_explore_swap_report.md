@@ -32,6 +32,20 @@ Date: 2026-05-20
 
 Note: one parallel build attempt hit a Windows `EPERM` file-lock while two builds cleaned `packages/wallet-core/dist`; the same builds passed when rerun sequentially.
 
+## Production Deploy
+
+- Commit deployed: `3dfc9cb70357c97206a430b0cdf17429964359eb`.
+- Server backup path: `/root/backups/acorus-token-pages-deploy_20260519_232021`.
+- Deployment method: uploaded a git archive to the VPS, extracted it over `/opt/acorus-wallet-release-current`, then rebuilt/recreated Docker Compose `api`, `web`, and `nginx`.
+- Production checks passed:
+  - `https://24wallet.ru` returned `200`.
+  - `https://24wallet.ru/explore` returned `200`.
+  - `https://24wallet.ru/tokens/1/native?family=evm&symbol=ETH&name=Ethereum` returned `200`.
+  - `https://24wallet.ru/tokens/101/NATIVE?family=solana&symbol=SOL&name=Solana` returned `200`.
+  - `https://24wallet.ru/api/market/chart?...&range=ALL` returned `ok:true`.
+  - `https://24wallet.ru/api/swap/evm/status` returned `configured:true`.
+  - `https://bstcrm.ru/healthz` returned `200` with GET.
+
 ## Known Limits
 
 - Token-page swap is still 0x/EVM only.
