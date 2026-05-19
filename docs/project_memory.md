@@ -1049,9 +1049,16 @@
 
 ## EVM 0x Production Hardening Wave (2026-05-19)
 
-- Status: **implemented locally, validated locally, production activation prepared, live quotes still blocked by missing VPS key**
+- Status: **implemented, validated, deployed to VPS, production activation prepared, live quotes still blocked by missing VPS key**
 - Public production status currently remains:
   - `https://24wallet.ru/api/swap/evm/status` → `configured:false`
+- Deployment status:
+  - commit `e0a16d5`
+  - pushed to `origin/main`
+  - VPS `api` and `web` rebuilt/recreated from `/opt/acorus-wallet-release-current`
+  - `https://24wallet.ru`, `/health`, and `/extension-smoke` return `200`
+  - `https://24wallet.ru/api/swap/evm/0x/price?...` still correctly returns `503`
+  - `https://bstcrm.ru/healthz` still returns `200`
 - Planning documents:
   - `docs/evm_0x_swap_production_hardening_plan.md`
   - `docs/evm_0x_production_activation_plan.md`
@@ -1087,6 +1094,14 @@
   - `pnpm --filter @acorus/extension build`
   - `pnpm --filter @acorus/web test`
   - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
 - Current production blocker:
   - `ZEROX_API_KEY` was not found on VPS, so activation is correctly blocked until that env var is added
 

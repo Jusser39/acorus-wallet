@@ -2,8 +2,8 @@
 
 ## Result
 
-Production activation is **prepared but not fully enabled**.
-The codebase now supports `ZEROX_*` env pass-through and production-safe 0x hardening, but live 0x quotes on `24wallet.ru` remain blocked because `ZEROX_API_KEY` is still missing on VPS.
+Production activation is **deployed and prepared, but not fully enabled**.
+The codebase now supports `ZEROX_*` env pass-through and production-safe 0x hardening on `24wallet.ru`, but live 0x quotes remain blocked because `ZEROX_API_KEY` is still missing on VPS.
 
 ## Verified production status
 
@@ -28,6 +28,19 @@ The codebase now supports `ZEROX_*` env pass-through and production-safe 0x hard
   - `ZEROX_RATE_LIMIT_PER_MINUTE`
 - `.env.example` now documents the same 0x env contract
 - `docs/production_0x_env_setup.md` added exact VPS setup steps
+
+## Deployment status
+
+- deployed commit: `e0a16d5`
+- `docker compose --env-file .env -f infra/docker-compose.yml build api web`
+- `docker compose --env-file .env -f infra/docker-compose.yml up -d api web`
+- public checks after deploy:
+  - `https://24wallet.ru` → `200`
+  - `https://24wallet.ru/health` → `200`
+  - `https://24wallet.ru/api/swap/evm/status` → `configured:false`
+  - `https://24wallet.ru/api/swap/evm/0x/price?...` → `503`
+  - `https://24wallet.ru/extension-smoke` → `200`
+  - `https://bstcrm.ru/healthz` → `200`
 
 ## Current limitation
 

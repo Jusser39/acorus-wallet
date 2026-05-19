@@ -493,3 +493,8 @@
    - `pnpm --filter @acorus/extension build`
    - `pnpm --filter @acorus/web test`
    - `pnpm --filter @acorus/web build`
+238. Completed the full hardening validation pass: `pnpm --filter @acorus/shared build`, `pnpm --filter @acorus/wallet-core build`, `pnpm --filter @acorus/wallet-core test`, `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/extension build`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm test`, `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
+239. Committed the hardening wave as `e0a16d5` with message `Harden and activate EVM 0x swap flow`.
+240. Deployed commit `e0a16d5` to `/opt/acorus-wallet-release-current`, rebuilt only `api` and `web`, and verified public production health without touching the separate CRM stack.
+241. Public smoke after deploy passed: `https://24wallet.ru` returned `200`, `/health` returned `200`, `/api/swap/evm/status` returned `configured:false`, `/api/swap/evm/0x/price?...` returned `503` as expected without a key, `/extension-smoke` returned `200`, and `https://bstcrm.ru/healthz` still returned `200`.
+242. Pushed commit `e0a16d5` to `origin/main` so GitHub now matches the deployed hardening wave.
