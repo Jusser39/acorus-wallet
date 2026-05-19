@@ -1,4 +1,10 @@
-import { EVM_CHAINS, getEvmChainConfig } from "@acorus/shared";
+import {
+  buildNativeEvmTokenMetadata,
+  EVM_CHAINS,
+  getCuratedEvmTokenMetadata,
+  getEvmChainConfig,
+  type EvmTokenMetadata,
+} from "@acorus/shared";
 import type {
   EvmSwapApprovalTx,
   EvmSwapIssues,
@@ -7,6 +13,7 @@ import type {
   EvmSwapRouteSummary,
   EvmSwapTokenRef,
 } from "@acorus/shared";
+import { readEvmTokenMetadata } from "@acorus/wallet-core";
 import type { ApiEnv } from "../env";
 
 export type ZeroXQuery = {
@@ -70,14 +77,16 @@ export class ZeroXSwapService {
     this.assertReady(clientKey);
     const query = normalizeZeroXQuery(input);
     const payload = await this.fetchZeroX("price", query);
-    return mapZeroXPriceResponse(payload, query);
+    const tokens = await resolveQueryTokens(query);
+    return mapZeroXPriceResponse(payload, query, tokens);
   }
 
   async getQuote(input: ZeroXQuery, clientKey = "default"): Promise<EvmSwapQuoteResponse> {
     this.assertReady(clientKey);
     const query = normalizeZeroXQuery(input);
     const payload = await this.fetchZeroX("quote", query);
-    return mapZeroXQuoteResponse(payload, query);
+    const tokens = await resolveQueryTokens(query);
+    return mapZeroXQuoteResponse(payload, query, tokens);
   }
 
   private isConfigured(): boolean {
@@ -242,24 +251,26 @@ function normalizeToken(value: string, chainId: number, nativeSymbol: string): E
   const lower = trimmed.toLowerCase();
 
   if (NATIVE_TOKEN_ALIASES.has(lower) || lower === nativeSymbol.toLowerCase()) {
-    return {
-      chainId,
-      address: "native",
-      symbol: nativeSymbol,
-      decimals: 18,
-      name: nativeSymbol,
-    };
+    return buildNativeEvmTokenMetadata(chainId);
   }
 
   if (!HEX_ADDRESS.test(trimmed)) {
     throw new ZeroXSwapError(400, "swap_bad_request", "Token must be native or an ERC-20 address.");
   }
 
+  const curated = getCuratedEvmTokenMetadata(chainId, trimmed);
+  if (curated) {
+    return curated;
+  }
+
   return {
     chainId,
     address: trimmed,
-    symbol: "ERC20",
+    symbol: `TKN-${trimmed.slice(2, 6).toUpperCase()}`,
     decimals: 18,
+    name: `Custom Token ${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`,
+    verified: false,
+    source: "user",
   };
 }
 
@@ -295,6 +306,10 @@ function mapZeroXHttpError(status: number, payload: Record<string, unknown>): Ze
 function mapZeroXPriceResponse(
   payload: Record<string, unknown>,
   query: NormalizedZeroXQuery,
+  tokens: {
+    sellToken: EvmSwapTokenRef;
+    buyToken: EvmSwapTokenRef;
+  },
 ): EvmSwapPriceResponse {
   const issues = normalizeIssues(payload.issues);
   const allowanceTarget = findAllowanceTarget(payload, issues);
@@ -304,8 +319,8 @@ function mapZeroXPriceResponse(
     approvalModel: "allowance_holder",
     mode: "price",
     chainId: query.chainId,
-    sellToken: query.sellToken,
-    buyToken: query.buyToken,
+    sellToken: tokens.sellToken,
+    buyToken: tokens.buyToken,
     sellAmountRaw: readString(payload.sellAmount) ?? query.sellAmount ?? "",
     buyAmountRaw: readString(payload.buyAmount) ?? query.buyAmount ?? "",
     price: readString(payload.price) ?? "",
@@ -322,22 +337,28 @@ function mapZeroXPriceResponse(
 function mapZeroXQuoteResponse(
   payload: Record<string, unknown>,
   query: NormalizedZeroXQuery,
+  tokens: {
+    sellToken: EvmSwapTokenRef;
+    buyToken: EvmSwapTokenRef;
+  },
 ): EvmSwapQuoteResponse {
   const issues = normalizeIssues(payload.issues);
   const transaction = normalizeRecord(payload.transaction);
   const allowanceTarget = findAllowanceTarget(payload, issues);
   const approvalRequired = Boolean(issues?.allowance?.spender ?? allowanceTarget);
   const requestId = readString(payload.zid) ?? `0x_${Date.now()}`;
+  const createdAt = new Date().toISOString();
 
   return {
     provider: "0x",
     approvalModel: "allowance_holder",
     mode: "quote",
     requestId,
+    createdAt,
     chainId: query.chainId,
     takerAddress: query.taker,
-    sellToken: query.sellToken,
-    buyToken: query.buyToken,
+    sellToken: tokens.sellToken,
+    buyToken: tokens.buyToken,
     sellAmountRaw: readString(payload.sellAmount) ?? query.sellAmount ?? "",
     buyAmountRaw: readString(payload.buyAmount) ?? query.buyAmount ?? "",
     minBuyAmountRaw: readString(payload.minBuyAmount),
@@ -356,7 +377,7 @@ function mapZeroXQuoteResponse(
     estimatedPriceImpact: readString(payload.estimatedPriceImpact),
     price: readString(payload.price),
     rawSafeSubset: buildSafeSubset(payload, issues),
-    expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    expiresAt: new Date(Date.now() + 45_000).toISOString(),
   };
 }
 
@@ -382,6 +403,39 @@ function buildApproval(
     requiredAllowanceRaw: issues?.allowance?.requiredAllowanceRaw ?? query.sellAmount ?? null,
     tx: null,
   };
+}
+
+async function resolveQueryTokens(
+  query: NormalizedZeroXQuery,
+): Promise<{
+  sellToken: EvmSwapTokenRef;
+  buyToken: EvmSwapTokenRef;
+}> {
+  const envForRpc = process.env as Record<string, string | undefined>;
+  const [sellToken, buyToken] = await Promise.all([
+    resolveSwapTokenMetadata(query.sellToken, envForRpc),
+    resolveSwapTokenMetadata(query.buyToken, envForRpc),
+  ]);
+
+  return { sellToken, buyToken };
+}
+
+async function resolveSwapTokenMetadata(
+  token: EvmSwapTokenRef,
+  env: Record<string, string | undefined>,
+): Promise<EvmSwapTokenRef> {
+  if (token.address === "native") {
+    return buildNativeEvmTokenMetadata(token.chainId);
+  }
+
+  const metadata = await readEvmTokenMetadata({
+    chainId: token.chainId,
+    tokenAddress: token.address,
+    env,
+    userToken: token as EvmTokenMetadata,
+  });
+
+  return metadata;
 }
 
 function normalizeIssues(value: unknown): EvmSwapIssues | null {

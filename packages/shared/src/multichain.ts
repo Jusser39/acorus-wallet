@@ -254,6 +254,8 @@ export type EvmSwapTokenRef = {
   decimals: number;
   name?: string;
   logoUrl?: string | null;
+  verified?: boolean;
+  source?: "native" | "curated" | "watched" | "onchain" | "user";
 };
 
 export type EvmSwapAmountRequest =
@@ -346,6 +348,7 @@ export type EvmSwapQuoteResponse = {
   approvalModel: EvmSwapApprovalModel;
   mode: "quote";
   requestId: string;
+  createdAt: string;
   chainId: number;
   takerAddress: string;
   sellToken: EvmSwapTokenRef;

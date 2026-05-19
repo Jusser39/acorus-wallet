@@ -474,3 +474,22 @@
 223. Checked production `.env` without printing secrets: `ZEROX_API_KEY` is currently not configured on the VPS, so the deployed 0x status must remain `configured:false`.
 224. Deployed the pushed archive to `/opt/acorus-wallet-release-current`, rebuilt/recreated the Docker Compose web/API services, and verified `acorus-api` is healthy.
 225. Production checks after deploy: `https://24wallet.ru/api/swap/evm/status` returns provider `0x` with `configured:false`, the price route returns expected `503 swap_provider_not_configured`, `/extension-smoke` contains the `EVM 0x swap diagnostics` marker, `/api/market/prices` still returns `200 OK`, and canonical HTTPS remains `200 OK`.
+226. Started the 0x production hardening wave from GitHub head `0a4fd03`, completed a read-only audit of backend 0x proxy, env/logger wiring, extension approval queue, popup swap surface, web `/swap`, `/extension-smoke`, and memory/docs before changing code.
+227. Verified production and VPS env state without exposing secrets: `https://24wallet.ru/api/swap/evm/status` returns `configured:false`, no `ZEROX_API_KEY` was found in the active Acorus release env files under `/opt/acorus-wallet-release-current` or prior `/opt/acorus-wallet-release-*` directories, and current wallet containers remain healthy.
+228. Added `docs/evm_0x_swap_production_hardening_plan.md` plus SQL todo tracking for env activation, metadata hardening, allowance/quote locking, and swap history/deploy work.
+229. Added shared EVM swap helpers in `packages/shared/src/evm-swap.ts` for decimal-safe amount parsing/formatting, native/curated token metadata, and shorthand display formatting, then added unit coverage in `packages/shared/src/evm-swap.test.ts`.
+230. Extended wallet-core token metadata resolution with curated/on-chain/user fallback behavior and safe timeout/fallback handling for custom ERC-20 metadata lookups.
+231. Hardened backend 0x responses so token refs now resolve to native/curated/custom metadata, quote payloads include `createdAt`, and quote expiry is shortened for extension freshness handling.
+232. Fixed production env wiring by passing `ZEROX_*` variables through `infra/docker-compose.yml`, documented them in `.env.example`, and added `docs/production_0x_env_setup.md` plus `docs/evm_0x_live_quote_smoke_report.md` because live smoke is blocked until a real key is provisioned.
+233. Added extension-side safe swap/approval activity storage, surfaced it in popup Activity, enriched approval/swap review cards with formatted allowance and quote details, and added deterministic calldata-hash locking plus trusted-source enforcement before extension swap execution.
+234. Upgraded web `/swap` to formatted token amounts, explicit approval queueing via the extension, quote countdown, wrong-chain switching, approval mode selection, and local recent activity history.
+235. Expanded `/extension-smoke` with live 0x quote diagnostics, last chain id, and last error code without exposing secrets.
+236. Added and updated docs for this wave: production activation plan/report, allowance hardening report, swap history report, security model, manual smoke, API docs, roadmap, README, and project memory.
+237. Re-ran local validation for the hardening wave:
+   - `pnpm --filter @acorus/shared test`
+   - `pnpm --filter @acorus/wallet-core test`
+   - `pnpm --filter @acorus/api test`
+   - `pnpm --filter @acorus/extension test`
+   - `pnpm --filter @acorus/extension build`
+   - `pnpm --filter @acorus/web test`
+   - `pnpm --filter @acorus/web build`

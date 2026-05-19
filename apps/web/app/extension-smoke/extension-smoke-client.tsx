@@ -52,6 +52,8 @@ export function ExtensionSmokeClient() {
     provider?: string;
     supportedChains?: number[];
   } | null>(null);
+  const [lastChainId, setLastChainId] = useState<string | null>(null);
+  const [lastErrorCode, setLastErrorCode] = useState<string | null>(null);
   const [swapSellToken, setSwapSellToken] = useState("ETH");
   const [swapBuyToken, setSwapBuyToken] = useState("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   const [swapTaker, setSwapTaker] = useState("");
@@ -91,6 +93,10 @@ export function ExtensionSmokeClient() {
   }, []);
 
   function refreshDiagnostics() {
+    const location = window.location ?? {
+      protocol: "unknown:",
+      origin: "unknown",
+    };
     setProviders({
       ethereum: Boolean(window.ethereum?.request),
       acorus: Boolean(window.acorus),
@@ -98,10 +104,10 @@ export function ExtensionSmokeClient() {
       tronLink: Boolean(window.tronLink),
     });
     setSecurity({
-      protocol: window.location.protocol,
-      origin: window.location.origin,
+      protocol: location.protocol,
+      origin: location.origin,
       secureContext: window.isSecureContext,
-      status: window.location.protocol === "https:" && window.isSecureContext
+      status: location.protocol === "https:" && window.isSecureContext
         ? "secure"
         : "insecure",
     });
@@ -114,8 +120,12 @@ export function ExtensionSmokeClient() {
   async function run(label: string, method: string, params?: unknown[]) {
     try {
       const result = await window.ethereum?.request?.({ method, params });
+      if (method === "eth_chainId" && typeof result === "string") {
+        setLastChainId(result);
+      }
       appendResult({ label, ok: true, output: stringify(result) });
     } catch (error) {
+      setLastErrorCode(extractErrorCode(error));
       appendResult({ label, ok: false, output: stringifyError(error) });
     }
   }
@@ -152,6 +162,8 @@ export function ExtensionSmokeClient() {
       results,
       solanaCapabilities,
       swapStatus,
+      lastChainId,
+      lastErrorCode,
     };
 
     await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
@@ -181,9 +193,31 @@ export function ExtensionSmokeClient() {
       });
       const response = await fetch(`/api/swap/evm/0x/price?${params.toString()}`);
       const payload = await response.json();
+      setLastErrorCode(response.ok ? null : extractErrorCode(payload));
       appendResult({ label: "0x price", ok: response.ok, output: stringify(payload) });
     } catch (error) {
+      setLastErrorCode(extractErrorCode(error));
       appendResult({ label: "0x price", ok: false, output: stringifyError(error) });
+    }
+  }
+
+  async function runSwapQuote() {
+    try {
+      const params = new URLSearchParams({
+        chainId: "1",
+        sellToken: swapSellToken,
+        buyToken: swapBuyToken,
+        sellAmount: swapAmount,
+        taker: swapTaker,
+        slippageBps: "50",
+      });
+      const response = await fetch(`/api/swap/evm/0x/quote?${params.toString()}`);
+      const payload = await response.json();
+      setLastErrorCode(response.ok ? null : extractErrorCode(payload));
+      appendResult({ label: "0x quote", ok: response.ok, output: stringify(payload) });
+    } catch (error) {
+      setLastErrorCode(extractErrorCode(error));
+      appendResult({ label: "0x quote", ok: false, output: stringifyError(error) });
     }
   }
 
@@ -340,6 +374,16 @@ export function ExtensionSmokeClient() {
           <span className="font-semibold text-white">Status: </span>
           <span className="font-mono text-xs">{stringify(swapStatus)}</span>
         </div>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          <div className="flex justify-between gap-3">
+            <span>Last chainId</span>
+            <span className="font-mono text-xs">{lastChainId ?? "unknown"}</span>
+          </div>
+          <div className="mt-2 flex justify-between gap-3">
+            <span>Last error code</span>
+            <span className="font-mono text-xs">{lastErrorCode ?? "none"}</span>
+          </div>
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapSellToken} onChange={(event) => setSwapSellToken(event.target.value)} placeholder="sellToken ETH or 0x..." />
           <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapBuyToken} onChange={(event) => setSwapBuyToken(event.target.value)} placeholder="buyToken 0x..." />
@@ -360,8 +404,12 @@ export function ExtensionSmokeClient() {
           >
             Test 0x price
           </button>
-          <button className="button-secondary opacity-60" disabled>
-            Quote/execution smoke requires manual wallet review
+          <button
+            className="button-secondary"
+            disabled={!swapTaker}
+            onClick={() => void runSwapQuote()}
+          >
+            Test 0x quote
           </button>
         </div>
         <div className="mt-4 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 p-4 text-sm text-fuchsia-100">
@@ -457,4 +505,16 @@ function stringifyError(error: unknown): string {
   }
 
   return String(error);
+}
+
+function extractErrorCode(value: unknown): string | null {
+  if (value && typeof value === "object" && "code" in value) {
+    return String((value as { code?: unknown }).code ?? "unknown");
+  }
+
+  if (value && typeof value === "object" && "error" in value) {
+    return String((value as { error?: unknown }).error ?? "unknown");
+  }
+
+  return null;
 }

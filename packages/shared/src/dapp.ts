@@ -147,6 +147,11 @@ export type DappRequestReviewDetails =
       tokenAddress: string;
       spender: string;
       amountRaw: string;
+      amountFormatted?: string | null;
+      currentAllowanceRaw?: string | null;
+      requiredAllowanceRaw?: string | null;
+      currentAllowanceFormatted?: string | null;
+      requiredAllowanceFormatted?: string | null;
       approvalMode: "exact" | "infinite";
       riskLabels: string[];
     }
@@ -157,13 +162,18 @@ export type DappRequestReviewDetails =
       sellTokenSymbol: string;
       buyTokenSymbol: string;
       sellAmountRaw: string;
+      sellAmountFormatted?: string | null;
       buyAmountRaw: string;
+      buyAmountFormatted?: string | null;
       minBuyAmountRaw?: string | null;
+      minBuyAmountFormatted?: string | null;
       slippageBps?: number | null;
       priceImpact?: string | null;
       routeLabel: string;
       contractAddress: string;
       value: string;
+      createdAt?: string | null;
+      expiresAt?: string | null;
       riskLabels: string[];
     };
 

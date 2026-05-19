@@ -49,8 +49,10 @@
 - `GET /api/swap/evm/0x/price`
   - backend proxy for 0x AllowanceHolder indicative price
   - query: `chainId`, `sellToken`, `buyToken`, `sellAmount` or `buyAmount`, `taker`, optional `slippageBps`
+  - response resolves safer token metadata for native, curated, and custom ERC-20 refs
 - `GET /api/swap/evm/0x/quote`
   - backend proxy for 0x AllowanceHolder firm quote
   - returns a safe subset with transaction fields for explicit extension approval
+  - includes `createdAt`, `expiresAt`, approval context, and enriched token metadata
 - `GET /api/swap/evm/0x/sources`
   - provider metadata placeholder

@@ -103,6 +103,18 @@ export function requestExtensionSend(input: Record<string, unknown>): Promise<un
   return requestAcorusExtension("acorus_multichainSend", [input]);
 }
 
+export function requestExtensionEvmSendTransaction(input: Record<string, unknown>): Promise<unknown> {
+  return requestAcorusExtension("acorus_sendTransaction", [input]);
+}
+
 export function requestExtensionSwap(input: Record<string, unknown>): Promise<unknown> {
   return requestAcorusExtension("acorus_swap", [input]);
+}
+
+export function getExtensionChainId(): Promise<string | number | null> {
+  return requestAcorusExtension("acorus_chainId");
+}
+
+export function switchExtensionChain(chainId: string | number): Promise<unknown> {
+  return requestAcorusExtension("acorus_switchChain", [chainId]);
 }

@@ -7,6 +7,7 @@ import {
   getPendingDappProposal,
   getPendingDappRequest,
   hasDappPermission,
+  shortenFormattedEvmTokenAmount,
   queueDappRequest,
   type DappRequest,
   type DappRequestKind,
@@ -51,6 +52,7 @@ import {
   watchAsset,
 } from "./extension-assets";
 import { buildApprovalRiskWarning } from "./request-risk";
+import { appendExtensionActivity, listExtensionActivity } from "./swap-activity-store";
 import {
   approveProposal,
   approveRequestInQueue,
@@ -138,9 +140,10 @@ export async function handleRuntimeMessage(
     };
   }
 
-  if (input.kind === "get_state") {
-    const state = await getDappShellState();
-    const walletState = await getWalletSyncState();
+    if (input.kind === "get_state") {
+      const state = await getDappShellState();
+      const activityLog = await listExtensionActivity();
+      const walletState = await getWalletSyncState();
     const extensionVaultStatus = await getExtensionVaultStatus();
     const activeOrigin = await resolveActiveOrigin(input.origin, sender);
     const queuedSignerUnlocks = getSignerUnlockQueue();
@@ -162,6 +165,7 @@ export async function handleRuntimeMessage(
           (request) => !signerRequestIds.has(request.id),
         ),
         approvalResults: state.approvalResults,
+        activityLog,
         signerUnlockQueue: queuedSignerUnlocks,
         activeOriginBridge: activeOrigin
           ? createDappBridgeSessionView(state, activeOrigin)
@@ -291,8 +295,12 @@ export async function handleRuntimeMessage(
           chainId: input.chainId,
           tokenAddress: input.tokenAddress,
           tokenSymbol: input.tokenSymbol,
+          tokenDecimals: input.tokenDecimals,
           spender: input.spender,
           amountRaw: input.amountRaw,
+          amountFormatted: input.amountFormatted,
+          currentAllowanceRaw: input.currentAllowanceRaw,
+          requiredAllowanceRaw: input.requiredAllowanceRaw,
           approvalMode: input.approvalMode,
         }),
       };
@@ -567,6 +575,7 @@ export async function handleRuntimeMessage(
       } catch (error) {
         await rejectRequestInQueue(request.id);
         pendingProviderExecutions.delete(request.id);
+        await recordActivityFailure(request, error, "execution_failed");
         rejectPendingProviderApproval(
           request.id,
           "execution_failed",
@@ -609,6 +618,7 @@ export async function handleRuntimeMessage(
 
     if (request) {
       pendingProviderExecutions.delete(request.id);
+      await recordRejectedActivity(request);
       rejectPendingProviderApproval(
         request.id,
         "user_rejected",
@@ -667,6 +677,7 @@ export async function handleRuntimeMessage(
       await rejectRequestInQueue(intent.requestId);
       pendingProviderExecutions.delete(intent.requestId);
       pendingSignerUnlocks.delete(input.intentId);
+      await recordActivityFailure(request, error, "execution_failed");
       rejectPendingProviderApproval(
         intent.requestId,
         "execution_failed",
@@ -707,9 +718,14 @@ export async function handleRuntimeMessage(
       );
     }
 
+    const current = await getDappShellState();
+    const request = getPendingDappRequest(current, intent.requestId);
     const next = await rejectRequestInQueue(intent.requestId);
     pendingProviderExecutions.delete(intent.requestId);
     pendingSignerUnlocks.delete(input.intentId);
+    if (request) {
+      await recordRejectedActivity(request);
+    }
     rejectPendingProviderApproval(
       intent.requestId,
       "user_rejected",
@@ -1556,13 +1572,17 @@ async function executeApprovedRequest(
         }),
       });
     case "acorus_sendTransaction":
-      return createApprovedLiveDappResult(request, approvedAt, {
-        transactionHash: await executeExtensionSendTransaction({
+      {
+        const transactionHash = await executeExtensionSendTransaction({
           params: execution.params,
           chainId: request.chainId ?? null,
           account: request.account ?? null,
-        }),
-      });
+        });
+        await recordSubmittedActivity(request, transactionHash);
+        return createApprovedLiveDappResult(request, approvedAt, {
+          transactionHash,
+        });
+      }
     case "acorus_swap": {
       const payload = normalizeRecord(execution.params[0]);
       if (!payload.to || !payload.data) {
@@ -1570,21 +1590,24 @@ async function executeApprovedRequest(
       }
 
       assertFreshSwapQuote(payload);
+      assertTrustedSwapExecution(request, payload);
 
+      const transactionHash = await executeExtensionSendTransaction({
+        params: [{
+          from: request.account,
+          to: payload.to,
+          data: payload.data,
+          value: payload.value ?? "0x0",
+          gas: payload.gas,
+          gasPrice: payload.gasPrice,
+          chainId: request.chainId,
+        }],
+        chainId: request.chainId ?? null,
+        account: request.account ?? null,
+      });
+      await recordSubmittedActivity(request, transactionHash);
       return createApprovedLiveDappResult(request, approvedAt, {
-        transactionHash: await executeExtensionSendTransaction({
-          params: [{
-            from: request.account,
-            to: payload.to,
-            data: payload.data,
-            value: payload.value ?? "0x0",
-            gas: payload.gas,
-            gasPrice: payload.gasPrice,
-            chainId: request.chainId,
-          }],
-          chainId: request.chainId ?? null,
-          account: request.account ?? null,
-        }),
+        transactionHash,
       });
     }
     case "acorus_multichainSend": {
@@ -1730,8 +1753,12 @@ async function queueInternalEvmApproveTokenRequest(input: {
   chainId: number;
   tokenAddress: string;
   tokenSymbol: string;
+  tokenDecimals?: number | null;
   spender: string;
   amountRaw: string;
+  amountFormatted?: string | null;
+  currentAllowanceRaw?: string | null;
+  requiredAllowanceRaw?: string | null;
   approvalMode: "exact" | "infinite";
 }): Promise<{ requestId: string; queued: true }> {
   const vaultStatus = await getExtensionVaultStatus();
@@ -1793,12 +1820,36 @@ async function queueInternalEvmApproveTokenRequest(input: {
       tokenAddress: input.tokenAddress,
       spender: input.spender,
       amountRaw: tx.amountRaw,
+      amountFormatted: input.amountFormatted ?? formatApprovalAmount(input, tx.amountRaw),
+      currentAllowanceRaw: input.currentAllowanceRaw ?? null,
+      requiredAllowanceRaw: input.requiredAllowanceRaw ?? input.amountRaw,
+      currentAllowanceFormatted: formatOptionalAllowance(
+        input.currentAllowanceRaw,
+        input.tokenDecimals,
+      ),
+      requiredAllowanceFormatted: formatOptionalAllowance(
+        input.requiredAllowanceRaw ?? input.amountRaw,
+        input.tokenDecimals,
+      ),
       approvalMode: input.approvalMode,
       riskLabels: tx.riskLabels,
     },
   });
 
   await setDappShellState(queued.snapshot);
+  await appendExtensionActivity({
+    id: `${queued.request.id}_approval_requested`,
+    kind: "approval_requested",
+    provider: "0x",
+    chainId: input.chainId,
+    account: profile.account,
+    tokenSymbol: input.tokenSymbol,
+    amountFormatted: input.amountFormatted ?? formatApprovalAmount(input, tx.amountRaw),
+    approvalMode: input.approvalMode,
+    status: "queued",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
   pendingProviderExecutions.set(queued.request.id, {
     method: "acorus_sendTransaction",
     params: providerParams,
@@ -1854,9 +1905,13 @@ async function queueInternalEvmSwapRequest(input: {
   const providerParams = [{
     provider: "0x",
     quoteId: input.quote.requestId,
+    quoteSource: "acorus_backend_0x",
+    createdAt: input.quote.createdAt,
     from: profile.account,
+    takerAddress: input.quote.takerAddress,
     to: input.quote.to,
     data: input.quote.data,
+    dataHash: hashSwapData(input.quote.data),
     value: input.quote.value,
     gas: input.quote.gas,
     gasPrice: input.quote.gasPrice,
@@ -1864,6 +1919,22 @@ async function queueInternalEvmSwapRequest(input: {
     expiresAt: input.quote.expiresAt,
     sellTokenSymbol: input.quote.sellToken.symbol,
     buyTokenSymbol: input.quote.buyToken.symbol,
+    sellAmountRaw: input.quote.sellAmountRaw,
+    buyAmountRaw: input.quote.buyAmountRaw,
+    sellAmountFormatted: shortenFormattedEvmTokenAmount(
+      input.quote.sellAmountRaw,
+      input.quote.sellToken.decimals,
+    ),
+    buyAmountFormatted: shortenFormattedEvmTokenAmount(
+      input.quote.buyAmountRaw,
+      input.quote.buyToken.decimals,
+    ),
+    minBuyAmountFormatted: input.quote.minBuyAmountRaw
+      ? shortenFormattedEvmTokenAmount(
+          input.quote.minBuyAmountRaw,
+          input.quote.buyToken.decimals,
+        )
+      : null,
   }];
   const riskLabels = ["DEX aggregator", "Irreversible transaction"];
 
@@ -1891,18 +1962,54 @@ async function queueInternalEvmSwapRequest(input: {
       sellTokenSymbol: input.quote.sellToken.symbol,
       buyTokenSymbol: input.quote.buyToken.symbol,
       sellAmountRaw: input.quote.sellAmountRaw,
+      sellAmountFormatted: shortenFormattedEvmTokenAmount(
+        input.quote.sellAmountRaw,
+        input.quote.sellToken.decimals,
+      ),
       buyAmountRaw: input.quote.buyAmountRaw,
+      buyAmountFormatted: shortenFormattedEvmTokenAmount(
+        input.quote.buyAmountRaw,
+        input.quote.buyToken.decimals,
+      ),
       minBuyAmountRaw: input.quote.minBuyAmountRaw ?? null,
+      minBuyAmountFormatted: input.quote.minBuyAmountRaw
+        ? shortenFormattedEvmTokenAmount(
+            input.quote.minBuyAmountRaw,
+            input.quote.buyToken.decimals,
+          )
+        : null,
       slippageBps: input.slippageBps ?? null,
       priceImpact: input.quote.estimatedPriceImpact ?? null,
       routeLabel: input.quote.routeSummary.label,
       contractAddress: input.quote.to,
       value: input.quote.value,
+      createdAt: input.quote.createdAt,
+      expiresAt: input.quote.expiresAt,
       riskLabels,
     },
   });
 
   await setDappShellState(queued.snapshot);
+  await appendExtensionActivity({
+    id: `${queued.request.id}_swap_requested`,
+    kind: "swap_requested",
+    provider: "0x",
+    chainId: input.quote.chainId,
+    account: profile.account,
+    sellTokenSymbol: input.quote.sellToken.symbol,
+    buyTokenSymbol: input.quote.buyToken.symbol,
+    amountFormatted: shortenFormattedEvmTokenAmount(
+      input.quote.sellAmountRaw,
+      input.quote.sellToken.decimals,
+    ),
+    buyAmountFormatted: shortenFormattedEvmTokenAmount(
+      input.quote.buyAmountRaw,
+      input.quote.buyToken.decimals,
+    ),
+    status: "queued",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
   pendingProviderExecutions.set(queued.request.id, {
     method: "acorus_swap",
     params: providerParams,
@@ -1948,6 +2055,203 @@ function assertFreshSwapQuote(payload: Record<string, unknown>): void {
 
   if (!expiresAt || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
     throw new Error("Swap quote expired. Refresh the quote before approving.");
+  }
+}
+
+function assertTrustedSwapExecution(
+  request: DappRequest,
+  payload: Record<string, unknown>,
+): void {
+  if (payload.provider !== "0x" || payload.quoteSource !== "acorus_backend_0x") {
+    throw new Error("Swap quote came from an untrusted source.");
+  }
+
+  if (Number(payload.chainId) !== Number(request.chainId)) {
+    throw new Error("Swap quote chain no longer matches the active request chain.");
+  }
+
+  if (
+    normalizeLowerHex(String(payload.from ?? "")) !== normalizeLowerHex(String(request.account ?? ""))
+    || normalizeLowerHex(String(payload.takerAddress ?? "")) !== normalizeLowerHex(String(request.account ?? ""))
+  ) {
+    throw new Error("Swap quote taker no longer matches the selected account.");
+  }
+
+  if (!isHexString(String(payload.data ?? ""))) {
+    throw new Error("Swap calldata is invalid.");
+  }
+
+  if (typeof payload.dataHash !== "string" || payload.dataHash !== hashSwapData(String(payload.data))) {
+    throw new Error("Swap calldata changed after quote creation.");
+  }
+}
+
+function hashSwapData(value: string): string {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return `fnv1a_${(hash >>> 0).toString(16)}`;
+}
+
+async function recordSubmittedActivity(
+  request: DappRequest,
+  transactionHash: string,
+): Promise<void> {
+  if (request.reviewDetails?.kind === "token_approval") {
+    await appendExtensionActivity({
+      id: `${request.id}_approval_submitted`,
+      kind: "approval_submitted",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      tokenSymbol: request.reviewDetails.tokenSymbol,
+      amountFormatted: request.reviewDetails.amountFormatted ?? request.reviewDetails.amountRaw,
+      approvalMode: request.reviewDetails.approvalMode,
+      txHash: transactionHash,
+      status: "submitted",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (request.reviewDetails?.kind === "evm_swap") {
+    await appendExtensionActivity({
+      id: `${request.id}_swap_submitted`,
+      kind: "swap_submitted",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      sellTokenSymbol: request.reviewDetails.sellTokenSymbol,
+      buyTokenSymbol: request.reviewDetails.buyTokenSymbol,
+      amountFormatted: request.reviewDetails.sellAmountFormatted ?? request.reviewDetails.sellAmountRaw,
+      buyAmountFormatted: request.reviewDetails.buyAmountFormatted ?? request.reviewDetails.buyAmountRaw,
+      txHash: transactionHash,
+      status: "submitted",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+async function recordRejectedActivity(request: DappRequest): Promise<void> {
+  if (request.reviewDetails?.kind === "token_approval") {
+    await appendExtensionActivity({
+      id: `${request.id}_approval_rejected`,
+      kind: "approval_rejected",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      tokenSymbol: request.reviewDetails.tokenSymbol,
+      amountFormatted: request.reviewDetails.amountFormatted ?? request.reviewDetails.amountRaw,
+      approvalMode: request.reviewDetails.approvalMode,
+      status: "rejected",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (request.reviewDetails?.kind === "evm_swap") {
+    await appendExtensionActivity({
+      id: `${request.id}_swap_rejected`,
+      kind: "swap_rejected",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      sellTokenSymbol: request.reviewDetails.sellTokenSymbol,
+      buyTokenSymbol: request.reviewDetails.buyTokenSymbol,
+      amountFormatted: request.reviewDetails.sellAmountFormatted ?? request.reviewDetails.sellAmountRaw,
+      buyAmountFormatted: request.reviewDetails.buyAmountFormatted ?? request.reviewDetails.buyAmountRaw,
+      status: "rejected",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+async function recordActivityFailure(
+  request: DappRequest,
+  error: unknown,
+  errorCode: string,
+): Promise<void> {
+  const message = error instanceof Error
+    ? error.message
+    : "The extension failed to execute the request.";
+
+  if (request.reviewDetails?.kind === "token_approval") {
+    await appendExtensionActivity({
+      id: `${request.id}_approval_failed`,
+      kind: "approval_failed",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      tokenSymbol: request.reviewDetails.tokenSymbol,
+      amountFormatted: request.reviewDetails.amountFormatted ?? request.reviewDetails.amountRaw,
+      approvalMode: request.reviewDetails.approvalMode,
+      status: "failed",
+      errorCode,
+      errorMessage: message,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (request.reviewDetails?.kind === "evm_swap") {
+    await appendExtensionActivity({
+      id: `${request.id}_swap_failed`,
+      kind: "swap_failed",
+      provider: "0x",
+      chainId: Number(request.reviewDetails.chainId ?? request.chainId ?? 1),
+      account: request.account ?? "",
+      sellTokenSymbol: request.reviewDetails.sellTokenSymbol,
+      buyTokenSymbol: request.reviewDetails.buyTokenSymbol,
+      amountFormatted: request.reviewDetails.sellAmountFormatted ?? request.reviewDetails.sellAmountRaw,
+      buyAmountFormatted: request.reviewDetails.buyAmountFormatted ?? request.reviewDetails.buyAmountRaw,
+      status: "failed",
+      errorCode,
+      errorMessage: message,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+}
+
+function formatApprovalAmount(
+  input: {
+    tokenDecimals?: number | null;
+    approvalMode: "exact" | "infinite";
+  },
+  amountRaw: string,
+): string {
+  if (input.approvalMode === "infinite") {
+    return "Unlimited";
+  }
+
+  return formatOptionalAllowance(amountRaw, input.tokenDecimals) ?? amountRaw;
+}
+
+function formatOptionalAllowance(
+  amountRaw: string | null | undefined,
+  decimals: number | null | undefined,
+): string | null {
+  if (!amountRaw) {
+    return null;
+  }
+
+  if (!Number.isInteger(decimals) || decimals === null || decimals === undefined) {
+    return amountRaw;
+  }
+
+  try {
+    return shortenFormattedEvmTokenAmount(amountRaw, decimals);
+  } catch {
+    return amountRaw;
   }
 }
 
@@ -2180,6 +2484,44 @@ function buildRequestReviewDetails(
         estimatedFeeFormatted,
         ataWarning,
         riskLabels,
+      };
+    }
+  }
+
+  if (method === "acorus_sendTransaction") {
+    const payload = normalizeRecord(params[0]);
+    if (
+      payload.approvalKind === "token_approval"
+      || (typeof payload.tokenSymbol === "string" && typeof payload.spender === "string")
+    ) {
+      return {
+        kind: "token_approval",
+        chainId: activeChainId,
+        tokenSymbol: String(payload.tokenSymbol ?? "TOKEN"),
+        tokenAddress: String(payload.to ?? payload.tokenAddress ?? ""),
+        spender: String(payload.spender ?? ""),
+        amountRaw: String(payload.amountRaw ?? ""),
+        amountFormatted: typeof payload.amountFormatted === "string"
+          ? payload.amountFormatted
+          : null,
+        currentAllowanceRaw: typeof payload.currentAllowanceRaw === "string"
+          ? payload.currentAllowanceRaw
+          : null,
+        requiredAllowanceRaw: typeof payload.requiredAllowanceRaw === "string"
+          ? payload.requiredAllowanceRaw
+          : null,
+        currentAllowanceFormatted: typeof payload.currentAllowanceFormatted === "string"
+          ? payload.currentAllowanceFormatted
+          : null,
+        requiredAllowanceFormatted: typeof payload.requiredAllowanceFormatted === "string"
+          ? payload.requiredAllowanceFormatted
+          : null,
+        approvalMode: payload.approvalMode === "infinite" ? "infinite" : "exact",
+        riskLabels: [
+          "Token approval required",
+          ...(payload.approvalMode === "infinite" ? ["Infinite approval"] : []),
+          "Custom spender",
+        ],
       };
     }
   }

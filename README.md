@@ -9,7 +9,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - `apps/extension` Manifest V3 extension shell with live dApp bridge, session registry, permission queue, extension-side EVM sign/send execution, and Solana SOL/SPL send execution behind explicit signer confirmation
 - `packages/wallet-core` with mnemonic generation/validation, local PBKDF2 + AES-GCM vault encryption, adapter registry, universal send draft/execution foundation, EVM live send helpers, Solana balance/SPL/native-send foundations, SPL transfer draft/execution helpers, and skeleton Tron/UTXO adapters
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap/dapp types, practice content
-- EVM 0x swap MVP with backend-only API key handling, quote preview, explicit ERC-20 approval review, and extension-gated execution; non-EVM/cross-chain swaps remain gated
+- EVM 0x swap MVP with backend-only API key handling, decimal-safe token amount parsing, explicit ERC-20 approval review, local swap activity history, and extension-gated execution; non-EVM/cross-chain swaps remain gated
 - Wallet dashboard action grid plus preview shells for Explore, Security Center, dApps, Chrome Extension, and Quests
 - Practice wallet mode with fake balances and fake transactions
 - View-only wallet flow
@@ -22,6 +22,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - Backend stores only public data and user preferences
 - Local storage contains only the encrypted vault, public identifiers, and non-sensitive UI settings
 - Logger redaction is configured for mnemonic, seed, privateKey, passcode, password, signature, rawTransaction, encryptedVault, and backend swap provider secrets
+- `ZEROX_API_KEY` is backend-only and should be configured through `.env` / VPS secrets; see `docs/production_0x_env_setup.md`
 
 ## Quick start
 
@@ -103,8 +104,15 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/solana_spl_transfer_foundation_report.md`
 - `docs/evm_0x_swap_mvp_plan.md`
 - `docs/evm_0x_swap_mvp_report.md`
+- `docs/evm_0x_swap_production_hardening_plan.md`
+- `docs/evm_0x_production_activation_plan.md`
+- `docs/evm_0x_production_activation_report.md`
 - `docs/evm_0x_swap_security_model.md`
 - `docs/evm_0x_swap_manual_smoke.md`
+- `docs/evm_0x_live_quote_smoke_report.md`
+- `docs/evm_swap_allowance_hardening_report.md`
+- `docs/evm_swap_history_report.md`
+- `docs/production_0x_env_setup.md`
 - `docs/wallet_product_benchmark_ux_upgrade_report.md`
 - `docs/roadmap.md`
 - `docs/api.md`

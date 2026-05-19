@@ -1,4 +1,9 @@
-import { getDappConnectionTransportLabel, getDappRequestKindLabel } from "@acorus/shared";
+import {
+  getDappConnectionTransportLabel,
+  getDappRequestKindLabel,
+  shortenFormattedEvmTokenAmount,
+  type EvmSwapQuoteResponse,
+} from "@acorus/shared";
 import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
   createRequestId,
@@ -48,36 +53,6 @@ type ExtensionPortfolioSnapshot = {
     source?: string | null;
   }>;
   warnings: string[];
-};
-
-type EvmSwapQuoteResponse = {
-  provider: "0x";
-  mode: "quote";
-  requestId: string;
-  chainId: number;
-  takerAddress: string;
-  sellToken: { chainId: number; address: string | "native"; symbol: string; decimals: number; name?: string };
-  buyToken: { chainId: number; address: string | "native"; symbol: string; decimals: number; name?: string };
-  sellAmountRaw: string;
-  buyAmountRaw: string;
-  minBuyAmountRaw?: string | null;
-  to: string;
-  data: string;
-  value: string;
-  gas?: string | null;
-  gasPrice?: string | null;
-  approvalRequired: boolean;
-  approval?: {
-    tokenAddress: string;
-    spender: string;
-    currentAllowanceRaw?: string | null;
-    requiredAllowanceRaw?: string | null;
-  } | null;
-  routeSummary: { label: string; sources: Array<{ name: string; proportionBps?: number | null }> };
-  warnings: string[];
-  estimatedPriceImpact?: string | null;
-  price?: string | null;
-  expiresAt: string;
 };
 
 void loadPopupState();
@@ -697,7 +672,9 @@ function renderApprovalDetailCard(
           <div><dt>Network</dt><dd>${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
           <div><dt>Token</dt><dd>${escapeHtml(shortAddress(details.tokenAddress))}</dd></div>
           <div><dt>Spender</dt><dd>${escapeHtml(shortAddress(details.spender))}</dd></div>
-          <div><dt>Amount</dt><dd>${escapeHtml(details.approvalMode === "infinite" ? "Unlimited" : details.amountRaw)}</dd></div>
+          <div><dt>Amount</dt><dd>${escapeHtml(details.approvalMode === "infinite" ? "Unlimited" : (details.amountFormatted ?? details.amountRaw))}</dd></div>
+          ${details.currentAllowanceFormatted ? `<div><dt>Current allowance</dt><dd>${escapeHtml(details.currentAllowanceFormatted)}</dd></div>` : ""}
+          ${details.requiredAllowanceFormatted ? `<div><dt>Required allowance</dt><dd>${escapeHtml(details.requiredAllowanceFormatted)}</dd></div>` : ""}
           <div><dt>Mode</dt><dd>${escapeHtml(details.approvalMode)}</dd></div>
         </dl>
       </div>
@@ -710,12 +687,13 @@ function renderApprovalDetailCard(
         <div class="row"><strong>0x Swap</strong>${renderRiskLabels(details.riskLabels)}</div>
         <dl>
           <div><dt>Network</dt><dd>${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
-          <div><dt>Sell</dt><dd>${escapeHtml(details.sellAmountRaw)} ${escapeHtml(details.sellTokenSymbol)}</dd></div>
-          <div><dt>Buy</dt><dd>${escapeHtml(details.buyAmountRaw)} ${escapeHtml(details.buyTokenSymbol)}</dd></div>
-          <div><dt>Min received</dt><dd>${escapeHtml(details.minBuyAmountRaw ?? "n/a")}</dd></div>
+          <div><dt>Sell</dt><dd>${escapeHtml(details.sellAmountFormatted ?? details.sellAmountRaw)} ${escapeHtml(details.sellTokenSymbol)}</dd></div>
+          <div><dt>Buy</dt><dd>${escapeHtml(details.buyAmountFormatted ?? details.buyAmountRaw)} ${escapeHtml(details.buyTokenSymbol)}</dd></div>
+          <div><dt>Min received</dt><dd>${escapeHtml(details.minBuyAmountFormatted ?? details.minBuyAmountRaw ?? "n/a")}</dd></div>
           <div><dt>Route</dt><dd>${escapeHtml(details.routeLabel)}</dd></div>
           <div><dt>Contract</dt><dd>${escapeHtml(shortAddress(details.contractAddress))}</dd></div>
           <div><dt>Value</dt><dd>${escapeHtml(details.value)}</dd></div>
+          ${details.expiresAt ? `<div><dt>Expires</dt><dd>${escapeHtml(new Date(details.expiresAt).toLocaleTimeString())}</dd></div>` : ""}
         </dl>
       </div>
     `;
@@ -774,7 +752,7 @@ function renderConnectedSites(state: BackgroundStateSnapshot): string {
 }
 
 function renderRecentActivity(state: BackgroundStateSnapshot): string {
-  const latest = state.approvalResults[0];
+  const latest = state.activityLog.slice(0, 4);
   const activeBridge = state.activeOriginBridge;
   return `
     <section class="panel stack">
@@ -791,7 +769,17 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
         <span class="small">Active site</span>
         <span class="small">${escapeHtml(activeBridge?.origin ?? "none")}</span>
       </div>
-      <p class="copy">${latest ? `${latest.decision} ${latest.targetKind}` : "No approvals yet."}</p>
+      ${latest.length
+        ? latest.map((item) => `
+          <div class="site-row">
+            <div>
+              <div class="token-name">${escapeHtml(item.kind.replace(/_/gu, " "))}</div>
+              <div class="token-meta">${escapeHtml((item.amountFormatted ?? `${item.sellTokenSymbol ?? item.tokenSymbol ?? ""}${item.buyAmountFormatted ? ` -> ${item.buyAmountFormatted} ${item.buyTokenSymbol ?? ""}` : ""}`.trim()) || item.account)}</div>
+            </div>
+            <span class="badge">${escapeHtml(item.status)}</span>
+          </div>
+        `).join("")
+        : `<p class="copy">No swap activity recorded yet.</p>`}
     </section>
   `;
 }
@@ -1102,19 +1090,40 @@ function renderEvmSwapQuotePreview(
   quote: EvmSwapQuoteResponse,
   slippageBps: number,
 ): string {
+  const sellFormatted = shortenFormattedEvmTokenAmount(
+    quote.sellAmountRaw,
+    quote.sellToken.decimals,
+  );
+  const buyFormatted = shortenFormattedEvmTokenAmount(
+    quote.buyAmountRaw,
+    quote.buyToken.decimals,
+  );
+  const minBuyFormatted = quote.minBuyAmountRaw
+    ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals)
+    : "n/a";
   const approval = quote.approvalRequired && quote.approval
-    ? `<button class="ghost-button" type="button" id="evm-approve-token">Approve ${escapeHtml(quote.sellToken.symbol)}</button>`
+    ? `
+      <label class="small" style="display:flex;align-items:center;gap:8px">
+        <span>Approval mode</span>
+        <select id="evm-approval-mode">
+          <option value="exact">Exact</option>
+          <option value="infinite">Infinite</option>
+        </select>
+      </label>
+      <button class="ghost-button" type="button" id="evm-approve-token">Approve ${escapeHtml(quote.sellToken.symbol)}</button>
+    `
     : "";
 
   return `
     <div class="approval-card">
       <div class="row"><strong>0x quote</strong><span class="badge">${escapeHtml(quote.routeSummary.label)}</span></div>
       <dl>
-        <div><dt>You pay</dt><dd>${escapeHtml(quote.sellAmountRaw)} ${escapeHtml(quote.sellToken.symbol)}</dd></div>
-        <div><dt>You receive</dt><dd>${escapeHtml(quote.buyAmountRaw)} ${escapeHtml(quote.buyToken.symbol)}</dd></div>
-        <div><dt>Min received</dt><dd>${escapeHtml(quote.minBuyAmountRaw ?? "n/a")}</dd></div>
+        <div><dt>You pay</dt><dd>${escapeHtml(sellFormatted)} ${escapeHtml(quote.sellToken.symbol)}</dd></div>
+        <div><dt>You receive</dt><dd>${escapeHtml(buyFormatted)} ${escapeHtml(quote.buyToken.symbol)}</dd></div>
+        <div><dt>Min received</dt><dd>${escapeHtml(minBuyFormatted)} ${escapeHtml(quote.buyToken.symbol)}</dd></div>
         <div><dt>Slippage</dt><dd>${escapeHtml(String(slippageBps / 100))}%</dd></div>
         <div><dt>Gas</dt><dd>${escapeHtml(quote.gas ?? "estimate unavailable")}</dd></div>
+        ${quote.approvalRequired && quote.approval ? `<div><dt>Allowance</dt><dd>${escapeHtml(quote.approval.currentAllowanceRaw ? shortenFormattedEvmTokenAmount(quote.approval.currentAllowanceRaw, quote.sellToken.decimals) : "0")} / ${escapeHtml(shortenFormattedEvmTokenAmount(quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw, quote.sellToken.decimals))} ${escapeHtml(quote.sellToken.symbol)}</dd></div>` : ""}
       </dl>
       ${quote.warnings.length ? `<p class="copy">${quote.warnings.map(escapeHtml).join(" ")}</p>` : ""}
       <div class="row" style="margin-top:10px">
@@ -1135,6 +1144,10 @@ function wireEvmSwapQuoteButtons(
       return;
     }
 
+    const approvalMode = scope.querySelector<HTMLSelectElement>("#evm-approval-mode")?.value === "infinite"
+      ? "infinite"
+      : "exact";
+
     const response = await chrome.runtime.sendMessage({
       kind: "queue_evm_approve_token",
       requestId: createRequestId("popup_evm_approve"),
@@ -1142,9 +1155,16 @@ function wireEvmSwapQuoteButtons(
       chainId: quote.chainId,
       tokenAddress: quote.approval.tokenAddress,
       tokenSymbol: quote.sellToken.symbol,
+      tokenDecimals: quote.sellToken.decimals,
       spender: quote.approval.spender,
       amountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
-      approvalMode: "exact",
+      amountFormatted: shortenFormattedEvmTokenAmount(
+        quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+        quote.sellToken.decimals,
+      ),
+      currentAllowanceRaw: quote.approval.currentAllowanceRaw ?? null,
+      requiredAllowanceRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+      approvalMode,
     }) as ExtensionRuntimeResponse;
 
     if (!response.ok) {

@@ -58,6 +58,7 @@ export type BackgroundStateSnapshot = {
   sessions: DappSession[];
   pendingRequests: DappRequest[];
   approvalResults: DappApprovalResult[];
+  activityLog: ExtensionActivityRecord[];
   signerUnlockQueue: SignerUnlockIntent[];
   activeOriginBridge?: DappBridgeSessionView | null;
   walletExposureMode: "preview_accounts" | "wallet_backed";
@@ -89,6 +90,34 @@ export type SignerUnlockIntent = {
   account?: string | null;
   chainId?: string | number | null;
   createdAt: string;
+};
+
+export type ExtensionActivityRecord = {
+  id: string;
+  kind:
+    | "approval_requested"
+    | "approval_submitted"
+    | "approval_rejected"
+    | "approval_failed"
+    | "swap_requested"
+    | "swap_submitted"
+    | "swap_rejected"
+    | "swap_failed";
+  provider: "0x";
+  chainId: number;
+  account: string;
+  tokenSymbol?: string | null;
+  sellTokenSymbol?: string | null;
+  buyTokenSymbol?: string | null;
+  amountFormatted?: string | null;
+  buyAmountFormatted?: string | null;
+  approvalMode?: "exact" | "infinite" | null;
+  txHash?: string | null;
+  status: "queued" | "submitted" | "rejected" | "failed";
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ExtensionRuntimeMessage =
@@ -178,8 +207,12 @@ export type ExtensionRuntimeMessage =
       chainId: number;
       tokenAddress: string;
       tokenSymbol: string;
+      tokenDecimals?: number | null;
       spender: string;
       amountRaw: string;
+      amountFormatted?: string | null;
+      currentAllowanceRaw?: string | null;
+      requiredAllowanceRaw?: string | null;
       approvalMode: "exact" | "infinite";
     }
   | {
@@ -385,6 +418,7 @@ export function createSkeletonState(input?: {
   sessions?: DappSession[];
   pendingRequests?: DappRequest[];
   approvalResults?: DappApprovalResult[];
+  activityLog?: ExtensionActivityRecord[];
   signerUnlockQueue?: SignerUnlockIntent[];
   activeOriginBridge?: DappBridgeSessionView | null;
   lastUpdatedAt?: string;
@@ -403,6 +437,7 @@ export function createSkeletonState(input?: {
     sessions: input?.sessions ?? [],
     pendingRequests: input?.pendingRequests ?? [],
     approvalResults: input?.approvalResults ?? [],
+    activityLog: input?.activityLog ?? [],
     signerUnlockQueue: input?.signerUnlockQueue ?? [],
     activeOriginBridge: input?.activeOriginBridge ?? null,
     walletExposureMode: input?.walletExposureMode ?? "preview_accounts",

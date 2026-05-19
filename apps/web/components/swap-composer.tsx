@@ -1,9 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { EVM_CHAINS, getCuratedTokens, type AssetBalance, type EvmSwapQuoteResponse } from "@acorus/shared";
+import {
+  EVM_CHAINS,
+  getCuratedTokens,
+  normalizeEvmTokenAmount,
+  shortenFormattedEvmTokenAmount,
+  validateFormattedAmount,
+  type AssetBalance,
+  type EvmSwapQuoteResponse,
+} from "@acorus/shared";
+import { buildErc20ApproveTransaction } from "@acorus/wallet-core";
 import { getEvmSwapQuote, getEvmSwapStatus, type EvmSwapStatus } from "@/lib/api";
-import { hasAcorusExtension, requestExtensionSwap } from "@/lib/extension-bridge";
+import {
+  getExtensionChainId,
+  hasAcorusExtension,
+  requestExtensionEvmSendTransaction,
+  requestExtensionSwap,
+  switchExtensionChain,
+} from "@/lib/extension-bridge";
+import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
 
 type TokenOption = {
   value: string;
@@ -23,10 +39,14 @@ export function SwapComposer(props: {
   const [buyToken, setBuyToken] = useState("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   const [sellAmount, setSellAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(50);
+  const [approvalMode, setApprovalMode] = useState<"exact" | "infinite">("exact");
   const [quote, setQuote] = useState<EvmSwapQuoteResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [extensionResult, setExtensionResult] = useState<string | null>(null);
+  const [extensionChainId, setExtensionChainId] = useState<number | null>(null);
+  const [quoteCountdown, setQuoteCountdown] = useState(0);
+  const [history, setHistory] = useState<WebSwapActivityEntry[]>([]);
   const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
   const tokens = useMemo(
@@ -36,6 +56,7 @@ export function SwapComposer(props: {
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
 
   useEffect(() => {
+    setHistory(loadSwapHistory());
     void getEvmSwapStatus()
       .then(setStatus)
       .catch(() => setStatus({
@@ -58,6 +79,34 @@ export function SwapComposer(props: {
     setError(null);
   }, [chainId, props.portfolioAssets]);
 
+  useEffect(() => {
+    if (!extensionDetected) {
+      setExtensionChainId(null);
+      return;
+    }
+
+    void getExtensionChainId()
+      .then((value) => setExtensionChainId(parseChainId(value)))
+      .catch(() => setExtensionChainId(null));
+  }, [extensionDetected, quote?.requestId]);
+
+  useEffect(() => {
+    if (!quote) {
+      setQuoteCountdown(0);
+      return;
+    }
+
+    const update = () => {
+      setQuoteCountdown(
+        Math.max(0, Math.ceil((new Date(quote.expiresAt).getTime() - Date.now()) / 1000)),
+      );
+    };
+
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [quote]);
+
   async function handleQuote() {
     setLoading(true);
     setError(null);
@@ -69,11 +118,19 @@ export function SwapComposer(props: {
         throw new Error("Connect Acorus extension before requesting a firm quote.");
       }
 
+      if (sellToken.toLowerCase() === buyToken.toLowerCase()) {
+        throw new Error("Choose different sell and buy tokens.");
+      }
+
+      if (!validateFormattedAmount(sellAmount)) {
+        throw new Error(`Enter a valid ${selectedSellToken.symbol} amount.`);
+      }
+
       const nextQuote = await getEvmSwapQuote({
         chainId,
         sellToken,
         buyToken,
-        sellAmount,
+        sellAmount: normalizeEvmTokenAmount(sellAmount, selectedSellToken.decimals),
         taker: props.userAddress,
         slippageBps,
       });
@@ -86,8 +143,95 @@ export function SwapComposer(props: {
     }
   }
 
+  async function handleApprove() {
+    if (!quote?.approval || !props.userAddress) {
+      return;
+    }
+
+    try {
+      const tx = buildErc20ApproveTransaction({
+        chainId: quote.chainId,
+        tokenAddress: quote.approval.tokenAddress,
+        owner: props.userAddress,
+        spender: quote.approval.spender,
+        amountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+        approvalMode,
+      });
+
+      await requestExtensionEvmSendTransaction({
+        approvalKind: "token_approval",
+        chainId: quote.chainId,
+        from: props.userAddress,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value,
+        tokenAddress: quote.approval.tokenAddress,
+        tokenSymbol: quote.sellToken.symbol,
+        spender: quote.approval.spender,
+        amountRaw: tx.amountRaw,
+        amountFormatted: approvalMode === "infinite"
+          ? "Unlimited"
+          : shortenFormattedEvmTokenAmount(tx.amountRaw, quote.sellToken.decimals),
+        currentAllowanceRaw: quote.approval.currentAllowanceRaw ?? null,
+        requiredAllowanceRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+        currentAllowanceFormatted: quote.approval.currentAllowanceRaw
+          ? shortenFormattedEvmTokenAmount(quote.approval.currentAllowanceRaw, quote.sellToken.decimals)
+          : "0",
+        requiredAllowanceFormatted: shortenFormattedEvmTokenAmount(
+          quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+          quote.sellToken.decimals,
+        ),
+        approvalMode,
+      });
+
+      setExtensionResult("Approval request queued in Acorus extension. Open the popup to confirm or reject it.");
+      setHistory(appendSwapHistoryEntry({
+        id: `approval_${quote.requestId}_${Date.now()}`,
+        kind: "approval_requested",
+        provider: "0x",
+        chainId: quote.chainId,
+        account: props.userAddress,
+        tokenSymbol: quote.sellToken.symbol,
+        amountFormatted: approvalMode === "infinite"
+          ? "Unlimited"
+          : shortenFormattedEvmTokenAmount(
+              quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+              quote.sellToken.decimals,
+            ),
+        approvalMode,
+        status: "queued",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Extension approval request failed.";
+      setExtensionResult(message);
+      setHistory(appendSwapHistoryEntry({
+        id: `approval_failed_${quote.requestId}_${Date.now()}`,
+        kind: "approval_failed",
+        provider: "0x",
+        chainId: quote.chainId,
+        account: props.userAddress,
+        tokenSymbol: quote.sellToken.symbol,
+        amountFormatted: shortenFormattedEvmTokenAmount(
+          quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+          quote.sellToken.decimals,
+        ),
+        approvalMode,
+        status: "failed",
+        errorCode: "approval_request_failed",
+        errorMessage: message,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+  }
+
   async function handleExtensionSwap() {
-    if (!quote) return;
+    if (!quote) {
+      return;
+    }
+
     setExtensionResult(null);
 
     try {
@@ -101,26 +245,77 @@ export function SwapComposer(props: {
         value: quote.value,
         gas: quote.gas,
         gasPrice: quote.gasPrice,
+        createdAt: quote.createdAt,
         expiresAt: quote.expiresAt,
+        takerAddress: quote.takerAddress,
+        quoteSource: "acorus_backend_0x",
         sellTokenSymbol: quote.sellToken.symbol,
         buyTokenSymbol: quote.buyToken.symbol,
         sellAmountRaw: quote.sellAmountRaw,
+        sellAmountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
         buyAmountRaw: quote.buyAmountRaw,
+        buyAmountFormatted: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
         minBuyAmountRaw: quote.minBuyAmountRaw,
+        minBuyAmountFormatted: quote.minBuyAmountRaw
+          ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals)
+          : null,
         slippageBps,
         priceImpact: quote.estimatedPriceImpact,
         routeLabel: quote.routeSummary.label,
       });
+
       setExtensionResult("Swap request queued in Acorus extension. Open the popup to approve or reject.");
+      if (props.userAddress) {
+        setHistory(appendSwapHistoryEntry({
+          id: `swap_${quote.requestId}_${Date.now()}`,
+          kind: "swap_requested",
+          provider: "0x",
+          chainId: quote.chainId,
+          account: props.userAddress,
+          sellTokenSymbol: quote.sellToken.symbol,
+          buyTokenSymbol: quote.buyToken.symbol,
+          amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
+          buyAmountFormatted: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
+          status: "queued",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+      }
     } catch (err) {
-      setExtensionResult(err instanceof Error ? err.message : "Extension swap request failed.");
+      const message = err instanceof Error ? err.message : "Extension swap request failed.";
+      setExtensionResult(message);
+      if (props.userAddress) {
+        setHistory(appendSwapHistoryEntry({
+          id: `swap_failed_${quote.requestId}_${Date.now()}`,
+          kind: "swap_failed",
+          provider: "0x",
+          chainId: quote.chainId,
+          account: props.userAddress,
+          sellTokenSymbol: quote.sellToken.symbol,
+          buyTokenSymbol: quote.buyToken.symbol,
+          amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
+          buyAmountFormatted: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
+          status: "failed",
+          errorCode: "swap_request_failed",
+          errorMessage: message,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+      }
     }
+  }
+
+  async function handleSwitchChain() {
+    await switchExtensionChain(chainId);
+    setExtensionChainId(parseChainId(await getExtensionChainId()));
   }
 
   const providerReady = Boolean(status?.configured && status.enabled);
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
     : false;
+  const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
+  const quoteExpired = Boolean(quote && quoteCountdown <= 0);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center">
@@ -133,13 +328,13 @@ export function SwapComposer(props: {
             Swap with Acorus extension
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            0x quotes are fetched through the Acorus backend. Your wallet signs only after explicit extension approval.
+            Quotes stay backend-only, approvals stay wallet-only, and extension execution stays explicit.
           </p>
         </div>
 
         {!providerReady ? (
           <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
-            0x provider is not configured on the backend yet. Set `ZEROX_API_KEY` on the API server to enable live quotes.
+            0x provider is not configured on the backend yet. Add `ZEROX_API_KEY` on the API server to enable live quotes.
           </div>
         ) : null}
 
@@ -184,11 +379,11 @@ export function SwapComposer(props: {
 
           <div className="grid gap-2 md:grid-cols-[1fr_180px]">
             <label className="space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">Sell amount raw</span>
+              <span className="px-2 text-sm font-medium text-slate-600">Sell amount</span>
               <input
                 className="light-field"
-                inputMode="numeric"
-                placeholder={`Raw ${selectedSellToken.symbol} amount`}
+                inputMode="decimal"
+                placeholder={`0.00 ${selectedSellToken.symbol}`}
                 value={sellAmount}
                 onChange={(event) => setSellAmount(event.target.value)}
               />
@@ -216,7 +411,7 @@ export function SwapComposer(props: {
           disabled={!providerReady || !sellAmount || loading}
           onClick={() => void handleQuote()}
         >
-          {loading ? "Loading 0x quote..." : "Get firm quote"}
+          {loading ? "Loading 0x quote..." : "Get 0x firm quote"}
         </button>
       </div>
 
@@ -225,20 +420,71 @@ export function SwapComposer(props: {
           <h2 className="text-xl font-semibold text-white">Quote preview</h2>
           {quote ? (
             <div className="space-y-3 text-sm text-slate-300">
-              <div className="flex justify-between gap-3"><span>You pay</span><strong>{quote.sellAmountRaw} {quote.sellToken.symbol}</strong></div>
-              <div className="flex justify-between gap-3"><span>You receive</span><strong>{quote.buyAmountRaw} {quote.buyToken.symbol}</strong></div>
-              <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ?? "n/a"}</strong></div>
+              <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>You receive</span><strong>{shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals)} {quote.buyToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals) : "n/a"} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Route</span><strong>{quote.routeSummary.label}</strong></div>
               <div className="flex justify-between gap-3"><span>Allowance</span><strong>{quote.approvalRequired ? "required" : "not needed"}</strong></div>
+              <div className="flex justify-between gap-3"><span>Quote timer</span><strong>{quoteCountdown}s</strong></div>
+
+              {quote.approvalRequired && quote.approval ? (
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-white">Approve {quote.sellToken.symbol}</h3>
+                    <span className="text-xs text-slate-400">{approvalMode === "exact" ? "Exact" : "Infinite"} approval</span>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs text-slate-300">
+                    <div className="flex justify-between gap-3"><span>Spender</span><span className="font-mono">{quote.approval.spender}</span></div>
+                    <div className="flex justify-between gap-3"><span>Current allowance</span><span>{quote.approval.currentAllowanceRaw ? shortenFormattedEvmTokenAmount(quote.approval.currentAllowanceRaw, quote.sellToken.decimals) : "0"} {quote.sellToken.symbol}</span></div>
+                    <div className="flex justify-between gap-3"><span>Required allowance</span><span>{shortenFormattedEvmTokenAmount(quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</span></div>
+                  </div>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button type="button" className={approvalMode === "exact" ? "button-primary" : "button-secondary"} onClick={() => setApprovalMode("exact")}>
+                      Exact approval
+                    </button>
+                    <button type="button" className={approvalMode === "infinite" ? "button-primary" : "button-secondary"} onClick={() => setApprovalMode("infinite")}>
+                      Infinite approval
+                    </button>
+                  </div>
+                  {approvalMode === "infinite" ? (
+                    <p className="mt-3 text-xs text-amber-200">
+                      Infinite approval is optional and higher risk. Exact approval stays the safe default.
+                    </p>
+                  ) : null}
+                  <button type="button" className="button-secondary mt-4 w-full" onClick={() => void handleApprove()}>
+                    Queue approval in extension
+                  </button>
+                </div>
+              ) : null}
+
+              {wrongChain ? (
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-amber-100">
+                  Wrong extension chain selected.
+                  <button type="button" className="button-secondary mt-3 w-full" onClick={() => void handleSwitchChain()}>
+                    Switch extension to {EVM_CHAINS.find((item) => item.chainId === quote.chainId)?.name ?? quote.chainId}
+                  </button>
+                </div>
+              ) : null}
+
               {highImpact ? (
                 <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-amber-100">
                   High price impact warning. Refresh the quote or reduce the amount.
                 </div>
               ) : null}
+
+              {quoteExpired ? (
+                <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 text-rose-100">
+                  Quote expired. Refresh the route before reviewing the swap.
+                </div>
+              ) : null}
+
+              <button type="button" className="button-secondary w-full" onClick={() => void handleQuote()}>
+                Refresh quote
+              </button>
               <button
                 type="button"
                 className="button-primary w-full"
-                disabled={!extensionDetected}
+                disabled={!extensionDetected || quoteExpired || wrongChain}
                 onClick={() => void handleExtensionSwap()}
               >
                 Review swap in extension
@@ -246,7 +492,7 @@ export function SwapComposer(props: {
             </div>
           ) : (
             <p className="text-sm text-slate-300">
-              Select an EVM route and request a quote. Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps are coming in later waves.
+              Select an EVM route and request a quote. Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps stay out of scope for this wave.
             </p>
           )}
         </div>
@@ -256,6 +502,27 @@ export function SwapComposer(props: {
             {extensionResult}
           </div>
         ) : null}
+
+        <div className="premium-card p-5 text-sm text-slate-300">
+          <h2 className="text-xl font-semibold text-white">Recent swap activity</h2>
+          <div className="mt-4 grid gap-3">
+            {history.length ? history.slice(0, 4).map((item) => (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex justify-between gap-3">
+                  <span className="font-medium text-white">{item.kind.replace(/_/gu, " ")}</span>
+                  <span className={item.status === "failed" ? "text-rose-300" : "text-emerald-300"}>{item.status}</span>
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {item.tokenSymbol
+                    ? `${item.amountFormatted ?? ""} ${item.tokenSymbol}`.trim()
+                    : `${item.amountFormatted ?? ""} ${item.sellTokenSymbol ?? ""} -> ${item.buyAmountFormatted ?? ""} ${item.buyTokenSymbol ?? ""}`.trim()}
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-slate-400">No swap or approval events queued from the web shell yet.</p>
+            )}
+          </div>
+        </div>
       </aside>
     </div>
   );
@@ -295,4 +562,16 @@ function buildEvmTokenOptions(
   }
 
   return Array.from(byValue.values());
+}
+
+function parseChainId(value: string | number | null): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = typeof value === "string"
+    ? Number.parseInt(value, value.startsWith("0x") ? 16 : 10)
+    : Number(value);
+
+  return Number.isFinite(parsed) ? parsed : null;
 }

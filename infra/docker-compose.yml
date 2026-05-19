@@ -48,6 +48,13 @@ services:
       NEXT_PUBLIC_ARBITRUM_RPC_URL: ${NEXT_PUBLIC_ARBITRUM_RPC_URL:-https://arbitrum-one-rpc.publicnode.com}
       NEXT_PUBLIC_OPTIMISM_RPC_URL: ${NEXT_PUBLIC_OPTIMISM_RPC_URL:-https://optimism-rpc.publicnode.com}
       NEXT_PUBLIC_BASE_RPC_URL: ${NEXT_PUBLIC_BASE_RPC_URL:-https://base-rpc.publicnode.com}
+      ZEROX_API_KEY: ${ZEROX_API_KEY:-}
+      ZEROX_API_BASE: ${ZEROX_API_BASE:-https://api.0x.org}
+      ZEROX_API_VERSION: ${ZEROX_API_VERSION:-v2}
+      ZEROX_ENABLED: ${ZEROX_ENABLED:-true}
+      ZEROX_AFFILIATE_FEE_BPS: ${ZEROX_AFFILIATE_FEE_BPS:-}
+      ZEROX_FEE_RECIPIENT: ${ZEROX_FEE_RECIPIENT:-}
+      ZEROX_RATE_LIMIT_PER_MINUTE: ${ZEROX_RATE_LIMIT_PER_MINUTE:-30}
     depends_on:
       postgres:
         condition: service_healthy

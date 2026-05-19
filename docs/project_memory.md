@@ -1047,3 +1047,46 @@
 - Expanded `/extension-smoke` with backend 0x status and price diagnostics while keeping quote/execution smoke manual-only.
 - Out of scope remains unchanged: Solana/Jupiter swap, Tron/BTC/TON swap, cross-chain swap, and WalletConnect execution.
 
+## EVM 0x Production Hardening Wave (2026-05-19)
+
+- Status: **implemented locally, validated locally, production activation prepared, live quotes still blocked by missing VPS key**
+- Public production status currently remains:
+  - `https://24wallet.ru/api/swap/evm/status` → `configured:false`
+- Planning documents:
+  - `docs/evm_0x_swap_production_hardening_plan.md`
+  - `docs/evm_0x_production_activation_plan.md`
+- Reports/docs:
+  - `docs/evm_0x_production_activation_report.md`
+  - `docs/evm_0x_live_quote_smoke_report.md`
+  - `docs/evm_swap_allowance_hardening_report.md`
+  - `docs/evm_swap_history_report.md`
+  - `docs/production_0x_env_setup.md`
+- Backend/API changes:
+  - `infra/docker-compose.yml` now forwards `ZEROX_*` env values to the API container
+  - `.env.example` now documents the 0x env contract
+  - 0x quote responses now include `createdAt` and shorter quote lifetime (`expiresAt`)
+  - token refs are now enriched with native/curated/custom metadata instead of generic `ERC20`
+- Shared/core changes:
+  - `packages/shared/src/evm-swap.ts` adds decimal-safe amount parsing/formatting and EVM token metadata helpers
+  - `packages/wallet-core/src/evm/token-metadata.ts` adds curated/on-chain/user fallback token metadata resolution
+- Extension changes:
+  - popup 0x quote preview now shows formatted amounts, allowance context, and exact/infinite approval choice
+  - approval review cards now show allowance details
+  - popup Activity now shows local swap/approval event history
+  - extension swap execution now enforces trusted source + account/chain + calldata hash checks before broadcast
+- Web changes:
+  - `/swap` now uses formatted token amounts instead of raw integers
+  - `/swap` can queue explicit approval requests through the extension
+  - `/swap` shows quote countdown, wrong-chain handling, approval mode selection, and local activity history
+  - `/extension-smoke` now supports 0x quote tests plus last chain/error diagnostics
+- Validation completed for this wave so far:
+  - `pnpm --filter @acorus/shared test`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+- Current production blocker:
+  - `ZEROX_API_KEY` was not found on VPS, so activation is correctly blocked until that env var is added
+
