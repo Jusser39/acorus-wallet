@@ -31,6 +31,15 @@ const optionalStringFromEnv = z.preprocess((value) => {
   return normalized === "" ? undefined : normalized;
 }, z.string().min(1).optional());
 
+const emptyStringToUndefined = (value: unknown) => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim();
+  return normalized === "" ? undefined : normalized;
+};
+
 // Canonical market provider modes (real/real_with_mock_fallback/mock).
 // Legacy aliases live/auto are accepted and mapped to "real".
 const marketProviderModeSchema = z
@@ -77,7 +86,10 @@ const envSchema = z.object({
   ZEROX_API_BASE: z.string().url().default("https://api.0x.org"),
   ZEROX_API_VERSION: z.string().default("v2"),
   ZEROX_ENABLED: boolFromEnv.default(true),
-  ZEROX_AFFILIATE_FEE_BPS: z.coerce.number().int().min(0).max(10000).optional(),
+  ZEROX_AFFILIATE_FEE_BPS: z.preprocess(
+    emptyStringToUndefined,
+    z.coerce.number().int().min(0).max(10000).optional(),
+  ),
   ZEROX_FEE_RECIPIENT: optionalStringFromEnv,
   ZEROX_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
 });

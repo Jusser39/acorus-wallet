@@ -47,6 +47,7 @@ export type ZeroXSwapStatus = {
   version: string;
 };
 
+const ZEROX_NATIVE_TOKEN_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const NATIVE_TOKEN_ALIASES = new Set(["native", "eth", "matic", "bnb", "avax", "ftm", "sei"]);
 const HEX_ADDRESS = /^0x[a-fA-F0-9]{40}$/u;
 const POSITIVE_INTEGER = /^[1-9][0-9]*$/u;
@@ -145,7 +146,7 @@ export class ZeroXSwapService {
       search.set("slippageBps", String(query.slippageBps));
     }
 
-    if (this.env.ZEROX_AFFILIATE_FEE_BPS !== undefined) {
+    if (this.env.ZEROX_AFFILIATE_FEE_BPS !== undefined && this.env.ZEROX_AFFILIATE_FEE_BPS > 0) {
       search.set("swapFeeBps", String(this.env.ZEROX_AFFILIATE_FEE_BPS));
     }
 
@@ -154,8 +155,9 @@ export class ZeroXSwapService {
     }
 
     try {
+      const url = `${this.env.ZEROX_API_BASE.replace(/\/$/u, "")}/swap/allowance-holder/${mode}?${search.toString()}`;
       const response = await fetch(
-        `${this.env.ZEROX_API_BASE.replace(/\/$/u, "")}/swap/allowance-holder/${mode}?${search.toString()}`,
+        url,
         {
           method: "GET",
           headers: {
@@ -250,7 +252,11 @@ function normalizeToken(value: string, chainId: number, nativeSymbol: string): E
   const trimmed = value.trim();
   const lower = trimmed.toLowerCase();
 
-  if (NATIVE_TOKEN_ALIASES.has(lower) || lower === nativeSymbol.toLowerCase()) {
+  if (
+    NATIVE_TOKEN_ALIASES.has(lower)
+    || lower === nativeSymbol.toLowerCase()
+    || lower === ZEROX_NATIVE_TOKEN_ADDRESS
+  ) {
     return buildNativeEvmTokenMetadata(chainId);
   }
 
@@ -278,11 +284,15 @@ function tokenForApi(value: string, nativeSymbol: string): string {
   const normalized = value.trim();
   const lower = normalized.toLowerCase();
 
-  if (NATIVE_TOKEN_ALIASES.has(lower) || lower === nativeSymbol.toLowerCase()) {
-    return nativeSymbol;
+  if (
+    NATIVE_TOKEN_ALIASES.has(lower)
+    || lower === nativeSymbol.toLowerCase()
+    || lower === ZEROX_NATIVE_TOKEN_ADDRESS
+  ) {
+    return ZEROX_NATIVE_TOKEN_ADDRESS;
   }
 
-  return normalized;
+  return lower;
 }
 
 function mapZeroXHttpError(status: number, payload: Record<string, unknown>): ZeroXSwapError {

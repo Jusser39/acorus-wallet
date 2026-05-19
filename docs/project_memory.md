@@ -1105,3 +1105,72 @@
 - Current production blocker:
   - `ZEROX_API_KEY` was not found on VPS, so activation is correctly blocked until that env var is added
 
+## EVM 0x Live Activation Prep (2026-05-19)
+
+- Status: **repo preflight passed, activation still blocked on manual secret provisioning**
+- Git baseline confirmed:
+  - `HEAD` = `5abf95e`
+  - previous runtime deploy commit = `e0a16d5`
+- Secret preflight result:
+  - no real `ZEROX_API_KEY` value was found in the worktree scans that checked `.env.example`, code, docs, and git history excerpts
+  - only expected identifier references and test fixtures were present
+  - operational risk remains because previously exposed secrets must be treated as compromised
+- New activation assets:
+  - `scripts/smoke-zerox-live.mjs`
+  - `docs/evm_0x_tiny_real_swap_checklist.md`
+  - `docs/security_secret_rotation_report.md`
+- Manual activation boundary:
+  - a fresh rotated `ZEROX_API_KEY` must be added manually to `/opt/acorus-wallet-release-current/.env`
+  - do not paste the key into one-line shell commands or commit it anywhere
+- Current production status is still expected:
+  - `https://24wallet.ru/api/swap/evm/status` → `configured:false`
+  - `/api/swap/evm/0x/price` / `/quote` remain blocked with `503` until the new key is provisioned
+- `node scripts/smoke-zerox-live.mjs` was executed against production and correctly failed early with `0x provider is not configured`
+- VPS diagnosis was narrowed further:
+  - a proper release sync fixed server-side `infra/docker-compose.yml` so it now contains `ZEROX_*` pass-through
+  - compose config on VPS now mentions `ZEROX_API_KEY`
+  - API container now sees `ZEROX_ENABLED=true`
+  - the remaining blocker is only the missing `ZEROX_API_KEY` entry/value in `/opt/acorus-wallet-release-current/.env`
+
+## EVM 0x Live Activation Completion (2026-05-19)
+
+- Status: **implemented, deployed, production activated, read-only live smoke passed**
+- Production activation result:
+  - `https://24wallet.ru/api/swap/evm/status` -> `provider:"0x"`, `approvalModel:"allowance_holder"`, `configured:true`, `enabled:true`
+  - `https://24wallet.ru/health` -> `200`
+  - `https://24wallet.ru/api/market/prices?...` -> `200`
+  - `https://24wallet.ru/extension-smoke` -> `200`
+  - `https://bstcrm.ru/healthz` -> `200`
+- Live smoke result:
+  - native ETH -> USDC `price` passed
+  - native ETH -> USDC `quote` passed
+  - USDC -> WETH approval-needed `quote` passed
+  - `node scripts/smoke-zerox-live.mjs` -> `PASS`
+- Activation/fix details:
+  - `ZEROX_API_KEY` was added to `/opt/acorus-wallet-release-current/.env` without printing or committing the value
+  - wallet `api` + `web` were restarted for env activation
+  - `api` was rebuilt again after the final live-fix rollout
+  - backend 0x requests now normalize native tokens to `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`
+  - backend 0x requests now lowercase ERC-20 token addresses before calling 0x
+  - empty optional numeric env values no longer coerce into `0`, preventing accidental `swapFeeBps=0`
+  - 0x fee params are now emitted only when a positive fee is actually configured
+- Validation completed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Safety boundary unchanged:
+  - tiny real swap was **not** executed
+  - Permit2 execution is still not implemented in this wave
+  - Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swap providers remain out of scope
+

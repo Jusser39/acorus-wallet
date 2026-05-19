@@ -6,7 +6,7 @@
 4. Tron adapter completion: derive, balances, send, history, swap, and dapp capability rollout
 5. Bitcoin/UTXO adapter completion: derive, balances, send, history, and asset-safe action gating
 6. TON and next-family adapter onboarding through the same adapter contract
-7. Universal swap engine: 0x EVM quote/review/extension execution MVP is live behind backend API-key proxy, and the current wave hardens production env wiring, decimals/allowance UX, quote locks, and local activity history; provider failover, Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain routes remain next-wave work
+7. Universal swap engine: 0x EVM quote/review/extension execution MVP is live behind backend API-key proxy, production 24wallet activation and read-only live smoke now pass, and the next wave focuses on manual browser smoke, Permit2 gap review, provider failover, and non-EVM/cross-chain swap providers
 8. Cross-chain swap orchestration after single-family swap flows are stable
 9. Browser extension architecture skeleton and preview permission-shell foundation
 10. Universal dapp signing + transaction approval on top of the active preview bridge

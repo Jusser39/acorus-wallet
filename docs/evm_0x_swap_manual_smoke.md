@@ -1,12 +1,21 @@
 # EVM 0x Swap Manual Smoke
 
+## Current status
+
+- Backend live activation is complete on `https://24wallet.ru`
+- `GET /api/swap/evm/status` currently returns `configured: true`
+- `node scripts/smoke-zerox-live.mjs` currently reports `PASS`
+- browser/manual extension smoke is still a human step
+- tiny real swap was **not** executed in this wave
+
 ## Backend
 
 1. Open `https://24wallet.ru/api/swap/evm/status`.
 2. Confirm the response has `provider: "0x"` and does not expose any API key.
-3. If `configured` is `false`, set `ZEROX_API_KEY` on the API server before live quote testing.
-4. If configured, test a small price request with public token addresses and a test taker address.
-5. If configured, test a firm quote and confirm it returns `createdAt`, `expiresAt`, and token metadata with decimals/symbols instead of generic `ERC20`.
+3. Confirm `configured` is `true` before browser/manual steps.
+4. Test a small price request with public token addresses and a test taker address.
+5. Test a firm quote and confirm it returns `createdAt`, `expiresAt`, and token metadata with decimals/symbols instead of generic `ERC20`.
+6. Run `node scripts/smoke-zerox-live.mjs` and confirm it reports `PASS`.
 
 ## Web
 
@@ -28,13 +37,13 @@
 5. If token approval is required, click Approve token and verify the popup approval card shows token, spender, formatted amount, allowance context, mode, and risk labels.
 6. Reject one approval and confirm the site receives a rejection.
 7. Queue a swap and verify the approval card shows provider, route, formatted sell/buy amounts, min received, contract, expiry, and risk labels.
-8. Only execute a tiny intentional test swap with funds you can lose.
+8. Only execute a tiny intentional test swap with funds you can lose after explicit human confirmation.
 
 ## Smoke Harness
 
 1. Open `https://24wallet.ru/extension-smoke`.
 2. Verify provider detection.
 3. Run swap status.
-4. If configured, enter sell token, buy token, taker, and amount, then test price and quote.
+4. Enter sell token, buy token, taker, and amount, then test price and quote.
 5. Confirm diagnostics can be copied and no API key appears in the output.
 6. Confirm diagnostics include last chain id and last error code only, without secrets.

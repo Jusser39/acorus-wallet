@@ -56,3 +56,10 @@
   - includes `createdAt`, `expiresAt`, approval context, and enriched token metadata
 - `GET /api/swap/evm/0x/sources`
   - provider metadata placeholder
+
+## Operational smoke
+
+- `node scripts/smoke-zerox-live.mjs`
+  - read-only production smoke for `/api/swap/evm/status`, `/price`, and `/quote`
+  - requires `ZEROX_API_KEY` to be configured on the active VPS env
+  - current production target `https://24wallet.ru` is activated and returns `PASS` for the recorded smoke run on `2026-05-19`

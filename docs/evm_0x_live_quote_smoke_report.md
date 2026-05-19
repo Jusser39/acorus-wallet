@@ -2,36 +2,48 @@
 
 ## Status
 
-`blocked_until_ZEROX_API_KEY`
+`pass`
 
 ## Current production result
 
 - `GET https://24wallet.ru/api/swap/evm/status`
   - `provider: "0x"`
-  - `configured: false`
+  - `approvalModel: "allowance_holder"`
+  - `configured: true`
   - `enabled: true`
-- Because `ZEROX_API_KEY` is not configured on VPS, live `price` and `quote` smoke should currently return:
-  - HTTP `503`
-  - `swap_provider_not_configured`
+- read-only live endpoints now return successful JSON for:
+  - native ETH -> USDC `price`
+  - native ETH -> USDC `quote`
+  - USDC -> WETH approval-needed `quote`
 
-## VPS audit result
+## Smoke coverage
 
-- Inspected release path: `/opt/acorus-wallet-release-current`
-- Inspected env candidates under:
-  - `/opt/acorus-wallet-release-current/.env`
-  - `/opt/acorus-wallet/.env`
-  - prior release `.env` files
-- No configured `ZEROX_API_KEY` entry was found
+1. `GET /api/swap/evm/status`
+2. `GET /api/swap/evm/0x/price`
+3. `GET /api/swap/evm/0x/quote` for native sell
+4. `GET /api/swap/evm/0x/quote` for approval-needed ERC-20 sell
+5. `GET /api/market/prices`
+6. `GET /extension-smoke`
+7. `GET https://bstcrm.ru/healthz`
+8. `node scripts/smoke-zerox-live.mjs`
 
-## Ready once key is added
+## Script result
 
-The codebase is being hardened so that once `ZEROX_API_KEY` is present the following read-only smoke can run immediately:
+- `scripts/smoke-zerox-live.mjs` completed with:
+  - `status.configured: true`
+  - `ETH->USDC price`: liquidity available
+  - `ETH->USDC quote`: executable `to` + `data` present
+  - `USDC->WETH approval quote`: spender/approval context present
+  - final result: `0x live smoke: PASS`
 
-1. ETH -> USDC `price`
-2. ETH -> USDC `quote`
-3. USDC -> ETH approval-needed `quote`
-4. `/extension-smoke` 0x diagnostics
+## Root causes fixed before PASS
 
-## Next action
+1. Production `.env` was missing `ZEROX_API_KEY`.
+2. 0x AllowanceHolder needed native assets normalized to `0xeeee...`.
+3. Empty `ZEROX_AFFILIATE_FEE_BPS=` was being coerced to `0`, which incorrectly emitted `swapFeeBps=0`.
 
-Set `ZEROX_API_KEY` in production env as described in `docs/production_0x_env_setup.md`, redeploy wallet services, then rerun live smoke.
+## Safety notes
+
+- smoke is read-only and does not auto-submit swaps
+- response bodies were checked for obvious secret leak markers before PASS
+- tiny real swap execution was **not** performed

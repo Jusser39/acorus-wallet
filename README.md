@@ -64,6 +64,14 @@ For Docker deployment, the web app defaults to **same-origin API calls** and exp
 pnpm test
 ```
 
+Read-only live 0x production verification is available through:
+
+```bash
+node scripts/smoke-zerox-live.mjs
+```
+
+Production `24wallet.ru` is now activated for read-only 0x status/price/quote smoke with `configured:true`; real swap execution still requires explicit extension confirmation and was not auto-executed in this wave.
+
 ## Notes about Prisma
 
 Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`.
@@ -110,9 +118,11 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/evm_0x_swap_security_model.md`
 - `docs/evm_0x_swap_manual_smoke.md`
 - `docs/evm_0x_live_quote_smoke_report.md`
+- `docs/evm_0x_tiny_real_swap_checklist.md`
 - `docs/evm_swap_allowance_hardening_report.md`
 - `docs/evm_swap_history_report.md`
 - `docs/production_0x_env_setup.md`
+- `docs/security_secret_rotation_report.md`
 - `docs/wallet_product_benchmark_ux_upgrade_report.md`
 - `docs/roadmap.md`
 - `docs/api.md`

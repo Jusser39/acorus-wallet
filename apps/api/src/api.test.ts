@@ -568,7 +568,11 @@ describe("api", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const [, init] = fetchMock.mock.calls[0]!;
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain("sellToken=0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    expect(String(url)).not.toContain("sellToken=ETH");
+    expect(String(url)).toContain("buyToken=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+    expect(String(url)).not.toContain("swapFeeBps=0");
     expect((init as RequestInit).headers).toMatchObject({
       "0x-api-key": "test-secret-key",
       "0x-version": "v2",
@@ -582,6 +586,41 @@ describe("api", () => {
         label: "Uniswap_V3",
       },
     });
+  });
+
+  it("GET /api/swap/evm/0x/price omits empty affiliate fee params", async () => {
+    await app.close();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      sellAmount: "1000000000000000",
+      buyAmount: "2500000",
+      price: "2500",
+      liquidityAvailable: true,
+      route: {
+        fills: [{ source: "Uniswap_V3", proportionBps: "10000" }],
+      },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        ZEROX_ENABLED: "true",
+        ZEROX_API_KEY: "test-secret-key",
+        ZEROX_AFFILIATE_FEE_BPS: "",
+        ZEROX_FEE_RECIPIENT: "",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/0x/price?chainId=1&sellToken=native&buyToken=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&sellAmount=1000000000000000&taker=0x0000000000000000000000000000000000000001",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).not.toContain("swapFeeBps");
+    expect(String(url)).not.toContain("swapFeeRecipient");
   });
 
   it("GET /api/swap/evm/0x/quote maps transaction without leaking key", async () => {
@@ -623,6 +662,10 @@ describe("api", () => {
     });
 
     expect(response.statusCode).toBe(200);
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).toContain("sellToken=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+    expect(String(url)).toContain("buyToken=0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    expect(String(url)).not.toContain("buyToken=ETH");
     expect(response.json()).toMatchObject({
       provider: "0x",
       mode: "quote",

@@ -2,49 +2,57 @@
 
 ## Result
 
-Production activation is **deployed and prepared, but not fully enabled**.
-The codebase now supports `ZEROX_*` env pass-through and production-safe 0x hardening on `24wallet.ru`, but live 0x quotes remain blocked because `ZEROX_API_KEY` is still missing on VPS.
+Production activation is **enabled and working** on `https://24wallet.ru`.
 
-## Verified production status
-
-- `GET https://24wallet.ru/api/swap/evm/status`
+- `GET /api/swap/evm/status` now returns:
   - `provider: "0x"`
-  - `configured: false`
+  - `approvalModel: "allowance_holder"`
+  - `configured: true`
   - `enabled: true`
-- VPS audit found no configured `ZEROX_API_KEY` in:
-  - `/opt/acorus-wallet-release-current/.env`
-  - `/opt/acorus-wallet/.env`
-  - prior Acorus release `.env` files under `/opt`
+- read-only live smoke now passes for:
+  - native ETH -> USDC `price`
+  - native ETH -> USDC `quote`
+  - USDC -> WETH approval-needed `quote`
+- tiny real swap execution was **not** performed
 
-## Activation work completed
+## Production changes applied
 
-- `infra/docker-compose.yml` now passes:
-  - `ZEROX_API_KEY`
-  - `ZEROX_API_BASE`
-  - `ZEROX_API_VERSION`
-  - `ZEROX_ENABLED`
-  - `ZEROX_AFFILIATE_FEE_BPS`
-  - `ZEROX_FEE_RECIPIENT`
-  - `ZEROX_RATE_LIMIT_PER_MINUTE`
-- `.env.example` now documents the same 0x env contract
-- `docs/production_0x_env_setup.md` added exact VPS setup steps
+- `ZEROX_API_KEY` was written to `/opt/acorus-wallet-release-current/.env` without printing the value
+- runtime env also keeps:
+  - `ZEROX_API_BASE=https://api.0x.org`
+  - `ZEROX_API_VERSION=v2`
+  - `ZEROX_ENABLED=true`
+  - `ZEROX_RATE_LIMIT_PER_MINUTE=30`
+- wallet services restarted:
+  - `api` + `web` after env activation
+  - `api` rebuilt again after final live-fix rollout
 
-## Deployment status
+## Final live fixes shipped
 
-- deployed commit: `e0a16d5`
-- `docker compose --env-file .env -f infra/docker-compose.yml build api web`
-- `docker compose --env-file .env -f infra/docker-compose.yml up -d api web`
-- public checks after deploy:
-  - `https://24wallet.ru` → `200`
-  - `https://24wallet.ru/health` → `200`
-  - `https://24wallet.ru/api/swap/evm/status` → `configured:false`
-  - `https://24wallet.ru/api/swap/evm/0x/price?...` → `503`
-  - `https://24wallet.ru/extension-smoke` → `200`
-  - `https://bstcrm.ru/healthz` → `200`
+1. Native token aliases are now sent to 0x as `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee` instead of `ETH`.
+2. ERC-20 token addresses sent to 0x are normalized to lowercase.
+3. Empty optional numeric env values no longer coerce into `0`.
+4. `swapFeeBps` / `swapFeeRecipient` are sent only when a positive affiliate fee is actually configured.
+5. Temporary debug logging used during diagnosis was removed before final deploy.
 
-## Current limitation
+## Deployment and public checks
 
-Until `ZEROX_API_KEY` is added, live `price` and `quote` are expected to return:
+- initial hardening deploy baseline: `e0a16d5`
+- current local source includes the final live-fix on top of that baseline
+- public checks after activation/fix:
+  - `https://24wallet.ru/health` -> `200`
+  - `https://24wallet.ru/api/swap/evm/status` -> `configured:true`
+  - `https://24wallet.ru/api/swap/evm/0x/price?...` -> `200`
+  - `https://24wallet.ru/api/swap/evm/0x/quote?...` -> `200`
+  - `https://24wallet.ru/api/market/prices?...` -> `200`
+  - `https://24wallet.ru/extension-smoke` -> `200`
+  - `https://bstcrm.ru/healthz` -> `200`
+  - `node scripts/smoke-zerox-live.mjs` -> `PASS`
 
-- HTTP `503`
-- `swap_provider_not_configured`
+## Known limitations
+
+- 0x flow is currently EVM-only
+- AllowanceHolder remains the active execution model
+- Permit2 execution is not implemented in this wave
+- Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps remain out of scope
+- no automatic real swap execution is enabled
