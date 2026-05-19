@@ -922,3 +922,41 @@
 - Next logical step:
   - manually reload the packed extension in Chrome and run dApp smoke tests for add-chain, watch-asset, switch-chain, receive copy, and custom-chain sign/send review
 
+## Multichain Extension UX + Portfolio Pricing + Manual Smoke Harness (2026-05-19)
+
+- Status: **implemented locally and validated for the extension package**
+- Domain routing finding:
+  - `24wallet.ru` and `www.24wallet.ru` DNS resolve to `85.239.59.199`
+  - HTTP serves the Acorus wallet app
+  - HTTPS redirects to `/login?next=%2F`, so the SSL nginx vhost still points at the CRM/login app
+- Extension UX changes:
+  - popup now has a separate account selector panel for EVM, Solana, Tron, BTC coming soon, and TON coming soon
+  - account/profile selection remains independent from active network selection
+  - header now shows selected network or All networks plus lock/unlock state
+  - network selector now has All/EVM/Solana/Tron/Coming soon groups, search filtering, and capability badges
+  - receive composer updates address family immediately on select change without reloading the popup
+  - add-chain/watch-asset approvals now render structured cards with hostnames and risk labels instead of raw JSON
+- Portfolio pricing:
+  - extension snapshot now calls public `/api/market/prices` with chain id, symbols, and token addresses only
+  - prices use `http://24wallet.ru` first and `http://85.239.59.199:8080` as fallback while HTTPS is routed incorrectly
+  - price failures keep popup rendering safe with `price_unavailable`
+- Web smoke harness:
+  - added `/extension-smoke` with provider detection and manual buttons for accounts, chain id, switch chain, add chain, watch asset, and personal sign
+- Docs added:
+  - `docs/multichain_extension_ux_pricing_plan.md`
+  - `docs/multichain_extension_ux_pricing_report.md`
+- Validation completed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Next logical step:
+  - fix the server HTTPS vhost for `24wallet.ru`, then reload the packed extension and run `/extension-smoke` in Chrome
+

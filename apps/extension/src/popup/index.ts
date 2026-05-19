@@ -109,6 +109,7 @@ function renderPopup(
     ?? state.walletExposedAccounts[0]
     ?? null;
   const activeChain = home?.activeChainId ?? selectedProfile?.chainIds[0] ?? state.activeOriginBridge?.activeChainId ?? 1;
+  const activeNetwork = home?.networks.find((network) => String(network.chainId) === String(activeChain));
   const pendingCount =
     state.proposals.length + state.pendingRequests.length + state.signerUnlockQueue.length;
 
@@ -123,7 +124,8 @@ function renderPopup(
           </div>
         </div>
         <div class="row">
-          <span class="network-pill">${chainName(activeChain)}</span>
+          <span class="network-pill">${escapeHtml(String(activeChain) === "all" ? "All networks" : activeNetwork?.name ?? chainName(activeChain))}</span>
+          <span class="status-pill ${vault.isUnlocked ? "ok" : "locked"}">${vault.isUnlocked ? "Unlocked" : "Locked"}</span>
           <button class="icon-button" type="button" data-open-url="options.html" title="Settings">⚙</button>
         </div>
       </header>
@@ -162,7 +164,7 @@ function renderWalletHome(
     <section class="account-card">
       <div class="account-row">
         <div>
-          <button class="account-name as-button" type="button" data-open-url="options.html">
+          <button class="account-name as-button" type="button" data-action="open-account-panel" data-id="account">
             ${escapeHtml(selectedProfile?.name ?? "Main wallet")} ▾
           </button>
           <button class="address-pill as-button" type="button" data-copy="${escapeHtml(account)}">
@@ -185,6 +187,7 @@ function renderWalletHome(
       </div>
     </section>
 
+    ${renderAccountPanel(state, selectedProfile)}
     ${renderNetworkPanel(home)}
     ${renderExtensionActionPanel(state, home)}
 
@@ -219,6 +222,62 @@ function renderWalletHome(
         <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/extension">Open site</button>
       </div>
     </section>
+  `;
+}
+
+function renderAccountPanel(
+  state: BackgroundStateSnapshot,
+  selectedProfile: BackgroundStateSnapshot["walletExposedAccounts"][number] | null,
+): string {
+  const profiles = state.extensionVaultStatus.profiles.length
+    ? state.extensionVaultStatus.profiles
+    : state.walletExposedAccounts;
+  const familyLabels = [
+    { family: "evm", label: "EVM Account" },
+    { family: "solana", label: "Solana Account" },
+    { family: "tron", label: "Tron Account" },
+  ];
+
+  return `
+    <section class="panel stack" id="account-panel" hidden>
+      <div class="row">
+        <h2 class="section-title">Accounts</h2>
+        <span class="small">${state.extensionVaultStatus.isUnlocked ? "unlocked" : "locked"}</span>
+      </div>
+      ${familyLabels.map(({ family, label }) => {
+        const profile = profiles.find((item) => item.chainFamily === family);
+        if (!profile) {
+          return renderComingSoonAccount(label);
+        }
+
+        return `
+          <button class="account-option ${profile.profileId === selectedProfile?.profileId ? "active" : ""}"
+                  type="button"
+                  data-action="select-wallet-profile"
+                  data-id="${escapeHtml(profile.profileId)}">
+            <span>
+              <strong>${escapeHtml(label)}</strong>
+              <small>${escapeHtml(profile.name)} · ${shortAddress(profile.account)}</small>
+            </span>
+            <span class="badge">${escapeHtml(profile.chainFamily.toUpperCase())}</span>
+          </button>
+        `;
+      }).join("")}
+      ${renderComingSoonAccount("BTC Coming soon")}
+      ${renderComingSoonAccount("TON Coming soon")}
+    </section>
+  `;
+}
+
+function renderComingSoonAccount(label: string): string {
+  return `
+    <div class="account-option disabled">
+      <span>
+        <strong>${escapeHtml(label)}</strong>
+        <small>Profile derivation is not enabled yet</small>
+      </span>
+      <span class="badge muted-badge">Soon</span>
+    </div>
   `;
 }
 
@@ -257,32 +316,95 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
         <h2 class="section-title">Networks</h2>
         <input class="field compact" id="network-search" placeholder="Search">
       </div>
+      ${renderNetworkGroup("All", [
+        {
+          id: "all",
+          family: "all",
+          chainId: "all",
+          name: "All networks",
+          nativeSymbol: "ALL",
+          iconSymbol: "ALL",
+          accent: "#111827",
+          capabilities: { receive: true, balance: true, send: false, swap: false, dapp: false },
+        },
+      ], home.activeChainId)}
       <div class="network-grid">
-        <button class="network-card ${String(home.activeChainId) === "all" ? "active" : ""}"
-                type="button"
-                data-action="set-active-chain"
-                data-id="all">
-          <span class="network-dot" style="background:#111827"></span>
-          <span>
-            <strong>All networks</strong>
-            <small>portfolio · all assets</small>
-          </span>
-        </button>
-        ${home.networks.map((network) => `
-          <button class="network-card ${String(network.chainId) === String(home.activeChainId) ? "active" : ""}"
-                  type="button"
-                  data-action="set-active-chain"
-                  data-id="${escapeHtml(String(network.chainId))}">
-            <span class="network-dot" style="background:${escapeHtml(network.accent)}"></span>
-            <span>
-              <strong>${escapeHtml(network.name)}</strong>
-              <small>${escapeHtml(network.family.toUpperCase())} · ${network.capabilities.send ? "send" : "receive only"}</small>
-            </span>
-          </button>
-        `).join("")}
+        ${["evm", "solana", "tron", "coming"].map((group) =>
+          renderNetworkGroup(
+            getNetworkGroupLabel(group),
+            getNetworksForGroup(home.networks, group),
+            home.activeChainId,
+          ),
+        ).join("")}
       </div>
     </section>
   `;
+}
+
+function renderNetworkGroup(
+  label: string,
+  networks: Array<ExtensionPortfolioSnapshot["networks"][number] & { family: string }>,
+  activeChainId: string | number,
+): string {
+  if (!networks.length) {
+    return "";
+  }
+
+  return `
+    <div class="network-group" data-network-group="${escapeHtml(label.toLowerCase())}">
+      <div class="network-group-label">${escapeHtml(label)}</div>
+      ${networks.map((network) => renderNetworkCard(network, activeChainId)).join("")}
+    </div>
+  `;
+}
+
+function renderNetworkCard(
+  network: ExtensionPortfolioSnapshot["networks"][number] & { family: string },
+  activeChainId: string | number,
+): string {
+  const capabilityBadges = Object.entries(network.capabilities)
+    .map(([name, enabled]) => `<span class="capability-badge ${enabled ? "on" : "off"}">${escapeHtml(name)}</span>`)
+    .join("");
+  const chainId = String(network.chainId);
+
+  return `
+    <button class="network-card ${chainId === String(activeChainId) ? "active" : ""}"
+            type="button"
+            data-action="set-active-chain"
+            data-id="${escapeHtml(chainId)}"
+            data-network-name="${escapeHtml(`${network.name} ${network.nativeSymbol} ${network.family}`.toLowerCase())}">
+      <span class="network-dot" style="background:${escapeHtml(network.accent)}"></span>
+      <span>
+        <strong>${escapeHtml(network.name)}</strong>
+        <small>${escapeHtml(network.family.toUpperCase())}</small>
+        <span class="capability-row">${capabilityBadges}</span>
+      </span>
+    </button>
+  `;
+}
+
+function getNetworksForGroup(
+  networks: ExtensionPortfolioSnapshot["networks"],
+  group: string,
+): ExtensionPortfolioSnapshot["networks"] {
+  if (group === "coming") {
+    return networks.filter((network) => network.family === "utxo" || network.family === "ton");
+  }
+
+  return networks.filter((network) => network.family === group);
+}
+
+function getNetworkGroupLabel(group: string): string {
+  switch (group) {
+    case "evm":
+      return "EVM";
+    case "solana":
+      return "Solana";
+    case "tron":
+      return "Tron";
+    default:
+      return "Coming soon";
+  }
 }
 
 function renderExtensionActionPanel(
@@ -319,7 +441,7 @@ function renderReceiveComposer(
       <label class="small">Network</label>
       <select class="field" id="receive-network">
         ${networks.map((network) => `
-          <option value="${escapeHtml(String(network.chainId))}" data-family="${escapeHtml(network.family)}" ${network.family === selectedFamily ? "selected" : ""}>
+          <option value="${escapeHtml(String(network.chainId))}" data-family="${escapeHtml(network.family)}" ${String(network.chainId) === String(selectedNetwork?.chainId) ? "selected" : ""}>
             ${escapeHtml(network.name)}
           </option>
         `).join("")}
@@ -448,7 +570,7 @@ function renderPromptNotice(state: BackgroundStateSnapshot): string {
       <section class="notice warning">
         <strong>${escapeHtml(getDappRequestKindLabel(request.kind))} request</strong><br>
         ${escapeHtml(request.origin.title)} wants approval on ${chainName(request.chainId)}.<br>
-        ${escapeHtml(request.summary)}
+        ${renderApprovalDetailCard(request)}
         <div class="row" style="margin-top:10px">
           ${actionButton("approve-request", request.id, approveLabel, true)}
           ${actionButton("reject-request", request.id, "Reject", false, true)}
@@ -472,6 +594,47 @@ function renderPromptNotice(state: BackgroundStateSnapshot): string {
       </div>
     </section>
   `;
+}
+
+function renderApprovalDetailCard(
+  request: BackgroundStateSnapshot["pendingRequests"][number],
+): string {
+  const details = request.reviewDetails;
+
+  if (details?.kind === "add_chain") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>Add Network</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Name</dt><dd>${escapeHtml(details.chainName || "Unknown network")}</dd></div>
+          <div><dt>Chain ID</dt><dd>${escapeHtml(String(details.chainIdDecimal ?? "n/a"))} / ${escapeHtml(details.chainIdHex || "n/a")}</dd></div>
+          <div><dt>RPC</dt><dd>${escapeHtml(details.rpcHostname)}</dd></div>
+          <div><dt>Explorer</dt><dd>${escapeHtml(details.explorerHostname)}</dd></div>
+          <div><dt>Symbol</dt><dd>${escapeHtml(details.nativeSymbol || "n/a")}</dd></div>
+        </dl>
+      </div>
+    `;
+  }
+
+  if (details?.kind === "watch_asset") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>Watch Asset</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Symbol</dt><dd>${escapeHtml(details.symbol || "UNKNOWN")}</dd></div>
+          <div><dt>Address</dt><dd>${escapeHtml(shortAddress(details.tokenAddress))}</dd></div>
+          <div><dt>Decimals</dt><dd>${escapeHtml(String(details.decimals ?? "n/a"))}</dd></div>
+          <div><dt>Chain</dt><dd>${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
+        </dl>
+      </div>
+    `;
+  }
+
+  return `<span>${escapeHtml(request.summary)}</span>`;
+}
+
+function renderRiskLabels(labels: string[]): string {
+  return `<span class="risk-labels">${labels.map((label) => `<span>${escapeHtml(label)}</span>`).join("")}</span>`;
 }
 
 function renderSeedReveal(mnemonic: string): string {
@@ -545,6 +708,7 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
 function wirePopupActions(): void {
   wireWalletForms();
   wireReceiveNetworkSelector();
+  wireNetworkSearch();
   const buttons = root.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url], [data-copy]");
 
   buttons.forEach((button) => {
@@ -567,6 +731,11 @@ function wirePopupActions(): void {
 
       if (action === "open-network-panel") {
         root.querySelector<HTMLElement>("#network-panel")?.toggleAttribute("hidden");
+        return;
+      }
+
+      if (action === "open-account-panel") {
+        root.querySelector<HTMLElement>("#account-panel")?.toggleAttribute("hidden");
         return;
       }
 
@@ -632,6 +801,22 @@ function wirePopupActions(): void {
         await loadPopupState();
       }
     });
+  });
+}
+
+function wireNetworkSearch(scope: ParentNode = root): void {
+  scope
+    .querySelector<HTMLInputElement>("#network-search")
+    ?.addEventListener("input", (event) => {
+      const query = (event.currentTarget as HTMLInputElement).value.trim().toLowerCase();
+      filterNetworkCards(scope, query);
+    });
+}
+
+function filterNetworkCards(scope: ParentNode, query: string): void {
+  scope.querySelectorAll<HTMLElement>(".network-card").forEach((card) => {
+    const label = card.dataset.networkName ?? card.textContent?.toLowerCase() ?? "";
+    card.hidden = Boolean(query) && !label.includes(query);
   });
 }
 

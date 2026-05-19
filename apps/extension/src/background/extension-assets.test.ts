@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildAssetId,
+  enrichAssetsWithPrices,
   hideAsset,
   listWatchedAssets,
   unhideAsset,
@@ -84,5 +85,63 @@ describe("extension assets", () => {
       symbol: "POL",
       tokenAddress: null,
     })).toBe("evm:137:native:native:POL");
+  });
+
+  it("enriches prices when the public market API responds", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        prices: [{
+          chainId: 1,
+          symbol: "ETH",
+          tokenAddress: null,
+          price: 2500,
+          sourceStatus: "live",
+        }],
+      }),
+    })));
+
+    const [asset] = await enrichAssetsWithPrices([{
+      family: "evm",
+      chainId: 1,
+      type: "native",
+      symbol: "ETH",
+      name: "Ethereum",
+      decimals: 18,
+      tokenAddress: null,
+      balanceRaw: "1000000000000000000",
+      balanceFormatted: "1",
+      source: "live_rpc",
+    }]);
+
+    expect(asset?.priceUsd).toBe(2500);
+    expect(asset?.fiatValue).toBe(2500);
+    expect(asset?.source).toContain("live_price");
+  });
+
+  it("keeps popup-safe price placeholders when the market API fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("offline");
+    }));
+
+    const warnings: string[] = [];
+    const [asset] = await enrichAssetsWithPrices([{
+      family: "evm",
+      chainId: 1,
+      type: "native",
+      symbol: "ETH",
+      name: "Ethereum",
+      decimals: 18,
+      tokenAddress: null,
+      balanceRaw: "1000000000000000000",
+      balanceFormatted: "1",
+      source: "live_rpc",
+    }], warnings);
+
+    expect(asset?.priceUsd).toBeNull();
+    expect(asset?.fiatValue).toBeNull();
+    expect(asset?.source).toContain("price_unavailable");
+    expect(warnings.length).toBeGreaterThan(0);
   });
 });

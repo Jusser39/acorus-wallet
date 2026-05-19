@@ -102,7 +102,30 @@ export type DappRequest = {
   status: DappRequestStatus;
   createdAt: string;
   warning?: string | null;
+  reviewDetails?: DappRequestReviewDetails | null;
 };
+
+export type DappRequestReviewDetails =
+  | {
+      kind: "add_chain";
+      chainName: string;
+      chainIdDecimal: number | null;
+      chainIdHex: string;
+      rpcUrl: string;
+      rpcHostname: string;
+      explorerUrl: string;
+      explorerHostname: string;
+      nativeSymbol: string;
+      riskLabels: string[];
+    }
+  | {
+      kind: "watch_asset";
+      chainId: ChainId | null;
+      tokenAddress: string;
+      symbol: string;
+      decimals: number | null;
+      riskLabels: string[];
+    };
 
 export type DappApprovalResult = {
   id: string;
@@ -192,6 +215,7 @@ export type QueueDappRequestInput = {
   requestedPermissions?: DappPermissionScope[];
   summary: string;
   warning?: string | null;
+  reviewDetails?: DappRequestReviewDetails | null;
 };
 
 export type QueueDappRequestResult = {
@@ -827,6 +851,7 @@ export function queueDappRequest(
     summary: input.summary,
     status: "pending",
     createdAt,
+    reviewDetails: input.reviewDetails ?? null,
     warning:
       input.warning
       ?? buildDappRequestWarning({

@@ -431,3 +431,10 @@
 180. Stabilized Vitest config for slow local crypto/jsdom execution on Windows by adding explicit wallet-core/extension test timeouts and a web jsdom setup that restores localStorage before each test.
 181. Completed validation for the stabilization wave: shared build, wallet-core build, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
 182. Refreshed the downloadable extension archive at `apps/web/public/downloads/acorus-wallet-extension.zip` after the successful extension package run.
+183. Checked `24wallet.ru` routing: DNS resolves to `85.239.59.199`; HTTP serves Acorus wallet, but HTTPS redirects to `/login?next=%2F`, indicating the SSL nginx vhost is still pointed at the CRM/login app.
+184. Started the Multichain Extension UX + Portfolio Pricing + Manual Smoke Harness wave after commit `b3dc7f5b6c39902eda3a72b2982c7c9c6362d5a5`.
+185. Added structured dApp request review details for add-chain/watch-asset approvals so popup can render network/token cards without raw JSON.
+186. Expanded popup UX with a separate account selector panel, grouped searchable network selector, capability badges, lock status, and live receive-family updates.
+187. Added extension portfolio price enrichment through public `/api/market/prices` using only chain id, symbol, and token address metadata with safe fallback on API failure.
+188. Added `/extension-smoke` as a manual dApp/provider smoke harness for injected provider detection and core EIP-1193 checks.
+189. Completed validation for the multichain UX/pricing/smoke wave: shared build, wallet-core build, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.

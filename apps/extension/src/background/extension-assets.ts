@@ -29,6 +29,10 @@ export type ExtensionPortfolioSnapshot = {
 const WATCHED_ASSETS_KEY = "acorus_extension_watched_assets";
 const HIDDEN_ASSET_IDS_KEY = "acorus_extension_hidden_assets";
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
+export const EXTENSION_API_BASES = [
+  "http://24wallet.ru",
+  "http://85.239.59.199:8080",
+] as const;
 const DEFAULT_PUBLIC_EVM_RPCS: Record<number, string> = {
   1: "https://ethereum-rpc.publicnode.com",
   10: "https://optimism-rpc.publicnode.com",
@@ -133,7 +137,8 @@ export async function buildExtensionPortfolioSnapshot(input?: {
     }));
   }
 
-  const values = assets
+  const pricedAssets = await enrichAssetsWithPrices(assets, warnings);
+  const values = pricedAssets
     .map((asset) => asset.fiatValue)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 
@@ -144,9 +149,140 @@ export async function buildExtensionPortfolioSnapshot(input?: {
       : null,
     activeChainId,
     networks,
-    assets,
+    assets: pricedAssets,
     warnings,
   };
+}
+
+export async function enrichAssetsWithPrices(
+  assets: AssetBalance[],
+  warnings: string[] = [],
+): Promise<AssetBalance[]> {
+  const prices = await fetchExtensionPrices(assets, warnings);
+
+  return assets.map((asset) => {
+    const price = prices.get(buildPriceKey(asset));
+
+    if (!price) {
+      return {
+        ...asset,
+        priceUsd: null,
+        fiatValue: null,
+        source: appendSource(asset.source, "price_unavailable"),
+      };
+    }
+
+    const balance = Number(asset.balanceFormatted);
+    return {
+      ...asset,
+      priceUsd: price.price,
+      fiatValue: Number.isFinite(balance) ? balance * price.price : null,
+      source: appendSource(
+        asset.source,
+        price.sourceStatus === "cached" || price.sourceStatus === "stale_cache"
+          ? "cached_price"
+          : "live_price",
+      ),
+    };
+  });
+}
+
+async function fetchExtensionPrices(
+  assets: AssetBalance[],
+  warnings: string[],
+): Promise<Map<string, ExtensionMarketPrice>> {
+  const byChain = new Map<number, AssetBalance[]>();
+
+  for (const asset of assets) {
+    const chainId = Number(asset.chainId);
+    if (!Number.isFinite(chainId) || !asset.symbol) {
+      continue;
+    }
+
+    const items = byChain.get(chainId) ?? [];
+    items.push(asset);
+    byChain.set(chainId, items);
+  }
+
+  const prices = new Map<string, ExtensionMarketPrice>();
+
+  for (const [chainId, chainAssets] of byChain.entries()) {
+    const result = await fetchPricesForChain(chainId, chainAssets, warnings);
+    for (const price of result) {
+      prices.set(buildPriceKey(price), price);
+    }
+  }
+
+  return prices;
+}
+
+async function fetchPricesForChain(
+  chainId: number,
+  assets: AssetBalance[],
+  warnings: string[],
+): Promise<ExtensionMarketPrice[]> {
+  const params = new URLSearchParams({
+    chainId: String(chainId),
+    currency: "USD",
+    symbols: assets.map((asset) => asset.symbol).join(","),
+  });
+  params.set(
+    "tokenAddresses",
+    assets.map((asset) => asset.tokenAddress ?? "").join(","),
+  );
+
+  for (const base of EXTENSION_API_BASES) {
+    try {
+      const response = await fetch(`${base}/api/market/prices?${params.toString()}`);
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const payload = await response.json() as {
+        ok?: boolean;
+        prices?: ExtensionMarketPrice[];
+      };
+
+      if (payload.ok && Array.isArray(payload.prices)) {
+        return payload.prices;
+      }
+    } catch {
+      // Try the next public base.
+    }
+  }
+
+  warnings.push(`Prices unavailable for chain ${chainId}.`);
+  return [];
+}
+
+type ExtensionMarketPrice = {
+  chainId: number;
+  tokenAddress?: string | null;
+  symbol: string;
+  price: number;
+  sourceStatus?: string | null;
+};
+
+function buildPriceKey(input: Pick<AssetBalance, "chainId" | "symbol" | "tokenAddress">): string;
+function buildPriceKey(input: Pick<ExtensionMarketPrice, "chainId" | "symbol" | "tokenAddress">): string;
+function buildPriceKey(input: {
+  chainId: string | number;
+  symbol: string;
+  tokenAddress?: string | null;
+}): string {
+  return [
+    String(input.chainId),
+    input.symbol.toUpperCase(),
+    input.tokenAddress?.toLowerCase() ?? "native",
+  ].join(":");
+}
+
+function appendSource(
+  current: string | null | undefined,
+  status: "live_price" | "cached_price" | "price_unavailable",
+): string {
+  return current ? `${current}+${status}` : status;
 }
 
 export function buildAssetId(

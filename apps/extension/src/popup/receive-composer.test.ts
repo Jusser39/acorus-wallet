@@ -13,5 +13,32 @@ describe("popup receive composer", () => {
     expect(source).toContain("profile.chainFamily === family");
     expect(source).toContain("Coming soon");
     expect(source).toContain("data-copy");
+    expect(source).toContain("wireReceiveNetworkSelector");
+    expect(source).toContain("box.innerHTML = renderReceiveAddressRows");
+  });
+
+  it("contains network search/filter wiring", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("wireNetworkSearch");
+    expect(source).toContain("filterNetworkCards");
+    expect(source).toContain("data-network-name");
+    expect(source).toContain("card.hidden = Boolean(query)");
+  });
+
+  it("renders safe add-chain and watch-asset approval cards without raw JSON", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("renderApprovalDetailCard");
+    expect(source).toContain("Add Network");
+    expect(source).toContain("Watch Asset");
+    expect(source).toContain("rpcHostname");
+    expect(source).not.toContain("JSON.stringify(request");
   });
 });

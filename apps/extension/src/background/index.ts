@@ -9,6 +9,7 @@ import {
   queueDappRequest,
   type DappRequest,
   type DappRequestKind,
+  type DappRequestReviewDetails,
   type ChainId,
   type ChainFamily,
   type DappShellSnapshot,
@@ -1050,6 +1051,11 @@ async function handleProviderMethod(
         method,
         params: providerParams,
       }),
+      reviewDetails: buildRequestReviewDetails(
+        method,
+        providerParams,
+        getDappSessionActiveChainId(session),
+      ),
     });
 
     if (queued.created) {
@@ -1632,6 +1638,80 @@ function parseWatchAssetPreview(params: unknown[]): {
     symbol: String(options.symbol ?? ""),
     decimals: String(options.decimals ?? ""),
   };
+}
+
+function buildRequestReviewDetails(
+  method: AcorusProviderMethod,
+  params: unknown[],
+  activeChainId: ChainId | null,
+): DappRequestReviewDetails | null {
+  if (method === "acorus_addChain") {
+    const preview = parseAddChainPreview(params);
+    const chainIdDecimal = parseMaybeChainId(preview.chainId);
+    const rpcHostname = safeHostname(preview.rpcUrl);
+    const explorerHostname = safeHostname(preview.explorerUrl);
+    const riskLabels = ["Custom network"];
+
+    if (!rpcHostname || !isKnownPublicRpcHostname(rpcHostname)) {
+      riskLabels.push("Unknown RPC");
+    }
+
+    return {
+      kind: "add_chain",
+      chainName: preview.chainName,
+      chainIdDecimal,
+      chainIdHex: chainIdDecimal === null ? preview.chainId : `0x${chainIdDecimal.toString(16)}`,
+      rpcUrl: preview.rpcUrl,
+      rpcHostname: rpcHostname || "unknown",
+      explorerUrl: preview.explorerUrl,
+      explorerHostname: explorerHostname || "none",
+      nativeSymbol: preview.symbol,
+      riskLabels,
+    };
+  }
+
+  if (method === "acorus_watchAsset") {
+    const preview = parseWatchAssetPreview(params);
+    const decimals = Number(preview.decimals);
+    return {
+      kind: "watch_asset",
+      chainId: activeChainId,
+      tokenAddress: preview.address,
+      symbol: preview.symbol,
+      decimals: Number.isFinite(decimals) ? decimals : null,
+      riskLabels: ["Token not verified"],
+    };
+  }
+
+  return null;
+}
+
+function parseMaybeChainId(value: string): number | null {
+  const parsed = Number.parseInt(value, value.startsWith("0x") ? 16 : 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function safeHostname(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function isKnownPublicRpcHostname(hostname: string): boolean {
+  return [
+    "publicnode.com",
+    "ankr.com",
+    "infura.io",
+    "alchemy.com",
+    "quicknode.pro",
+    "llamarpc.com",
+  ].some((suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`));
 }
 
 function summarizePayload(value: unknown): string {
