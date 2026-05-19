@@ -91,6 +91,18 @@ type AcorusSimpleChainProvider = {
 
 type AcorusSolanaProvider = AcorusSimpleChainProvider & {
   readonly isPhantom: false;
+  readonly supportedMethods: {
+    readonly connect: true;
+    readonly signMessage: true;
+    readonly signTransaction: false;
+    readonly signAndSendTransaction: false;
+  };
+  readonly capabilities: {
+    readonly connect: true;
+    readonly signMessage: true;
+    readonly signTransaction: false;
+    readonly signAndSendTransaction: false;
+  };
   readonly publicKey: { toString(): string } | null;
   readonly isConnected: boolean;
   disconnect(): Promise<void>;
@@ -544,6 +556,18 @@ function createSolanaProvider(): AcorusSolanaProvider {
   const provider: AcorusSolanaProvider = {
     isAcorus: true,
     isPhantom: false,
+    supportedMethods: {
+      connect: true,
+      signMessage: true,
+      signTransaction: false,
+      signAndSendTransaction: false,
+    },
+    capabilities: {
+      connect: true,
+      signMessage: true,
+      signTransaction: false,
+      signAndSendTransaction: false,
+    },
     family: "solana",
     chainId: 101,
     get publicKey() {

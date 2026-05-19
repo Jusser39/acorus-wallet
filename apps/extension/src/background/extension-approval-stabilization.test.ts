@@ -116,6 +116,9 @@ describe("extension approval stabilization", () => {
     expect(source).toContain("queue_solana_send");
     expect(source).toContain("queueInternalSolanaSendRequest");
     expect(source).toContain("kind: \"multichain_send\"");
+    expect(source).toContain("buildSplTransferDraft");
+    expect(source).toContain("assetType === \"spl\"");
+    expect(source).toContain("ataWarning");
     expect(source).toContain("executeExtensionSolanaSend");
     expect(source).toContain("pendingProviderExecutions.set");
   });

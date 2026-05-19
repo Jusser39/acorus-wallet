@@ -991,3 +991,47 @@
   - `git diff --check`
   - `pnpm extension:package`
 
+## HTTPS Enforcement + Extension Smoke Verification + SPL Transfer Foundation (2026-05-19)
+
+- Status: **implemented, deployed, and pushed**
+- Production routing:
+  - split the `24wallet.ru` nginx vhost into HTTP redirect, canonical HTTPS wallet proxy, and `www` HTTPS redirect blocks
+  - backup path: `/root/backups/acorus-wallet-nginx-https-enforcement_20260519_151649/`
+  - `http://24wallet.ru` and `http://www.24wallet.ru` now return `308` to `https://24wallet.ru`
+  - `https://www.24wallet.ru` now returns `308` to canonical `https://24wallet.ru`
+  - canonical `https://24wallet.ru` returns `200 OK` with HSTS
+  - `bstcrm.ru` was not edited and still responds
+- Extension API hardening:
+  - extension price API bases now prioritize `https://24wallet.ru`
+  - `http://24wallet.ru` is no longer a production API priority
+  - the IP/port URL remains only as a later dev fallback
+- Smoke harness:
+  - `/extension-smoke` now shows protocol/origin/security status, provider event log, copy diagnostics, clear log, and Solana capability display
+  - deployed production page contains `Event log`, `Copy diagnostics`, `Protocol`, and `Capabilities` markers
+  - automatic remote extension click testing is still limited because this shell cannot load the user's installed Chrome extension profile
+- Solana SPL foundation:
+  - wallet-core now includes SPL mint/owner validation, ATA derivation/checking, SPL draft creation, fee estimate helper, and SPL transfer execution with recipient ATA creation
+  - extension Solana send queue accepts SOL or SPL asset metadata and renders SPL mint/fee/ATA details in approval cards
+  - popup Send now lists SOL and discovered SPL token balances as selectable assets
+  - injected Solana provider now exposes explicit Acorus capability metadata without claiming Phantom compatibility
+- Out of scope:
+  - swap execution, Tron/BTC/TON send execution, Phantom-complete provider compatibility
+- Validation in progress/completed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Deployment verification:
+  - rebuilt/recreated the Docker Compose web/API services from commit `dcea769`
+  - `acorus-api` is healthy
+  - `https://24wallet.ru/health` returns `200 OK`
+  - `https://24wallet.ru/api/market/prices?...` returns `200 OK`
+

@@ -17,11 +17,13 @@ import {
   validateWalletMnemonic,
   getSolanaAddressFromMnemonic,
   getTronAddressFromMnemonic,
+  executeSplTransfer,
   executeSolanaSend,
   signSolanaMessage,
   type CustomEvmChainConfig,
   type EncryptedVaultV1,
   type SolanaSendExecutionInput,
+  type SplTransferExecutionInput,
 } from "@acorus/wallet-core";
 import type {
   ExtensionVaultStatus,
@@ -181,12 +183,29 @@ export async function executeExtensionSolanaSend(input: {
 }): Promise<string> {
   const session = requireUnlockedSession();
   const payload = parseSolanaSendPayload(input.params);
-  const result = await executeSolanaSend({
-    ...payload,
-    mnemonic: session.mnemonic,
-    expectedFromAddress: input.account ?? payload.fromAddress,
-    rpcUrl: payload.rpcUrl ?? EXTENSION_SOLANA_RPC_FALLBACK,
-  });
+  const result = payload.assetType === "spl"
+    ? await executeSplTransfer({
+      mintAddress: payload.tokenAddress,
+      fromOwnerAddress: payload.fromAddress,
+      toOwnerAddress: payload.toAddress,
+      amountRaw: payload.amountRaw,
+      amountFormatted: payload.amountFormatted,
+      decimals: payload.decimals,
+      symbol: payload.symbol,
+      balanceRaw: payload.balanceRaw,
+      mnemonic: session.mnemonic,
+      expectedFromAddress: input.account ?? payload.fromAddress,
+      rpcUrl: payload.rpcUrl ?? EXTENSION_SOLANA_RPC_FALLBACK,
+    })
+    : await executeSolanaSend({
+      fromAddress: payload.fromAddress,
+      toAddress: payload.toAddress,
+      amountRaw: payload.amountRaw,
+      amountFormatted: payload.amountFormatted,
+      mnemonic: session.mnemonic,
+      expectedFromAddress: input.account ?? payload.fromAddress,
+      rpcUrl: payload.rpcUrl ?? EXTENSION_SOLANA_RPC_FALLBACK,
+    });
 
   if (result.status !== "submitted" || !result.txHash) {
     throw new Error(result.errorMessage ?? "Solana send was not submitted.");
@@ -565,29 +584,75 @@ function isSolanaSignMessageParams(
   );
 }
 
-function parseSolanaSendPayload(params: unknown[]): Omit<
-  SolanaSendExecutionInput,
-  "mnemonic"
-> {
+type ParsedSolanaSendPayload = (
+  Omit<SolanaSendExecutionInput, "mnemonic">
+  & {
+    assetType: "native";
+    symbol: "SOL";
+    tokenAddress: null;
+    decimals: 9;
+    balanceRaw?: string | null;
+  }
+) | (
+  Omit<SplTransferExecutionInput, "mnemonic" | "fromOwnerAddress" | "toOwnerAddress" | "mintAddress">
+  & {
+    assetType: "spl";
+    fromAddress: string;
+    toAddress: string;
+    tokenAddress: string;
+    symbol: string;
+    decimals: number;
+  }
+);
+
+function parseSolanaSendPayload(params: unknown[]): ParsedSolanaSendPayload {
   const payload = normalizeRecord(params[0]);
+  const assetType = payload.assetType === "spl" ? "spl" : "native";
+  const fromAddress = String(payload.fromAddress ?? payload.from ?? "");
+  const toAddress = String(payload.toAddress ?? payload.to ?? "");
+  const amountRaw = typeof payload.amountRaw === "string"
+    ? payload.amountRaw
+    : undefined;
+  const amountFormatted = typeof payload.amountFormatted === "string"
+    ? payload.amountFormatted
+    : typeof payload.amount === "string"
+      ? payload.amount
+      : undefined;
+  const rpcUrl = typeof payload.rpcUrl === "string"
+    ? payload.rpcUrl
+    : undefined;
+  const expectedFromAddress = typeof payload.expectedFromAddress === "string"
+    ? payload.expectedFromAddress
+    : null;
+
+  if (assetType === "spl") {
+    return {
+      assetType,
+      fromAddress,
+      toAddress,
+      amountRaw,
+      amountFormatted,
+      rpcUrl,
+      expectedFromAddress,
+      tokenAddress: String(payload.tokenAddress ?? payload.mintAddress ?? ""),
+      symbol: typeof payload.symbol === "string" ? payload.symbol : "SPL",
+      decimals: normalizeNumber(payload.decimals) ?? 0,
+      balanceRaw: typeof payload.balanceRaw === "string" ? payload.balanceRaw : null,
+    };
+  }
 
   return {
-    fromAddress: String(payload.fromAddress ?? payload.from ?? ""),
-    toAddress: String(payload.toAddress ?? payload.to ?? ""),
-    amountRaw: typeof payload.amountRaw === "string"
-      ? payload.amountRaw
-      : undefined,
-    amountFormatted: typeof payload.amountFormatted === "string"
-      ? payload.amountFormatted
-      : typeof payload.amount === "string"
-        ? payload.amount
-        : undefined,
-    rpcUrl: typeof payload.rpcUrl === "string"
-      ? payload.rpcUrl
-      : undefined,
-    expectedFromAddress: typeof payload.expectedFromAddress === "string"
-      ? payload.expectedFromAddress
-      : null,
+    assetType,
+    symbol: "SOL",
+    tokenAddress: null,
+    decimals: 9,
+    fromAddress,
+    toAddress,
+    amountRaw,
+    amountFormatted,
+    rpcUrl,
+    expectedFromAddress,
+    balanceRaw: typeof payload.balanceRaw === "string" ? payload.balanceRaw : null,
   };
 }
 

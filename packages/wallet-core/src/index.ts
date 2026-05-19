@@ -17,6 +17,7 @@ export * from "./solana/explorer";
 export * from "./solana/message";
 export * from "./solana/portfolio";
 export * from "./solana/send";
+export * from "./solana/spl-transfer";
 export * from "./solana/tokens";
 export * from "./swap";
 export * from "./types";

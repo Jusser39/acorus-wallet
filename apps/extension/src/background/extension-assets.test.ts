@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildAssetId,
   enrichAssetsWithPrices,
+  EXTENSION_API_BASES,
   hideAsset,
   listWatchedAssets,
   unhideAsset,
@@ -37,6 +38,11 @@ beforeEach(() => {
 });
 
 describe("extension assets", () => {
+  it("uses HTTPS wallet API before dev fallbacks", () => {
+    expect(EXTENSION_API_BASES[0]).toBe("https://24wallet.ru");
+    expect(EXTENSION_API_BASES[0]).not.toBe("http://24wallet.ru");
+  });
+
   it("saves watched ERC-20 assets", async () => {
     const watched = await watchAsset({
       family: "evm",
@@ -88,7 +94,7 @@ describe("extension assets", () => {
   });
 
   it("enriches prices when the public market API responds", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({
+    const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
         ok: true,
@@ -100,7 +106,8 @@ describe("extension assets", () => {
           sourceStatus: "live",
         }],
       }),
-    })));
+    }));
+    vi.stubGlobal("fetch", fetchMock);
 
     const [asset] = await enrichAssetsWithPrices([{
       family: "evm",
@@ -118,6 +125,11 @@ describe("extension assets", () => {
     expect(asset?.priceUsd).toBe(2500);
     expect(asset?.fiatValue).toBe(2500);
     expect(asset?.source).toContain("live_price");
+    const firstUrl = String((fetchMock.mock.calls as unknown[][])[0]?.[0] ?? "");
+    expect(firstUrl).toContain("https://24wallet.ru/api/market/prices");
+    expect(firstUrl).not.toContain("mnemonic");
+    expect(firstUrl).not.toContain("privateKey");
+    expect(firstUrl).not.toContain("passcode");
   });
 
   it("keeps popup-safe price placeholders when the market API fails", async () => {

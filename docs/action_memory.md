@@ -446,3 +446,16 @@
 195. Updated web send status/policy tests so Solana is treated as supported instead of coming soon; Tron/BTC/TON remain gated.
 196. Completed local validation for the HTTPS/Solana MVP wave: shared build, wallet-core build/test, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
 197. Deployed this wave to `/opt/acorus-wallet-release-current` by uploading a clean git archive to the VPS, copied the existing production `.env`, rebuilt/recreated the Acorus Docker Compose services, and verified `https://24wallet.ru/extension-smoke` returns `200 OK`.
+198. Started the HTTPS Enforcement + Extension Smoke Verification + SPL Transfer Foundation wave after commit `5452cd5168a4425dadece78c5a37b90f58c81b2d`.
+199. Updated the VPS nginx `24wallet.ru` vhost with a backup at `/root/backups/acorus-wallet-nginx-https-enforcement_20260519_151649/`, then split HTTP redirects, canonical HTTPS proxying, `www` canonical redirects, and HSTS without touching `bstcrm.ru`.
+200. Verified server routing: `http://24wallet.ru`, `http://www.24wallet.ru`, and `https://www.24wallet.ru` redirect to canonical HTTPS; `https://24wallet.ru` returns `200 OK` with HSTS; `/extension-smoke` renders over HTTPS.
+201. Hardened extension market API fallback order so `https://24wallet.ru` is first and public price requests contain only chain/symbol/token metadata.
+202. Added wallet-core SPL transfer foundation: SPL mint/owner validation, ATA derivation/checking, draft validation, fee estimate helper, and execution that can create a missing recipient ATA after explicit confirmation.
+203. Extended extension Solana send queue, execution parsing, shared review details, and popup approval card rendering for SOL and SPL assets, including token mint, estimated fee, and ATA warning.
+204. Updated popup Send so it lists SOL plus discovered SPL balances and sends selected asset metadata through `queue_solana_send`.
+205. Expanded `/extension-smoke` with protocol/origin/security status, provider event log, Solana capability display, copy diagnostics, and clear log controls.
+206. Added tests/source guards for HTTPS API priority, SPL draft validation, SPL approval card rendering, SPL send composer, and smoke diagnostics controls.
+207. Completed local validation for this wave: shared build, wallet-core build/test, extension lint/test/build, web test/build, full `pnpm test`, full `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed.
+208. Committed and pushed the wave as `dcea769` with message `Enforce wallet HTTPS and add Solana SPL transfer foundation`.
+209. Deployed the pushed archive to `/opt/acorus-wallet-release-current`, rebuilt the Docker Compose web/API services, and verified `/extension-smoke` now contains the new diagnostics UI markers.
+210. Rechecked production after deployment: canonical HTTPS has HSTS, HTTP and `www` redirect to `https://24wallet.ru`, `/health` returns `200 OK`, market prices return `200 OK`, and `bstcrm.ru/healthz` still responds separately.

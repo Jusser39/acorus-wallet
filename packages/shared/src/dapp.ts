@@ -133,8 +133,11 @@ export type DappRequestReviewDetails =
       fromAddress: string;
       toAddress: string;
       assetSymbol: string;
+      assetType?: string | null;
+      tokenAddress?: string | null;
       amountFormatted: string;
       estimatedFeeFormatted?: string | null;
+      ataWarning?: string | null;
       riskLabels: string[];
     };
 

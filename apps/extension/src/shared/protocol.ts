@@ -164,6 +164,11 @@ export type ExtensionRuntimeMessage =
       surface: "popup" | "options";
       toAddress: string;
       amountFormatted: string;
+      assetType?: "native" | "spl";
+      tokenAddress?: string | null;
+      symbol?: string | null;
+      decimals?: number | null;
+      balanceRaw?: string | null;
     }
   | {
       kind: "provider_request";

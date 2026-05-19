@@ -10,6 +10,10 @@ describe("ExtensionSmokeClient", () => {
     expect(screen.getByText("window.ethereum")).toBeTruthy();
     expect(screen.getByText("Solana diagnostics")).toBeTruthy();
     expect(screen.getByText("Solana connect")).toBeTruthy();
+    expect(screen.getByText("Event log")).toBeTruthy();
+    expect(screen.getByText("Copy diagnostics")).toBeTruthy();
+    expect(screen.getByText("Clear log")).toBeTruthy();
+    expect(screen.getByText("Protocol")).toBeTruthy();
     expect(screen.getAllByText("missing").length).toBeGreaterThan(0);
   });
 });

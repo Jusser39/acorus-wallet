@@ -219,7 +219,7 @@ function renderWalletHome(
                 <button class="primary-button" type="submit">Unlock</button>
               </form>`
         }
-        <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/extension">Open site</button>
+        <button class="ghost-button" type="button" data-open-url="https://24wallet.ru/extension">Open site</button>
       </div>
     </section>
   `;
@@ -631,14 +631,28 @@ function renderApprovalDetailCard(
   }
 
   if (details?.kind === "multichain_send") {
+    const ataWarning = details.ataWarning
+      ? `<div><dt>ATA</dt><dd>${escapeHtml(details.ataWarning)}</dd></div>`
+      : "";
+    const tokenAddress = details.tokenAddress
+      ? `<div><dt>Mint</dt><dd>${escapeHtml(shortAddress(details.tokenAddress))}</dd></div>`
+      : "";
+    const fee = details.estimatedFeeFormatted
+      ? `<div><dt>Estimated fee</dt><dd>${escapeHtml(details.estimatedFeeFormatted)} SOL</dd></div>`
+      : "";
+
     return `
       <div class="approval-card">
         <div class="row"><strong>Send ${escapeHtml(details.assetSymbol)}</strong>${renderRiskLabels(details.riskLabels)}</div>
         <dl>
           <div><dt>Network</dt><dd>${escapeHtml(details.family.toUpperCase())} · ${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
+          <div><dt>Asset</dt><dd>${escapeHtml(details.assetType ?? "native")} · ${escapeHtml(details.assetSymbol)}</dd></div>
+          ${tokenAddress}
           <div><dt>From</dt><dd>${escapeHtml(shortAddress(details.fromAddress))}</dd></div>
           <div><dt>To</dt><dd>${escapeHtml(shortAddress(details.toAddress))}</dd></div>
           <div><dt>Amount</dt><dd>${escapeHtml(details.amountFormatted)} ${escapeHtml(details.assetSymbol)}</dd></div>
+          ${fee}
+          ${ataWarning}
         </dl>
       </div>
     `;
@@ -892,12 +906,19 @@ function wireSendForm(scope: ParentNode = root): void {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
+    const assetSelect = form.querySelector<HTMLSelectElement>("#send-asset");
+    const assetOption = assetSelect?.selectedOptions[0] ?? null;
     const response = await chrome.runtime.sendMessage({
       kind: "queue_solana_send",
       requestId: createRequestId("popup_solana_send"),
       surface: "popup",
       toAddress: String(formData.get("toAddress") ?? ""),
       amountFormatted: String(formData.get("amountFormatted") ?? ""),
+      assetType: assetOption?.dataset.assetType === "spl" ? "spl" : "native",
+      tokenAddress: assetOption?.dataset.tokenAddress || null,
+      symbol: assetOption?.dataset.symbol || "SOL",
+      decimals: assetOption?.dataset.decimals ? Number(assetOption.dataset.decimals) : 9,
+      balanceRaw: assetOption?.dataset.balanceRaw || null,
     }) as ExtensionRuntimeResponse;
 
     if (!response.ok) {
@@ -1099,7 +1120,7 @@ function quickAction(icon: string, label: string, target: string): string {
   }
 
   return `
-    <button class="quick-action" type="button" data-open-url="http://24wallet.ru${target}">
+    <button class="quick-action" type="button" data-open-url="https://24wallet.ru${target}">
       <span>${icon}</span>
       <span>${escapeHtml(label)}</span>
     </button>
@@ -1112,14 +1133,14 @@ function renderActionContent(target: string): string {
       return `
         <div class="form">
           <p class="copy">Buy crypto through approved external on-ramp providers. Acorus does not custody fiat or sell crypto.</p>
-          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/buy">Open Buy</button>
+          <button class="primary-button" type="button" data-open-url="https://24wallet.ru/buy">Open Buy</button>
         </div>
       `;
     case "swap":
       return `
         <div class="form">
           <p class="copy">Swap quotes route through the Acorus swap shell. Execution is enabled only where the adapter is safety-reviewed.</p>
-          <button class="primary-button" type="button" data-open-url="http://24wallet.ru/swap">Open Swap</button>
+          <button class="primary-button" type="button" data-open-url="https://24wallet.ru/swap">Open Swap</button>
         </div>
       `;
     case "send":
@@ -1133,6 +1154,7 @@ function renderActionContent(target: string): string {
 function renderSendComposer(): string {
   const networks = currentHomeSnapshot?.networks ?? [];
   const solana = networks.find((network) => network.family === "solana");
+  const solanaAssets = getSolanaSendAssets();
 
   return `
     <form class="form" id="solana-send-form">
@@ -1147,13 +1169,63 @@ function renderSendComposer(): string {
           `)
           .join("")}
       </select>
+      <label class="small">Asset</label>
+      <select class="field" id="send-asset" name="assetId">
+        ${solanaAssets.map((asset) => `
+          <option
+            value="${escapeHtml(buildPopupAssetId(asset))}"
+            data-asset-type="${escapeHtml(asset.type === "spl" ? "spl" : "native")}"
+            data-token-address="${escapeHtml(asset.tokenAddress ?? "")}"
+            data-symbol="${escapeHtml(asset.symbol)}"
+            data-decimals="${escapeHtml(String(asset.decimals))}"
+            data-balance-raw="${escapeHtml(asset.balanceRaw)}"
+          >
+            ${escapeHtml(asset.symbol)} · ${escapeHtml(asset.balanceFormatted)} available
+          </option>
+        `).join("")}
+      </select>
       <input class="field" name="toAddress" placeholder="Solana recipient address" autocomplete="off">
-      <input class="field" name="amountFormatted" placeholder="Amount in SOL" inputmode="decimal">
-      <p class="copy" id="send-support-note">Solana send is live after explicit popup confirmation.</p>
+      <input class="field" name="amountFormatted" placeholder="Amount" inputmode="decimal">
+      <p class="copy" id="send-support-note">SOL and SPL sends are queued for explicit popup confirmation. Missing recipient token accounts are shown in review.</p>
       <button class="primary-button" type="submit">Review Solana Send</button>
-      <button class="ghost-button" type="button" data-open-url="http://24wallet.ru/send">Open full send</button>
+      <button class="ghost-button" type="button" data-open-url="https://24wallet.ru/send">Open full send</button>
     </form>
   `;
+}
+
+function getSolanaSendAssets(): ExtensionPortfolioSnapshot["assets"] {
+  const assets = currentHomeSnapshot?.assets.filter((asset) => asset.family === "solana") ?? [];
+  const hasSol = assets.some((asset) => asset.type === "native" && asset.symbol === "SOL");
+
+  return hasSol
+    ? assets
+    : [
+      {
+        family: "solana",
+        chainId: 101,
+        type: "native",
+        symbol: "SOL",
+        name: "Solana",
+        decimals: 9,
+        tokenAddress: null,
+        balanceRaw: "0",
+        balanceFormatted: "0",
+        fiatValue: null,
+        priceUsd: null,
+        source: "unavailable",
+      },
+      ...assets,
+    ];
+}
+
+function buildPopupAssetId(asset: ExtensionPortfolioSnapshot["assets"][number]): string {
+  return [
+    asset.family,
+    String(asset.chainId),
+    asset.type,
+    asset.tokenAddress?.toLowerCase() ?? "native",
+    asset.symbol.toUpperCase(),
+  ].join(":");
 }
 
 function actionButton(

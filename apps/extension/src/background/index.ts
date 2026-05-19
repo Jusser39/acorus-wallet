@@ -15,6 +15,7 @@ import {
   type ChainFamily,
   type DappShellSnapshot,
 } from "@acorus/shared";
+import { buildSplTransferDraft } from "@acorus/wallet-core";
 import {
   type AcorusProviderMethod,
   createRequestId,
@@ -263,6 +264,11 @@ export async function handleRuntimeMessage(
           requestId,
           toAddress: input.toAddress,
           amountFormatted: input.amountFormatted,
+          assetType: input.assetType ?? "native",
+          tokenAddress: input.tokenAddress ?? null,
+          symbol: input.symbol ?? null,
+          decimals: input.decimals ?? null,
+          balanceRaw: input.balanceRaw ?? null,
         }),
       };
     } catch (error) {
@@ -1534,6 +1540,11 @@ async function queueInternalSolanaSendRequest(input: {
   requestId: string;
   toAddress: string;
   amountFormatted: string;
+  assetType?: "native" | "spl";
+  tokenAddress?: string | null;
+  symbol?: string | null;
+  decimals?: number | null;
+  balanceRaw?: string | null;
 }): Promise<{ requestId: string; queued: true }> {
   const vaultStatus = await getExtensionVaultStatus();
 
@@ -1574,12 +1585,45 @@ async function queueInternalSolanaSendRequest(input: {
       ...state,
       sessions: [session, ...state.sessions],
     };
+  const assetType = input.assetType === "spl" ? "spl" : "native";
+  let estimatedFeeFormatted: string | null = null;
+  let ataWarning: string | null = null;
+  let draftCanBroadcast: boolean | null = null;
+
+  if (assetType === "spl") {
+    if (!input.tokenAddress) {
+      throw new Error("SPL transfer requires a token mint address.");
+    }
+
+    const draft = await buildSplTransferDraft({
+      mintAddress: input.tokenAddress,
+      fromOwnerAddress: profile.account,
+      toOwnerAddress: input.toAddress,
+      amountFormatted: input.amountFormatted,
+      decimals: input.decimals ?? 0,
+      symbol: input.symbol ?? "SPL",
+      balanceRaw: input.balanceRaw,
+    });
+    estimatedFeeFormatted = draft.feeEstimate?.feeFormatted ?? null;
+    ataWarning = draft.warnings.find((warning) => warning.toLowerCase().includes("associated token account")) ?? null;
+    draftCanBroadcast = draft.canBroadcast;
+  }
+
   const providerParams = [{
     family: "solana",
     fromAddress: profile.account,
     toAddress: input.toAddress,
     amountFormatted: input.amountFormatted,
+    assetType,
+    tokenAddress: assetType === "spl" ? input.tokenAddress : null,
+    symbol: assetType === "spl" ? input.symbol ?? "SPL" : "SOL",
+    decimals: assetType === "spl" ? input.decimals ?? 0 : 9,
+    balanceRaw: input.balanceRaw ?? null,
+    estimatedFeeFormatted,
+    ataWarning,
+    draftCanBroadcast,
   }];
+  const assetSymbol = assetType === "spl" ? input.symbol ?? "SPL" : "SOL";
   const queued = queueDappRequest(stateWithSession, {
     id: input.requestId,
     sessionId: session.id,
@@ -1588,9 +1632,11 @@ async function queueInternalSolanaSendRequest(input: {
     account: profile.account,
     chainId: 101,
     summary:
-      `Send ${input.amountFormatted || "0"} SOL on Solana to ${input.toAddress}.`,
+      `Send ${input.amountFormatted || "0"} ${assetSymbol} on Solana to ${input.toAddress}.`,
     warning:
-      "Confirm only if the address and amount are correct. Solana transfers cannot be reversed.",
+      assetType === "spl" && draftCanBroadcast === false
+        ? "This SPL transfer draft has blocking validation errors. Review the token, amount, and recipient before approving."
+        : "Confirm only if the address and amount are correct. Solana transfers cannot be reversed.",
     reviewDetails: buildRequestReviewDetails(
       "acorus_multichainSend",
       providerParams,
@@ -1801,16 +1847,39 @@ function buildRequestReviewDetails(
   if (method === "acorus_multichainSend") {
     const payload = normalizeRecord(params[0]);
     if (payload.family === "solana") {
+      const assetType = payload.assetType === "spl" ? "spl" : "native";
+      const tokenAddress = typeof payload.tokenAddress === "string"
+        ? payload.tokenAddress
+        : null;
+      const ataWarning = typeof payload.ataWarning === "string"
+        ? payload.ataWarning
+        : null;
+      const estimatedFeeFormatted = typeof payload.estimatedFeeFormatted === "string"
+        ? payload.estimatedFeeFormatted
+        : null;
+      const riskLabels = ["Irreversible transfer"];
+
+      if (assetType === "spl") {
+        riskLabels.push("SPL token transfer");
+      }
+
+      if (ataWarning) {
+        riskLabels.push("ATA create");
+      }
+
       return {
         kind: "multichain_send",
         family: "solana",
         chainId: activeChainId ?? 101,
         fromAddress: String(payload.fromAddress ?? payload.from ?? ""),
         toAddress: String(payload.toAddress ?? payload.to ?? ""),
-        assetSymbol: "SOL",
+        assetSymbol: String(payload.symbol ?? (assetType === "spl" ? "SPL" : "SOL")),
+        assetType,
+        tokenAddress,
         amountFormatted: String(payload.amountFormatted ?? payload.amount ?? ""),
-        estimatedFeeFormatted: null,
-        riskLabels: ["Irreversible transfer"],
+        estimatedFeeFormatted,
+        ataWarning,
+        riskLabels,
       };
     }
   }

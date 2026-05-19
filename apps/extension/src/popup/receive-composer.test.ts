@@ -40,6 +40,8 @@ describe("popup receive composer", () => {
     expect(source).toContain("Watch Asset");
     expect(source).toContain("multichain_send");
     expect(source).toContain("Send ${escapeHtml(details.assetSymbol)}");
+    expect(source).toContain("details.tokenAddress");
+    expect(source).toContain("details.ataWarning");
     expect(source).toContain("rpcHostname");
     expect(source).not.toContain("JSON.stringify(request");
   });
@@ -51,8 +53,11 @@ describe("popup receive composer", () => {
     );
 
     expect(source).toContain("solana-send-form");
+    expect(source).toContain("send-asset");
+    expect(source).toContain("getSolanaSendAssets");
     expect(source).toContain("queue_solana_send");
     expect(source).toContain("family === \"solana\"");
-    expect(source).toContain("Send execution for this network is coming soon.");
+    expect(source).toContain("SOL and SPL sends are queued");
+    expect(source).toContain("assetType: assetOption?.dataset.assetType");
   });
 });

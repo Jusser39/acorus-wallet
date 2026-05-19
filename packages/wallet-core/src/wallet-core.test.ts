@@ -19,9 +19,14 @@ import {
   buildSolanaExplorerAddressUrl,
   buildSolanaExplorerTxUrl,
   createSolanaSendDraft,
+  buildSplTransferDraft,
+  estimateSplTransferFee,
   formatLamports,
+  getAssociatedTokenAddress,
   parseSolanaAmountToLamports,
   SendDraftEngine,
+  validateSolanaOwnerAddress,
+  validateSplTokenMint,
   validateWalletMnemonic,
 } from "./index";
 import type { WalletVaultPlaintext } from "./types";
@@ -183,6 +188,75 @@ describe("wallet-core", () => {
     expect(draft.supportStatus).toBe("supported");
     expect(draft.canBroadcast).toBe(true);
     expect(draft.amountRaw).toBe("1000");
+  });
+
+  it("validates SPL mint and owner addresses", () => {
+    const address = deriveSolanaAddressFromMnemonic({
+      mnemonic: "test test test test test test test test test test test junk",
+    }).publicAddress;
+
+    expect(validateSplTokenMint(address)).toBe(true);
+    expect(validateSolanaOwnerAddress(address)).toBe(true);
+    expect(validateSplTokenMint("bad-mint")).toBe(false);
+    expect(validateSolanaOwnerAddress("bad-owner")).toBe(false);
+  });
+
+  it("builds associated token addresses deterministically", () => {
+    const owner = deriveSolanaAddressFromMnemonic({
+      mnemonic: "test test test test test test test test test test test junk",
+    }).publicAddress;
+    const mint = "So11111111111111111111111111111111111111112";
+
+    expect(getAssociatedTokenAddress({ mintAddress: mint, ownerAddress: owner })).toMatch(/^[1-9A-HJ-NP-Za-km-z]+$/u);
+  });
+
+  it("validates SPL transfer drafts", async () => {
+    const owner = deriveSolanaAddressFromMnemonic({
+      mnemonic: "test test test test test test test test test test test junk",
+    }).publicAddress;
+    const draft = await buildSplTransferDraft({
+      mintAddress: "bad-mint",
+      fromOwnerAddress: owner,
+      toOwnerAddress: "bad-recipient",
+      amountFormatted: "0",
+      decimals: 6,
+      balanceRaw: "1",
+      recipientAtaExists: true,
+      estimatedFeeLamports: "10000",
+    });
+
+    expect(draft.canBroadcast).toBe(false);
+    expect(draft.errors).toEqual(expect.arrayContaining([
+      "Invalid SPL token mint address.",
+      "Invalid Solana recipient address.",
+      "Amount must be greater than zero.",
+    ]));
+  });
+
+  it("flags insufficient SPL balance and recipient ATA warnings", async () => {
+    const owner = deriveSolanaAddressFromMnemonic({
+      mnemonic: "test test test test test test test test test test test junk",
+    }).publicAddress;
+    const draft = await buildSplTransferDraft({
+      mintAddress: "So11111111111111111111111111111111111111112",
+      fromOwnerAddress: owner,
+      toOwnerAddress: owner,
+      amountFormatted: "2",
+      decimals: 6,
+      balanceRaw: "1000000",
+      recipientAtaExists: false,
+      estimatedFeeLamports: "15000",
+    });
+
+    expect(draft.canBroadcast).toBe(false);
+    expect(draft.errors).toContain("Insufficient SPL token balance.");
+    expect(draft.warnings.join(" ")).toContain("associated token account");
+    expect(draft.feeEstimate?.feeFormatted).toBe("0.000015");
+  });
+
+  it("estimates higher SPL fee when recipient ATA is missing", async () => {
+    await expect(estimateSplTransferFee({ recipientAtaExists: false })).resolves.toBe(15_000n);
+    await expect(estimateSplTransferFee({ recipientAtaExists: true })).resolves.toBe(10_000n);
   });
 
   it("does not leak mnemonic in encrypted payload", async () => {

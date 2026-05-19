@@ -36,7 +36,7 @@ const WATCHED_ASSETS_KEY = "acorus_extension_watched_assets";
 const HIDDEN_ASSET_IDS_KEY = "acorus_extension_hidden_assets";
 const ERC20_BALANCE_OF_SELECTOR = "0x70a08231";
 export const EXTENSION_API_BASES = [
-  "http://24wallet.ru",
+  "https://24wallet.ru",
   "http://85.239.59.199:8080",
 ] as const;
 const DEFAULT_PUBLIC_EVM_RPCS: Record<number, string> = {

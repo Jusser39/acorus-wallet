@@ -59,6 +59,8 @@ declare global {
       isAcorus?: boolean;
       isPhantom?: boolean;
       publicKey?: { toString(): string } | null;
+      supportedMethods?: Record<string, boolean>;
+      capabilities?: Record<string, boolean>;
       connect?: () => Promise<unknown>;
       signMessage?: (message: string | Uint8Array) => Promise<unknown>;
       request?: (input: { method: string; params?: unknown[] }) => Promise<unknown>;

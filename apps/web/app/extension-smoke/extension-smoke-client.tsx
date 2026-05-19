@@ -10,6 +10,19 @@ type SmokeResult = {
 
 type ProviderKey = "ethereum" | "acorus" | "solana" | "tronLink";
 
+type SmokeEvent = {
+  label: string;
+  detail: string;
+  at: string;
+};
+
+type SecurityStatus = {
+  protocol: string;
+  origin: string;
+  secureContext: boolean;
+  status: "secure" | "insecure";
+};
+
 const SWITCH_TARGETS = [
   { label: "Polygon", chainId: "0x89" },
   { label: "Base", chainId: "0x2105" },
@@ -24,21 +37,65 @@ export function ExtensionSmokeClient() {
     tronLink: false,
   });
   const [results, setResults] = useState<SmokeResult[]>([]);
+  const [events, setEvents] = useState<SmokeEvent[]>([]);
+  const [security, setSecurity] = useState<SecurityStatus>({
+    protocol: "unknown",
+    origin: "unknown",
+    secureContext: false,
+    status: "insecure",
+  });
   const [txTo, setTxTo] = useState("");
   const [txValue, setTxValue] = useState("0x0");
   const providerRows = useMemo(
     () => Object.entries(providers) as Array<[ProviderKey, boolean]>,
     [providers],
   );
+  const solanaCapabilities = typeof window === "undefined"
+    ? null
+    : window.solana?.capabilities
+      ?? window.solana?.supportedMethods
+      ?? null;
 
   useEffect(() => {
+    refreshDiagnostics();
+    const ethereum = window.ethereum;
+    const logEthereumAccounts = (accounts: unknown) => appendEvent("accountsChanged", accounts);
+    const logEthereumChain = (chainId: unknown) => appendEvent("chainChanged", chainId);
+    const logSolanaConnect = (event: Event) => appendEvent(
+      "acorusSolana#connect",
+      event instanceof CustomEvent ? event.detail : null,
+    );
+    const logSolanaDisconnect = () => appendEvent("acorusSolana#disconnect", null);
+
+    ethereum?.on?.("accountsChanged", logEthereumAccounts);
+    ethereum?.on?.("chainChanged", logEthereumChain);
+    window.addEventListener("acorusSolana#connect", logSolanaConnect);
+    window.addEventListener("acorusSolana#disconnect", logSolanaDisconnect);
+
+    return () => {
+      ethereum?.removeListener?.("accountsChanged", logEthereumAccounts);
+      ethereum?.removeListener?.("chainChanged", logEthereumChain);
+      window.removeEventListener("acorusSolana#connect", logSolanaConnect);
+      window.removeEventListener("acorusSolana#disconnect", logSolanaDisconnect);
+    };
+  }, []);
+
+  function refreshDiagnostics() {
     setProviders({
       ethereum: Boolean(window.ethereum?.request),
       acorus: Boolean(window.acorus),
       solana: Boolean(window.solana),
       tronLink: Boolean(window.tronLink),
     });
-  }, []);
+    setSecurity({
+      protocol: window.location.protocol,
+      origin: window.location.origin,
+      secureContext: window.isSecureContext,
+      status: window.location.protocol === "https:" && window.isSecureContext
+        ? "secure"
+        : "insecure",
+    });
+  }
 
   async function run(label: string, method: string, params?: unknown[]) {
     try {
@@ -62,6 +119,30 @@ export function ExtensionSmokeClient() {
     setResults((items) => [result, ...items].slice(0, 12));
   }
 
+  function appendEvent(label: string, detail: unknown) {
+    setEvents((items) => [
+      {
+        label,
+        detail: stringify(detail),
+        at: new Date().toISOString(),
+      },
+      ...items,
+    ].slice(0, 20));
+  }
+
+  async function copyDiagnostics() {
+    const diagnostics = {
+      providers,
+      security,
+      events,
+      results,
+      solanaCapabilities,
+    };
+
+    await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+    appendResult({ label: "copy diagnostics", ok: true, output: "Diagnostics copied." });
+  }
+
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10">
       <div className="data-card rounded-[2rem] p-6">
@@ -78,7 +159,12 @@ export function ExtensionSmokeClient() {
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="premium-card p-5">
-          <h2 className="text-xl font-semibold">Detected providers</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Detected providers</h2>
+            <button className="button-secondary" onClick={refreshDiagnostics}>
+              Refresh
+            </button>
+          </div>
           <div className="mt-4 grid gap-3">
             {providerRows.map(([key, detected]) => (
               <div
@@ -91,6 +177,18 @@ export function ExtensionSmokeClient() {
                 </span>
               </div>
             ))}
+          </div>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+            <div className="flex items-center justify-between gap-3">
+              <span>Origin</span>
+              <span className="font-mono text-xs">{security.origin}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span>Protocol</span>
+              <span className={security.status === "secure" ? "text-emerald-300" : "text-rose-300"}>
+                {security.protocol} · {security.secureContext ? "secure context" : "not secure context"}
+              </span>
+            </div>
           </div>
         </section>
 
@@ -180,6 +278,38 @@ export function ExtensionSmokeClient() {
           >
             Sign message
           </button>
+        </div>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          <span className="font-semibold text-white">Capabilities: </span>
+          <span className="font-mono text-xs">
+            {stringify(solanaCapabilities)}
+          </span>
+        </div>
+      </section>
+
+      <section className="premium-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Event log</h2>
+          <div className="flex gap-2">
+            <button className="button-secondary" onClick={() => void copyDiagnostics()}>
+              Copy diagnostics
+            </button>
+            <button className="button-secondary" onClick={() => setEvents([])}>
+              Clear log
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3">
+          {events.length ? events.map((event, index) => (
+            <pre
+              key={`${event.label}-${event.at}-${index}`}
+              className="overflow-auto rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-xs text-sky-100"
+            >
+              {event.at} · {event.label}: {event.detail}
+            </pre>
+          )) : (
+            <p className="text-sm text-slate-400">No provider events have fired yet.</p>
+          )}
         </div>
       </section>
 
