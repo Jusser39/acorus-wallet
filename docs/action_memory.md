@@ -459,3 +459,18 @@
 208. Committed and pushed the wave as `dcea769` with message `Enforce wallet HTTPS and add Solana SPL transfer foundation`.
 209. Deployed the pushed archive to `/opt/acorus-wallet-release-current`, rebuilt the Docker Compose web/API services, and verified `/extension-smoke` now contains the new diagnostics UI markers.
 210. Rechecked production after deployment: canonical HTTPS has HSTS, HTTP and `www` redirect to `https://24wallet.ru`, `/health` returns `200 OK`, market prices return `200 OK`, and `bstcrm.ru/healthz` still responds separately.
+211. Started the EVM Swap MVP via 0x API wave after commit `e64ec386ad6a81e6a99088781fb980749065a167`, audited shared multichain/chains, wallet-core EVM client/send files, API app/env/logger, extension protocol/background/popup/assets, web swap/API bridge, smoke harness, README, roadmap, and memory docs.
+212. Confirmed official 0x docs describe the AllowanceHolder flow as `/swap/allowance-holder/price`, allowance review, `/swap/allowance-holder/quote`, then wallet transaction submission, with `0x-api-key` and `0x-version: v2` headers.
+213. Added `docs/evm_0x_swap_mvp_plan.md` before implementation, recording current base, new routes/types, security risks, and out-of-scope boundaries.
+214. Added shared 0x EVM swap types, backend env/schema support, logger redaction for `ZEROX_API_KEY`, and a backend-only 0x proxy service with 8 second timeout, input validation, safe response mapping, and missing-key `503` behavior.
+215. Added wallet-core ERC-20 allowance/approve helpers and tests for stable calldata, invalid spender rejection, native-token allowance bypass, and explicit approval transaction risk labels.
+216. Extended extension protocol/background/popup for EVM token approval and 0x swap review queues; stale quotes, chain mismatch, taker mismatch, and invalid transaction payloads are blocked before execution.
+217. Replaced the extension popup Swap link with a backend-backed 0x quote composer and added approval cards for ERC-20 approval and 0x swap details without raw calldata rendering.
+218. Reworked web `/swap` into an EVM-only 0x MVP composer and added `/extension-smoke` swap diagnostics for provider status and safe price checks.
+219. Added docs for the 0x backend proxy, security model, manual smoke, and MVP report, then updated README and roadmap to reflect EVM-only 0x swap MVP scope.
+220. Validation completed so far: shared build, wallet-core test, API test/build, extension lint/test/build, web test/build. A first parallel web test hit a transient Windows `EPERM` file-lock during shared `tsup --clean`; rerunning sequentially passed.
+221. Completed full workspace validation for the 0x MVP wave: `pnpm test`, `pnpm build`, `git diff --check`, and `pnpm extension:package` all passed, refreshing `apps/web/public/downloads/acorus-wallet-extension.zip`.
+222. Committed and pushed the wave with message `Add EVM swap MVP via 0x API`.
+223. Checked production `.env` without printing secrets: `ZEROX_API_KEY` is currently not configured on the VPS, so the deployed 0x status must remain `configured:false`.
+224. Deployed the pushed archive to `/opt/acorus-wallet-release-current`, rebuilt/recreated the Docker Compose web/API services, and verified `acorus-api` is healthy.
+225. Production checks after deploy: `https://24wallet.ru/api/swap/evm/status` returns provider `0x` with `configured:false`, the price route returns expected `503 swap_provider_not_configured`, `/extension-smoke` contains the `EVM 0x swap diagnostics` marker, `/api/market/prices` still returns `200 OK`, and canonical HTTPS remains `200 OK`.

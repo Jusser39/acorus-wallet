@@ -72,6 +72,14 @@ const envSchema = z.object({
   MARKET_DISCOVERY_TTL_SEC: z.coerce.number().int().positive().default(300),
   MARKET_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   MARKET_RATE_LIMIT_RPM: z.coerce.number().int().positive().default(30),
+
+  ZEROX_API_KEY: optionalStringFromEnv,
+  ZEROX_API_BASE: z.string().url().default("https://api.0x.org"),
+  ZEROX_API_VERSION: z.string().default("v2"),
+  ZEROX_ENABLED: boolFromEnv.default(true),
+  ZEROX_AFFILIATE_FEE_BPS: z.coerce.number().int().min(0).max(10000).optional(),
+  ZEROX_FEE_RECIPIENT: optionalStringFromEnv,
+  ZEROX_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;

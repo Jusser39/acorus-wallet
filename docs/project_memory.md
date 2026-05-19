@@ -1035,3 +1035,15 @@
   - `https://24wallet.ru/health` returns `200 OK`
   - `https://24wallet.ru/api/market/prices?...` returns `200 OK`
 
+## EVM Swap MVP via 0x API (2026-05-19)
+
+- Status: **implemented locally; deployment verification tracked in action memory**
+- Added shared EVM 0x swap DTOs for price, quote, allowance issue, approval transaction, and execution draft metadata.
+- Added backend 0x proxy service and routes under `/api/swap/evm/*`; `ZEROX_API_KEY` stays backend-only and missing-key status returns `swap_provider_not_configured`.
+- Added wallet-core ERC-20 allowance and approve helpers with exact/infinite approval modes and explicit risk labels.
+- Extended extension runtime with `queue_evm_approve_token` and `queue_evm_swap_approval`; popup approval cards now render token approval and 0x swap details without raw calldata JSON.
+- Replaced the extension popup Swap link with an EVM 0x quote composer that fetches through the Acorus backend and queues explicit approval/swap reviews.
+- Reworked web `/swap` into an EVM 0x MVP composer with provider-not-configured state, extension detection, quote preview, and extension execution handoff.
+- Expanded `/extension-smoke` with backend 0x status and price diagnostics while keeping quote/execution smoke manual-only.
+- Out of scope remains unchanged: Solana/Jupiter swap, Tron/BTC/TON swap, cross-chain swap, and WalletConnect execution.
+

@@ -3,6 +3,8 @@ import type {
   ChainFamily,
   ContactRecord,
   ExploreFeedResponse,
+  EvmSwapPriceResponse,
+  EvmSwapQuoteResponse,
   OnboardingProgressRecord,
   PreferredCurrency,
   SwapQuote,
@@ -101,6 +103,16 @@ function getApiErrorMessage(status: number, payload: ApiErrorPayload | null): st
       return "Sensitive fields are not allowed in swap quote requests.";
     case "bad_request":
       return "The API rejected this request.";
+    case "swap_provider_not_configured":
+      return "0x swap provider is not configured yet.";
+    case "swap_bad_request":
+      return "The swap quote request is invalid.";
+    case "liquidity_unavailable":
+      return "No 0x liquidity is available for this route.";
+    case "swap_provider_timeout":
+      return "0x swap provider timed out.";
+    case "swap_provider_error":
+      return "0x swap provider failed.";
     case "internal_error":
       return "The API failed to process the request.";
     default:
@@ -262,6 +274,78 @@ export async function getSwapQuote(
     body: JSON.stringify(request),
   });
   return response.quote;
+}
+
+export type EvmSwapStatus = {
+  ok: true;
+  provider: "0x";
+  approvalModel: "allowance_holder";
+  configured: boolean;
+  enabled: boolean;
+  supportedChains: number[];
+  apiBase: string;
+  version: string;
+};
+
+export async function getEvmSwapStatus(): Promise<EvmSwapStatus> {
+  return apiFetch<EvmSwapStatus>("/api/swap/evm/status");
+}
+
+export async function getEvmSwapPrice(input: {
+  chainId: number;
+  sellToken: string;
+  buyToken: string;
+  sellAmount?: string;
+  buyAmount?: string;
+  taker: string;
+  slippageBps?: number;
+}): Promise<EvmSwapPriceResponse> {
+  const params = buildEvmSwapSearch(input);
+  return apiFetch<EvmSwapPriceResponse>(`/api/swap/evm/0x/price?${params.toString()}`);
+}
+
+export async function getEvmSwapQuote(input: {
+  chainId: number;
+  sellToken: string;
+  buyToken: string;
+  sellAmount?: string;
+  buyAmount?: string;
+  taker: string;
+  slippageBps?: number;
+}): Promise<EvmSwapQuoteResponse> {
+  const params = buildEvmSwapSearch(input);
+  return apiFetch<EvmSwapQuoteResponse>(`/api/swap/evm/0x/quote?${params.toString()}`);
+}
+
+function buildEvmSwapSearch(input: {
+  chainId: number;
+  sellToken: string;
+  buyToken: string;
+  sellAmount?: string;
+  buyAmount?: string;
+  taker: string;
+  slippageBps?: number;
+}): URLSearchParams {
+  const params = new URLSearchParams({
+    chainId: String(input.chainId),
+    sellToken: input.sellToken,
+    buyToken: input.buyToken,
+    taker: input.taker,
+  });
+
+  if (input.sellAmount) {
+    params.set("sellAmount", input.sellAmount);
+  }
+
+  if (input.buyAmount) {
+    params.set("buyAmount", input.buyAmount);
+  }
+
+  if (input.slippageBps !== undefined) {
+    params.set("slippageBps", String(input.slippageBps));
+  }
+
+  return params;
 }
 
 export async function listTokens(chainId: number): Promise<TokenMetadata[]> {

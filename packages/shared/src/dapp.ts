@@ -139,6 +139,32 @@ export type DappRequestReviewDetails =
       estimatedFeeFormatted?: string | null;
       ataWarning?: string | null;
       riskLabels: string[];
+    }
+  | {
+      kind: "token_approval";
+      chainId: ChainId | null;
+      tokenSymbol: string;
+      tokenAddress: string;
+      spender: string;
+      amountRaw: string;
+      approvalMode: "exact" | "infinite";
+      riskLabels: string[];
+    }
+  | {
+      kind: "evm_swap";
+      provider: "0x";
+      chainId: ChainId | null;
+      sellTokenSymbol: string;
+      buyTokenSymbol: string;
+      sellAmountRaw: string;
+      buyAmountRaw: string;
+      minBuyAmountRaw?: string | null;
+      slippageBps?: number | null;
+      priceImpact?: string | null;
+      routeLabel: string;
+      contractAddress: string;
+      value: string;
+      riskLabels: string[];
     };
 
 export type DappApprovalResult = {

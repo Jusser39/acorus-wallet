@@ -19,6 +19,7 @@ import {
   type WalletProfileUpdateInput,
 } from "./store";
 import { createMarketDataProvider, MockMarketDataProvider } from "./market/index.js";
+import { createZeroXSwapService, ZeroXSwapError } from "./services/zero-x";
 import { z } from "zod";
 
 const walletProfileCreateSchema = z.object({
@@ -85,6 +86,21 @@ const assetRefSchema = z.object({
   logoUrl: z.string().nullable().optional(),
   isVerified: z.boolean().optional(),
 });
+
+const evmZeroXSwapQuerySchema = z
+  .object({
+    chainId: z.coerce.number().int().positive(),
+    sellToken: z.string().min(1),
+    buyToken: z.string().min(1),
+    sellAmount: z.string().regex(/^[1-9][0-9]*$/u).optional(),
+    buyAmount: z.string().regex(/^[1-9][0-9]*$/u).optional(),
+    taker: z.string().regex(/^0x[a-fA-F0-9]{40}$/u),
+    slippageBps: z.coerce.number().int().min(0).max(10_000).optional(),
+  })
+  .refine((value) => Boolean(value.sellAmount) !== Boolean(value.buyAmount), {
+    message: "Use exactly one of sellAmount or buyAmount.",
+    path: ["sellAmount"],
+  });
 
 const SENSITIVE_FIELD_NAMES = new Set([
   "mnemonic",
@@ -281,6 +297,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   );
   const store = options.store ?? resolveStore(env);
   const swapQuoteEngine = createDefaultSwapQuoteEngine();
+  const zeroXSwapService = createZeroXSwapService(env);
 
   app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
@@ -822,6 +839,48 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     } catch {
       const items = await mockFallback.getTopMarkets!(currency as FiatCurrency, 20);
       return { ok: true, section: "top", items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+    }
+  });
+
+  app.get("/api/swap/evm/status", async () => zeroXSwapService.getStatus());
+
+  app.get("/api/swap/evm/0x/sources", async () => ({
+    ok: true,
+    provider: "0x",
+    approvalModel: "allowance_holder",
+    configured: zeroXSwapService.getStatus().configured,
+    sources: [],
+  }));
+
+  app.get("/api/swap/evm/0x/price", async (request, reply) => {
+    try {
+      const query = evmZeroXSwapQuerySchema.parse(request.query);
+      return await zeroXSwapService.getPrice(query, request.ip);
+    } catch (error) {
+      if (error instanceof ZeroXSwapError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
+
+  app.get("/api/swap/evm/0x/quote", async (request, reply) => {
+    try {
+      const query = evmZeroXSwapQuerySchema.parse(request.query);
+      return await zeroXSwapService.getQuote(query, request.ip);
+    } catch (error) {
+      if (error instanceof ZeroXSwapError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
     }
   });
 

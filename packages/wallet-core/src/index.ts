@@ -1,4 +1,5 @@
 export * from "./adapters";
+export * from "./evm/allowance";
 export * from "./evm/balance";
 export * from "./evm/client";
 export * from "./evm/erc20Abi";

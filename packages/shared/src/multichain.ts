@@ -238,3 +238,153 @@ export type SwapQuote = {
   expiresAt?: string | null;
   createdAt: string;
 };
+
+// ── EVM 0x Swap MVP ─────────────────────────────────────────────────────────
+
+export type EvmSwapProvider = "0x";
+
+export type EvmSwapApprovalModel = "allowance_holder";
+
+export type EvmSwapQuoteMode = "price" | "quote";
+
+export type EvmSwapTokenRef = {
+  chainId: number;
+  address: string | "native";
+  symbol: string;
+  decimals: number;
+  name?: string;
+  logoUrl?: string | null;
+};
+
+export type EvmSwapAmountRequest =
+  | {
+      sellAmountRaw: string;
+      buyAmountRaw?: never;
+    }
+  | {
+      sellAmountRaw?: never;
+      buyAmountRaw: string;
+    };
+
+export type EvmSwapPriceRequest = EvmSwapAmountRequest & {
+  chainId: number;
+  sellToken: EvmSwapTokenRef;
+  buyToken: EvmSwapTokenRef;
+  takerAddress: string;
+  slippageBps?: number;
+  affiliateFeeBps?: number;
+  feeRecipient?: string;
+  integratorId?: string;
+};
+
+export type EvmSwapAllowanceIssue = {
+  spender?: string | null;
+  currentAllowanceRaw?: string | null;
+  requiredAllowanceRaw?: string | null;
+};
+
+export type EvmSwapIssues = {
+  allowance?: EvmSwapAllowanceIssue | null;
+  balance?: {
+    token?: string | null;
+    actualRaw?: string | null;
+    expectedRaw?: string | null;
+  } | null;
+  simulationIncomplete?: boolean | null;
+  invalidSourcesPassed?: string[] | null;
+};
+
+export type EvmSwapRouteSummary = {
+  label: string;
+  sources: Array<{
+    name: string;
+    proportionBps?: number | null;
+  }>;
+};
+
+export type EvmSwapSafeRawSubset = {
+  zid?: string | null;
+  blockNumber?: string | number | null;
+  fees?: unknown;
+  issues?: EvmSwapIssues | null;
+};
+
+export type EvmSwapPriceResponse = {
+  provider: EvmSwapProvider;
+  approvalModel: EvmSwapApprovalModel;
+  mode: "price";
+  chainId: number;
+  sellToken: EvmSwapTokenRef;
+  buyToken: EvmSwapTokenRef;
+  sellAmountRaw: string;
+  buyAmountRaw: string;
+  price: string;
+  estimatedPriceImpact?: string | null;
+  allowanceTarget?: string | null;
+  issues?: EvmSwapIssues | null;
+  liquidityAvailable: boolean;
+  routeSummary: EvmSwapRouteSummary;
+  warnings: string[];
+  rawSafeSubset: EvmSwapSafeRawSubset;
+};
+
+export type EvmSwapApprovalTx = {
+  tokenAddress: string;
+  spender: string;
+  currentAllowanceRaw?: string | null;
+  requiredAllowanceRaw?: string | null;
+  tx?: {
+    to: string;
+    data: string;
+    value?: string | null;
+    gas?: string | null;
+  } | null;
+};
+
+export type EvmSwapQuoteResponse = {
+  provider: EvmSwapProvider;
+  approvalModel: EvmSwapApprovalModel;
+  mode: "quote";
+  requestId: string;
+  chainId: number;
+  takerAddress: string;
+  sellToken: EvmSwapTokenRef;
+  buyToken: EvmSwapTokenRef;
+  sellAmountRaw: string;
+  buyAmountRaw: string;
+  minBuyAmountRaw?: string | null;
+  to: string;
+  data: string;
+  value: string;
+  gas?: string | null;
+  gasPrice?: string | null;
+  allowanceTarget?: string | null;
+  approvalRequired: boolean;
+  approval?: EvmSwapApprovalTx | null;
+  routeSummary: EvmSwapRouteSummary;
+  warnings: string[];
+  estimatedPriceImpact?: string | null;
+  price?: string | null;
+  rawSafeSubset: EvmSwapSafeRawSubset;
+  expiresAt: string;
+};
+
+export type EvmSwapExecutionDraft = {
+  quoteId: string;
+  requestId: string;
+  chainId: number;
+  fromAddress: string;
+  to: string;
+  data: string;
+  value: string;
+  gas?: string | null;
+  gasPrice?: string | null;
+  sellToken: EvmSwapTokenRef;
+  buyToken: EvmSwapTokenRef;
+  sellAmountRaw: string;
+  buyAmountRaw: string;
+  minBuyAmountRaw?: string | null;
+  routeSummary: EvmSwapRouteSummary;
+  riskLabels: string[];
+  expiresAt?: string | null;
+};

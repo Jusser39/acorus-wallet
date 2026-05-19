@@ -7,6 +7,7 @@ import type {
   DappRequest,
   DappSession,
   DappSessionProposal,
+  EvmSwapQuoteResponse,
   DappWalletExposure,
   DappWalletSyncEnvelope,
 } from "@acorus/shared";
@@ -169,6 +170,24 @@ export type ExtensionRuntimeMessage =
       symbol?: string | null;
       decimals?: number | null;
       balanceRaw?: string | null;
+    }
+  | {
+      kind: "queue_evm_approve_token";
+      requestId: string;
+      surface: "popup" | "options";
+      chainId: number;
+      tokenAddress: string;
+      tokenSymbol: string;
+      spender: string;
+      amountRaw: string;
+      approvalMode: "exact" | "infinite";
+    }
+  | {
+      kind: "queue_evm_swap_approval";
+      requestId: string;
+      surface: "popup" | "options";
+      quote: EvmSwapQuoteResponse;
+      slippageBps?: number | null;
     }
   | {
       kind: "provider_request";

@@ -20,6 +20,9 @@ import {
   buildSolanaExplorerTxUrl,
   createSolanaSendDraft,
   buildSplTransferDraft,
+  buildErc20ApproveTransaction,
+  encodeErc20Allowance,
+  encodeErc20Approve,
   estimateSplTransferFee,
   formatLamports,
   getAssociatedTokenAddress,
@@ -28,6 +31,7 @@ import {
   validateSolanaOwnerAddress,
   validateSplTokenMint,
   validateWalletMnemonic,
+  shouldRequestErc20Allowance,
 } from "./index";
 import type { WalletVaultPlaintext } from "./types";
 
@@ -100,6 +104,45 @@ describe("wallet-core", () => {
     expect(chain.id).toBe(9999);
     expect(chain.rpcUrls.default.http).toEqual(["https://rpc.example.test"]);
     expect(client.chain?.id).toBe(9999);
+  });
+
+  it("encodes ERC-20 approve and allowance calldata", () => {
+    const spender = "0x0000000000000000000000000000000000000001";
+    const owner = "0x0000000000000000000000000000000000000002";
+
+    expect(encodeErc20Approve(spender, "1000")).toMatch(/^0x095ea7b3/u);
+    expect(encodeErc20Allowance(owner, spender)).toMatch(/^0xdd62ed3e/u);
+  });
+
+  it("builds explicit ERC-20 approve transactions", () => {
+    const tx = buildErc20ApproveTransaction({
+      chainId: 1,
+      tokenAddress: "0x0000000000000000000000000000000000000003",
+      owner: "0x0000000000000000000000000000000000000002",
+      spender: "0x0000000000000000000000000000000000000001",
+      amountRaw: "1000",
+      approvalMode: "exact",
+    });
+
+    expect(tx.to).toBe("0x0000000000000000000000000000000000000003");
+    expect(tx.value).toBe("0x0");
+    expect(tx.approvalMode).toBe("exact");
+    expect(tx.riskLabels).toContain("Token approval required");
+    expect(shouldRequestErc20Allowance({ assetType: "native" })).toBe(false);
+    expect(shouldRequestErc20Allowance({ assetType: "erc20", tokenAddress: tx.to })).toBe(true);
+  });
+
+  it("rejects invalid ERC-20 approval spender", () => {
+    expect(() =>
+      buildErc20ApproveTransaction({
+        chainId: 1,
+        tokenAddress: "0x0000000000000000000000000000000000000003",
+        owner: "0x0000000000000000000000000000000000000002",
+        spender: "invalid",
+        amountRaw: "1000",
+        approvalMode: "infinite",
+      }),
+    ).toThrow("Invalid EVM spender address.");
   });
 
   it("derives a stable Solana address from mnemonic", () => {

@@ -1,514 +1,298 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { AssetBalance } from "@acorus/shared";
-import { getSwapQuote } from "@/lib/api";
-import { requestExtensionSwap } from "@/lib/extension-bridge";
-import { buildSendNetworkOptions } from "@/lib/send-networks";
-import { buildSwapAssetOptions } from "@/lib/swap-assets";
-import { isCrossChainSwap, type SwapComposerState } from "@/lib/swap-ui";
-import { SwapRoutePreview } from "./swap-route-preview";
-import { ChainFamilyBadge, SkeletonBadge } from "./universal-badges";
+import { EVM_CHAINS, getCuratedTokens, type AssetBalance, type EvmSwapQuoteResponse } from "@acorus/shared";
+import { getEvmSwapQuote, getEvmSwapStatus, type EvmSwapStatus } from "@/lib/api";
+import { hasAcorusExtension, requestExtensionSwap } from "@/lib/extension-bridge";
+
+type TokenOption = {
+  value: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  balanceFormatted?: string | null;
+};
 
 export function SwapComposer(props: {
   portfolioAssets?: AssetBalance[];
   userAddress?: string | null;
 }) {
-  const networks = useMemo(() => buildSendNetworkOptions(), []);
-  const initialFrom = networks[0]!;
-  const initialTo =
-    networks.find(
-      (network) =>
-        network.family === "evm" &&
-        String(network.chainId) !== String(initialFrom.chainId),
-    ) ?? networks[1] ?? networks[0]!;
-
-  const [state, setState] = useState<SwapComposerState>({
-    step: "compose",
-    fromFamily: initialFrom.family,
-    fromChainId: initialFrom.chainId,
-    fromAssetOptionId: "",
-    toFamily: initialTo.family,
-    toChainId: initialTo.chainId,
-    toAssetOptionId: "",
-    amountFormatted: "",
-    slippageBps: 50,
-    quote: null,
-    error: null,
-  });
-  const [quoting, setQuoting] = useState(false);
-  const [extensionSubmitting, setExtensionSubmitting] = useState(false);
+  const [status, setStatus] = useState<EvmSwapStatus | null>(null);
+  const [chainId, setChainId] = useState(1);
+  const [sellToken, setSellToken] = useState("native");
+  const [buyToken, setBuyToken] = useState("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+  const [sellAmount, setSellAmount] = useState("");
+  const [slippageBps, setSlippageBps] = useState(50);
+  const [quote, setQuote] = useState<EvmSwapQuoteResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [extensionResult, setExtensionResult] = useState<string | null>(null);
+  const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
-  const fromNetwork =
-    networks.find(
-      (item) =>
-        item.family === state.fromFamily &&
-        String(item.chainId) === String(state.fromChainId),
-    ) ?? initialFrom;
-  const toNetwork =
-    networks.find(
-      (item) =>
-        item.family === state.toFamily &&
-        String(item.chainId) === String(state.toChainId),
-    ) ?? initialTo;
-
-  const fromAssets = useMemo(
-    () =>
-      buildSwapAssetOptions({
-        portfolioAssets: props.portfolioAssets,
-        family: fromNetwork.family,
-        chainId: fromNetwork.chainId,
-      }),
-    [props.portfolioAssets, fromNetwork.family, fromNetwork.chainId],
+  const tokens = useMemo(
+    () => buildEvmTokenOptions(chainId, props.portfolioAssets),
+    [chainId, props.portfolioAssets],
   );
-
-  const toAssets = useMemo(
-    () =>
-      buildSwapAssetOptions({
-        portfolioAssets: props.portfolioAssets,
-        family: toNetwork.family,
-        chainId: toNetwork.chainId,
-      }),
-    [props.portfolioAssets, toNetwork.family, toNetwork.chainId],
-  );
-
-  const selectedFromAsset =
-    fromAssets.find((asset) => asset.id === state.fromAssetOptionId) ??
-    fromAssets[0] ??
-    null;
-  const selectedToAsset =
-    toAssets.find((asset) => asset.id === state.toAssetOptionId) ??
-    toAssets[0] ??
-    null;
+  const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
 
   useEffect(() => {
-    if (!selectedFromAsset) return;
-    setState((current) =>
-      current.fromAssetOptionId === selectedFromAsset.id
-        ? current
-        : { ...current, fromAssetOptionId: selectedFromAsset.id },
-    );
-  }, [selectedFromAsset]);
+    void getEvmSwapStatus()
+      .then(setStatus)
+      .catch(() => setStatus({
+        ok: true,
+        provider: "0x",
+        approvalModel: "allowance_holder",
+        configured: false,
+        enabled: false,
+        supportedChains: [],
+        apiBase: "",
+        version: "v2",
+      }));
+  }, []);
 
   useEffect(() => {
-    if (!selectedToAsset) return;
-    setState((current) =>
-      current.toAssetOptionId === selectedToAsset.id
-        ? current
-        : { ...current, toAssetOptionId: selectedToAsset.id },
-    );
-  }, [selectedToAsset]);
-
-  function updateFromNetwork(networkId: string) {
-    const network = networks.find((item) => item.id === networkId);
-    if (!network) return;
-
-    setState((current) => ({
-      ...current,
-      fromFamily: network.family,
-      fromChainId: network.chainId,
-      fromAssetOptionId: "",
-      quote: null,
-      error: null,
-      step: "compose",
-    }));
-  }
-
-  function updateToNetwork(networkId: string) {
-    const network = networks.find((item) => item.id === networkId);
-    if (!network) return;
-
-    setState((current) => ({
-      ...current,
-      toFamily: network.family,
-      toChainId: network.chainId,
-      toAssetOptionId: "",
-      quote: null,
-      error: null,
-      step: "compose",
-    }));
-  }
+    const nextTokens = buildEvmTokenOptions(chainId, props.portfolioAssets);
+    setSellToken(nextTokens[0]?.value ?? "native");
+    setBuyToken(nextTokens[1]?.value ?? nextTokens[0]?.value ?? "native");
+    setQuote(null);
+    setError(null);
+  }, [chainId, props.portfolioAssets]);
 
   async function handleQuote() {
-    if (!selectedFromAsset || !selectedToAsset) {
-      setState((current) => ({
-        ...current,
-        error: "Select assets first.",
-        step: "error",
-      }));
-      return;
-    }
-
-    setQuoting(true);
-    setState((current) => ({
-      ...current,
-      error: null,
-      quote: null,
-    }));
+    setLoading(true);
+    setError(null);
+    setQuote(null);
+    setExtensionResult(null);
 
     try {
-      const quote = await getSwapQuote({
-        from: selectedFromAsset.asset,
-        to: selectedToAsset.asset,
-        amountFormatted: state.amountFormatted,
-        slippageBps: state.slippageBps,
-        slippageMode: "custom",
-        userAddress: props.userAddress ?? null,
+      if (!props.userAddress) {
+        throw new Error("Connect Acorus extension before requesting a firm quote.");
+      }
+
+      const nextQuote = await getEvmSwapQuote({
+        chainId,
+        sellToken,
+        buyToken,
+        sellAmount,
+        taker: props.userAddress,
+        slippageBps,
       });
 
-      setState((current) => ({
-        ...current,
-        quote,
-        step: quote.status === "quoted" ? "quote" : "unsupported",
-        error: quote.errors[0] ?? null,
-      }));
-    } catch (error) {
-      setState((current) => ({
-        ...current,
-        error:
-          error instanceof Error ? error.message : "Failed to get swap quote.",
-        step: "error",
-      }));
+      setQuote(nextQuote);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to fetch 0x quote.");
     } finally {
-      setQuoting(false);
+      setLoading(false);
     }
   }
 
-  async function handleRequestExtensionSwap() {
-    if (!state.quote || !selectedFromAsset || !selectedToAsset) {
-      return;
-    }
-
-    setExtensionSubmitting(true);
+  async function handleExtensionSwap() {
+    if (!quote) return;
     setExtensionResult(null);
 
     try {
       await requestExtensionSwap({
-        from: selectedFromAsset.asset,
-        to: selectedToAsset.asset,
-        amountFormatted: state.amountFormatted,
-        slippageBps: state.slippageBps,
-        quote: state.quote,
-        userAddress: props.userAddress ?? null,
+        provider: "0x",
+        quoteId: quote.requestId,
+        chainId: quote.chainId,
+        from: quote.takerAddress,
+        to: quote.to,
+        data: quote.data,
+        value: quote.value,
+        gas: quote.gas,
+        gasPrice: quote.gasPrice,
+        expiresAt: quote.expiresAt,
+        sellTokenSymbol: quote.sellToken.symbol,
+        buyTokenSymbol: quote.buyToken.symbol,
+        sellAmountRaw: quote.sellAmountRaw,
+        buyAmountRaw: quote.buyAmountRaw,
+        minBuyAmountRaw: quote.minBuyAmountRaw,
+        slippageBps,
+        priceImpact: quote.estimatedPriceImpact,
+        routeLabel: quote.routeSummary.label,
       });
-      setExtensionResult("Swap request approved in extension preview queue.");
-    } catch (error) {
-      setExtensionResult(
-        error instanceof Error ? error.message : "Extension swap request failed.",
-      );
-    } finally {
-      setExtensionSubmitting(false);
+      setExtensionResult("Swap request queued in Acorus extension. Open the popup to approve or reject.");
+    } catch (err) {
+      setExtensionResult(err instanceof Error ? err.message : "Extension swap request failed.");
     }
   }
 
-  const canQuote =
-    Boolean(selectedFromAsset) &&
-    Boolean(selectedToAsset) &&
-    Boolean(state.amountFormatted.trim());
-
-  const crossChain = isCrossChainSwap({
-    fromFamily: fromNetwork.family,
-    fromChainId: fromNetwork.chainId,
-    toFamily: toNetwork.family,
-    toChainId: toNetwork.chainId,
-  });
-
-  function selectFromAsset(optionId: string) {
-    setState((current) => ({
-      ...current,
-      fromAssetOptionId: optionId,
-      quote: null,
-      error: null,
-      step: "compose",
-    }));
-  }
-
-  function selectToAsset(optionId: string) {
-    setState((current) => ({
-      ...current,
-      toAssetOptionId: optionId,
-      quote: null,
-      error: null,
-      step: "compose",
-    }));
-  }
+  const providerReady = Boolean(status?.configured && status.enabled);
+  const highImpact = quote?.estimatedPriceImpact
+    ? Number(quote.estimatedPriceImpact) > 0.05
+    : false;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center">
       <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
         <div className="px-3 pt-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
-                Universal swap
-              </span>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-                Multichain quote
-              </h1>
-            </div>
-            <span className="rounded-full border border-slate-900/8 bg-white/72 px-3 py-1 text-xs font-semibold text-slate-700">
-              Step · {state.step}
-            </span>
-          </div>
+          <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
+            0x EVM swap
+          </span>
+          <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+            Swap with Acorus extension
+          </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Build routes across EVM, Solana, Tron and planned chains from one
-            composer. Execution remains disabled while providers and signing
-            flows are safety-reviewed.
+            0x quotes are fetched through the Acorus backend. Your wallet signs only after explicit extension approval.
           </p>
         </div>
 
-        <div className="mx-1 rounded-[1.5rem] border border-fuchsia-300/30 bg-fuchsia-400/10 p-4 text-sm text-fuchsia-900">
-          Quote preview only. No approvals, signatures or broadcasts happen here.
-        </div>
+        {!providerReady ? (
+          <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
+            0x provider is not configured on the backend yet. Set `ZEROX_API_KEY` on the API server to enable live quotes.
+          </div>
+        ) : null}
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-2">
+        {!extensionDetected ? (
+          <div className="mx-1 rounded-[1.5rem] border border-sky-400/30 bg-sky-400/10 p-4 text-sm text-sky-900">
+            Acorus extension was not detected. Install or reload the extension to execute swaps.
+          </div>
+        ) : null}
+
+        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2">
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">
-              From network
-            </span>
-            <select
-              className="light-field"
-              value={fromNetwork.id}
-              onChange={(event) => updateFromNetwork(event.target.value)}
-            >
-              {networks.map((network) => (
-                <option key={network.id} value={network.id}>
-                  {network.label}
-                </option>
+            <span className="px-2 text-sm font-medium text-slate-600">EVM network</span>
+            <select className="light-field" value={chainId} onChange={(event) => setChainId(Number(event.target.value))}>
+              {EVM_CHAINS.map((chain) => (
+                <option key={chain.chainId} value={chain.chainId}>{chain.name}</option>
               ))}
             </select>
           </label>
 
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">
-              To network
-            </span>
-            <select
-              className="light-field"
-              value={toNetwork.id}
-              onChange={(event) => updateToNetwork(event.target.value)}
-            >
-              {networks.map((network) => (
-                <option key={network.id} value={network.id}>
-                  {network.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 px-2">
-          <ChainFamilyBadge family={fromNetwork.family} />
-          <span className="text-sm text-slate-400">→</span>
-          <ChainFamilyBadge family={toNetwork.family} />
-          {fromNetwork.isSkeleton || toNetwork.isSkeleton ? <SkeletonBadge /> : null}
-          {crossChain ? (
-            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-300">
-              Cross-chain preview
-            </span>
-          ) : (
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-              Same-chain preview
-            </span>
-          )}
-        </div>
-
-        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">
-              From asset
-            </span>
-            <select
-              className="light-field"
-              value={selectedFromAsset?.id ?? ""}
-              onChange={(event) => selectFromAsset(event.target.value)}
-            >
-              {fromAssets.map((asset) => (
-                <option key={asset.id} value={asset.id}>
-                  {asset.label}
-                  {asset.balanceFormatted ? ` · ${asset.balanceFormatted}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">
-              To asset
-            </span>
-            <select
-              className="light-field"
-              value={selectedToAsset?.id ?? ""}
-              onChange={(event) => selectToAsset(event.target.value)}
-            >
-              {toAssets.map((asset) => (
-                <option key={asset.id} value={asset.id}>
-                  {asset.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="space-y-2 md:col-span-2">
-            <span className="px-2 text-sm font-medium text-slate-600">Quick pick</span>
-            <div className="token-quick-grid">
-              {fromAssets.slice(0, 6).map((asset) => (
-                <button
-                  key={asset.id}
-                  type="button"
-                  className="token-quick-button"
-                  data-selected={asset.id === selectedFromAsset?.id}
-                  onClick={() => selectFromAsset(asset.id)}
-                >
-                  <span className="token-quick-button__orb">
-                    {asset.asset.symbol.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-left text-sm font-semibold">
-                      {asset.asset.symbol}
-                    </span>
-                    <span className="block truncate text-left text-xs text-slate-500">
-                      {asset.balanceFormatted ?? asset.chainLabel}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
+              <select className="light-field" value={sellToken} onChange={(event) => setSellToken(event.target.value)}>
+                {tokens.map((token) => (
+                  <option key={`sell-${token.value}`} value={token.value}>
+                    {token.symbol} · {token.name}{token.balanceFormatted ? ` · ${token.balanceFormatted}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-2">
+              <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
+              <select className="light-field" value={buyToken} onChange={(event) => setBuyToken(event.target.value)}>
+                {tokens.map((token) => (
+                  <option key={`buy-${token.value}`} value={token.value}>
+                    {token.symbol} · {token.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <span className="px-2 text-sm font-medium text-slate-600">Receive quick pick</span>
-            <div className="token-quick-grid">
-              {toAssets.slice(0, 6).map((asset) => (
-                <button
-                  key={asset.id}
-                  type="button"
-                  className="token-quick-button"
-                  data-selected={asset.id === selectedToAsset?.id}
-                  onClick={() => selectToAsset(asset.id)}
-                >
-                  <span className="token-quick-button__orb">
-                    {asset.asset.symbol.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-left text-sm font-semibold">
-                      {asset.asset.symbol}
-                    </span>
-                    <span className="block truncate text-left text-xs text-slate-500">
-                      {asset.balanceFormatted ?? asset.chainLabel}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+            <label className="space-y-2">
+              <span className="px-2 text-sm font-medium text-slate-600">Sell amount raw</span>
+              <input
+                className="light-field"
+                inputMode="numeric"
+                placeholder={`Raw ${selectedSellToken.symbol} amount`}
+                value={sellAmount}
+                onChange={(event) => setSellAmount(event.target.value)}
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="px-2 text-sm font-medium text-slate-600">Slippage</span>
+              <select className="light-field" value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))}>
+                <option value={30}>0.3%</option>
+                <option value={50}>0.5%</option>
+                <option value={100}>1%</option>
+              </select>
+            </label>
           </div>
         </div>
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2 md:grid-cols-[1fr_180px]">
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">Amount</span>
-            <input
-              className="light-field"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={state.amountFormatted}
-              onChange={(event) =>
-                setState((current) => ({
-                  ...current,
-                  amountFormatted: event.target.value,
-                  quote: null,
-                  error: null,
-                  step: "compose",
-                }))
-              }
-            />
-          </label>
-
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">
-              Slippage %
-            </span>
-            <input
-              className="light-field"
-              inputMode="decimal"
-              value={(state.slippageBps / 100).toString()}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                setState((current) => ({
-                  ...current,
-                  slippageBps: Number.isFinite(value)
-                    ? Math.max(1, Math.round(value * 100))
-                    : 50,
-                  quote: null,
-                  error: null,
-                }));
-              }}
-            />
-          </label>
-        </div>
-
-        {state.error ? (
+        {error ? (
           <div className="mx-1 rounded-[1.5rem] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-700">
-            {state.error}
+            {error}
           </div>
         ) : null}
 
-        <div className="grid gap-3 px-1 pb-1 sm:grid-cols-[1fr_auto]">
-          <button
-            type="button"
-            className="button-primary w-full"
-            disabled={!canQuote || quoting}
-            onClick={() => void handleQuote()}
-          >
-            {quoting ? "Loading quote…" : "Get quote"}
-          </button>
-
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={!state.quote || extensionSubmitting}
-            onClick={() => void handleRequestExtensionSwap()}
-          >
-            {extensionSubmitting ? "Opening extension..." : "Swap with extension"}
-          </button>
-        </div>
-
-        {extensionResult ? (
-          <div className="mx-1 rounded-[1.5rem] border border-teal-400/20 bg-teal-400/10 p-4 text-sm text-teal-100">
-            {extensionResult}
-          </div>
-        ) : null}
+        <button
+          type="button"
+          className="button-primary w-full"
+          disabled={!providerReady || !sellAmount || loading}
+          onClick={() => void handleQuote()}
+        >
+          {loading ? "Loading 0x quote..." : "Get firm quote"}
+        </button>
       </div>
 
       <aside className="space-y-6">
-        <SwapRoutePreview quote={state.quote} />
-
-        {!state.quote ? (
-          <div className="premium-card space-y-3 p-5">
-            <h2 className="text-xl font-semibold text-white">
-              Quote only
-            </h2>
+        <div className="premium-card space-y-3 p-5">
+          <h2 className="text-xl font-semibold text-white">Quote preview</h2>
+          {quote ? (
+            <div className="space-y-3 text-sm text-slate-300">
+              <div className="flex justify-between gap-3"><span>You pay</span><strong>{quote.sellAmountRaw} {quote.sellToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>You receive</span><strong>{quote.buyAmountRaw} {quote.buyToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ?? "n/a"}</strong></div>
+              <div className="flex justify-between gap-3"><span>Route</span><strong>{quote.routeSummary.label}</strong></div>
+              <div className="flex justify-between gap-3"><span>Allowance</span><strong>{quote.approvalRequired ? "required" : "not needed"}</strong></div>
+              {highImpact ? (
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-amber-100">
+                  High price impact warning. Refresh the quote or reduce the amount.
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="button-primary w-full"
+                disabled={!extensionDetected}
+                onClick={() => void handleExtensionSwap()}
+              >
+                Review swap in extension
+              </button>
+            </div>
+          ) : (
             <p className="text-sm text-slate-300">
-              This shell prepares the universal swap UX and quote architecture.
-              Real provider execution will be added in separate safety-reviewed
-              waves.
+              Select an EVM route and request a quote. Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps are coming in later waves.
             </p>
-          </div>
-        ) : null}
+          )}
+        </div>
 
-        {state.quote ? (
-          <div className="premium-card space-y-3 p-5">
-            <h2 className="text-xl font-semibold text-white">
-              Extension execution gate
-            </h2>
-            <p className="text-sm text-slate-300">
-              The website can now send the prepared route to Acorus Extension
-              for approval. Broadcast remains gated per network adapter.
-            </p>
+        {extensionResult ? (
+          <div className="premium-card p-5 text-sm text-slate-200">
+            {extensionResult}
           </div>
         ) : null}
       </aside>
     </div>
   );
+}
+
+function buildEvmTokenOptions(
+  chainId: number,
+  portfolioAssets?: AssetBalance[],
+): TokenOption[] {
+  const chain = EVM_CHAINS.find((item) => item.chainId === chainId) ?? EVM_CHAINS[0]!;
+  const native: TokenOption = {
+    value: "native",
+    symbol: chain.nativeSymbol,
+    name: chain.name,
+    decimals: 18,
+  };
+  const portfolioTokens = (portfolioAssets ?? [])
+    .filter((asset) => asset.family === "evm" && Number(asset.chainId) === chainId && asset.type === "erc20" && asset.tokenAddress)
+    .map((asset) => ({
+      value: asset.tokenAddress!,
+      symbol: asset.symbol,
+      name: asset.name,
+      decimals: asset.decimals,
+      balanceFormatted: asset.balanceFormatted,
+    }));
+  const curated = getCuratedTokens(chainId)
+    .map((token) => ({
+      value: token.address,
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+    }));
+  const byValue = new Map<string, TokenOption>();
+
+  for (const token of [native, ...portfolioTokens, ...curated]) {
+    byValue.set(token.value.toLowerCase(), token);
+  }
+
+  return Array.from(byValue.values());
 }

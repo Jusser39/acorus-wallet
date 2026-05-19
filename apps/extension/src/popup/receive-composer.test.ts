@@ -60,4 +60,32 @@ describe("popup receive composer", () => {
     expect(source).toContain("SOL and SPL sends are queued");
     expect(source).toContain("assetType: assetOption?.dataset.assetType");
   });
+
+  it("contains gated EVM 0x swap approval and execution controls", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("evm-swap-form");
+    expect(source).toContain("fetchEvmSwapQuote");
+    expect(source).toContain("/api/swap/evm/0x/quote");
+    expect(source).toContain("queue_evm_approve_token");
+    expect(source).toContain("queue_evm_swap_approval");
+    expect(source).toContain("0x quotes are loaded through the Acorus backend");
+    expect(source).toContain("Review swap");
+  });
+
+  it("renders token approval and 0x swap approval cards without raw calldata labels", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("details?.kind === \"token_approval\"");
+    expect(source).toContain("details?.kind === \"evm_swap\"");
+    expect(source).toContain("Approve ${escapeHtml(details.tokenSymbol)}");
+    expect(source).toContain("0x Swap");
+    expect(source).not.toContain("<dt>Data</dt>");
+  });
 });

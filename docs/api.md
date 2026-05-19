@@ -44,3 +44,13 @@
 - `POST /api/swap/quote`
   - quote-preview only
   - rejects sensitive payload fields such as `mnemonic`, `seed`, `privateKey`, and `passcode`
+- `GET /api/swap/evm/status`
+  - returns 0x provider configuration status without exposing the API key
+- `GET /api/swap/evm/0x/price`
+  - backend proxy for 0x AllowanceHolder indicative price
+  - query: `chainId`, `sellToken`, `buyToken`, `sellAmount` or `buyAmount`, `taker`, optional `slippageBps`
+- `GET /api/swap/evm/0x/quote`
+  - backend proxy for 0x AllowanceHolder firm quote
+  - returns a safe subset with transaction fields for explicit extension approval
+- `GET /api/swap/evm/0x/sources`
+  - provider metadata placeholder

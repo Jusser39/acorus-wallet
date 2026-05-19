@@ -8,6 +8,7 @@ import {
 } from "../shared/protocol";
 
 const root = getRoot("Popup root not found.");
+const EXTENSION_SWAP_API_BASES = ["https://24wallet.ru", "http://85.239.59.199:8080"] as const;
 let lastCreatedMnemonic: string | null = null;
 let currentPopupState: BackgroundStateSnapshot = createSkeletonState();
 let currentHomeSnapshot: ExtensionPortfolioSnapshot | null = null;
@@ -47,6 +48,36 @@ type ExtensionPortfolioSnapshot = {
     source?: string | null;
   }>;
   warnings: string[];
+};
+
+type EvmSwapQuoteResponse = {
+  provider: "0x";
+  mode: "quote";
+  requestId: string;
+  chainId: number;
+  takerAddress: string;
+  sellToken: { chainId: number; address: string | "native"; symbol: string; decimals: number; name?: string };
+  buyToken: { chainId: number; address: string | "native"; symbol: string; decimals: number; name?: string };
+  sellAmountRaw: string;
+  buyAmountRaw: string;
+  minBuyAmountRaw?: string | null;
+  to: string;
+  data: string;
+  value: string;
+  gas?: string | null;
+  gasPrice?: string | null;
+  approvalRequired: boolean;
+  approval?: {
+    tokenAddress: string;
+    spender: string;
+    currentAllowanceRaw?: string | null;
+    requiredAllowanceRaw?: string | null;
+  } | null;
+  routeSummary: { label: string; sources: Array<{ name: string; proportionBps?: number | null }> };
+  warnings: string[];
+  estimatedPriceImpact?: string | null;
+  price?: string | null;
+  expiresAt: string;
 };
 
 void loadPopupState();
@@ -658,6 +689,38 @@ function renderApprovalDetailCard(
     `;
   }
 
+  if (details?.kind === "token_approval") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>Approve ${escapeHtml(details.tokenSymbol)}</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Network</dt><dd>${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
+          <div><dt>Token</dt><dd>${escapeHtml(shortAddress(details.tokenAddress))}</dd></div>
+          <div><dt>Spender</dt><dd>${escapeHtml(shortAddress(details.spender))}</dd></div>
+          <div><dt>Amount</dt><dd>${escapeHtml(details.approvalMode === "infinite" ? "Unlimited" : details.amountRaw)}</dd></div>
+          <div><dt>Mode</dt><dd>${escapeHtml(details.approvalMode)}</dd></div>
+        </dl>
+      </div>
+    `;
+  }
+
+  if (details?.kind === "evm_swap") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>0x Swap</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Network</dt><dd>${escapeHtml(String(details.chainId ?? "n/a"))}</dd></div>
+          <div><dt>Sell</dt><dd>${escapeHtml(details.sellAmountRaw)} ${escapeHtml(details.sellTokenSymbol)}</dd></div>
+          <div><dt>Buy</dt><dd>${escapeHtml(details.buyAmountRaw)} ${escapeHtml(details.buyTokenSymbol)}</dd></div>
+          <div><dt>Min received</dt><dd>${escapeHtml(details.minBuyAmountRaw ?? "n/a")}</dd></div>
+          <div><dt>Route</dt><dd>${escapeHtml(details.routeLabel)}</dd></div>
+          <div><dt>Contract</dt><dd>${escapeHtml(shortAddress(details.contractAddress))}</dd></div>
+          <div><dt>Value</dt><dd>${escapeHtml(details.value)}</dd></div>
+        </dl>
+      </div>
+    `;
+  }
+
   return `<span>${escapeHtml(request.summary)}</span>`;
 }
 
@@ -790,6 +853,7 @@ function wirePopupActions(): void {
           wireInlineButtons(content);
           wireReceiveNetworkSelector(content);
           wireSendForm(content);
+          wireEvmSwapForm(content);
         }
         return;
       }
@@ -927,6 +991,183 @@ function wireSendForm(scope: ParentNode = root): void {
     }
 
     await loadPopupState();
+  });
+}
+
+function wireEvmSwapForm(scope: ParentNode = root): void {
+  const form = scope.querySelector<HTMLFormElement>("#evm-swap-form");
+
+  if (!form) {
+    return;
+  }
+
+  const chainSelect = form.querySelector<HTMLSelectElement>("#swap-chain");
+  const sellSelect = form.querySelector<HTMLSelectElement>("#swap-sell-token");
+  const buySelect = form.querySelector<HTMLSelectElement>("#swap-buy-token");
+  const result = form.querySelector<HTMLElement>("#evm-swap-result");
+
+  chainSelect?.addEventListener("change", () => {
+    const assets = getEvmSwapAssets(chainSelect.value);
+    if (sellSelect) {
+      sellSelect.innerHTML = assets.map((asset) => renderSwapAssetOption(asset)).join("");
+    }
+    if (buySelect) {
+      buySelect.innerHTML = assets.map((asset, index) => renderSwapAssetOption(asset, index === Math.min(1, assets.length - 1))).join("");
+    }
+    if (result) {
+      result.innerHTML = "";
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!result || !sellSelect || !buySelect || !chainSelect) {
+      return;
+    }
+
+    const evmProfile = currentPopupState.extensionVaultStatus.profiles.find((profile) => profile.chainFamily === "evm")
+      ?? currentPopupState.walletExposedAccounts.find((profile) => profile.chainFamily === "evm")
+      ?? null;
+
+    if (!evmProfile) {
+      result.innerHTML = `<p class="copy">Create or import an EVM account before swapping.</p>`;
+      return;
+    }
+
+    const formData = new FormData(form);
+    const amountRaw = String(formData.get("amountRaw") ?? "").trim();
+    const slippageBps = Number(formData.get("slippageBps") ?? 50);
+
+    result.innerHTML = `<p class="copy">Fetching 0x quote...</p>`;
+
+    try {
+      const quote = await fetchEvmSwapQuote({
+        chainId: Number(chainSelect.value),
+        sellToken: sellSelect.value,
+        buyToken: buySelect.value,
+        sellAmount: amountRaw,
+        taker: evmProfile.account,
+        slippageBps,
+      });
+
+      result.innerHTML = renderEvmSwapQuotePreview(quote, slippageBps);
+      wireEvmSwapQuoteButtons(result, quote, slippageBps);
+    } catch (error) {
+      result.innerHTML = `<p class="copy">${escapeHtml(error instanceof Error ? error.message : "Unable to fetch quote.")}</p>`;
+    }
+  });
+}
+
+async function fetchEvmSwapQuote(input: {
+  chainId: number;
+  sellToken: string;
+  buyToken: string;
+  sellAmount: string;
+  taker: string;
+  slippageBps: number;
+}): Promise<EvmSwapQuoteResponse> {
+  const params = new URLSearchParams({
+    chainId: String(input.chainId),
+    sellToken: input.sellToken,
+    buyToken: input.buyToken,
+    sellAmount: input.sellAmount,
+    taker: input.taker,
+    slippageBps: String(input.slippageBps),
+  });
+
+  for (const base of EXTENSION_SWAP_API_BASES) {
+    try {
+      const response = await fetch(`${base}/api/swap/evm/0x/quote?${params.toString()}`);
+      const payload = await response.json().catch(() => null) as (EvmSwapQuoteResponse & { error?: string; message?: string }) | null;
+
+      if (response.ok && payload?.provider === "0x") {
+        return payload;
+      }
+
+      if (payload?.error === "swap_provider_not_configured") {
+        throw new Error("0x provider is not configured on the backend yet.");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("0x provider")) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("0x quote API is unavailable.");
+}
+
+function renderEvmSwapQuotePreview(
+  quote: EvmSwapQuoteResponse,
+  slippageBps: number,
+): string {
+  const approval = quote.approvalRequired && quote.approval
+    ? `<button class="ghost-button" type="button" id="evm-approve-token">Approve ${escapeHtml(quote.sellToken.symbol)}</button>`
+    : "";
+
+  return `
+    <div class="approval-card">
+      <div class="row"><strong>0x quote</strong><span class="badge">${escapeHtml(quote.routeSummary.label)}</span></div>
+      <dl>
+        <div><dt>You pay</dt><dd>${escapeHtml(quote.sellAmountRaw)} ${escapeHtml(quote.sellToken.symbol)}</dd></div>
+        <div><dt>You receive</dt><dd>${escapeHtml(quote.buyAmountRaw)} ${escapeHtml(quote.buyToken.symbol)}</dd></div>
+        <div><dt>Min received</dt><dd>${escapeHtml(quote.minBuyAmountRaw ?? "n/a")}</dd></div>
+        <div><dt>Slippage</dt><dd>${escapeHtml(String(slippageBps / 100))}%</dd></div>
+        <div><dt>Gas</dt><dd>${escapeHtml(quote.gas ?? "estimate unavailable")}</dd></div>
+      </dl>
+      ${quote.warnings.length ? `<p class="copy">${quote.warnings.map(escapeHtml).join(" ")}</p>` : ""}
+      <div class="row" style="margin-top:10px">
+        ${approval}
+        <button class="primary-button" type="button" id="evm-review-swap">Review swap</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireEvmSwapQuoteButtons(
+  scope: HTMLElement,
+  quote: EvmSwapQuoteResponse,
+  slippageBps: number,
+): void {
+  scope.querySelector<HTMLButtonElement>("#evm-approve-token")?.addEventListener("click", async () => {
+    if (!quote.approval) {
+      return;
+    }
+
+    const response = await chrome.runtime.sendMessage({
+      kind: "queue_evm_approve_token",
+      requestId: createRequestId("popup_evm_approve"),
+      surface: "popup",
+      chainId: quote.chainId,
+      tokenAddress: quote.approval.tokenAddress,
+      tokenSymbol: quote.sellToken.symbol,
+      spender: quote.approval.spender,
+      amountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+      approvalMode: "exact",
+    }) as ExtensionRuntimeResponse;
+
+    if (!response.ok) {
+      window.alert(response.error?.message ?? "Unable to queue token approval.");
+    } else {
+      await loadPopupState();
+    }
+  });
+
+  scope.querySelector<HTMLButtonElement>("#evm-review-swap")?.addEventListener("click", async () => {
+    const response = await chrome.runtime.sendMessage({
+      kind: "queue_evm_swap_approval",
+      requestId: createRequestId("popup_evm_swap"),
+      surface: "popup",
+      quote,
+      slippageBps,
+    }) as ExtensionRuntimeResponse;
+
+    if (!response.ok) {
+      window.alert(response.error?.message ?? "Unable to queue swap.");
+    } else {
+      await loadPopupState();
+    }
   });
 }
 
@@ -1137,12 +1378,7 @@ function renderActionContent(target: string): string {
         </div>
       `;
     case "swap":
-      return `
-        <div class="form">
-          <p class="copy">Swap quotes route through the Acorus swap shell. Execution is enabled only where the adapter is safety-reviewed.</p>
-          <button class="primary-button" type="button" data-open-url="https://24wallet.ru/swap">Open Swap</button>
-        </div>
-      `;
+      return renderEvmSwapComposer();
     case "send":
       return renderSendComposer();
     case "receive":
@@ -1191,6 +1427,114 @@ function renderSendComposer(): string {
       <button class="ghost-button" type="button" data-open-url="https://24wallet.ru/send">Open full send</button>
     </form>
   `;
+}
+
+function renderEvmSwapComposer(): string {
+  const networks = (currentHomeSnapshot?.networks ?? [])
+    .filter((network) => network.family === "evm" && network.capabilities.swap);
+  const selectedNetwork = networks.find((network) =>
+    String(network.chainId) === String(currentHomeSnapshot?.activeChainId),
+  ) ?? networks[0] ?? null;
+  const assets = getEvmSwapAssets(selectedNetwork?.chainId ?? 1);
+  const defaultBuy = assets.find((asset) => asset.symbol === "USDC" && asset.type === "erc20")
+    ?? assets.find((asset) => asset.type === "erc20")
+    ?? assets[0];
+
+  return `
+    <form class="form" id="evm-swap-form">
+      <label class="small">Network</label>
+      <select class="field" id="swap-chain" name="chainId">
+        ${networks.map((network) => `
+          <option value="${escapeHtml(String(network.chainId))}" ${String(network.chainId) === String(selectedNetwork?.chainId) ? "selected" : ""}>
+            ${escapeHtml(network.name)}
+          </option>
+        `).join("")}
+      </select>
+      <label class="small">Sell token</label>
+      <select class="field" id="swap-sell-token" name="sellToken">
+        ${assets.map((asset) => renderSwapAssetOption(asset)).join("")}
+      </select>
+      <label class="small">Buy token</label>
+      <select class="field" id="swap-buy-token" name="buyToken">
+        ${assets.map((asset) => renderSwapAssetOption(asset, asset === defaultBuy)).join("")}
+      </select>
+      <input class="field" name="amountRaw" placeholder="Sell amount in raw units, e.g. 1000000" inputmode="numeric">
+      <select class="field" name="slippageBps">
+        <option value="30">0.3% slippage</option>
+        <option value="50" selected>0.5% slippage</option>
+        <option value="100">1% slippage</option>
+      </select>
+      <p class="copy">0x quotes are loaded through the Acorus backend. Approval and swap broadcasts require explicit popup confirmation.</p>
+      <button class="primary-button" type="submit">Get 0x Quote</button>
+      <button class="ghost-button" type="button" data-open-url="https://24wallet.ru/swap">Open full swap</button>
+      <div id="evm-swap-result" class="swap-result"></div>
+    </form>
+  `;
+}
+
+function renderSwapAssetOption(
+  asset: ExtensionPortfolioSnapshot["assets"][number],
+  selected = false,
+): string {
+  const token = asset.type === "native" ? "native" : asset.tokenAddress ?? "";
+
+  return `
+    <option
+      value="${escapeHtml(token)}"
+      data-symbol="${escapeHtml(asset.symbol)}"
+      data-decimals="${escapeHtml(String(asset.decimals))}"
+      data-type="${escapeHtml(asset.type)}"
+      ${selected ? "selected" : ""}
+    >
+      ${escapeHtml(asset.symbol)} · ${escapeHtml(asset.name)}
+    </option>
+  `;
+}
+
+function getEvmSwapAssets(chainId: string | number): ExtensionPortfolioSnapshot["assets"] {
+  const chain = currentHomeSnapshot?.networks.find((network) =>
+    String(network.chainId) === String(chainId),
+  );
+  const assets = currentHomeSnapshot?.assets.filter((asset) =>
+    asset.family === "evm" && String(asset.chainId) === String(chainId),
+  ) ?? [];
+  const native = assets.find((asset) => asset.type === "native") ?? {
+    family: "evm",
+    chainId,
+    type: "native",
+    symbol: chain?.nativeSymbol ?? "ETH",
+    name: chain?.name ?? "Ethereum",
+    decimals: 18,
+    tokenAddress: null,
+    balanceRaw: "0",
+    balanceFormatted: "0",
+    fiatValue: null,
+    priceUsd: null,
+    source: "fallback",
+  };
+  const usdc = chainId === 1
+    ? {
+        family: "evm",
+        chainId,
+        type: "erc20",
+        symbol: "USDC",
+        name: "USD Coin",
+        decimals: 6,
+        tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        balanceRaw: "0",
+        balanceFormatted: "0",
+        fiatValue: null,
+        priceUsd: null,
+        source: "curated",
+      }
+    : null;
+  const merged = [native, ...assets.filter((asset) => asset.type === "erc20")];
+
+  if (usdc && !merged.some((asset) => asset.tokenAddress?.toLowerCase() === usdc.tokenAddress.toLowerCase())) {
+    merged.push(usdc);
+  }
+
+  return merged;
 }
 
 function getSolanaSendAssets(): ExtensionPortfolioSnapshot["assets"] {

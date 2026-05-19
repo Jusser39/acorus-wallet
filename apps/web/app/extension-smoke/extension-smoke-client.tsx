@@ -46,6 +46,16 @@ export function ExtensionSmokeClient() {
   });
   const [txTo, setTxTo] = useState("");
   const [txValue, setTxValue] = useState("0x0");
+  const [swapStatus, setSwapStatus] = useState<{
+    configured?: boolean;
+    enabled?: boolean;
+    provider?: string;
+    supportedChains?: number[];
+  } | null>(null);
+  const [swapSellToken, setSwapSellToken] = useState("ETH");
+  const [swapBuyToken, setSwapBuyToken] = useState("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+  const [swapTaker, setSwapTaker] = useState("");
+  const [swapAmount, setSwapAmount] = useState("1000000000000000");
   const providerRows = useMemo(
     () => Object.entries(providers) as Array<[ProviderKey, boolean]>,
     [providers],
@@ -95,6 +105,10 @@ export function ExtensionSmokeClient() {
         ? "secure"
         : "insecure",
     });
+    void fetch("/api/swap/evm/status")
+      .then((response) => response.json())
+      .then(setSwapStatus)
+      .catch(() => setSwapStatus({ configured: false, enabled: false, provider: "0x" }));
   }
 
   async function run(label: string, method: string, params?: unknown[]) {
@@ -137,10 +151,40 @@ export function ExtensionSmokeClient() {
       events,
       results,
       solanaCapabilities,
+      swapStatus,
     };
 
     await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
     appendResult({ label: "copy diagnostics", ok: true, output: "Diagnostics copied." });
+  }
+
+  async function runSwapStatus() {
+    try {
+      const response = await fetch("/api/swap/evm/status");
+      const payload = await response.json();
+      setSwapStatus(payload);
+      appendResult({ label: "swap status", ok: response.ok, output: stringify(payload) });
+    } catch (error) {
+      appendResult({ label: "swap status", ok: false, output: stringifyError(error) });
+    }
+  }
+
+  async function runSwapPrice() {
+    try {
+      const params = new URLSearchParams({
+        chainId: "1",
+        sellToken: swapSellToken,
+        buyToken: swapBuyToken,
+        sellAmount: swapAmount,
+        taker: swapTaker,
+        slippageBps: "50",
+      });
+      const response = await fetch(`/api/swap/evm/0x/price?${params.toString()}`);
+      const payload = await response.json();
+      appendResult({ label: "0x price", ok: response.ok, output: stringify(payload) });
+    } catch (error) {
+      appendResult({ label: "0x price", ok: false, output: stringifyError(error) });
+    }
   }
 
   return (
@@ -284,6 +328,44 @@ export function ExtensionSmokeClient() {
           <span className="font-mono text-xs">
             {stringify(solanaCapabilities)}
           </span>
+        </div>
+      </section>
+
+      <section className="premium-card p-5">
+        <h2 className="text-xl font-semibold">EVM 0x swap diagnostics</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Checks the Acorus backend proxy only. The 0x API key is never exposed to this page.
+        </p>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+          <span className="font-semibold text-white">Status: </span>
+          <span className="font-mono text-xs">{stringify(swapStatus)}</span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapSellToken} onChange={(event) => setSwapSellToken(event.target.value)} placeholder="sellToken ETH or 0x..." />
+          <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapBuyToken} onChange={(event) => setSwapBuyToken(event.target.value)} placeholder="buyToken 0x..." />
+          <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapAmount} onChange={(event) => setSwapAmount(event.target.value)} placeholder="sellAmount raw" />
+          <input className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm outline-none" value={swapTaker} onChange={(event) => setSwapTaker(event.target.value)} placeholder="taker 0x..." />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            className="button-secondary"
+            onClick={() => void runSwapStatus()}
+          >
+            Refresh swap status
+          </button>
+          <button
+            className="button-secondary"
+            disabled={!swapTaker}
+            onClick={() => void runSwapPrice()}
+          >
+            Test 0x price
+          </button>
+          <button className="button-secondary opacity-60" disabled>
+            Quote/execution smoke requires manual wallet review
+          </button>
+        </div>
+        <div className="mt-4 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 p-4 text-sm text-fuchsia-100">
+          Swap checklist: connect EVM, choose chain, get price, fetch quote, approve token if required, reject one swap, then run only a tiny intentional swap.
         </div>
       </section>
 

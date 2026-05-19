@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app";
+import { readEnv } from "./env";
 import { MemoryStore } from "./memory-store";
 import type { FastifyInstance } from "fastify";
 
@@ -14,6 +15,7 @@ describe("api", () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await app.close();
   });
 
@@ -499,5 +501,147 @@ describe("api", () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.json().error).toBe("sensitive_fields_not_allowed");
+  });
+
+  it("GET /api/swap/evm/0x/price returns 503 without API key", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/0x/price?chainId=1&sellToken=ETH&buyToken=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&sellAmount=1000000000000000&taker=0x0000000000000000000000000000000000000001",
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json().error).toBe("swap_provider_not_configured");
+  });
+
+  it("GET /api/swap/evm/status does not expose API key", async () => {
+    await app.close();
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        ZEROX_ENABLED: "true",
+        ZEROX_API_KEY: "test-secret-key",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/status",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.stringify(response.json())).not.toContain("test-secret-key");
+    expect(response.json()).toMatchObject({
+      provider: "0x",
+      configured: true,
+    });
+  });
+
+  it("GET /api/swap/evm/0x/price sends API key server-side and maps response", async () => {
+    await app.close();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      sellAmount: "1000000000000000",
+      buyAmount: "2500000",
+      price: "2500",
+      liquidityAvailable: true,
+      allowanceTarget: "0x00000000000000000000000000000000000000aa",
+      route: {
+        fills: [{ source: "Uniswap_V3", proportionBps: "10000" }],
+      },
+      zid: "quote-id",
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        ZEROX_ENABLED: "true",
+        ZEROX_API_KEY: "test-secret-key",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/0x/price?chainId=1&sellToken=ETH&buyToken=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&sellAmount=1000000000000000&taker=0x0000000000000000000000000000000000000001",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect((init as RequestInit).headers).toMatchObject({
+      "0x-api-key": "test-secret-key",
+      "0x-version": "v2",
+    });
+    expect(JSON.stringify(response.json())).not.toContain("test-secret-key");
+    expect(response.json()).toMatchObject({
+      provider: "0x",
+      mode: "price",
+      buyAmountRaw: "2500000",
+      routeSummary: {
+        label: "Uniswap_V3",
+      },
+    });
+  });
+
+  it("GET /api/swap/evm/0x/quote maps transaction without leaking key", async () => {
+    await app.close();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      sellAmount: "1000000",
+      buyAmount: "999000",
+      minBuyAmount: "990000",
+      price: "0.999",
+      transaction: {
+        to: "0x00000000000000000000000000000000000000bb",
+        data: "0xabcdef",
+        value: "0",
+        gas: "140000",
+      },
+      issues: {
+        allowance: {
+          spender: "0x00000000000000000000000000000000000000aa",
+          actual: "0",
+          expected: "1000000",
+        },
+      },
+      route: { fills: [{ source: "0x_RFQ", proportionBps: "10000" }] },
+      zid: "firm-quote",
+    }), { status: 200 })));
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        ZEROX_ENABLED: "true",
+        ZEROX_API_KEY: "test-secret-key",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/0x/quote?chainId=1&sellToken=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&buyToken=ETH&sellAmount=1000000&taker=0x0000000000000000000000000000000000000001",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      provider: "0x",
+      mode: "quote",
+      to: "0x00000000000000000000000000000000000000bb",
+      approvalRequired: true,
+      approval: {
+        spender: "0x00000000000000000000000000000000000000aa",
+      },
+    });
+    expect(JSON.stringify(response.json())).not.toContain("test-secret-key");
+  });
+
+  it("GET /api/swap/evm/0x/price rejects invalid taker token and amount", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/evm/0x/price?chainId=1&sellToken=bad&buyToken=ETH&sellAmount=0&taker=bad",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("validation_error");
   });
 });

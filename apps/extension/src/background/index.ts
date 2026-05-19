@@ -11,11 +11,12 @@ import {
   type DappRequest,
   type DappRequestKind,
   type DappRequestReviewDetails,
+  type EvmSwapQuoteResponse,
   type ChainId,
   type ChainFamily,
   type DappShellSnapshot,
 } from "@acorus/shared";
-import { buildSplTransferDraft } from "@acorus/wallet-core";
+import { buildErc20ApproveTransaction, buildSplTransferDraft } from "@acorus/wallet-core";
 import {
   type AcorusProviderMethod,
   createRequestId,
@@ -276,6 +277,50 @@ export async function handleRuntimeMessage(
         requestId,
         "solana_send_queue_failed",
         error instanceof Error ? error.message : "Unable to queue Solana send.",
+      );
+    }
+  }
+
+  if (input.kind === "queue_evm_approve_token") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueInternalEvmApproveTokenRequest({
+          requestId,
+          chainId: input.chainId,
+          tokenAddress: input.tokenAddress,
+          tokenSymbol: input.tokenSymbol,
+          spender: input.spender,
+          amountRaw: input.amountRaw,
+          approvalMode: input.approvalMode,
+        }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "evm_approve_queue_failed",
+        error instanceof Error ? error.message : "Unable to queue token approval.",
+      );
+    }
+  }
+
+  if (input.kind === "queue_evm_swap_approval") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueInternalEvmSwapRequest({
+          requestId,
+          quote: input.quote,
+          slippageBps: input.slippageBps ?? null,
+        }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "evm_swap_queue_failed",
+        error instanceof Error ? error.message : "Unable to queue swap review.",
       );
     }
   }
@@ -1518,6 +1563,30 @@ async function executeApprovedRequest(
           account: request.account ?? null,
         }),
       });
+    case "acorus_swap": {
+      const payload = normalizeRecord(execution.params[0]);
+      if (!payload.to || !payload.data) {
+        return createApprovedPreviewDappResult(request, approvedAt);
+      }
+
+      assertFreshSwapQuote(payload);
+
+      return createApprovedLiveDappResult(request, approvedAt, {
+        transactionHash: await executeExtensionSendTransaction({
+          params: [{
+            from: request.account,
+            to: payload.to,
+            data: payload.data,
+            value: payload.value ?? "0x0",
+            gas: payload.gas,
+            gasPrice: payload.gasPrice,
+            chainId: request.chainId,
+          }],
+          chainId: request.chainId ?? null,
+          account: request.account ?? null,
+        }),
+      });
+    }
     case "acorus_multichainSend": {
       const payload = normalizeRecord(execution.params[0]);
       if (payload.family === "solana") {
@@ -1656,6 +1725,232 @@ async function queueInternalSolanaSendRequest(input: {
   };
 }
 
+async function queueInternalEvmApproveTokenRequest(input: {
+  requestId: string;
+  chainId: number;
+  tokenAddress: string;
+  tokenSymbol: string;
+  spender: string;
+  amountRaw: string;
+  approvalMode: "exact" | "infinite";
+}): Promise<{ requestId: string; queued: true }> {
+  const vaultStatus = await getExtensionVaultStatus();
+
+  if (!vaultStatus.isUnlocked) {
+    throw new Error("Unlock Acorus Wallet extension before approving a token.");
+  }
+
+  const profile = vaultStatus.profiles.find((item) => item.chainFamily === "evm");
+
+  if (!profile) {
+    throw new Error("EVM profile is not available in this wallet.");
+  }
+
+  const network = await resolveExtensionNetwork(input.chainId);
+
+  if (!network || network.family !== "evm") {
+    throw new Error("Token approvals are available only for configured EVM networks.");
+  }
+
+  const tx = buildErc20ApproveTransaction({
+    chainId: input.chainId,
+    tokenAddress: input.tokenAddress,
+    owner: profile.account,
+    spender: input.spender,
+    amountRaw: input.amountRaw,
+    approvalMode: input.approvalMode,
+  });
+  const origin = "chrome-extension://acorus-popup";
+  const state = await getDappShellState();
+  const session = ensureInternalEvmSession(state, origin, profile.account, input.chainId);
+  const stateWithSession = state.sessions.some((item) => item.id === session.id)
+    ? state
+    : { ...state, sessions: [session, ...state.sessions] };
+  const providerParams = [{
+    from: profile.account,
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+    chainId: input.chainId,
+    tokenSymbol: input.tokenSymbol,
+    spender: input.spender,
+    amountRaw: tx.amountRaw,
+    approvalMode: input.approvalMode,
+  }];
+  const queued = queueDappRequest(stateWithSession, {
+    id: input.requestId,
+    sessionId: session.id,
+    kind: "send_transaction",
+    origin,
+    account: profile.account,
+    chainId: input.chainId,
+    summary: `Approve ${input.tokenSymbol} for 0x swap spender ${input.spender}.`,
+    warning: "Approve token spending only when you trust the route and spender.",
+    reviewDetails: {
+      kind: "token_approval",
+      chainId: input.chainId,
+      tokenSymbol: input.tokenSymbol,
+      tokenAddress: input.tokenAddress,
+      spender: input.spender,
+      amountRaw: tx.amountRaw,
+      approvalMode: input.approvalMode,
+      riskLabels: tx.riskLabels,
+    },
+  });
+
+  await setDappShellState(queued.snapshot);
+  pendingProviderExecutions.set(queued.request.id, {
+    method: "acorus_sendTransaction",
+    params: providerParams,
+  });
+
+  return {
+    requestId: queued.request.id,
+    queued: true,
+  };
+}
+
+async function queueInternalEvmSwapRequest(input: {
+  requestId: string;
+  quote: EvmSwapQuoteResponse;
+  slippageBps?: number | null;
+}): Promise<{ requestId: string; queued: true }> {
+  const vaultStatus = await getExtensionVaultStatus();
+
+  if (!vaultStatus.isUnlocked) {
+    throw new Error("Unlock Acorus Wallet extension before swapping.");
+  }
+
+  const profile = vaultStatus.profiles.find((item) => item.chainFamily === "evm");
+
+  if (!profile) {
+    throw new Error("EVM profile is not available in this wallet.");
+  }
+
+  if (normalizeLowerHex(profile.account) !== normalizeLowerHex(input.quote.takerAddress)) {
+    throw new Error("The quote taker does not match the selected EVM account.");
+  }
+
+  const network = await resolveExtensionNetwork(input.quote.chainId);
+
+  if (!network || network.family !== "evm") {
+    throw new Error("Swap execution is available only for configured EVM networks.");
+  }
+
+  assertFreshSwapQuote({
+    expiresAt: input.quote.expiresAt,
+  });
+
+  if (!looksLikeEvmAddress(input.quote.to) || !isHexString(input.quote.data)) {
+    throw new Error("Swap quote transaction is invalid.");
+  }
+
+  const origin = "chrome-extension://acorus-popup";
+  const state = await getDappShellState();
+  const session = ensureInternalEvmSession(state, origin, profile.account, input.quote.chainId);
+  const stateWithSession = state.sessions.some((item) => item.id === session.id)
+    ? state
+    : { ...state, sessions: [session, ...state.sessions] };
+  const providerParams = [{
+    provider: "0x",
+    quoteId: input.quote.requestId,
+    from: profile.account,
+    to: input.quote.to,
+    data: input.quote.data,
+    value: input.quote.value,
+    gas: input.quote.gas,
+    gasPrice: input.quote.gasPrice,
+    chainId: input.quote.chainId,
+    expiresAt: input.quote.expiresAt,
+    sellTokenSymbol: input.quote.sellToken.symbol,
+    buyTokenSymbol: input.quote.buyToken.symbol,
+  }];
+  const riskLabels = ["DEX aggregator", "Irreversible transaction"];
+
+  if (Number(input.quote.estimatedPriceImpact) > 0.05) {
+    riskLabels.push("High price impact");
+  }
+
+  if (!input.quote.sellToken.logoUrl || !input.quote.buyToken.logoUrl) {
+    riskLabels.push("Custom token");
+  }
+
+  const queued = queueDappRequest(stateWithSession, {
+    id: input.requestId,
+    sessionId: session.id,
+    kind: "swap",
+    origin,
+    account: profile.account,
+    chainId: input.quote.chainId,
+    summary: `Swap ${input.quote.sellAmountRaw} ${input.quote.sellToken.symbol} for ${input.quote.buyToken.symbol} with 0x.`,
+    warning: "Rates can change before execution. Confirm only after checking the route, amount, and destination contract.",
+    reviewDetails: {
+      kind: "evm_swap",
+      provider: "0x",
+      chainId: input.quote.chainId,
+      sellTokenSymbol: input.quote.sellToken.symbol,
+      buyTokenSymbol: input.quote.buyToken.symbol,
+      sellAmountRaw: input.quote.sellAmountRaw,
+      buyAmountRaw: input.quote.buyAmountRaw,
+      minBuyAmountRaw: input.quote.minBuyAmountRaw ?? null,
+      slippageBps: input.slippageBps ?? null,
+      priceImpact: input.quote.estimatedPriceImpact ?? null,
+      routeLabel: input.quote.routeSummary.label,
+      contractAddress: input.quote.to,
+      value: input.quote.value,
+      riskLabels,
+    },
+  });
+
+  await setDappShellState(queued.snapshot);
+  pendingProviderExecutions.set(queued.request.id, {
+    method: "acorus_swap",
+    params: providerParams,
+  });
+
+  return {
+    requestId: queued.request.id,
+    queued: true,
+  };
+}
+
+function ensureInternalEvmSession(
+  state: DappShellSnapshot,
+  origin: string,
+  account: string,
+  chainId: number,
+) {
+  return state.sessions.find((item) => item.id === "session_internal_evm_swap")
+    ?? {
+      id: "session_internal_evm_swap",
+      origin: createDappOriginMetadata({
+        origin,
+        title: "Acorus Wallet Popup",
+        trustLevel: "trusted",
+      }),
+      transport: "injected" as const,
+      providerMode: "wallet_backed" as const,
+      accounts: [account],
+      chainIds: [chainId],
+      activeChainId: chainId,
+      permissions: ["send_transaction", "swap"] as const,
+      status: "active" as const,
+      connectedAt: new Date().toISOString(),
+      lastUsedAt: null,
+      warning: "Internal extension swap approval.",
+    };
+}
+
+function assertFreshSwapQuote(payload: Record<string, unknown>): void {
+  const expiresAt = typeof payload.expiresAt === "string"
+    ? new Date(payload.expiresAt).getTime()
+    : null;
+
+  if (!expiresAt || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    throw new Error("Swap quote expired. Refresh the quote before approving.");
+  }
+}
+
 function createApprovedLiveDappResult(
   request: DappRequest,
   approvedAt: string,
@@ -1754,8 +2049,13 @@ function buildApprovalSummary(
     }
     case "acorus_multichainSend":
       return `Multichain send review. Active chain ${chain}. Draft preview: ${payload}.`;
-    case "acorus_swap":
+    case "acorus_swap": {
+      const swap = normalizeRecord(params?.[0]);
+      if (swap.provider === "0x") {
+        return `Confirm 0x swap on chain ${chain}: ${String(swap.sellTokenSymbol ?? "sell")} to ${String(swap.buyTokenSymbol ?? "buy")}.`;
+      }
       return `Swap review. Active chain ${chain}. Route preview: ${payload}.`;
+    }
     case "acorus_signMessage":
       return `Sign message review on chain ${chain}. Payload preview: ${payload}.`;
     case "acorus_signTypedData":
@@ -1884,6 +2184,34 @@ function buildRequestReviewDetails(
     }
   }
 
+  if (method === "acorus_swap") {
+    const payload = normalizeRecord(params[0]);
+    if (payload.provider === "0x") {
+      const riskLabels = ["DEX aggregator", "Irreversible transaction"];
+
+      if (payload.priceImpact && Number(payload.priceImpact) > 0.05) {
+        riskLabels.push("High price impact");
+      }
+
+      return {
+        kind: "evm_swap",
+        provider: "0x",
+        chainId: activeChainId,
+        sellTokenSymbol: String(payload.sellTokenSymbol ?? "SELL"),
+        buyTokenSymbol: String(payload.buyTokenSymbol ?? "BUY"),
+        sellAmountRaw: String(payload.sellAmountRaw ?? ""),
+        buyAmountRaw: String(payload.buyAmountRaw ?? ""),
+        minBuyAmountRaw: typeof payload.minBuyAmountRaw === "string" ? payload.minBuyAmountRaw : null,
+        slippageBps: typeof payload.slippageBps === "number" ? payload.slippageBps : null,
+        priceImpact: typeof payload.priceImpact === "string" ? payload.priceImpact : null,
+        routeLabel: String(payload.routeLabel ?? "0x route"),
+        contractAddress: String(payload.to ?? ""),
+        value: String(payload.value ?? "0"),
+        riskLabels,
+      };
+    }
+  }
+
   return null;
 }
 
@@ -1941,4 +2269,16 @@ function summarizePayload(value: unknown): string {
 
 function truncate(value: string, length = 96): string {
   return value.length > length ? `${value.slice(0, length)}…` : value;
+}
+
+function looksLikeEvmAddress(value: unknown): value is string {
+  return typeof value === "string" && /^0x[0-9a-f]{40}$/iu.test(value);
+}
+
+function isHexString(value: unknown): value is `0x${string}` {
+  return typeof value === "string" && /^0x[0-9a-f]+$/iu.test(value);
+}
+
+function normalizeLowerHex(value: string): string {
+  return value.trim().toLowerCase();
 }
