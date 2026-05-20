@@ -66,6 +66,33 @@ const COINGECKO_PLATFORM_TO_ROUTE: Record<string, { chainId: number | string; ch
   tron: { chainId: "tron-mainnet", chainKey: "tron" },
 };
 
+const COINGECKO_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
+  bitcoin: "BTCUSDT",
+  ethereum: "ETHUSDT",
+  solana: "SOLUSDT",
+  "the-open-network": "TONUSDT",
+  ripple: "XRPUSDT",
+  binancecoin: "BNBUSDT",
+  tron: "TRXUSDT",
+  dogecoin: "DOGEUSDT",
+  cardano: "ADAUSDT",
+  chainlink: "LINKUSDT",
+  "avalanche-2": "AVAXUSDT",
+  "matic-network": "POLUSDT",
+  "polygon-ecosystem-token": "POLUSDT",
+  tether: "USDTUSDT",
+  "usd-coin": "USDCUSDT",
+};
+
+const RANGE_TO_BINANCE_KLINES: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", { interval: string; limit: number }> = {
+  "1H": { interval: "5m", limit: 12 },
+  "1D": { interval: "5m", limit: 288 },
+  "1W": { interval: "1h", limit: 168 },
+  "1M": { interval: "4h", limit: 180 },
+  "1Y": { interval: "1d", limit: 365 },
+  ALL: { interval: "1d", limit: 1000 },
+};
+
 function coingeckoCurrency(currency: string): string {
   return currency.toLowerCase();
 }
@@ -97,6 +124,20 @@ interface CoinGeckoMarketChartResponse {
 }
 
 type CoinGeckoOhlcPoint = [number, number, number, number, number];
+type BinanceKline = [
+  number,
+  string,
+  string,
+  string,
+  string,
+  string,
+  number,
+  string,
+  number,
+  string,
+  string,
+  string,
+];
 
 const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   bitcoin: "BTC",
@@ -360,6 +401,11 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         return ohlcFallback;
       }
 
+      const binanceFallback = await this.fetchBinanceKlineFallback(coinId, range);
+      if (binanceFallback.length > 1) {
+        return binanceFallback;
+      }
+
       if (range !== "ALL") {
         throw error;
       }
@@ -405,10 +451,15 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         // Try OHLC below.
       }
 
-      return this.fetchCoinOhlcFallback(coinId, currency, "1Y");
+      const ohlcFallback = await this.fetchCoinOhlcFallback(coinId, currency, "1Y");
+      if (ohlcFallback.length > 1) {
+        return ohlcFallback;
+      }
+
+      return this.fetchBinanceKlineFallback(coinId, "ALL");
     }
 
-    return [];
+    return this.fetchBinanceKlineFallback(coinId, range);
   }
 
   private async fetchCoinOhlcFallback(
@@ -440,6 +491,37 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       return response
         .map(([timestamp, , , , close]) => ({
           timestamp: new Date(timestamp).toISOString(),
+          price: Number(Number(close).toFixed(6)),
+        }))
+        .filter((point) => Number.isFinite(point.price));
+    } catch {
+      return [];
+    }
+  }
+
+  private async fetchBinanceKlineFallback(
+    coinId: string,
+    range: MarketChartRequest["range"],
+  ): Promise<Array<{ timestamp: string; price: number }>> {
+    const symbol = COINGECKO_ID_TO_BINANCE_SYMBOL[coinId.toLowerCase()];
+    if (!symbol) {
+      return [];
+    }
+
+    const config = RANGE_TO_BINANCE_KLINES[range];
+    try {
+      const response = await httpGet<BinanceKline[]>(
+        "https://api.binance.com/api/v3/klines"
+          + `?symbol=${encodeURIComponent(symbol)}`
+          + `&interval=${encodeURIComponent(config.interval)}`
+          + `&limit=${encodeURIComponent(String(config.limit))}`,
+        this.timeoutMs,
+        {},
+      );
+
+      return response
+        .map(([openTime, , , , close]) => ({
+          timestamp: new Date(openTime).toISOString(),
           price: Number(Number(close).toFixed(6)),
         }))
         .filter((point) => Number.isFinite(point.price));

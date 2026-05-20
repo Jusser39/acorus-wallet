@@ -565,3 +565,4 @@
 307. After deploying the OHLC fallback, production still showed `unavailable` for some long TON ranges when several intervals were requested back-to-back. Patched `CompositeMarketDataProvider.getCoinChartById` to wait on the shared CoinGecko limiter instead of immediately throwing `market_rate_limited`.
 308. Re-ran targeted validation for the rate-limit queue patch: `pnpm --filter @acorus/api test` and `pnpm --filter @acorus/api build` passed.
 309. Added an in-memory last-good cache for `/api/market/coin-chart` so repeated token page interval switches can reuse the last live CoinGecko chart during temporary provider failures instead of rendering empty unavailable charts.
+310. Added a real Binance kline fallback for major CoinGecko ids so TON/SOL/BTC/ETH-style token charts can keep rendering real exchange price history when CoinGecko temporarily rejects chart history.
