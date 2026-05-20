@@ -1289,4 +1289,10 @@
   - Long ranges also have a live CoinGecko OHLC fallback so production can keep rendering real close-price curves when `market_chart` is rate-limited.
   - Solana detail API returned live CoinGecko price/market stats instead of mock data.
   - Browser smoke confirmed the Solana token page no longer displays `mock`, Risk, Quote preview, Price source, or Chart source text.
+- Follow-up stabilization:
+  - Production still returned `unavailable` for some long TON chart ranges after several rapid interval requests because the composite market provider rejected immediately when its shared CoinGecko limiter was exhausted.
+  - Changed coin-id chart requests to wait on the shared limiter instead of throwing `market_rate_limited`, so UI interval changes can queue briefly and still receive live/OHLC fallback data.
+  - Validation passed:
+    - `pnpm --filter @acorus/api test`
+    - `pnpm --filter @acorus/api build`
 

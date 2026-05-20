@@ -638,9 +638,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
     coinId: string,
     request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
   ): Promise<MarketChartDto> {
-    if (!this.rateLimiter.take()) {
-      throw new Error("market_rate_limited");
-    }
+    await this.rateLimiter.acquire();
 
     for (const provider of this.providers) {
       if (provider.getCoinChartById) {
