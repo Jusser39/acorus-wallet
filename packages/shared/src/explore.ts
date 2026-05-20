@@ -1,4 +1,4 @@
-export type ExploreSection = "trending" | "top" | "memes";
+export type ExploreSection = "trending" | "top" | "gainers" | "losers" | "memes";
 
 export type ExploreTokenItem = {
   id: string;

@@ -136,7 +136,7 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
             {activePoint ? formatPrice(activePoint.price, currency) : "—"}
           </p>
           <p className="text-xs text-slate-500">
-            {activePoint ? formatTimestamp(activePoint.timestamp) : `via ${chart.provider}`}
+            {activePoint ? formatTimestamp(activePoint.timestamp) : "Move over the chart"}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
@@ -145,7 +145,6 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
               {badge.label}
             </span>
           ) : null}
-          <span className="text-[11px] text-slate-500">via {chart.provider}</span>
         </div>
       </div>
 

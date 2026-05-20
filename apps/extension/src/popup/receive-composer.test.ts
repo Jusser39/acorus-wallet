@@ -88,4 +88,18 @@ describe("popup receive composer", () => {
     expect(source).toContain("0x Swap");
     expect(source).not.toContain("<dt>Data</dt>");
   });
+
+  it("contains the simplified wallet home and settings sheet UI", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("hero-actions");
+    expect(source).toContain("View portfolio");
+    expect(source).toContain("Recent activity");
+    expect(source).toContain("renderSettingsComposer");
+    expect(source).toContain("Balances and activity");
+    expect(source).toContain("Testnet mode");
+  });
 });

@@ -356,8 +356,9 @@
       }
 
       .primary-button {
-        background: #0500ff;
+        background: linear-gradient(135deg, #ff37bd, #8b5cf6 58%, #38bdf8);
         color: #ffffff;
+        box-shadow: 0 16px 34px rgba(139, 92, 246, 0.28);
       }
 
       .ghost-button {
@@ -615,6 +616,206 @@
 
       .token-row {
         border: 0;
+      }
+
+      .hero-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .hero-action {
+        display: grid;
+        gap: 12px;
+        min-height: 92px;
+        border: 0;
+        border-radius: 20px;
+        background: #fdebf8;
+        padding: 16px;
+        color: #ff37bd;
+        text-align: left;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+      }
+
+      .hero-action span {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: #ff37bd;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .hero-action strong {
+        font-size: 16px;
+      }
+
+      .portfolio-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        background: #ffffff;
+        padding: 12px 14px;
+        color: #111827;
+        font-weight: 760;
+      }
+
+      .portfolio-button span {
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      .compact-portfolio {
+        margin-top: 2px;
+        width: auto;
+        justify-content: flex-start;
+        padding-inline: 14px;
+      }
+
+      .mini-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .mini-actions .quick-action {
+        display: inline-flex;
+        justify-content: center;
+        width: auto;
+        flex: 1;
+        gap: 8px;
+        border: 1px solid #f5d0fe;
+        border-radius: 999px;
+        background: #ffffff;
+        padding: 9px 10px;
+        color: #7c3aed;
+      }
+
+      .mini-actions .quick-action span:first-child {
+        width: auto;
+        height: auto;
+        border-radius: 0;
+        background: transparent;
+        font-size: 14px;
+      }
+
+      .settings-sheet {
+        display: grid;
+        gap: 8px;
+        color: #111827;
+      }
+
+      .settings-back {
+        width: max-content;
+        color: #374151;
+        font-size: 18px;
+        font-weight: 650;
+      }
+
+      .settings-section-label {
+        margin-top: 8px;
+        color: #737373;
+        font-size: 15px;
+      }
+
+      .settings-row {
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 54px;
+        border-radius: 16px;
+        padding: 7px 2px;
+      }
+
+      .settings-icon {
+        display: grid;
+        place-items: center;
+        color: #6b7280;
+        font-size: 21px;
+        font-weight: 760;
+      }
+
+      .settings-label {
+        font-size: 17px;
+        font-weight: 560;
+      }
+
+      .settings-value {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #737373;
+        font-size: 15px;
+        font-weight: 650;
+      }
+
+      .segmented {
+        display: inline-grid;
+        grid-template-columns: repeat(3, 1fr);
+        align-items: center;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        background: #ffffff;
+        padding: 4px;
+        color: #6b7280;
+      }
+
+      .segmented span {
+        display: grid;
+        min-width: 42px;
+        place-items: center;
+        border-radius: 999px;
+        padding: 6px 8px;
+      }
+
+      .segmented span:first-child {
+        background: #f3f4f6;
+        color: #111827;
+      }
+
+      .toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 54px;
+        height: 30px;
+        border-radius: 999px;
+        background: #a3a3a3;
+        padding: 3px;
+      }
+
+      .toggle span {
+        display: block;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: #ffffff;
+      }
+
+      .toggle.on {
+        justify-content: flex-end;
+        background: #ff37bd;
+      }
+
+      .toggle.on span::after {
+        content: "✓";
+        display: grid;
+        place-items: center;
+        height: 100%;
+        color: #ff37bd;
+        font-size: 13px;
+        font-weight: 900;
       }
     </style>
   </head>

@@ -1,4 +1,4 @@
-import type { ChainFamily, ChainId } from "@acorus/shared";
+import { getExplorerAddressUrl, type ChainFamily, type ChainId } from "@acorus/shared";
 import { createDefaultAdapterRegistry } from "@acorus/wallet-core";
 
 const registry = createDefaultAdapterRegistry();
@@ -30,7 +30,15 @@ export function getUniversalTokenExplorerUrl(input: {
 
   if (input.family === "evm") {
     const adapter = registry.get({ family: input.family, chainId: input.chainId });
-    return adapter?.buildExplorerAddressUrl(input.tokenAddress) ?? null;
+    if (adapter) {
+      return adapter.buildExplorerAddressUrl(input.tokenAddress);
+    }
+
+    try {
+      return getExplorerAddressUrl(input.chainId, input.tokenAddress);
+    } catch {
+      return null;
+    }
   }
 
   if (input.family === "solana") {

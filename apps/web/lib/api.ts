@@ -695,8 +695,26 @@ export async function fetchExploreTrending(): Promise<ExploreFeedResponse> {
   return apiFetch<ExploreFeedResponse>("/api/explore/trending");
 }
 
-export async function fetchExploreTop(currency?: string): Promise<ExploreFeedResponse> {
-  const qs = currency ? `?currency=${encodeURIComponent(currency)}` : "";
+export type ExploreFeedKind = "top" | "gainers" | "losers";
+
+export async function fetchExploreTop(input?: {
+  currency?: string;
+  view?: ExploreFeedKind;
+  page?: number;
+  limit?: number;
+} | string): Promise<ExploreFeedResponse> {
+  const params = new URLSearchParams();
+
+  if (typeof input === "string") {
+    params.set("currency", input);
+  } else if (input) {
+    if (input.currency) params.set("currency", input.currency);
+    if (input.view) params.set("view", input.view);
+    if (input.page) params.set("page", String(input.page));
+    if (input.limit) params.set("limit", String(input.limit));
+  }
+
+  const qs = params.toString() ? `?${params.toString()}` : "";
   return apiFetch<ExploreFeedResponse>(`/api/explore/top${qs}`);
 }
 

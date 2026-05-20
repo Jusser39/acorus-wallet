@@ -4,7 +4,6 @@ import {
   shortenFormattedEvmTokenAmount,
   type EvmSwapQuoteResponse,
 } from "@acorus/shared";
-import { EVM_COMPATIBILITY_METHODS } from "../shared/evm-compat";
 import {
   createRequestId,
   createSkeletonState,
@@ -132,7 +131,7 @@ function renderPopup(
         <div class="row">
           <span class="network-pill">${escapeHtml(String(activeChain) === "all" ? "All networks" : activeNetwork?.name ?? chainName(activeChain))}</span>
           <span class="status-pill ${vault.isUnlocked ? "ok" : "locked"}">${vault.isUnlocked ? "Unlocked" : "Locked"}</span>
-          <button class="icon-button" type="button" data-open-url="options.html" title="Settings">⚙</button>
+          <button class="icon-button" type="button" data-action="open-action-panel" data-id="settings" title="Settings">⚙</button>
         </div>
       </header>
 
@@ -185,11 +184,22 @@ function renderWalletHome(
       <div class="balance">${formatFiat(home?.totalFiatValue)}</div>
       <div class="balance-sub">${unlockedLabel} · ${state.walletExposureMode === "wallet_backed" ? "Multichain vault active" : "Preview bridge mode"}</div>
 
-      <div class="quick-actions">
+      <div class="hero-actions">
+        <button class="hero-action" type="button" data-action="open-action-panel" data-id="send">
+          <span>↗</span>
+          <strong>Send</strong>
+        </button>
+        <button class="hero-action" type="button" data-action="open-action-panel" data-id="receive">
+          <span>↙</span>
+          <strong>Receive</strong>
+        </button>
+      </div>
+      <button class="portfolio-button" type="button" data-open-url="https://24wallet.ru/wallet">
+        View portfolio <span>→</span>
+      </button>
+      <div class="mini-actions">
         ${quickAction("＋", "Buy", "internal:buy")}
         ${quickAction("⇄", "Swap", "internal:swap")}
-        ${quickAction("↗", "Send", "internal:send")}
-        ${quickAction("↙", "Receive", "internal:receive")}
       </div>
     </section>
 
@@ -753,22 +763,9 @@ function renderConnectedSites(state: BackgroundStateSnapshot): string {
 
 function renderRecentActivity(state: BackgroundStateSnapshot): string {
   const latest = state.activityLog.slice(0, 4);
-  const activeBridge = state.activeOriginBridge;
   return `
     <section class="panel stack">
-      <h2 class="section-title">Activity</h2>
-      <div class="row">
-        <span class="small">Provider</span>
-        <span class="badge">${escapeHtml(state.providerInjection.replace("_", " "))}</span>
-      </div>
-      <div class="row">
-        <span class="small">EVM methods</span>
-        <span class="small">${EVM_COMPATIBILITY_METHODS.length} compatible</span>
-      </div>
-      <div class="row">
-        <span class="small">Active site</span>
-        <span class="small">${escapeHtml(activeBridge?.origin ?? "none")}</span>
-      </div>
+      <h2 class="section-title">Recent activity</h2>
       ${latest.length
         ? latest.map((item) => `
           <div class="site-row">
@@ -779,7 +776,10 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
             <span class="badge">${escapeHtml(item.status)}</span>
           </div>
         `).join("")
-        : `<p class="copy">No swap activity recorded yet.</p>`}
+        : `<p class="copy">No recent wallet activity yet.</p>`}
+      <button class="portfolio-button compact-portfolio" type="button" data-open-url="https://24wallet.ru/history">
+        View all activity <span>→</span>
+      </button>
     </section>
   `;
 }
@@ -1401,10 +1401,41 @@ function renderActionContent(target: string): string {
       return renderEvmSwapComposer();
     case "send":
       return renderSendComposer();
+    case "settings":
+      return renderSettingsComposer();
     case "receive":
     default:
       return renderReceiveComposer(currentPopupState, currentHomeSnapshot);
   }
+}
+
+function renderSettingsComposer(): string {
+  return `
+    <div class="settings-sheet">
+      <button class="settings-back as-button" type="button" data-action="close-action-panel" data-id="settings">← Settings</button>
+      <div class="settings-section-label">Settings</div>
+      ${renderSettingsRow("◐", "Theme", `<span class="segmented"><span>Auto</span><span>☼</span><span>☾</span></span>`)}
+      ${renderSettingsRow("◉", "Local currency", `<span>USD ›</span>`)}
+      ${renderSettingsRow("文", "Language", `<span>English ›</span>`)}
+      ${renderSettingsRow("▮", "Balances and activity", `<span>›</span>`)}
+      <div class="settings-section-label">Security and privacy</div>
+      ${renderSettingsRow("⌁", "Allow analytics", `<span class="toggle on"><span></span></span>`)}
+      <div class="settings-section-label">Advanced</div>
+      ${renderSettingsRow("▤", "App data", `<span>›</span>`)}
+      ${renderSettingsRow("⚒", "Testnet mode", `<span class="toggle"><span></span></span>`)}
+      <button class="ghost-button" type="button" data-open-url="options.html">Advanced provider tools</button>
+    </div>
+  `;
+}
+
+function renderSettingsRow(icon: string, label: string, value: string): string {
+  return `
+    <div class="settings-row">
+      <span class="settings-icon">${icon}</span>
+      <span class="settings-label">${escapeHtml(label)}</span>
+      <span class="settings-value">${value}</span>
+    </div>
+  `;
 }
 
 function renderSendComposer(): string {

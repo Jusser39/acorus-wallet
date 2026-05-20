@@ -1242,3 +1242,24 @@
   - 0x swap execution remains EVM-only;
   - Solana/Jupiter, Tron, BTC, TON and cross-chain swap execution remain gated.
 
+## White/Purple Explore and Extension Polish (2026-05-20)
+
+- Status: **implemented locally, validation passed**
+- Added a white/purple product skin over the wallet web shell, including readable global search input styling and lighter panel/card/button treatments.
+- Replaced the old Explore stacked sections with a client-side Explore selector/dropdown plus tab buttons for Trending tokens, Top tokens, Top gainers, Top losers, and Top memes.
+- Added backend `/api/explore/top` view/page/limit support so Top/Gainers/Losers can page through sorted market data instead of showing empty static blocks.
+- Moved Meme Radar behavior into the Top memes Explore tab.
+- Fixed token page Share to use native share where available and clipboard fallback otherwise.
+- Removed Price source and Chart source metric cards from token pages.
+- Added multi-network explorer dropdown support on token pages and a chain-config fallback so Base/newer EVM token explorer links render even when the adapter registry does not provide a URL.
+- Simplified extension popup UX toward the requested wallet-card model: balance, Send/Receive action tiles, portfolio link, recent activity, and a Trust-like settings sheet.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm test`
+- Local browser smoke confirmed Explore rows load, search text is visible, friendly Explore tabs render, token Share remains visible, Price source / Chart source cards are gone, and token metric labels render.
+

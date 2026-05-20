@@ -157,6 +157,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [loadingChart, setLoadingChart] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
+  const [explorerMenuOpen, setExplorerMenuOpen] = useState(false);
 
   const explorerTokenUrl = useMemo(
     () =>
@@ -363,7 +365,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
     : "native";
   const displayPrice = tokenDetail?.price ?? price?.price ?? null;
-  const displayProvider = tokenDetail?.provider ?? price?.provider ?? "Unavailable";
   const displayMarketCap = tokenDetail?.marketCapUsd ?? price?.marketCap ?? null;
   const displayVolume24h = tokenDetail?.volume24hUsd ?? price?.volume24h ?? null;
   const displayLiquidity = tokenDetail?.liquidityUsd ?? price?.liquidityUsd ?? null;
@@ -372,10 +373,65 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const displayLow24h = tokenDetail?.low24hUsd ?? null;
   const externalLinks = tokenDetail?.links ?? [];
   const logoUrl = tokenDetail?.logoUrl ?? null;
+  const explorerOptions = useMemo(() => {
+    const entries: Array<{ label: string; url: string }> = [];
+
+    if (explorerTokenUrl) {
+      entries.push({ label: chain?.name ?? "Explorer", url: explorerTokenUrl });
+    }
+
+    for (const platform of tokenDetail?.platforms ?? []) {
+      if (!platform.tokenAddress) continue;
+      const platformChain = typeof platform.chainId === "number"
+        ? getChainById(platform.chainId) ?? getUniversalChain({ chainId: platform.chainId })
+        : getUniversalChain({ chainId: platform.chainId });
+      const platformFamily = platformChain?.family
+        ?? (typeof platform.chainId === "number" ? "evm" : family);
+      const url = getUniversalTokenExplorerUrl({
+        family: platformFamily as ChainFamily,
+        chainId: platform.chainId,
+        tokenAddress: platform.tokenAddress,
+      });
+
+      if (url) {
+        entries.push({ label: platformChain?.name ?? platform.chainKey, url });
+      }
+    }
+
+    const seen = new Set<string>();
+    return entries.filter((entry) => {
+      if (seen.has(entry.url)) return false;
+      seen.add(entry.url);
+      return true;
+    });
+  }, [chain?.name, explorerTokenUrl, family, tokenDetail?.platforms]);
 
   async function handleShare() {
     if (typeof window === "undefined") return;
-    await navigator.clipboard.writeText(window.location.href);
+    const shareUrl = window.location.href;
+    setShareState("idle");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${resolvedName} on Acorus Wallet`,
+          text: `View ${resolvedSymbol} market data and swap routes on Acorus Wallet.`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      setShareState("copied");
+      window.setTimeout(() => setShareState("idle"), 1600);
+    } catch {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareState("copied");
+        window.setTimeout(() => setShareState("idle"), 1600);
+      } catch {
+        setShareState("failed");
+      }
+    }
   }
 
   return (
@@ -418,10 +474,28 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
                   ) : null}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {explorerTokenUrl ? (
-                      <a href={explorerTokenUrl} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
-                        Explorer
-                      </a>
+                    {explorerOptions.length ? (
+                      <div className="relative">
+                        <button type="button" onClick={() => setExplorerMenuOpen((value) => !value)} className="button-secondary text-sm">
+                          Explorers
+                        </button>
+                        {explorerMenuOpen ? (
+                          <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-64 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
+                            {explorerOptions.map((option) => (
+                              <a
+                                key={option.url}
+                                href={option.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between gap-4 rounded-xl px-3 py-2 text-sm font-semibold hover:bg-fuchsia-50"
+                              >
+                                <span>{option.label}</span>
+                                <span className="text-slate-400">↗</span>
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                     {externalLinks.map((link) => (
                       <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
@@ -429,7 +503,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       </a>
                     ))}
                     <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
-                      Share
+                      {shareState === "copied" ? "Copied" : shareState === "failed" ? "Copy failed" : "Share"}
                     </button>
                     <Link href="/receive" className="button-secondary text-sm">
                       Receive
@@ -515,8 +589,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
             <MetricCard label="Liquidity" value={formatUsd(displayLiquidity)} />
             <MetricCard label="24h high" value={formatUsd(displayHigh24h)} />
             <MetricCard label="24h low" value={formatUsd(displayLow24h)} />
-            <MetricCard label="Price source" value={displayProvider} />
-            <MetricCard label="Chart source" value={chart?.provider ?? "Unavailable"} />
             <MetricCard label="Risk" value={riskLevel ?? "Unknown"} tone={riskLevel} />
           </div>
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createAnonymousUser, hideUserToken } from "./api";
+import { createAnonymousUser, fetchExploreTop, hideUserToken } from "./api";
 
 describe("api client", () => {
   afterEach(() => {
@@ -75,6 +75,27 @@ describe("api client", () => {
       "/api/user-tokens/hide",
       expect.objectContaining({
         method: "POST",
+        cache: "no-store",
+      }),
+    );
+  });
+
+  it("requests paged explore feeds by view", async () => {
+    vi.stubGlobal("window", {});
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true, section: "gainers", items: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    await fetchExploreTop({ view: "gainers", page: 2, limit: 12 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/explore/top?view=gainers&page=2&limit=12",
+      expect.objectContaining({
         cache: "no-store",
       }),
     );

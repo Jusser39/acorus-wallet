@@ -1004,18 +1004,29 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.get("/api/explore/top", async (request) => {
-    const currency = fiatCurrencySchema.default("USD").parse(
-      (request.query as { currency?: string }).currency,
-    );
+    const query = request.query as {
+      currency?: string;
+      view?: string;
+      page?: string;
+      limit?: string;
+    };
+    const currency = fiatCurrencySchema.default("USD").parse(query.currency);
+    const view = query.view === "gainers" || query.view === "losers" ? query.view : "top";
+    const page = Math.max(1, Number.parseInt(query.page ?? "1", 10) || 1);
+    const limit = Math.min(50, Math.max(6, Number.parseInt(query.limit ?? "20", 10) || 20));
 
     try {
-      const items = marketProvider.getTopMarkets
-        ? await marketProvider.getTopMarkets(currency as FiatCurrency, 20)
-        : await mockFallback.getTopMarkets!(currency as FiatCurrency, 20);
-      return { ok: true, section: "top", items, source: marketProvider.id, sourceStatus: "live", updatedAt: new Date().toISOString() };
+      const requestedCount = Math.max(limit * page, view === "top" ? limit : 50);
+      const rawItems = marketProvider.getTopMarkets
+        ? await marketProvider.getTopMarkets(currency as FiatCurrency, requestedCount)
+        : await mockFallback.getTopMarkets!(currency as FiatCurrency, requestedCount);
+      const sorted = sortExploreTopItems(rawItems, view);
+      const items = sorted.slice((page - 1) * limit, page * limit);
+      return { ok: true, section: view, items, source: marketProvider.id, sourceStatus: "live", updatedAt: new Date().toISOString() };
     } catch {
-      const items = await mockFallback.getTopMarkets!(currency as FiatCurrency, 20);
-      return { ok: true, section: "top", items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+      const rawItems = await mockFallback.getTopMarkets!(currency as FiatCurrency, Math.max(limit * page, 20));
+      const items = sortExploreTopItems(rawItems, view).slice((page - 1) * limit, page * limit);
+      return { ok: true, section: view, items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
     }
   });
 
@@ -1073,4 +1084,21 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+function sortExploreTopItems<T extends { change24h?: number | null; marketCapUsd?: number | null }>(
+  items: T[],
+  view: "top" | "gainers" | "losers",
+): T[] {
+  const copy = [...items];
+
+  if (view === "gainers") {
+    return copy.sort((a, b) => (b.change24h ?? Number.NEGATIVE_INFINITY) - (a.change24h ?? Number.NEGATIVE_INFINITY));
+  }
+
+  if (view === "losers") {
+    return copy.sort((a, b) => (a.change24h ?? Number.POSITIVE_INFINITY) - (b.change24h ?? Number.POSITIVE_INFINITY));
+  }
+
+  return copy.sort((a, b) => (b.marketCapUsd ?? 0) - (a.marketCapUsd ?? 0));
 }

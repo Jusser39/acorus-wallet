@@ -543,3 +543,12 @@
 285. Deployed `f7df11a` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-uniswap-like-token-search-swap_20260520_022156`, then rebuilt/recreated wallet `api`, `web`, and `nginx`.
 286. Production wallet-only checks passed: `https://24wallet.ru`, `/explore`, `/tokens/coingecko/ripple?...`, `/api/swap/evm/status`, `/api/market/token-detail`, `/api/market/search`, and XRP chart ranges all returned usable responses.
 287. Production browser smoke passed: XRP detail page showed market cap, FDV, 24h volume, links, about text, search, and chart; home page showed the 0x EVM swap composer. Live 0x status is configured/enabled and a normal ETH->USDC price smoke returned `200`.
+288. Started the white/purple Explore and extension polish wave after the user reported invisible search text, mixed palette, broken token Share, missing top-token loading, weak explorer links, and a too-technical extension popup.
+289. Added a white/purple global product skin, explicit market search classes, and lighter panel/card/button overrides so search text is readable and the web app has one visual palette.
+290. Replaced `/explore` with `ExploreClient`, adding selectable Trending tokens, Top tokens, Top gainers, Top losers, and Top memes sections plus pagination.
+291. Extended `/api/explore/top` with `view`, `page`, and `limit` support and server-side sorting for top/gainers/losers.
+292. Updated token pages: Share now uses native share/clipboard fallback, Price source and Chart source cards were removed, and explorer links now show a multi-network dropdown with chain-config fallback URLs for newer EVM networks like Base.
+293. Reworked extension popup home/settings UI: balance remains prominent, Send/Receive are large pink action cards, portfolio and recent activity are visible, and settings open as a clean Trust-like settings sheet.
+294. Added regression coverage for Explore query params, Base explorer fallback, and the extension wallet/settings UI source guards.
+295. Local validation passed for this wave: web test/build, API test, extension lint/test/build, and full workspace `pnpm test`.
+296. Local browser smoke passed for Explore rows/search contrast/friendly tab labels and token page Share/metric/source-card behavior. A local production-start token page without same-origin API proxy cannot hydrate CoinGecko detail links, but the API and production nginx path provide `/api` in deployed mode.

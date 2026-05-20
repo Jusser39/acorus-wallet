@@ -46,8 +46,8 @@ export function GlobalMarketSearch() {
 
   return (
     <div className="relative w-full max-w-xl">
-      <div className="flex items-center gap-2 rounded-full border border-slate-900/10 bg-white/90 px-4 py-2 text-slate-900 shadow-[0_18px_44px_rgba(148,163,184,0.16)]">
-        <span className="text-slate-400">⌕</span>
+      <div className="market-search-shell">
+        <span className="market-search-icon">⌕</span>
         <input
           value={query}
           onChange={(event) => {
@@ -56,13 +56,13 @@ export function GlobalMarketSearch() {
           }}
           onFocus={() => setOpen(true)}
           placeholder="Search tokens, pools, wallets..."
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+          className="market-search-input"
         />
-        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-400">/</span>
+        <span className="market-search-key">/</span>
       </div>
 
       {showResults ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[1.3rem] border border-white/70 bg-white text-slate-950 shadow-[0_28px_80px_rgba(15,23,42,0.22)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[1.3rem] border border-fuchsia-100 bg-white text-slate-950 shadow-[0_28px_80px_rgba(88,28,135,0.18)]">
           {loading ? (
             <div className="p-4 text-sm text-slate-500">Searching...</div>
           ) : rows.length ? (
