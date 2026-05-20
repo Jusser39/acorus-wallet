@@ -567,3 +567,10 @@
 309. Added an in-memory last-good cache for `/api/market/coin-chart` so repeated token page interval switches can reuse the last live CoinGecko chart during temporary provider failures instead of rendering empty unavailable charts.
 310. Added a real Binance kline fallback for major CoinGecko ids so TON/SOL/BTC/ETH-style token charts can keep rendering real exchange price history when CoinGecko temporarily rejects chart history.
 311. Added a real Binance 24h ticker fallback for major token detail pages so temporary CoinGecko metadata failures still show live price/change/high/low/volume plus safe logo/link metadata instead of empty unavailable cards.
+312. Started the token-detail/dApps enrichment wave after the user reported missing Zcash/Venice metadata, missing ETH market cap, weak coin descriptions, missing multi-network ETH explorers, and a too-technical dApps page.
+313. Extended token detail API/web types with launch date, categories, circulating supply, total supply, and max supply.
+314. Hardened CoinGecko detail resolution so `/coins/{id}` failures fall back to `/coins/markets`, then to real Binance 24h price data plus safe public metadata for known assets.
+315. Added safe public metadata for Zcash and Venice Token, including descriptions, logos, official/site/social links, and explorer/platform fallbacks.
+316. Updated token pages so native ETH-style CoinGecko assets can show multi-network explorers like BaseScan and still prefill the embedded 0x swap composer.
+317. Replaced the technical `/dapps` bridge page with a user-facing dApps directory grouped by DeFi, Prediction, Social, and NFTs with search, logos, clickable app cards, and “See more” expansion.
+318. Local validation passed: API build, web build, API test, web test, `git diff --check`, root `pnpm test`, root `pnpm build`, and `pnpm extension:package`.

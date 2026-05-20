@@ -1,9 +1,9 @@
-import { DappSessionShell } from "../../components/dapp-session-shell";
+import { DappDirectory } from "../../components/dapp-directory";
 
 export default function DappsPage() {
   return (
     <section className="page">
-      <DappSessionShell />
+      <DappDirectory />
     </section>
   );
 }

@@ -82,6 +82,7 @@ const COINGECKO_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
   "polygon-ecosystem-token": "POLUSDT",
   tether: "USDTUSDT",
   "usd-coin": "USDCUSDT",
+  zcash: "ZECUSDT",
 };
 
 const RANGE_TO_BINANCE_KLINES: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", { interval: string; limit: number }> = {
@@ -164,12 +165,29 @@ const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   tether: "USDT",
   "usd-coin": "USDC",
   "the-open-network": "TON",
+  zcash: "ZEC",
+  "venice-token": "VVV",
 };
 
-const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Pick<TokenDetailPayload, "name" | "description" | "logoUrl" | "links" | "platforms">> = {
+const ETH_NATIVE_PLATFORMS: TokenDetailPayload["platforms"] = [
+  { chainId: 1, chainKey: "ethereum", tokenAddress: null, decimals: 18 },
+  { chainId: 8453, chainKey: "base", tokenAddress: null, decimals: 18 },
+  { chainId: 42161, chainKey: "arbitrum", tokenAddress: null, decimals: 18 },
+  { chainId: 10, chainKey: "optimism", tokenAddress: null, decimals: 18 },
+  { chainId: 59144, chainKey: "linea", tokenAddress: null, decimals: 18 },
+  { chainId: 324, chainKey: "zksync", tokenAddress: null, decimals: 18 },
+];
+
+const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Partial<Pick<
+  TokenDetailPayload,
+  "name" | "description" | "logoUrl" | "links" | "platforms" | "launchedAt" | "categories" | "maxSupply" | "totalSupply"
+>>> = {
   bitcoin: {
     name: "Bitcoin",
-    description: "Bitcoin is the original decentralized digital asset and settlement network with a fixed 21 million supply schedule.",
+    launchedAt: "2009-01-03",
+    categories: ["Layer 1", "Store of value", "Payments"],
+    maxSupply: 21_000_000,
+    description: "Bitcoin is the original decentralized digital asset and settlement network. It launched in January 2009 after Satoshi Nakamoto published the Bitcoin whitepaper in 2008, and it uses proof-of-work mining with a fixed 21 million supply schedule.",
     logoUrl: "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
     links: [
       { label: "Blockchain", url: "https://mempool.space/", kind: "explorer" },
@@ -179,18 +197,22 @@ const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Pick<TokenDetailPayload, "name
   },
   ethereum: {
     name: "Ethereum",
-    description: "Ethereum is a decentralized smart-contract network and the largest ecosystem for EVM DeFi, tokens, NFTs and dApps.",
+    launchedAt: "2015-07-30",
+    categories: ["Layer 1", "Smart contracts", "DeFi", "EVM"],
+    description: "Ethereum is a decentralized smart-contract network and the largest ecosystem for EVM DeFi, tokens, NFTs and dApps. The network launched in July 2015 and introduced a general-purpose execution layer where developers can deploy programmable contracts. ETH is the native asset used for gas on Ethereum and on several EVM rollups where bridged/native ETH liquidity is available.",
     logoUrl: "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png",
     links: [
       { label: "Blockchain", url: "https://etherscan.io/", kind: "explorer" },
       { label: "Website", url: "https://ethereum.org/", kind: "website" },
       { label: "X", url: "https://x.com/ethereum", kind: "twitter" },
     ],
-    platforms: [{ chainId: 1, chainKey: "ethereum", tokenAddress: null }],
+    platforms: ETH_NATIVE_PLATFORMS,
   },
   solana: {
     name: "Solana",
-    description: "Solana is a high-throughput smart-contract network used for DeFi, payments, NFTs and consumer crypto applications.",
+    launchedAt: "2020-03-16",
+    categories: ["Layer 1", "Smart contracts", "DeFi"],
+    description: "Solana is a high-throughput smart-contract network used for DeFi, payments, NFTs and consumer crypto applications. The mainnet beta launched in 2020, and the network is designed around fast block production, parallel transaction execution and low transaction costs.",
     logoUrl: "https://coin-images.coingecko.com/coins/images/4128/large/solana.png",
     links: [
       { label: "Blockchain", url: "https://solscan.io/", kind: "explorer" },
@@ -201,7 +223,9 @@ const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Pick<TokenDetailPayload, "name
   },
   "the-open-network": {
     name: "Toncoin",
-    description: "Toncoin is the native asset of The Open Network, a blockchain ecosystem focused on payments, apps and high-throughput consumer crypto.",
+    launchedAt: "2021-11-12",
+    categories: ["Layer 1", "Payments", "Consumer crypto"],
+    description: "Toncoin is the native asset of The Open Network, a blockchain ecosystem focused on payments, apps and high-throughput consumer crypto. TON grew from the Telegram Open Network concept and is now maintained by an independent ecosystem, with Toncoin used for fees, staking and application payments.",
     logoUrl: "https://coin-images.coingecko.com/coins/images/17980/large/ton_symbol.png",
     links: [
       { label: "Blockchain", url: "https://tonscan.org/", kind: "explorer" },
@@ -209,6 +233,32 @@ const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Pick<TokenDetailPayload, "name
       { label: "X", url: "https://x.com/ton_blockchain", kind: "twitter" },
     ],
     platforms: [{ chainId: "ton-mainnet", chainKey: "ton", tokenAddress: null }],
+  },
+  zcash: {
+    name: "Zcash",
+    launchedAt: "2016-10-28",
+    categories: ["Privacy", "Payments", "Proof of Work"],
+    maxSupply: 21_000_000,
+    description: "Zcash is a privacy-focused cryptocurrency launched in October 2016. It is based on Bitcoin-like proof-of-work mechanics, but adds optional shielded transactions powered by zero-knowledge proofs so users can choose between transparent and privacy-preserving transfers.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/486/large/circle-zcash-color.png",
+    links: [
+      { label: "Blockchain", url: "https://blockchair.com/zcash", kind: "explorer" },
+      { label: "Website", url: "https://z.cash/", kind: "website" },
+      { label: "X", url: "https://x.com/zcash", kind: "twitter" },
+    ],
+    platforms: [{ chainId: "zcash-mainnet", chainKey: "zcash", tokenAddress: null }],
+  },
+  "venice-token": {
+    name: "Venice Token",
+    categories: ["AI", "Base", "Utility"],
+    description: "Venice Token (VVV) is associated with Venice, an AI product focused on private, user-controlled access to generative AI tools. The token is used by the Venice ecosystem and trades on EVM venues, most prominently on Base liquidity routes.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/53763/large/VVV_Token_Logo.png",
+    links: [
+      { label: "Blockchain", url: "https://basescan.org/token/0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf", kind: "explorer" },
+      { label: "Website", url: "https://venice.ai/", kind: "website" },
+      { label: "X", url: "https://x.com/AskVenice", kind: "twitter" },
+    ],
+    platforms: [{ chainId: 8453, chainKey: "base", tokenAddress: "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf", decimals: 18 }],
   },
 };
 
@@ -225,10 +275,44 @@ function stripHtml(value: string): string {
     .replace(/\s+/gu, " ");
 }
 
+function mergeLinks(
+  primary: TokenDetailPayload["links"],
+  fallback: TokenDetailPayload["links"] | undefined,
+): TokenDetailPayload["links"] {
+  const seen = new Set<string>();
+  return [...primary, ...(fallback ?? [])].filter((link) => {
+    if (seen.has(link.url)) return false;
+    seen.add(link.url);
+    return true;
+  });
+}
+
+function mergePlatforms(
+  primary: TokenDetailPayload["platforms"],
+  fallback: TokenDetailPayload["platforms"] | undefined,
+): TokenDetailPayload["platforms"] {
+  const seen = new Set<string>();
+  return [...primary, ...(fallback ?? [])].filter((platform) => {
+    const key = `${String(platform.chainId)}:${platform.tokenAddress?.toLowerCase() ?? "native"}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeCategories(
+  primary: string[] | null | undefined,
+  fallback: string[] | undefined,
+): string[] {
+  return Array.from(new Set([...(primary ?? []), ...(fallback ?? [])].filter(Boolean))).slice(0, 8);
+}
+
 interface CoinGeckoDetailResponse {
   id: string;
   symbol: string;
   name: string;
+  genesis_date?: string | null;
+  categories?: string[] | null;
   image?: {
     thumb?: string | null;
     small?: string | null;
@@ -250,6 +334,9 @@ interface CoinGeckoDetailResponse {
     total_volume?: Record<string, number | null>;
     high_24h?: Record<string, number | null>;
     low_24h?: Record<string, number | null>;
+    circulating_supply?: number | null;
+    total_supply?: number | null;
+    max_supply?: number | null;
     price_change_24h_in_currency?: Record<string, number | null>;
     price_change_percentage_24h_in_currency?: Record<string, number | null>;
   } | null;
@@ -277,6 +364,12 @@ interface CoinGeckoMarketCoin {
   market_cap?: number | null;
   market_cap_rank?: number | null;
   total_volume?: number | null;
+  fully_diluted_valuation?: number | null;
+  high_24h?: number | null;
+  low_24h?: number | null;
+  circulating_supply?: number | null;
+  total_supply?: number | null;
+  max_supply?: number | null;
   price_change_percentage_24h?: number | null;
   price_change_percentage_24h_in_currency?: number | null;
 }
@@ -618,7 +711,8 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         this.getHeaders(),
       );
     } catch (error) {
-      const fallback = await this.fetchBinanceTokenDetailFallback(coinId, currency);
+      const fallback = await this.fetchCoinMarketsTokenDetailFallback(coinId, currency)
+        ?? await this.fetchBinanceTokenDetailFallback(coinId, currency);
       if (fallback) {
         return fallback;
       }
@@ -633,6 +727,25 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     const twitter = response.links?.twitter_screen_name
       ? `https://x.com/${response.links.twitter_screen_name.replace(/^@/u, "")}`
       : null;
+    const safe = COINGECKO_ID_TO_SAFE_DETAIL[coinId.toLowerCase()];
+    const links = [
+      explorer ? { label: "Blockchain", url: explorer, kind: "explorer" as const } : null,
+      website ? { label: "Website", url: website, kind: "website" as const } : null,
+      twitter ? { label: "X", url: twitter, kind: "twitter" as const } : null,
+    ].filter((item): item is TokenDetailPayload["links"][number] => Boolean(item));
+    const platforms = Object.entries(response.platforms ?? {})
+      .filter(([platform, address]) => platform.trim().length > 0 && address !== undefined)
+      .map(([platform, address]) => {
+        const route = COINGECKO_PLATFORM_TO_ROUTE[platform] ?? {
+          chainId: platform,
+          chainKey: platform,
+        };
+        return {
+          ...route,
+          tokenAddress: address?.trim() || null,
+          decimals: response.detail_platforms?.[platform]?.decimal_place ?? null,
+        };
+      });
 
     return {
       id: response.id,
@@ -650,26 +763,112 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       high24hUsd: response.market_data?.high_24h?.[vsCurrency] ?? null,
       low24hUsd: response.market_data?.low_24h?.[vsCurrency] ?? null,
       rank: response.market_cap_rank ?? null,
-      description: stripHtml(response.description?.en ?? "").trim() || null,
-      logoUrl: response.image?.large ?? response.image?.small ?? response.image?.thumb ?? null,
-      links: [
-        explorer ? { label: "Blockchain", url: explorer, kind: "explorer" as const } : null,
-        website ? { label: "Website", url: website, kind: "website" as const } : null,
-        twitter ? { label: "X", url: twitter, kind: "twitter" as const } : null,
-      ].filter((item): item is TokenDetailPayload["links"][number] => Boolean(item)),
-      platforms: Object.entries(response.platforms ?? {})
-        .filter(([, address]) => address !== undefined)
-        .map(([platform, address]) => {
-          const route = COINGECKO_PLATFORM_TO_ROUTE[platform] ?? {
-            chainId: platform,
-            chainKey: platform,
-          };
-          return {
-            ...route,
-            tokenAddress: address?.trim() || null,
-            decimals: response.detail_platforms?.[platform]?.decimal_place ?? null,
-          };
-        }),
+      launchedAt: response.genesis_date ?? safe?.launchedAt ?? null,
+      categories: mergeCategories(response.categories, safe?.categories),
+      circulatingSupply: response.market_data?.circulating_supply ?? null,
+      totalSupply: response.market_data?.total_supply ?? safe?.totalSupply ?? null,
+      maxSupply: response.market_data?.max_supply ?? safe?.maxSupply ?? null,
+      description: stripHtml(response.description?.en ?? "").trim() || safe?.description || null,
+      logoUrl: response.image?.large ?? response.image?.small ?? response.image?.thumb ?? safe?.logoUrl ?? null,
+      links: mergeLinks(links, safe?.links),
+      platforms: mergePlatforms(platforms, safe?.platforms),
+      provider: this.id,
+      sourceStatus: "live",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private async fetchCoinMarketsTokenDetailFallback(
+    coinId: string,
+    currency: FiatCurrency,
+  ): Promise<TokenDetailPayload | null> {
+    const vsCurrency = coingeckoCurrency(currency);
+    const safe = COINGECKO_ID_TO_SAFE_DETAIL[coinId.toLowerCase()];
+
+    try {
+      const url = `${this.baseUrl}/coins/markets?${new URLSearchParams({
+        vs_currency: vsCurrency,
+        ids: coinId,
+        sparkline: "false",
+        price_change_percentage: "24h",
+      }).toString()}`;
+      const response = await httpGet<CoinGeckoMarketCoin[]>(
+        url,
+        this.timeoutMs,
+        this.getHeaders(),
+      );
+      const coin = response[0];
+      if (!coin) {
+        return safe ? this.buildSafeMetadataTokenDetail(coinId, currency, safe) : null;
+      }
+
+      return {
+        id: coin.id,
+        symbol: coin.symbol.toUpperCase(),
+        name: coin.name,
+        currency,
+        price: coin.current_price ?? null,
+        change24h: coin.price_change_percentage_24h_in_currency != null || coin.price_change_percentage_24h != null
+          ? { value: 0, percent: coin.price_change_percentage_24h_in_currency ?? coin.price_change_percentage_24h ?? 0 }
+          : null,
+        marketCapUsd: coin.market_cap ?? null,
+        fdvUsd: coin.fully_diluted_valuation ?? null,
+        volume24hUsd: coin.total_volume ?? null,
+        liquidityUsd: null,
+        high24hUsd: coin.high_24h ?? null,
+        low24hUsd: coin.low_24h ?? null,
+        rank: coin.market_cap_rank ?? null,
+        launchedAt: safe?.launchedAt ?? null,
+        categories: safe?.categories ?? [],
+        circulatingSupply: coin.circulating_supply ?? null,
+        totalSupply: coin.total_supply ?? safe?.totalSupply ?? null,
+        maxSupply: coin.max_supply ?? safe?.maxSupply ?? null,
+        description: safe?.description ?? "Live extended metadata is temporarily unavailable, but Acorus is showing current CoinGecko market data for this asset.",
+        logoUrl: coin.image ?? safe?.logoUrl ?? null,
+        links: safe?.links ?? [],
+        platforms: safe?.platforms ?? [],
+        provider: this.id,
+        sourceStatus: "live",
+        updatedAt: new Date().toISOString(),
+      };
+    } catch {
+      return safe ? this.buildSafeMetadataTokenDetail(coinId, currency, safe) : null;
+    }
+  }
+
+  private buildSafeMetadataTokenDetail(
+    coinId: string,
+    currency: FiatCurrency,
+    safe: Partial<Pick<
+      TokenDetailPayload,
+      "name" | "description" | "logoUrl" | "links" | "platforms" | "launchedAt" | "categories" | "maxSupply" | "totalSupply"
+    >>,
+  ): TokenDetailPayload {
+    const fallbackSymbol = COINGECKO_ID_TO_SYMBOL[coinId.toLowerCase()] ?? coinId.toUpperCase();
+
+    return {
+      id: coinId,
+      symbol: fallbackSymbol,
+      name: safe.name ?? fallbackSymbol,
+      currency,
+      price: null,
+      change24h: null,
+      marketCapUsd: null,
+      fdvUsd: null,
+      volume24hUsd: null,
+      liquidityUsd: null,
+      high24hUsd: null,
+      low24hUsd: null,
+      rank: null,
+      launchedAt: safe.launchedAt ?? null,
+      categories: safe.categories ?? [],
+      circulatingSupply: null,
+      totalSupply: safe.totalSupply ?? null,
+      maxSupply: safe.maxSupply ?? null,
+      description: safe.description ?? "Live market metadata is temporarily unavailable for this asset.",
+      logoUrl: safe.logoUrl ?? null,
+      links: safe.links ?? [],
+      platforms: safe.platforms ?? [],
       provider: this.id,
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
@@ -724,6 +923,11 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         high24hUsd: Number.isFinite(high) ? high : null,
         low24hUsd: Number.isFinite(low) ? low : null,
         rank: null,
+        launchedAt: safe?.launchedAt ?? null,
+        categories: safe?.categories ?? [],
+        circulatingSupply: null,
+        totalSupply: safe?.totalSupply ?? null,
+        maxSupply: safe?.maxSupply ?? null,
         description: safe?.description ?? "Live CoinGecko metadata is temporarily unavailable; Acorus is showing real exchange price data for this asset.",
         logoUrl: safe?.logoUrl ?? null,
         links: safe?.links ?? [],

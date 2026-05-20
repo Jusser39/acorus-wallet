@@ -94,6 +94,44 @@ function isNativeRouteAddress(tokenAddress: string): boolean {
   return tokenAddress.trim().toLowerCase() === "native";
 }
 
+function formatNumber(value: number | null | undefined): string {
+  if (value == null) return "—";
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
+  return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatExplorerLabel(url: string, fallback: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./u, "");
+    const labels: Record<string, string> = {
+      "etherscan.io": "Etherscan",
+      "basescan.org": "BaseScan",
+      "arbiscan.io": "Arbiscan",
+      "optimistic.etherscan.io": "OP Etherscan",
+      "lineascan.build": "Lineascan",
+      "era.zksync.network": "zkSync Explorer",
+      "bscscan.com": "BscScan",
+      "polygonscan.com": "PolygonScan",
+      "snowtrace.io": "Snowtrace",
+      "solscan.io": "Solscan",
+      "tonscan.org": "TONScan",
+    };
+    return labels[host] ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function resolveFamily(
   familyParam: string | null,
   chainId: ChainId,
@@ -324,22 +362,21 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const tradePlatform = useMemo(
     () => tokenDetail?.platforms.find((platform) =>
       typeof platform.chainId === "number"
-      && EVM_CHAINS.some((item) => item.chainId === platform.chainId)
-      && platform.tokenAddress,
+      && EVM_CHAINS.some((item) => item.chainId === platform.chainId),
     ) ?? null,
     [tokenDetail],
   );
   const tradeChainId = isCoinGeckoRoute && tradePlatform
     ? Number(tradePlatform.chainId)
     : numericChainId;
-  const tradeTokenAddress = isCoinGeckoRoute && tradePlatform?.tokenAddress
-    ? tradePlatform.tokenAddress
+  const tradeTokenAddress = isCoinGeckoRoute && tradePlatform
+    ? tradePlatform.tokenAddress ?? "native"
     : tokenAddress;
   const canEvmSwap = (isCoinGeckoRoute ? Boolean(tradePlatform) : family === "evm")
     && Number.isFinite(tradeChainId)
     && EVM_CHAINS.some((item) => item.chainId === tradeChainId);
   const activeEvmAddress = activeProfile?.chainFamily === "evm" ? activeProfile.publicAddress : null;
-  const targetSwapToken = isNativeToken && !isCoinGeckoRoute ? "native" : tradeTokenAddress;
+  const targetSwapToken = (isNativeToken && !isCoinGeckoRoute) || tradeTokenAddress === "native" ? "native" : tradeTokenAddress;
   const defaultSellToken = isNativeToken && !isCoinGeckoRoute
     ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
     : "native";
@@ -356,24 +393,25 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     const entries: Array<{ label: string; url: string }> = [];
 
     if (explorerTokenUrl) {
-      entries.push({ label: chain?.name ?? "Explorer", url: explorerTokenUrl });
+      entries.push({ label: formatExplorerLabel(explorerTokenUrl, chain?.name ?? "Explorer"), url: explorerTokenUrl });
     }
 
     for (const platform of tokenDetail?.platforms ?? []) {
-      if (!platform.tokenAddress) continue;
       const platformChain = typeof platform.chainId === "number"
         ? getChainById(platform.chainId) ?? getUniversalChain({ chainId: platform.chainId })
         : getUniversalChain({ chainId: platform.chainId });
       const platformFamily = platformChain?.family
         ?? (typeof platform.chainId === "number" ? "evm" : family);
-      const url = getUniversalTokenExplorerUrl({
-        family: platformFamily as ChainFamily,
-        chainId: platform.chainId,
-        tokenAddress: platform.tokenAddress,
-      });
+      const url = platform.tokenAddress
+        ? getUniversalTokenExplorerUrl({
+            family: platformFamily as ChainFamily,
+            chainId: platform.chainId,
+            tokenAddress: platform.tokenAddress,
+          })
+        : platformChain?.blockExplorerUrl ?? null;
 
       if (url) {
-        entries.push({ label: platformChain?.name ?? platform.chainKey, url });
+        entries.push({ label: formatExplorerLabel(url, platformChain?.name ?? platform.chainKey), url });
       }
     }
 
@@ -456,7 +494,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     {explorerOptions.length ? (
                       <div className="relative">
                         <button type="button" onClick={() => setExplorerMenuOpen((value) => !value)} className="button-secondary text-sm">
-                          Explorers
+                          Blockchain
                         </button>
                         {explorerMenuOpen ? (
                           <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-64 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
@@ -478,7 +516,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     ) : null}
                     {externalLinks.map((link) => (
                       <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
-                        {link.label}
+                        {link.kind === "twitter" ? "𝕏" : link.kind === "website" ? "Website" : link.label}
                       </a>
                     ))}
                     <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
@@ -570,13 +608,23 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
             <MetricCard label="24h low" value={formatUsd(displayLow24h)} />
           </div>
 
+          <div className="grid gap-3 md:grid-cols-3">
+            <MetricCard label="Launch date" value={formatDate(tokenDetail?.launchedAt)} />
+            <MetricCard label="Rank" value={tokenDetail?.rank ? `#${tokenDetail.rank}` : "—"} />
+            <MetricCard label="Circulating supply" value={formatNumber(tokenDetail?.circulatingSupply)} />
+            <MetricCard label="Total supply" value={formatNumber(tokenDetail?.totalSupply)} />
+            <MetricCard label="Max supply" value={formatNumber(tokenDetail?.maxSupply)} />
+            <MetricCard
+              label="Categories"
+              value={tokenDetail?.categories?.length ? tokenDetail.categories.slice(0, 3).join(", ") : "—"}
+            />
+          </div>
+
           {tokenDetail?.description ? (
             <div className="panel space-y-3">
               <h2 className="text-xl font-semibold text-slate-950">About {resolvedName}</h2>
               <p className="max-w-3xl text-sm leading-7 text-slate-600">
-                {tokenDetail.description.length > 720
-                  ? `${tokenDetail.description.slice(0, 720)}...`
-                  : tokenDetail.description}
+                {tokenDetail.description}
               </p>
             </div>
           ) : null}

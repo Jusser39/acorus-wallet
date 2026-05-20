@@ -63,6 +63,11 @@ export type TokenDetailPayload = {
   high24hUsd: number | null;
   low24hUsd: number | null;
   rank: number | null;
+  launchedAt?: string | null;
+  categories?: string[];
+  circulatingSupply?: number | null;
+  totalSupply?: number | null;
+  maxSupply?: number | null;
   description: string | null;
   logoUrl: string | null;
   links: TokenDetailLink[];
