@@ -803,3 +803,32 @@ textarea:focus,
 .explore-row:last-child {
   border-bottom: 0;
 }
+
+.page a,
+.page button,
+.page input,
+.page select,
+.premium-card,
+.panel,
+.app-surface,
+.market-search-shell,
+.explore-row {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.premium-card:hover,
+.panel:hover,
+.app-surface:hover {
+  box-shadow: 0 28px 72px rgba(126, 34, 206, 0.13);
+}
+
+.token-orb {
+  box-shadow:
+    0 12px 26px rgba(168, 85, 247, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}

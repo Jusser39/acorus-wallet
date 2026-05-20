@@ -1263,3 +1263,29 @@
   - `pnpm test`
 - Local browser smoke confirmed Explore rows load, search text is visible, friendly Explore tabs render, token Share remains visible, Price source / Chart source cards are gone, and token metric labels render.
 
+## Market UI Real Data Stabilization (2026-05-20)
+
+- Status: **implemented locally, validation passed**
+- Removed the old public mock price/chart fallback path from the market API so Explore and token pages stop showing fabricated values such as SOL `$150`.
+- Stabilized CoinGecko coin charts for token detail pages: major ids now preserve proper symbols, including `the-open-network -> TON`, and long-history `ALL` falls back to a live 365-day CoinGecko window when max-history/range calls are rate-limited.
+- Replaced the decorative home token shell with a more informative wallet dashboard: create/import/extension/explore actions, real swap capability summary, discovery panels, and multichain feature cards.
+- Cleaned token detail UI by removing Risk, Price source, Chart source, and empty Quote preview surfaces.
+- Kept Explore rows logo-first and removed source/mock text from the user-facing token list.
+- Shifted the root layout to the white/purple palette so pages no longer inherit old `text-white` defaults.
+- Rebuilt the downloadable Chrome extension package.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm extension:package`
+- Local smoke:
+  - TON chart API returned `symbol=TON` for `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`.
+  - `ALL` returned live CoinGecko data through the safe 365-day fallback when max-history was rate-limited.
+  - Solana detail API returned live CoinGecko price/market stats instead of mock data.
+  - Browser smoke confirmed the Solana token page no longer displays `mock`, Risk, Quote preview, Price source, or Chart source text.
+

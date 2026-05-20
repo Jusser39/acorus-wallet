@@ -30,6 +30,6 @@ export type ExploreFeedResponse = {
   section: ExploreSection;
   items: ExploreTokenItem[];
   source: string;
-  sourceStatus: "live" | "mock" | "cached";
+  sourceStatus: "live" | "mock" | "cached" | "unavailable";
   updatedAt: string;
 };

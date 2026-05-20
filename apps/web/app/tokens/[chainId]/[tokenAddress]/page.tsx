@@ -60,7 +60,7 @@ function formatUsd(value: number | null | undefined): string {
 }
 
 function badgeForStatus(status?: string | null): { label: string; className: string } | null {
-  if (!status) {
+  if (!status || status === "fallback_mock" || status === "mock" || status === "unavailable") {
     return null;
   }
 
@@ -68,30 +68,12 @@ function badgeForStatus(status?: string | null): { label: string; className: str
     live: { label: "Live", className: "border-emerald-500/30 bg-emerald-500/20 text-emerald-300" },
     cached: { label: "Cached", className: "border-sky-500/30 bg-sky-500/20 text-sky-300" },
     stale_cache: { label: "Stale", className: "border-amber-500/30 bg-amber-500/20 text-amber-300" },
-    fallback_mock: { label: "Fallback", className: "border-slate-600 bg-slate-700/60 text-slate-300" },
   };
 
   return badges[status] ?? {
     label: status,
     className: "border-slate-600 bg-slate-700/60 text-slate-300",
   };
-}
-
-function parseRiskFlags(price: MarketPrice | null): string[] {
-  if (price?.riskFlags?.length) {
-    return price.riskFlags;
-  }
-
-  if (!price?.riskFlagsJson) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(price.riskFlagsJson);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
 }
 
 function findCuratedToken(chainId: number, tokenAddress: string): TokenMeta | null {
@@ -336,9 +318,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     };
   }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
 
-  const riskFlags = parseRiskFlags(price);
-  const riskLevel = price?.riskLevel;
-  const isHighRisk = riskLevel === "high" || riskLevel === "medium";
   const priceBadge = badgeForStatus(tokenDetail?.sourceStatus ?? price?.sourceStatus);
   const chartBadge = badgeForStatus(chart?.sourceStatus);
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
@@ -457,17 +436,17 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                 )}
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                    <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
                       {resolvedName}
                     </h1>
-                    <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs font-semibold text-slate-300">
+                    <span className="rounded-full border border-fuchsia-100 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700">
                       {resolvedSymbol}
                     </span>
-                    <span className="rounded-full border border-violet-500/30 bg-violet-500/20 px-2 py-1 text-xs font-semibold text-violet-200">
+                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
                       {familyLabel}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-300">
+                  <p className="mt-2 text-sm text-slate-600">
                     {chain?.name ?? `Chain ${String(chainId)}`}
                   </p>
                   {!isNativeToken ? (
@@ -521,7 +500,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                   <div className="ml-auto mt-4 h-12 w-40 animate-pulse rounded bg-slate-700/50" />
                 ) : displayPrice != null ? (
                   <>
-                    <p className="mt-3 text-4xl font-semibold text-white">
+                    <p className="mt-3 text-4xl font-semibold text-slate-950">
                       {displayPrice.toLocaleString("en-US", {
                         style: "currency",
                         currency,
@@ -552,7 +531,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           <div className="panel space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-white">Market chart</h2>
+              <h2 className="text-xl font-semibold text-slate-950">Market chart</h2>
                 <p className="text-xs text-slate-500">
                   Hover the curve to inspect point-in-time prices.
                 </p>
@@ -571,8 +550,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                   onClick={() => setRange(item.value)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                     range === item.value
-                      ? "border-cyan-400/40 bg-cyan-400/20 text-cyan-100"
-                      : "border-slate-700 bg-slate-800 text-slate-400 hover:text-white"
+                      ? "border-fuchsia-300 bg-fuchsia-100 text-fuchsia-800"
+                      : "border-fuchsia-100 bg-white text-slate-600 hover:border-fuchsia-200 hover:text-fuchsia-800"
                   }`}
                 >
                   {item.label}
@@ -589,35 +568,16 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
             <MetricCard label="Liquidity" value={formatUsd(displayLiquidity)} />
             <MetricCard label="24h high" value={formatUsd(displayHigh24h)} />
             <MetricCard label="24h low" value={formatUsd(displayLow24h)} />
-            <MetricCard label="Risk" value={riskLevel ?? "Unknown"} tone={riskLevel} />
           </div>
 
           {tokenDetail?.description ? (
             <div className="panel space-y-3">
-              <h2 className="text-xl font-semibold text-white">About {resolvedName}</h2>
-              <p className="max-w-3xl text-sm leading-7 text-slate-300">
+              <h2 className="text-xl font-semibold text-slate-950">About {resolvedName}</h2>
+              <p className="max-w-3xl text-sm leading-7 text-slate-600">
                 {tokenDetail.description.length > 720
                   ? `${tokenDetail.description.slice(0, 720)}...`
                   : tokenDetail.description}
               </p>
-            </div>
-          ) : null}
-
-          {isHighRisk || riskFlags.length > 0 ? (
-            <div className="panel space-y-3 border-amber-500/30 bg-amber-500/10">
-              <h2 className="text-lg font-semibold text-amber-200">
-                Token risk notes
-              </h2>
-              <p className="text-sm text-slate-300">
-                Verify contract address, liquidity and route before trading. Swaps are irreversible once signed.
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(riskFlags.length ? riskFlags : ["review_before_trading"]).map((flag) => (
-                  <span key={flag} className="rounded-full bg-slate-900/50 px-2 py-0.5 text-[10px] text-slate-300">
-                    {flag.replace(/_/g, " ")}
-                  </span>
-                ))}
-              </div>
             </div>
           ) : null}
         </div>
@@ -642,10 +602,10 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           ) : (
             <div className="premium-card space-y-4 p-5">
               <span className="section-kicker">Swap status</span>
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="text-2xl font-semibold text-slate-950">
                 {resolvedSymbol} swap is coming next
               </h2>
-              <p className="text-sm leading-6 text-slate-300">
+              <p className="text-sm leading-6 text-slate-600">
                 This wave executes 0x swaps only on EVM chains. Solana/Jupiter, Tron, Bitcoin, TON and cross-chain routes stay gated until their adapters are reviewed.
               </p>
               <Link href="/swap" className="button-secondary inline-flex">
@@ -659,17 +619,11 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   );
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: string; tone?: string | null }) {
-  const toneClass =
-    tone === "low" ? "text-emerald-300" :
-    tone === "medium" ? "text-amber-300" :
-    tone === "high" ? "text-rose-300" :
-    "text-white";
-
+function MetricCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="premium-card p-4">
       <p className="text-xs text-slate-400">{label}</p>
-      <p className={`mt-1 text-lg font-semibold capitalize ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-950">{value}</p>
     </div>
   );
 }

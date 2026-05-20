@@ -70,7 +70,6 @@ function TokenRow({ token, rank }: { token: ExploreTokenItem; rank: number }) {
         <span className="block truncate text-xs text-slate-500">
           {token.symbol}
           {token.chainKey ? ` · ${token.chainKey}` : ""}
-          {token.source ? ` · ${token.source}` : ""}
         </span>
       </span>
       <span className="hidden text-right sm:block">

@@ -21,7 +21,7 @@ type ChartPoint = MarketChart["points"][number] & {
 };
 
 function statusBadge(status?: string | null): { label: string; className: string } | null {
-  if (!status) {
+  if (!status || status === "fallback_mock" || status === "mock" || status === "unavailable") {
     return null;
   }
 
@@ -29,7 +29,6 @@ function statusBadge(status?: string | null): { label: string; className: string
     live: { label: "Live chart", className: "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" },
     cached: { label: "Cached chart", className: "border-sky-500/30 bg-sky-500/15 text-sky-200" },
     stale_cache: { label: "Stale cache", className: "border-amber-500/30 bg-amber-500/15 text-amber-200" },
-    fallback_mock: { label: "Mock fallback", className: "border-slate-600 bg-slate-700/60 text-slate-300" },
   };
 
   return badges[status] ?? {
@@ -101,8 +100,8 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-5 w-36 animate-pulse rounded bg-slate-700/50" />
-        <div className="flex h-64 w-full items-center justify-center rounded-[1.5rem] bg-slate-800/50">
+        <div className="h-5 w-36 animate-pulse rounded bg-fuchsia-100" />
+        <div className="flex h-64 w-full items-center justify-center rounded-[1.5rem] border border-fuchsia-100 bg-white/70">
           <p className="text-xs text-slate-500">Loading chart...</p>
         </div>
       </div>
@@ -113,14 +112,14 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-slate-400">Chart</p>
+          <p className="text-xs text-slate-500">Chart</p>
           {badge ? (
             <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${badge.className}`}>
               {badge.label}
             </span>
           ) : null}
         </div>
-        <div className="flex h-64 w-full items-center justify-center rounded-[1.5rem] bg-slate-800/50">
+        <div className="flex h-64 w-full items-center justify-center rounded-[1.5rem] border border-fuchsia-100 bg-white/70">
           <p className="text-xs text-slate-500">No chart data for {symbol}</p>
         </div>
       </div>
@@ -131,8 +130,8 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-400">Price chart</p>
-          <p className="mt-1 text-2xl font-semibold text-white">
+          <p className="text-sm text-slate-500">Price chart</p>
+          <p className="mt-1 text-2xl font-semibold text-slate-950">
             {activePoint ? formatPrice(activePoint.price, currency) : "—"}
           </p>
           <p className="text-xs text-slate-500">
@@ -148,7 +147,7 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
         </div>
       </div>
 
-      <div className="relative rounded-[1.5rem] border border-white/10 bg-slate-950/50 p-3">
+      <div className="relative rounded-[1.5rem] border border-fuchsia-100 bg-white/75 p-3 shadow-inner">
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           className="h-72 w-full touch-none"

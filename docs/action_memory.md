@@ -552,3 +552,12 @@
 294. Added regression coverage for Explore query params, Base explorer fallback, and the extension wallet/settings UI source guards.
 295. Local validation passed for this wave: web test/build, API test, extension lint/test/build, and full workspace `pnpm test`.
 296. Local browser smoke passed for Explore rows/search contrast/friendly tab labels and token page Share/metric/source-card behavior. A local production-start token page without same-origin API proxy cannot hydrate CoinGecko detail links, but the API and production nginx path provide `/api` in deployed mode.
+297. Started the market UI real-data stabilization wave after the user reported the old hero shell, fake/mock token values, SOL `$150`, broken TON chart ranges, visible Risk/Quote preview cards, and inconsistent palette.
+298. Removed public market mock fallbacks from `/api/market/prices`, chart fallback handling, Explore top/trending catch paths, and token source labels so unavailable data now stays unavailable instead of becoming generated prices.
+299. Patched CoinGecko chart handling so `the-open-network` maps to `TON` and long-history `ALL` falls back to a live 365-day chart if CoinGecko max/range history is rate-limited.
+300. Reworked the home page into a more useful wallet dashboard and removed the previous decorative token spotlight shell.
+301. Cleaned token detail UI by removing user-facing Risk, Price source, Chart source, and empty Quote preview surfaces while preserving swap review once a real quote exists.
+302. Moved the web root body to a white/purple default palette and added more global transitions/hover polish for panels, buttons, inputs, and market rows.
+303. Rebuilt the extension package and attempted an isolated Chrome load smoke; Chrome did not expose the Acorus extension target reliably in this environment, so validation rests on extension lint/test/build/package plus manual install from `apps/extension/dist` or the zip.
+304. Local validation passed for this wave: shared build, wallet-core build, API test, web test/build, extension lint/test/build, and `pnpm extension:package`.
+305. Local API smoke confirmed TON charts return `symbol=TON` across all ranges and `ALL` now returns live data through the 365-day fallback; Solana detail now returns live CoinGecko price/market data instead of the old mock value.

@@ -96,6 +96,24 @@ interface CoinGeckoMarketChartResponse {
   prices?: Array<[number, number]>;
 }
 
+const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  binancecoin: "BNB",
+  "matic-network": "MATIC",
+  "polygon-ecosystem-token": "POL",
+  "avalanche-2": "AVAX",
+  solana: "SOL",
+  tron: "TRX",
+  ripple: "XRP",
+  dogecoin: "DOGE",
+  cardano: "ADA",
+  chainlink: "LINK",
+  tether: "USDT",
+  "usd-coin": "USDC",
+  "the-open-network": "TON",
+};
+
 function firstUrl(values?: Array<string | null> | null): string | null {
   return values?.find((value): value is string => typeof value === "string" && /^https?:\/\//u.test(value)) ?? null;
 }
@@ -258,25 +276,7 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     }
 
     await this.rateLimiter.acquire();
-    const days = RANGE_TO_DAYS[request.range];
-    const currency = coingeckoCurrency(request.currency);
-    const interval = RANGE_TO_INTERVAL[request.range];
-    const url =
-      `${this.baseUrl}/coins/${encodeURIComponent(cgId)}/market_chart` +
-      `?vs_currency=${encodeURIComponent(currency)}` +
-      `&days=${encodeURIComponent(days)}` +
-      (interval ? `&interval=${encodeURIComponent(interval)}` : "");
-
-    const response = await httpGet<CoinGeckoMarketChartResponse>(
-      url,
-      this.timeoutMs,
-      this.getHeaders(),
-    );
-
-    const points = (response.prices ?? []).map(([timestamp, price]) => ({
-      timestamp: new Date(timestamp).toISOString(),
-      price: Number(price.toFixed(4)),
-    }));
+    const points = await this.fetchCoinChartPoints(cgId, request.currency, request.range);
 
     if (points.length === 0) {
       throw new Error("coingecko_chart_empty");
@@ -300,25 +300,7 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
   ): Promise<MarketChartDto> {
     await this.rateLimiter.acquire();
-    const days = RANGE_TO_DAYS[request.range];
-    const currency = coingeckoCurrency(request.currency);
-    const interval = RANGE_TO_INTERVAL[request.range];
-    const url =
-      `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart` +
-      `?vs_currency=${encodeURIComponent(currency)}` +
-      `&days=${encodeURIComponent(days)}` +
-      (interval ? `&interval=${encodeURIComponent(interval)}` : "");
-
-    const response = await httpGet<CoinGeckoMarketChartResponse>(
-      url,
-      this.timeoutMs,
-      this.getHeaders(),
-    );
-
-    const points = (response.prices ?? []).map(([timestamp, price]) => ({
-      timestamp: new Date(timestamp).toISOString(),
-      price: Number(price.toFixed(6)),
-    }));
+    const points = await this.fetchCoinChartPoints(coinId, request.currency, request.range);
 
     if (points.length === 0) {
       throw new Error("coingecko_coin_chart_empty");
@@ -327,7 +309,7 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     return {
       chainId: 0,
       tokenAddress: coinId,
-      symbol: coinId.toUpperCase(),
+      symbol: COINGECKO_ID_TO_SYMBOL[coinId.toLowerCase()] ?? coinId.toUpperCase(),
       currency: request.currency,
       range: request.range,
       points,
@@ -335,6 +317,100 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  private async fetchCoinChartPoints(
+    coinId: string,
+    currency: FiatCurrency,
+    range: MarketChartRequest["range"],
+  ): Promise<Array<{ timestamp: string; price: number }>> {
+    const vsCurrency = coingeckoCurrency(currency);
+    const buildMarketChartUrl = (days: string) => {
+      const interval = RANGE_TO_INTERVAL[range];
+      return `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart`
+        + `?vs_currency=${encodeURIComponent(vsCurrency)}`
+        + `&days=${encodeURIComponent(days)}`
+        + (interval ? `&interval=${encodeURIComponent(interval)}` : "");
+    };
+
+    const readPoints = (response: CoinGeckoMarketChartResponse) =>
+      this.trimPointsForRange(
+        (response.prices ?? []).map(([timestamp, price]) => ({
+          timestamp: new Date(timestamp).toISOString(),
+          price: Number(price.toFixed(6)),
+        })),
+        range,
+      );
+
+    try {
+      const response = await httpGet<CoinGeckoMarketChartResponse>(
+        buildMarketChartUrl(RANGE_TO_DAYS[range]),
+        this.timeoutMs,
+        this.getHeaders(),
+      );
+      const points = readPoints(response);
+      if (points.length > 1) {
+        return points;
+      }
+    } catch (error) {
+      if (range !== "ALL") {
+        throw error;
+      }
+    }
+
+    if (range === "ALL") {
+      try {
+        const to = Math.floor(Date.now() / 1000);
+        const from = 0;
+        const rangeUrl =
+          `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart/range`
+          + `?vs_currency=${encodeURIComponent(vsCurrency)}`
+          + `&from=${from}`
+          + `&to=${to}`;
+        const response = await httpGet<CoinGeckoMarketChartResponse>(
+          rangeUrl,
+          this.timeoutMs,
+          this.getHeaders(),
+        );
+        const points = readPoints(response);
+        if (points.length > 1) {
+          return points;
+        }
+      } catch {
+        // CoinGecko often rate-limits `days=max`/range more aggressively.
+        // Keep the chart usable by falling back to a live 1Y window instead of a fake line.
+      }
+
+      const fallbackUrl = `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart`
+        + `?vs_currency=${encodeURIComponent(vsCurrency)}`
+        + "&days=365";
+      const fallbackResponse = await httpGet<CoinGeckoMarketChartResponse>(
+        fallbackUrl,
+        this.timeoutMs,
+        this.getHeaders(),
+      );
+      return readPoints(fallbackResponse);
+    }
+
+    return [];
+  }
+
+  private trimPointsForRange(
+    points: Array<{ timestamp: string; price: number }>,
+    range: MarketChartRequest["range"],
+  ): Array<{ timestamp: string; price: number }> {
+    if (range !== "1H") {
+      return points;
+    }
+
+    const newest = points.at(-1);
+    if (!newest) {
+      return points;
+    }
+
+    const cutoff = new Date(newest.timestamp).getTime() - 60 * 60 * 1000;
+    const trimmed = points.filter((point) => new Date(point.timestamp).getTime() >= cutoff);
+    return trimmed.length > 1 ? trimmed : points.slice(-12);
   }
 
   async getTokenDetailByCoinId(coinId: string, currency: FiatCurrency): Promise<TokenDetailPayload> {

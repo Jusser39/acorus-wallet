@@ -534,28 +534,12 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
 
-    // Mock fallback for any symbol still unresolved
-    if (remaining.length > 0) {
-      const mockResults = await this.mockProvider.getPrices(remaining);
-      // Already tagged sourceStatus: "fallback_mock" by MockMarketDataProvider
-      results.push(...mockResults);
-    }
-
     return results;
   }
 
   async getChart(request: MarketChartRequest): Promise<MarketChartDto> {
-    const buildMockFallback = async (): Promise<MarketChartDto> => {
-      const chart = await this.mockProvider.getChart(request);
-      return {
-        ...chart,
-        provider: "mock",
-        sourceStatus: "fallback_mock",
-      };
-    };
-
     if (!this.rateLimiter.take()) {
-      return buildMockFallback();
+      throw new Error("market_rate_limited");
     }
 
     for (const provider of this.providers) {
@@ -571,11 +555,11 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
           sourceStatus: "live",
         };
       } catch {
-        return buildMockFallback();
+        continue;
       }
     }
 
-    return buildMockFallback();
+    throw new Error("market_chart_unavailable");
   }
 
   async discoverToken(
@@ -593,7 +577,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
 
-    return this.mockProvider.discoverToken(chainId, tokenAddress);
+    throw new Error(`Token discovery unavailable for ${chainId}:${tokenAddress}`);
   }
 
   async getTrending(): Promise<ExploreTokenItem[]> {
@@ -606,7 +590,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
         }
       }
     }
-    return this.mockProvider.getTrending!();
+    return [];
   }
 
   async getTopMarkets(currency: FiatCurrency, limit = 20): Promise<ExploreTokenItem[]> {
@@ -619,7 +603,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
         }
       }
     }
-    return this.mockProvider.getTopMarkets(currency, limit);
+    return [];
   }
 
   async getMemeBoosts(): Promise<ExploreTokenItem[]> {
@@ -647,7 +631,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
 
-    return this.mockProvider.getTokenDetailByCoinId(coinId, currency);
+    return createUnavailableTokenDetail(coinId, currency);
   }
 
   async getCoinChartById(
@@ -655,7 +639,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
     request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
   ): Promise<MarketChartDto> {
     if (!this.rateLimiter.take()) {
-      return this.mockProvider.getCoinChartById(coinId, request);
+      throw new Error("market_rate_limited");
     }
 
     for (const provider of this.providers) {
@@ -668,7 +652,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
 
-    return this.mockProvider.getCoinChartById(coinId, request);
+    throw new Error("coin_chart_unavailable");
   }
 
   async searchMarket(query: string): Promise<MarketSearchResult[]> {
@@ -697,8 +681,41 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       return true;
     });
 
-    return unique.length ? unique.slice(0, 12) : this.mockProvider.searchMarket(query);
+    return unique.slice(0, 12);
   }
+}
+
+function createUnavailableTokenDetail(
+  coinId: string,
+  currency: FiatCurrency,
+): TokenDetailPayload {
+  const symbol = fallbackSymbolForCoinId(coinId);
+  return {
+    id: coinId,
+    symbol,
+    name: coinId
+      .split(/[-_]/u)
+      .filter(Boolean)
+      .map((part) => `${part[0]!.toUpperCase()}${part.slice(1)}`)
+      .join(" ") || symbol,
+    currency,
+    price: null,
+    change24h: null,
+    marketCapUsd: null,
+    fdvUsd: null,
+    volume24hUsd: null,
+    liquidityUsd: null,
+    high24hUsd: null,
+    low24hUsd: null,
+    rank: null,
+    description: "Live token metadata is temporarily unavailable.",
+    logoUrl: null,
+    links: [],
+    platforms: [],
+    provider: "market",
+    sourceStatus: "unavailable",
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function createMarketDataProvider(env?: ApiEnv): MarketDataProvider {

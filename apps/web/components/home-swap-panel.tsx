@@ -11,10 +11,10 @@ export function HomeSwapPanel() {
     <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(360px,1fr)] xl:items-start">
       <div className="app-surface subtle-grid rounded-[2rem] p-5 sm:p-7">
         <span className="section-kicker">Live swap</span>
-        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
           Swap from the wallet home screen
         </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+        <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
           EVM routes use the Acorus backend 0x proxy, then the extension asks for explicit approval before any approval or swap transaction is broadcast.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -24,8 +24,8 @@ export function HomeSwapPanel() {
             ["Multichain shell", "Solana, Tron, BTC and TON stay visible but gated for swap execution."],
           ].map(([title, copy]) => (
             <div key={title} className="data-card rounded-2xl p-4">
-              <p className="text-sm font-semibold text-white">{title}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p>
+              <p className="text-sm font-semibold text-slate-950">{title}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-600">{copy}</p>
             </div>
           ))}
         </div>

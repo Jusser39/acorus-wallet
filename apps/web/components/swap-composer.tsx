@@ -338,6 +338,7 @@ export function SwapComposer(props: {
     : false;
   const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
+  const showSidePanel = !props.compact || Boolean(quote || extensionResult || history.length > 0);
 
   return (
     <div className={props.compact ? "grid gap-5" : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"}>
@@ -437,11 +438,12 @@ export function SwapComposer(props: {
         </button>
       </div>
 
+      {showSidePanel ? (
       <aside className="space-y-6">
         <div className="premium-card space-y-3 p-5">
-          <h2 className="text-xl font-semibold text-white">Quote preview</h2>
+          <h2 className="text-xl font-semibold text-slate-950">{quote ? "Route review" : "Swap status"}</h2>
           {quote ? (
-            <div className="space-y-3 text-sm text-slate-300">
+            <div className="space-y-3 text-sm text-slate-600">
               <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>You receive</span><strong>{shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals)} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals) : "n/a"} {quote.buyToken.symbol}</strong></div>
@@ -450,9 +452,9 @@ export function SwapComposer(props: {
               <div className="flex justify-between gap-3"><span>Quote timer</span><strong>{quoteCountdown}s</strong></div>
 
               {quote.approvalRequired && quote.approval ? (
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-base font-semibold text-white">Approve {quote.sellToken.symbol}</h3>
+                    <h3 className="text-base font-semibold text-slate-950">Approve {quote.sellToken.symbol}</h3>
                     <span className="text-xs text-slate-400">{approvalMode === "exact" ? "Exact" : "Infinite"} approval</span>
                   </div>
                   <div className="mt-3 grid gap-2 text-xs text-slate-300">
@@ -469,7 +471,7 @@ export function SwapComposer(props: {
                     </button>
                   </div>
                   {approvalMode === "infinite" ? (
-                    <p className="mt-3 text-xs text-amber-200">
+                    <p className="mt-3 text-xs text-amber-700">
                       Infinite approval is optional and higher risk. Exact approval stays the safe default.
                     </p>
                   ) : null}
@@ -480,7 +482,7 @@ export function SwapComposer(props: {
               ) : null}
 
               {wrongChain ? (
-                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-amber-100">
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-amber-900">
                   Wrong extension chain selected.
                   <button type="button" className="button-secondary mt-3 w-full" onClick={() => void handleSwitchChain()}>
                     Switch extension to {EVM_CHAINS.find((item) => item.chainId === quote.chainId)?.name ?? quote.chainId}
@@ -489,13 +491,13 @@ export function SwapComposer(props: {
               ) : null}
 
               {highImpact ? (
-                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3 text-amber-100">
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-amber-900">
                   High price impact warning. Refresh the quote or reduce the amount.
                 </div>
               ) : null}
 
               {quoteExpired ? (
-                <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-3 text-rose-100">
+                <div className="rounded-2xl border border-rose-400/30 bg-rose-400/10 p-3 text-rose-700">
                   Quote expired. Refresh the route before reviewing the swap.
                 </div>
               ) : null}
@@ -513,25 +515,25 @@ export function SwapComposer(props: {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600">
               Select an EVM route and request a quote. Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps stay out of scope for this wave.
             </p>
           )}
         </div>
 
         {extensionResult ? (
-          <div className="premium-card p-5 text-sm text-slate-200">
+          <div className="premium-card p-5 text-sm text-slate-600">
             {extensionResult}
           </div>
         ) : null}
 
-        <div className="premium-card p-5 text-sm text-slate-300">
-          <h2 className="text-xl font-semibold text-white">Recent swap activity</h2>
+        <div className="premium-card p-5 text-sm text-slate-600">
+          <h2 className="text-xl font-semibold text-slate-950">Recent swap activity</h2>
           <div className="mt-4 grid gap-3">
             {history.length ? history.slice(0, 4).map((item) => (
-              <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div key={item.id} className="rounded-2xl border border-fuchsia-100 bg-white/70 p-3">
                 <div className="flex justify-between gap-3">
-                  <span className="font-medium text-white">{item.kind.replace(/_/gu, " ")}</span>
+                  <span className="font-medium text-slate-950">{item.kind.replace(/_/gu, " ")}</span>
                   <span className={item.status === "failed" ? "text-rose-300" : "text-emerald-300"}>{item.status}</span>
                 </div>
                 <div className="mt-1 text-xs text-slate-400">
@@ -546,6 +548,7 @@ export function SwapComposer(props: {
           </div>
         </div>
       </aside>
+      ) : null}
     </div>
   );
 }

@@ -234,7 +234,8 @@ describe("api", () => {
     });
 
     expect(priceResponse.statusCode).toBe(200);
-    expect(priceResponse.json().prices.length).toBeGreaterThan(0);
+    const priceBody = priceResponse.json() as { prices: Array<{ source?: string; sourceStatus?: string }> };
+    expect(priceBody.prices.every((price) => price.source !== "mock" && price.sourceStatus !== "fallback_mock")).toBe(true);
 
     const chartResponse = await app.inject({
       method: "GET",
@@ -242,11 +243,12 @@ describe("api", () => {
     });
 
     expect(chartResponse.statusCode).toBe(200);
-    expect(chartResponse.json().chart.points.length).toBeGreaterThan(0);
+    const chartBody = chartResponse.json() as { chart: { sourceStatus?: string; points: unknown[] } };
+    expect(chartBody.chart.sourceStatus).not.toBe("fallback_mock");
   }, 30_000);
 
   it("market prices returns sourceStatus on fresh cache", async () => {
-    // First call – no cache → live (mock mode) → sourceStatus fallback_mock or live
+    // First call: live if the provider is reachable, otherwise honest empty data.
     const res1 = await app.inject({
       method: "GET",
       url: "/api/market/prices?chainId=1&currency=USD&symbols=ETH",
@@ -254,8 +256,7 @@ describe("api", () => {
     expect(res1.statusCode).toBe(200);
     const body1 = res1.json() as { ok: boolean; prices: Array<{ sourceStatus?: string }> };
     expect(body1.ok).toBe(true);
-    expect(body1.prices.length).toBeGreaterThan(0);
-    expect(body1.prices[0]?.sourceStatus).toBeTruthy();
+    expect(body1.prices.every((price) => price.sourceStatus !== "fallback_mock")).toBe(true);
 
     // Second call – should hit cache with sourceStatus: "cached"
     const res2 = await app.inject({
@@ -264,7 +265,11 @@ describe("api", () => {
     });
     expect(res2.statusCode).toBe(200);
     const body2 = res2.json() as { ok: boolean; prices: Array<{ sourceStatus?: string }> };
-    expect(body2.prices[0]?.sourceStatus).toBe("cached");
+    if (body1.prices.length > 0) {
+      expect(body2.prices[0]?.sourceStatus).toBe("cached");
+    } else {
+      expect(body2.prices).toEqual([]);
+    }
   });
 
   it("market prices returns empty array for no symbols", async () => {
@@ -321,7 +326,12 @@ describe("api", () => {
     });
     expect(chart.statusCode).toBe(200);
     expect(chart.json().chart.range).toBe("1M");
-    expect(chart.json().chart.points.length).toBeGreaterThan(1);
+    expect(["live", "unavailable"]).toContain(chart.json().chart.sourceStatus);
+    if (chart.json().chart.sourceStatus === "live") {
+      expect(chart.json().chart.points.length).toBeGreaterThan(1);
+    } else {
+      expect(chart.json().chart.points).toEqual([]);
+    }
   });
 
   it("searches tokens pools and wallet-shaped addresses without secrets", async () => {
@@ -352,8 +362,27 @@ describe("api", () => {
           points: expect.any(Array),
         },
       });
-      expect(res.json().chart.points.length).toBeGreaterThan(0);
+      expect(["live", "cached", "unavailable"]).toContain(res.json().chart.sourceStatus);
+      if (res.json().chart.sourceStatus !== "unavailable") {
+        expect(res.json().chart.points.length).toBeGreaterThan(0);
+      }
     }
+  });
+
+  it("does not expose mock prices or mock charts from public market endpoints", async () => {
+    const top = await app.inject({
+      method: "GET",
+      url: "/api/explore/top?view=top&limit=10",
+    });
+    expect(top.statusCode).toBe(200);
+    expect(JSON.stringify(top.json())).not.toContain('"source":"mock"');
+
+    const chart = await app.inject({
+      method: "GET",
+      url: "/api/market/coin-chart?coinId=the-open-network&currency=USD&range=ALL",
+    });
+    expect(chart.statusCode).toBe(200);
+    expect(JSON.stringify(chart.json())).not.toContain("fallback_mock");
   });
 
   it("discover-token returns ok:true with null-or-object", async () => {

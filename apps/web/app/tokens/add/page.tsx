@@ -68,7 +68,7 @@ export default function AddTokenPage() {
         pairUrl: discovery?.pairUrl ?? null,
         riskLevel: discovery?.riskLevel ?? "unknown",
         riskFlags: discovery?.riskFlags ?? [],
-        sourceStatus: discovery?.sourceStatus ?? "mock",
+        sourceStatus: discovery?.sourceStatus ?? "error",
         providerId: discovery?.providerId ?? "onchain",
       });
     } catch (err) {

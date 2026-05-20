@@ -720,7 +720,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         })),
       };
     } catch {
-      // Provider failed – fall through to stale cache or mock
+      // Provider failed: fall through to stale cache, then return honest empty data.
     }
 
     // Step 4: stale cache fallback (within MARKET_STALE_CACHE_TTL_SECONDS)
@@ -739,12 +739,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       };
     }
 
-    // Step 5: mock fallback
-    const mockPrices = await mockFallback.getPrices(requests);
-    return {
-      ok: true,
-      prices: mockPrices.map((p) => ({ ...p, sourceStatus: "fallback_mock" })),
-    };
+    // Step 5: no public mock pricing. The client can render an unavailable state.
+    return { ok: true, prices: [] };
   });
 
   // ---- Market Chart ----
@@ -800,13 +796,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         };
       }
 
-      const fallback = await mockFallback.getChart(chartInput);
-      await store.upsertMarketChart(fallback);
       return {
         ok: true,
         chart: {
-          ...fallback,
-          sourceStatus: "fallback_mock",
+          ...chartInput,
+          points: [],
+          provider: "market",
+          sourceStatus: "unavailable",
+          updatedAt: new Date().toISOString(),
         },
       };
     }
@@ -822,11 +819,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       .parse(request.query);
 
     if (!marketProvider.getCoinChartById) {
-      const fallback = await mockFallback.getCoinChartById(query.coinId, {
-        currency: query.currency as FiatCurrency,
-        range: query.range as GetMarketChartInput["range"],
-      });
-      return { ok: true, chart: { ...fallback, sourceStatus: "fallback_mock" } };
+      return {
+        ok: true,
+        chart: createUnavailableCoinChart(query.coinId, query.currency as FiatCurrency, query.range as GetMarketChartInput["range"]),
+      };
     }
 
     try {
@@ -842,11 +838,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         },
       };
     } catch {
-      const fallback = await mockFallback.getCoinChartById(query.coinId, {
-        currency: query.currency as FiatCurrency,
-        range: query.range as GetMarketChartInput["range"],
-      });
-      return { ok: true, chart: { ...fallback, sourceStatus: "fallback_mock" } };
+      return {
+        ok: true,
+        chart: createUnavailableCoinChart(query.coinId, query.currency as FiatCurrency, query.range as GetMarketChartInput["range"]),
+      };
     }
   });
 
@@ -998,8 +993,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         updatedAt: new Date().toISOString(),
       };
     } catch {
-      const items = await mockFallback.getTrending!();
-      return { ok: true, section: "trending", items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+      return { ok: true, section: "trending", items: [], source: "market", sourceStatus: "unavailable", updatedAt: new Date().toISOString() };
     }
   });
 
@@ -1024,9 +1018,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       const items = sorted.slice((page - 1) * limit, page * limit);
       return { ok: true, section: view, items, source: marketProvider.id, sourceStatus: "live", updatedAt: new Date().toISOString() };
     } catch {
-      const rawItems = await mockFallback.getTopMarkets!(currency as FiatCurrency, Math.max(limit * page, 20));
-      const items = sortExploreTopItems(rawItems, view).slice((page - 1) * limit, page * limit);
-      return { ok: true, section: view, items, source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+      return { ok: true, section: view, items: [], source: "market", sourceStatus: "unavailable", updatedAt: new Date().toISOString() };
     }
   });
 
@@ -1077,13 +1069,42 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       const items = marketProvider.getMemeBoosts
         ? await marketProvider.getMemeBoosts()
         : [];
-      return { ok: true, section: "memes", items, source: "dexscreener_boost", sourceStatus: items.length > 0 ? "live" : "mock", updatedAt: new Date().toISOString() };
+      return { ok: true, section: "memes", items, source: "dexscreener_boost", sourceStatus: items.length > 0 ? "live" : "unavailable", updatedAt: new Date().toISOString() };
     } catch {
-      return { ok: true, section: "memes", items: [], source: "mock", sourceStatus: "mock", updatedAt: new Date().toISOString() };
+      return { ok: true, section: "memes", items: [], source: "market", sourceStatus: "unavailable", updatedAt: new Date().toISOString() };
     }
   });
 
   return app;
+}
+
+function createUnavailableCoinChart(
+  coinId: string,
+  currency: FiatCurrency,
+  range: GetMarketChartInput["range"],
+) {
+  const knownSymbols: Record<string, string> = {
+    bitcoin: "BTC",
+    ethereum: "ETH",
+    solana: "SOL",
+    "the-open-network": "TON",
+    binancecoin: "BNB",
+    tron: "TRX",
+    tether: "USDT",
+    "usd-coin": "USDC",
+  };
+
+  return {
+    chainId: 0,
+    tokenAddress: coinId,
+    symbol: knownSymbols[coinId.toLowerCase()] ?? coinId.toUpperCase(),
+    currency,
+    range,
+    points: [],
+    provider: "market",
+    sourceStatus: "unavailable",
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function sortExploreTopItems<T extends { change24h?: number | null; marketCapUsd?: number | null }>(
