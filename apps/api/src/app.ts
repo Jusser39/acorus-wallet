@@ -14,6 +14,7 @@ import {
   type FiatCurrency,
   type GetMarketChartInput,
   type GetMarketPricesInput,
+  type MarketChartDto,
   type TransactionCreateInput,
   type WalletProfileCreateInput,
   type WalletProfileUpdateInput,
@@ -562,6 +563,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const mockFallback = new MockMarketDataProvider();
   const cacheTtlSec = resolveMarketCacheTtlSec(env);
   const staleTtlSec = env.MARKET_STALE_CACHE_TTL_SECONDS;
+  const coinChartCache = new Map<string, MarketChartDto>();
 
   // ---- User Tokens ----
   const fiatCurrencySchema = z.enum(["USD", "EUR", "RUB"]);
@@ -825,19 +827,40 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       };
     }
 
+    const cacheKey = [
+      query.coinId.toLowerCase(),
+      query.currency,
+      query.range,
+    ].join(":");
+    const cached = coinChartCache.get(cacheKey);
+
     try {
       const chart = await marketProvider.getCoinChartById(query.coinId, {
         currency: query.currency as FiatCurrency,
         range: query.range as GetMarketChartInput["range"],
       });
+      const normalizedChart = {
+        ...chart,
+        sourceStatus: chart.sourceStatus ?? (chart.provider === "mock" ? "fallback_mock" : "live"),
+      };
+      if (normalizedChart.points.length > 1) {
+        coinChartCache.set(cacheKey, normalizedChart);
+      }
       return {
         ok: true,
-        chart: {
-          ...chart,
-          sourceStatus: chart.sourceStatus ?? (chart.provider === "mock" ? "fallback_mock" : "live"),
-        },
+        chart: normalizedChart,
       };
     } catch {
+      if (cached && isStaleButUsable(cached.updatedAt, staleTtlSec)) {
+        return {
+          ok: true,
+          chart: {
+            ...cached,
+            sourceStatus: isFresh(cached.updatedAt, cacheTtlSec) ? "cached" : "stale_cache",
+          },
+        };
+      }
+
       return {
         ok: true,
         chart: createUnavailableCoinChart(query.coinId, query.currency as FiatCurrency, query.range as GetMarketChartInput["range"]),
