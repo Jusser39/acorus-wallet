@@ -96,6 +96,8 @@ interface CoinGeckoMarketChartResponse {
   prices?: Array<[number, number]>;
 }
 
+type CoinGeckoOhlcPoint = [number, number, number, number, number];
+
 const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   bitcoin: "BTC",
   ethereum: "ETH",
@@ -353,6 +355,11 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         return points;
       }
     } catch (error) {
+      const ohlcFallback = await this.fetchCoinOhlcFallback(coinId, currency, range);
+      if (ohlcFallback.length > 1) {
+        return ohlcFallback;
+      }
+
       if (range !== "ALL") {
         throw error;
       }
@@ -384,15 +391,61 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       const fallbackUrl = `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart`
         + `?vs_currency=${encodeURIComponent(vsCurrency)}`
         + "&days=365";
-      const fallbackResponse = await httpGet<CoinGeckoMarketChartResponse>(
-        fallbackUrl,
-        this.timeoutMs,
-        this.getHeaders(),
-      );
-      return readPoints(fallbackResponse);
+      try {
+        const fallbackResponse = await httpGet<CoinGeckoMarketChartResponse>(
+          fallbackUrl,
+          this.timeoutMs,
+          this.getHeaders(),
+        );
+        const fallbackPoints = readPoints(fallbackResponse);
+        if (fallbackPoints.length > 1) {
+          return fallbackPoints;
+        }
+      } catch {
+        // Try OHLC below.
+      }
+
+      return this.fetchCoinOhlcFallback(coinId, currency, "1Y");
     }
 
     return [];
+  }
+
+  private async fetchCoinOhlcFallback(
+    coinId: string,
+    currency: FiatCurrency,
+    range: MarketChartRequest["range"],
+  ): Promise<Array<{ timestamp: string; price: number }>> {
+    const daysByRange: Partial<Record<MarketChartRequest["range"], string>> = {
+      "1D": "1",
+      "1W": "7",
+      "1M": "30",
+      "1Y": "365",
+      ALL: "365",
+    };
+    const days = daysByRange[range];
+    if (!days) {
+      return [];
+    }
+
+    try {
+      const response = await httpGet<CoinGeckoOhlcPoint[]>(
+        `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/ohlc`
+          + `?vs_currency=${encodeURIComponent(coingeckoCurrency(currency))}`
+          + `&days=${encodeURIComponent(days)}`,
+        this.timeoutMs,
+        this.getHeaders(),
+      );
+
+      return response
+        .map(([timestamp, , , , close]) => ({
+          timestamp: new Date(timestamp).toISOString(),
+          price: Number(Number(close).toFixed(6)),
+        }))
+        .filter((point) => Number.isFinite(point.price));
+    } catch {
+      return [];
+    }
   }
 
   private trimPointsForRange(

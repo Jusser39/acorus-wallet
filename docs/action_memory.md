@@ -561,3 +561,4 @@
 303. Rebuilt the extension package and attempted an isolated Chrome load smoke; Chrome did not expose the Acorus extension target reliably in this environment, so validation rests on extension lint/test/build/package plus manual install from `apps/extension/dist` or the zip.
 304. Local validation passed for this wave: shared build, wallet-core build, API test, web test/build, extension lint/test/build, and `pnpm extension:package`.
 305. Local API smoke confirmed TON charts return `symbol=TON` across all ranges and `ALL` now returns live data through the 365-day fallback; Solana detail now returns live CoinGecko price/market data instead of the old mock value.
+306. After the first production smoke showed CoinGecko rate-limiting `market_chart` for some long TON ranges, added a CoinGecko OHLC fallback for `1M`, `1Y`, and `ALL` so those ranges can still render real close-price data instead of blank or mock charts.

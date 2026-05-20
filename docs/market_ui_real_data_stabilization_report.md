@@ -15,6 +15,7 @@ Date: 2026-05-20
 - Public market price/chart endpoints no longer return generated mock prices or `fallback_mock` charts when live providers are unavailable.
 - CoinGecko coin charts now map major ids to proper symbols, including `the-open-network -> TON`.
 - `ALL` chart requests first try CoinGecko max/range history and fall back to a live 365-day window if CoinGecko rate-limits long history.
+- `1M`, `1Y`, and `ALL` also have a CoinGecko OHLC fallback, so long-range token pages can still show real market data when `market_chart` is temporarily rate-limited.
 - Token chart badges hide `mock`, `fallback_mock`, and `unavailable` labels instead of showing noisy implementation state.
 - Token detail pages no longer render Risk, Price source, Chart source, or empty Quote preview panels.
 - Explore rows no longer show provider/mock source text; rows rely on token names, symbols, logos, price, market cap, and change.
