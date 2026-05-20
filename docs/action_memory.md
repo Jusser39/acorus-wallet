@@ -539,3 +539,7 @@
 281. Local API smoke passed for XRP token detail and all chart ranges `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`; live CoinGecko served most ranges and safe fallback served `ALL` when public max-history calls were rate-limited.
 282. Browser smoke passed on `/tokens/coingecko/ripple?source=coingecko&symbol=XRP&name=XRP`: market cap, FDV, 24h volume, high/low, about text, Blockchain/Website/X links, share action, global search, and chart all rendered.
 283. Browser smoke passed on `/`: the home screen now renders the backend-proxied 0x EVM swap composer with network/token selectors, sell amount, slippage, and quote action.
+284. Committed and pushed the wave as `f7df11a9f42d8a9ad153f943ad83fb37124f7d8a` with message `Add Uniswap-like token details search and home swap`.
+285. Deployed `f7df11a` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-uniswap-like-token-search-swap_20260520_022156`, then rebuilt/recreated wallet `api`, `web`, and `nginx`.
+286. Production wallet-only checks passed: `https://24wallet.ru`, `/explore`, `/tokens/coingecko/ripple?...`, `/api/swap/evm/status`, `/api/market/token-detail`, `/api/market/search`, and XRP chart ranges all returned usable responses.
+287. Production browser smoke passed: XRP detail page showed market cap, FDV, 24h volume, links, about text, search, and chart; home page showed the 0x EVM swap composer. Live 0x status is configured/enabled and a normal ETH->USDC price smoke returned `200`.

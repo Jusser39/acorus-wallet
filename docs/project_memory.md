@@ -1231,6 +1231,12 @@
   - XRP coin chart API returned usable data for `1H`, `1D`, `1W`, `1M`, `1Y`, and non-zero fallback for rate-limited `ALL`
   - browser token page rendered stats, about, links, share, search and chart
   - browser home page rendered the 0x EVM swap composer
+- Production deployed:
+  - commit `f7df11a9f42d8a9ad153f943ad83fb37124f7d8a`
+  - backup `/root/backups/acorus-uniswap-like-token-search-swap_20260520_022156`
+  - wallet `api`, `web`, and `nginx` rebuilt/recreated
+  - `https://24wallet.ru`, `/explore`, XRP token detail, XRP detail/chart/search APIs, 0x status, and a normal ETH->USDC 0x price smoke passed
+  - production browser smoke confirmed token detail/search/chart and home 0x swap composer render correctly
 - Known limits:
   - liquidity depends on DexScreener pair availability;
   - 0x swap execution remains EVM-only;

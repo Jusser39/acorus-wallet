@@ -30,6 +30,13 @@
 - Browser smoke on `/tokens/coingecko/ripple?source=coingecko&symbol=XRP&name=XRP` confirmed market cap, FDV, 24h volume, high/low, about text, Blockchain/Website/X links, share action, global search, and a visible chart.
 - Browser smoke on `/` confirmed the home screen renders the 0x EVM swap composer with network/token inputs and quote action.
 
+## Production
+
+- Deployed commit `f7df11a9f42d8a9ad153f943ad83fb37124f7d8a`.
+- Server backup: `/root/backups/acorus-uniswap-like-token-search-swap_20260520_022156`.
+- `https://24wallet.ru`, `/explore`, XRP token detail, XRP detail/chart/search APIs, and 0x status returned successfully.
+- Browser smoke confirmed production token detail/search/chart rendering and the home 0x EVM swap composer.
+
 ## Known Limits
 
 - Liquidity is available when DexScreener has a DEX pair; CoinGecko-only assets can still show market cap/FDV/volume while liquidity remains unavailable.
