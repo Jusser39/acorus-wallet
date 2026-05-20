@@ -1,8 +1,10 @@
-import type { MarketChartDto, MarketPriceDto } from "../store.js";
+import type { FiatCurrency, MarketChartDto, MarketPriceDto } from "../store.js";
 import type {
   MarketDataProvider,
   MarketChartRequest,
   MarketPriceRequest,
+  MarketSearchResult,
+  TokenDetailPayload,
 } from "./provider.js";
 import type { ApiEnv } from "../env.js";
 import type { ExploreTokenItem } from "@acorus/shared";
@@ -29,6 +31,12 @@ const RANGE_TO_DAYS: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", string> = 
   ALL: "max",
 };
 
+const RANGE_TO_INTERVAL: Partial<Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", string>> = {
+  "1M": "daily",
+  "1Y": "daily",
+  ALL: "daily",
+};
+
 // Major symbol to CoinGecko ID mappings
 const SYMBOL_TO_ID: Record<string, string> = {
   BTC: "bitcoin",
@@ -43,6 +51,19 @@ const SYMBOL_TO_ID: Record<string, string> = {
   USDC: "usd-coin",
   DAI: "dai",
   AVAX: "avalanche-2",
+  XRP: "ripple",
+};
+
+const COINGECKO_PLATFORM_TO_ROUTE: Record<string, { chainId: number | string; chainKey: string }> = {
+  ethereum: { chainId: 1, chainKey: "ethereum" },
+  "binance-smart-chain": { chainId: 56, chainKey: "bsc" },
+  "polygon-pos": { chainId: 137, chainKey: "polygon" },
+  "arbitrum-one": { chainId: 42161, chainKey: "arbitrum" },
+  "optimistic-ethereum": { chainId: 10, chainKey: "optimism" },
+  base: { chainId: 8453, chainKey: "base" },
+  avalanche: { chainId: 43114, chainKey: "avalanche" },
+  solana: { chainId: 101, chainKey: "solana" },
+  tron: { chainId: "tron-mainnet", chainKey: "tron" },
 };
 
 function coingeckoCurrency(currency: string): string {
@@ -73,6 +94,62 @@ interface CoinGeckoSimplePriceResponse {
 
 interface CoinGeckoMarketChartResponse {
   prices?: Array<[number, number]>;
+}
+
+function firstUrl(values?: Array<string | null> | null): string | null {
+  return values?.find((value): value is string => typeof value === "string" && /^https?:\/\//u.test(value)) ?? null;
+}
+
+function stripHtml(value: string): string {
+  return value
+    .replace(/<[^>]+>/gu, " ")
+    .replace(/&amp;/gu, "&")
+    .replace(/&quot;/gu, "\"")
+    .replace(/&#39;/gu, "'")
+    .replace(/\s+/gu, " ");
+}
+
+interface CoinGeckoDetailResponse {
+  id: string;
+  symbol: string;
+  name: string;
+  image?: {
+    thumb?: string | null;
+    small?: string | null;
+    large?: string | null;
+  } | null;
+  description?: {
+    en?: string | null;
+  } | null;
+  links?: {
+    homepage?: Array<string | null> | null;
+    blockchain_site?: Array<string | null> | null;
+    twitter_screen_name?: string | null;
+  } | null;
+  market_cap_rank?: number | null;
+  market_data?: {
+    current_price?: Record<string, number | null>;
+    market_cap?: Record<string, number | null>;
+    fully_diluted_valuation?: Record<string, number | null>;
+    total_volume?: Record<string, number | null>;
+    high_24h?: Record<string, number | null>;
+    low_24h?: Record<string, number | null>;
+    price_change_24h_in_currency?: Record<string, number | null>;
+    price_change_percentage_24h_in_currency?: Record<string, number | null>;
+  } | null;
+  platforms?: Record<string, string | null>;
+  detail_platforms?: Record<string, { decimal_place?: number | null } | undefined>;
+}
+
+interface CoinGeckoSearchResponse {
+  coins?: Array<{
+    id: string;
+    name: string;
+    symbol: string;
+    market_cap_rank?: number | null;
+    thumb?: string | null;
+    large?: string | null;
+  }>;
 }
 
 interface CoinGeckoMarketCoin {
@@ -183,10 +260,12 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     await this.rateLimiter.acquire();
     const days = RANGE_TO_DAYS[request.range];
     const currency = coingeckoCurrency(request.currency);
+    const interval = RANGE_TO_INTERVAL[request.range];
     const url =
       `${this.baseUrl}/coins/${encodeURIComponent(cgId)}/market_chart` +
       `?vs_currency=${encodeURIComponent(currency)}` +
-      `&days=${encodeURIComponent(days)}`;
+      `&days=${encodeURIComponent(days)}` +
+      (interval ? `&interval=${encodeURIComponent(interval)}` : "");
 
     const response = await httpGet<CoinGeckoMarketChartResponse>(
       url,
@@ -214,6 +293,136 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  async getCoinChartById(
+    coinId: string,
+    request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
+  ): Promise<MarketChartDto> {
+    await this.rateLimiter.acquire();
+    const days = RANGE_TO_DAYS[request.range];
+    const currency = coingeckoCurrency(request.currency);
+    const interval = RANGE_TO_INTERVAL[request.range];
+    const url =
+      `${this.baseUrl}/coins/${encodeURIComponent(coinId)}/market_chart` +
+      `?vs_currency=${encodeURIComponent(currency)}` +
+      `&days=${encodeURIComponent(days)}` +
+      (interval ? `&interval=${encodeURIComponent(interval)}` : "");
+
+    const response = await httpGet<CoinGeckoMarketChartResponse>(
+      url,
+      this.timeoutMs,
+      this.getHeaders(),
+    );
+
+    const points = (response.prices ?? []).map(([timestamp, price]) => ({
+      timestamp: new Date(timestamp).toISOString(),
+      price: Number(price.toFixed(6)),
+    }));
+
+    if (points.length === 0) {
+      throw new Error("coingecko_coin_chart_empty");
+    }
+
+    return {
+      chainId: 0,
+      tokenAddress: coinId,
+      symbol: coinId.toUpperCase(),
+      currency: request.currency,
+      range: request.range,
+      points,
+      provider: this.id,
+      sourceStatus: "live",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getTokenDetailByCoinId(coinId: string, currency: FiatCurrency): Promise<TokenDetailPayload> {
+    await this.rateLimiter.acquire();
+    const vsCurrency = coingeckoCurrency(currency);
+    const url =
+      `${this.baseUrl}/coins/${encodeURIComponent(coinId)}` +
+      "?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false";
+
+    const response = await httpGet<CoinGeckoDetailResponse>(
+      url,
+      this.timeoutMs,
+      this.getHeaders(),
+    );
+
+    const price = response.market_data?.current_price?.[vsCurrency] ?? null;
+    const changeValue = response.market_data?.price_change_24h_in_currency?.[vsCurrency] ?? null;
+    const changePercent = response.market_data?.price_change_percentage_24h_in_currency?.[vsCurrency] ?? null;
+    const explorer = firstUrl(response.links?.blockchain_site);
+    const website = firstUrl(response.links?.homepage);
+    const twitter = response.links?.twitter_screen_name
+      ? `https://x.com/${response.links.twitter_screen_name.replace(/^@/u, "")}`
+      : null;
+
+    return {
+      id: response.id,
+      symbol: response.symbol.toUpperCase(),
+      name: response.name,
+      currency,
+      price,
+      change24h: changePercent !== null && changeValue !== null
+        ? { value: changeValue, percent: changePercent }
+        : null,
+      marketCapUsd: response.market_data?.market_cap?.[vsCurrency] ?? null,
+      fdvUsd: response.market_data?.fully_diluted_valuation?.[vsCurrency] ?? null,
+      volume24hUsd: response.market_data?.total_volume?.[vsCurrency] ?? null,
+      liquidityUsd: null,
+      high24hUsd: response.market_data?.high_24h?.[vsCurrency] ?? null,
+      low24hUsd: response.market_data?.low_24h?.[vsCurrency] ?? null,
+      rank: response.market_cap_rank ?? null,
+      description: stripHtml(response.description?.en ?? "").trim() || null,
+      logoUrl: response.image?.large ?? response.image?.small ?? response.image?.thumb ?? null,
+      links: [
+        explorer ? { label: "Blockchain", url: explorer, kind: "explorer" as const } : null,
+        website ? { label: "Website", url: website, kind: "website" as const } : null,
+        twitter ? { label: "X", url: twitter, kind: "twitter" as const } : null,
+      ].filter((item): item is TokenDetailPayload["links"][number] => Boolean(item)),
+      platforms: Object.entries(response.platforms ?? {})
+        .filter(([, address]) => address !== undefined)
+        .map(([platform, address]) => {
+          const route = COINGECKO_PLATFORM_TO_ROUTE[platform] ?? {
+            chainId: platform,
+            chainKey: platform,
+          };
+          return {
+            ...route,
+            tokenAddress: address?.trim() || null,
+            decimals: response.detail_platforms?.[platform]?.decimal_place ?? null,
+          };
+        }),
+      provider: this.id,
+      sourceStatus: "live",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async searchMarket(query: string): Promise<MarketSearchResult[]> {
+    const normalized = query.trim();
+    if (normalized.length < 2) return [];
+
+    await this.rateLimiter.acquire();
+    const response = await httpGet<CoinGeckoSearchResponse>(
+      `${this.baseUrl}/search?query=${encodeURIComponent(normalized)}`,
+      this.timeoutMs,
+      this.getHeaders(),
+    );
+
+    return (response.coins ?? []).slice(0, 8).map((coin): MarketSearchResult => ({
+      id: `coingecko:${coin.id}`,
+      kind: "token",
+      label: coin.name,
+      subtitle: `${coin.symbol.toUpperCase()} · CoinGecko${coin.market_cap_rank ? ` · #${coin.market_cap_rank}` : ""}`,
+      href: `/tokens/coingecko/${encodeURIComponent(coin.id)}?source=coingecko&symbol=${encodeURIComponent(coin.symbol.toUpperCase())}&name=${encodeURIComponent(coin.name)}`,
+      symbol: coin.symbol.toUpperCase(),
+      logoUrl: coin.large ?? coin.thumb ?? null,
+      chainKey: "coingecko",
+      chainId: "coingecko",
+    }));
   }
 
   async discoverToken(

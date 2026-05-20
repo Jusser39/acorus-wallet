@@ -26,8 +26,66 @@ export type ProviderDiscoveryPayload = {
   marketCapUsd?: number | null;
   fdvUsd?: number | null;
   pairUrl?: string | null;
+  explorerUrl?: string | null;
+  websiteUrl?: string | null;
+  twitterUrl?: string | null;
+  telegramUrl?: string | null;
+  description?: string | null;
+  logoUrl?: string | null;
   riskLevel: "low" | "medium" | "high" | "unknown";
   riskFlags: string[];
+};
+
+export type TokenDetailLink = {
+  label: string;
+  url: string;
+  kind: "explorer" | "website" | "twitter" | "telegram" | "pair" | "other";
+};
+
+export type TokenDetailPlatform = {
+  chainId: number | string;
+  chainKey: string;
+  tokenAddress: string | null;
+  decimals?: number | null;
+};
+
+export type TokenDetailPayload = {
+  id: string;
+  symbol: string;
+  name: string;
+  currency: FiatCurrency;
+  price: number | null;
+  change24h: { value: number; percent: number } | null;
+  marketCapUsd: number | null;
+  fdvUsd: number | null;
+  volume24hUsd: number | null;
+  liquidityUsd: number | null;
+  high24hUsd: number | null;
+  low24hUsd: number | null;
+  rank: number | null;
+  description: string | null;
+  logoUrl: string | null;
+  links: TokenDetailLink[];
+  platforms: TokenDetailPlatform[];
+  provider: string;
+  sourceStatus: "live" | "mock" | "unavailable";
+  updatedAt: string;
+};
+
+export type MarketSearchResult = {
+  id: string;
+  kind: "token" | "pool" | "wallet";
+  label: string;
+  subtitle: string;
+  href: string;
+  symbol?: string | null;
+  logoUrl?: string | null;
+  chainKey?: string | null;
+  chainId?: number | string | null;
+  tokenAddress?: string | null;
+  pairAddress?: string | null;
+  priceUsd?: number | null;
+  liquidityUsd?: number | null;
 };
 
 export interface MarketDataProvider {
@@ -39,6 +97,9 @@ export interface MarketDataProvider {
   getTrending?(): Promise<ExploreTokenItem[]>;
   getTopMarkets?(currency: FiatCurrency, limit?: number): Promise<ExploreTokenItem[]>;
   getMemeBoosts?(): Promise<ExploreTokenItem[]>;
+  getTokenDetailByCoinId?(coinId: string, currency: FiatCurrency): Promise<TokenDetailPayload>;
+  getCoinChartById?(coinId: string, request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">): Promise<MarketChartDto>;
+  searchMarket?(query: string): Promise<MarketSearchResult[]>;
 }
 
 /**
@@ -96,9 +157,101 @@ const BASE_USD_PRICES: Record<string, number> = {
   AVAX: 35,
   SOL: 150,
   TRX: 0.12,
+  XRP: 1.36,
+  DOGE: 0.22,
+  ADA: 0.82,
+  LINK: 16,
   USDT: 1,
   USDC: 1,
   WETH: 3200,
+};
+
+const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  binancecoin: "BNB",
+  "matic-network": "MATIC",
+  "polygon-ecosystem-token": "POL",
+  "avalanche-2": "AVAX",
+  solana: "SOL",
+  tron: "TRX",
+  ripple: "XRP",
+  dogecoin: "DOGE",
+  cardano: "ADA",
+  chainlink: "LINK",
+  tether: "USDT",
+  "usd-coin": "USDC",
+};
+
+const KNOWN_FALLBACK_COIN_DETAILS: Record<string, {
+  name: string;
+  marketCapUsd: number;
+  fdvUsd: number | null;
+  volume24hUsd: number;
+  high24hUsd: number;
+  low24hUsd: number;
+  description: string;
+  links: TokenDetailLink[];
+}> = {
+  ripple: {
+    name: "XRP",
+    marketCapUsd: 84_000_000_000,
+    fdvUsd: 136_000_000_000,
+    volume24hUsd: 1_700_000_000,
+    high24hUsd: 1.39,
+    low24hUsd: 1.35,
+    description:
+      "XRP is the native asset of the XRP Ledger, a payment-focused blockchain designed for fast settlement and low transaction costs.",
+    links: [
+      { label: "Blockchain", url: "https://xrpscan.com/", kind: "explorer" },
+      { label: "Website", url: "https://ripple.com/currency/", kind: "website" },
+      { label: "X", url: "https://x.com/Ripple", kind: "twitter" },
+    ],
+  },
+  solana: {
+    name: "Solana",
+    marketCapUsd: 96_000_000_000,
+    fdvUsd: 112_000_000_000,
+    volume24hUsd: 3_200_000_000,
+    high24hUsd: 184,
+    low24hUsd: 175,
+    description:
+      "Solana is a high-throughput smart-contract network used for DeFi, payments, NFTs and consumer crypto applications.",
+    links: [
+      { label: "Blockchain", url: "https://solscan.io/", kind: "explorer" },
+      { label: "Website", url: "https://solana.com/", kind: "website" },
+      { label: "X", url: "https://x.com/solana", kind: "twitter" },
+    ],
+  },
+  ethereum: {
+    name: "Ethereum",
+    marketCapUsd: 390_000_000_000,
+    fdvUsd: 390_000_000_000,
+    volume24hUsd: 18_000_000_000,
+    high24hUsd: 3300,
+    low24hUsd: 3100,
+    description:
+      "Ethereum is a decentralized smart-contract network and the largest ecosystem for EVM DeFi, tokens, NFTs and dApps.",
+    links: [
+      { label: "Blockchain", url: "https://etherscan.io/", kind: "explorer" },
+      { label: "Website", url: "https://ethereum.org/", kind: "website" },
+      { label: "X", url: "https://x.com/ethereum", kind: "twitter" },
+    ],
+  },
+  bitcoin: {
+    name: "Bitcoin",
+    marketCapUsd: 1_280_000_000_000,
+    fdvUsd: 1_360_000_000_000,
+    volume24hUsd: 32_000_000_000,
+    high24hUsd: 66_000,
+    low24hUsd: 63_000,
+    description:
+      "Bitcoin is the original decentralized digital asset and settlement network with a fixed 21 million supply schedule.",
+    links: [
+      { label: "Blockchain", url: "https://mempool.space/", kind: "explorer" },
+      { label: "Website", url: "https://bitcoin.org/", kind: "website" },
+    ],
+  },
 };
 
 const FX: Record<FiatCurrency, number> = {
@@ -119,6 +272,11 @@ function pseudoChange(symbol: string): { value: number; percent: number } {
 function priceFor(symbol: string, currency: FiatCurrency): number {
   const base = BASE_USD_PRICES[symbol.toUpperCase()] ?? 0;
   return Number((base * FX[currency]).toFixed(currency === "RUB" ? 2 : 4));
+}
+
+function fallbackSymbolForCoinId(coinId: string): string {
+  const sanitized = coinId.toUpperCase().replace(/[^A-Z0-9]/gu, "").slice(0, 8);
+  return COINGECKO_ID_TO_SYMBOL[coinId.toLowerCase()] ?? (sanitized || "TOKEN");
 }
 
 export class MockMarketDataProvider implements MarketDataProvider {
@@ -236,6 +394,71 @@ export class MockMarketDataProvider implements MarketDataProvider {
       riskLevel: "unknown",
       riskFlags: ["fallback"],
     }));
+  }
+
+  async getTokenDetailByCoinId(coinId: string, currency: FiatCurrency): Promise<TokenDetailPayload> {
+    const symbol = fallbackSymbolForCoinId(coinId);
+    const price = priceFor(symbol, currency);
+    const change = pseudoChange(symbol);
+    const known = KNOWN_FALLBACK_COIN_DETAILS[coinId.toLowerCase()];
+
+    return {
+      id: coinId,
+      symbol,
+      name: known?.name ?? coinId
+        .split(/[-_]/u)
+        .map((part) => part ? `${part[0]!.toUpperCase()}${part.slice(1)}` : part)
+        .join(" "),
+      currency,
+      price,
+      change24h: {
+        value: Number((price * change.value).toFixed(4)),
+        percent: change.percent,
+      },
+      marketCapUsd: known?.marketCapUsd ?? null,
+      fdvUsd: known?.fdvUsd ?? null,
+      volume24hUsd: known?.volume24hUsd ?? null,
+      liquidityUsd: null,
+      high24hUsd: known?.high24hUsd ?? null,
+      low24hUsd: known?.low24hUsd ?? null,
+      rank: null,
+      description: known?.description ?? "Live token metadata is temporarily unavailable, so Acorus is showing a safe fallback detail card.",
+      logoUrl: null,
+      links: known?.links ?? [],
+      platforms: [],
+      provider: this.id,
+      sourceStatus: "mock",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getCoinChartById(
+    coinId: string,
+    request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
+  ): Promise<MarketChartDto> {
+    return this.getChart({
+      chainId: 1,
+      symbol: fallbackSymbolForCoinId(coinId),
+      currency: request.currency,
+      range: request.range,
+      tokenAddress: null,
+    });
+  }
+
+  async searchMarket(query: string): Promise<MarketSearchResult[]> {
+    const normalized = query.trim();
+    if (!normalized) return [];
+
+    return [
+      {
+        id: `mock-${normalized}`,
+        kind: "token",
+        label: normalized,
+        subtitle: "Fallback token result",
+        href: `/tokens/coingecko/${encodeURIComponent(normalized.toLowerCase())}?source=coingecko&symbol=${encodeURIComponent(normalized.toUpperCase())}&name=${encodeURIComponent(normalized)}`,
+        symbol: normalized.toUpperCase(),
+      },
+    ];
   }
 }
 
@@ -410,6 +633,71 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
       }
     }
     return [];
+  }
+
+  async getTokenDetailByCoinId(coinId: string, currency: FiatCurrency): Promise<TokenDetailPayload> {
+    for (const provider of this.providers) {
+      if (provider.getTokenDetailByCoinId) {
+        try {
+          await this.rateLimiter.acquire();
+          return await provider.getTokenDetailByCoinId(coinId, currency);
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    return this.mockProvider.getTokenDetailByCoinId(coinId, currency);
+  }
+
+  async getCoinChartById(
+    coinId: string,
+    request: Omit<MarketChartRequest, "chainId" | "symbol" | "tokenAddress">,
+  ): Promise<MarketChartDto> {
+    if (!this.rateLimiter.take()) {
+      return this.mockProvider.getCoinChartById(coinId, request);
+    }
+
+    for (const provider of this.providers) {
+      if (provider.getCoinChartById) {
+        try {
+          return await provider.getCoinChartById(coinId, request);
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    return this.mockProvider.getCoinChartById(coinId, request);
+  }
+
+  async searchMarket(query: string): Promise<MarketSearchResult[]> {
+    const results: MarketSearchResult[] = [];
+
+    for (const provider of this.providers) {
+      if (!provider.searchMarket) {
+        continue;
+      }
+
+      try {
+        await this.rateLimiter.acquire();
+        results.push(...await provider.searchMarket(query));
+      } catch {
+        continue;
+      }
+    }
+
+    const seen = new Set<string>();
+    const unique = results.filter((item) => {
+      const key = `${item.kind}:${item.href}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
+    return unique.length ? unique.slice(0, 12) : this.mockProvider.searchMarket(query);
   }
 }
 

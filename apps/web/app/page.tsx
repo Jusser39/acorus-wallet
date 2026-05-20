@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { CapabilityStatusBoard } from "@/components/capability-status-board";
+import { HomeSwapPanel } from "@/components/home-swap-panel";
 import { TokenDiscoveryHero } from "@/components/token-discovery-hero";
 
 export default function Home() {
   return (
     <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
+      <HomeSwapPanel />
+
       <TokenDiscoveryHero
+        compact
+        primaryHref="/explore"
+        primaryLabel="Explore tokens"
         secondaryHref="/extension"
         secondaryLabel="Open extension"
       />

@@ -3,6 +3,7 @@ import type {
   MarketDataProvider,
   MarketChartRequest,
   MarketPriceRequest,
+  MarketSearchResult,
 } from "./provider.js";
 import type { ApiEnv } from "../env.js";
 import type { ExploreTokenItem } from "@acorus/shared";
@@ -20,12 +21,29 @@ const DEXSCREENER_CHAIN_MAP: Record<number, string> = {
   43114: "avalanche",
 };
 
+const DEXSCREENER_ROUTE_CHAIN_MAP: Record<string, number | string> = {
+  ethereum: 1,
+  bsc: 56,
+  polygon: 137,
+  arbitrum: 42161,
+  optimism: 10,
+  base: 8453,
+  avalanche: 43114,
+  solana: 101,
+  tron: "tron-mainnet",
+};
+
 interface DexScreenerPair {
   chainId: string;
   dexId: string;
   url: string;
   pairAddress: string;
   baseToken: {
+    address: string;
+    name: string;
+    symbol: string;
+  };
+  quoteToken?: {
     address: string;
     name: string;
     symbol: string;
@@ -42,6 +60,11 @@ interface DexScreenerPair {
   };
   marketCap?: number;
   fdv?: number;
+  info?: {
+    imageUrl?: string | null;
+    websites?: Array<{ url?: string | null }> | null;
+    socials?: Array<{ platform?: string | null; handle?: string | null; url?: string | null }> | null;
+  };
 }
 
 interface DexScreenerTokenResponse {
@@ -190,9 +213,57 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
       marketCapUsd: bestPair.marketCap ?? null,
       fdvUsd: bestPair.fdv ?? null,
       pairUrl: bestPair.url,
+      websiteUrl: bestPair.info?.websites?.find((site) => site.url)?.url ?? null,
+      twitterUrl: resolveDexScreenerSocialUrl(bestPair, "twitter") ?? resolveDexScreenerSocialUrl(bestPair, "x"),
+      telegramUrl: resolveDexScreenerSocialUrl(bestPair, "telegram"),
+      logoUrl: bestPair.info?.imageUrl ?? null,
       riskLevel,
       riskFlags,
     };
+  }
+
+  async searchMarket(query: string): Promise<MarketSearchResult[]> {
+    const normalized = query.trim();
+    if (normalized.length < 2) return [];
+
+    await this.rateLimiter.acquire();
+    const response = await httpGet<DexScreenerTokenResponse>(
+      `${this.baseUrl}/latest/dex/search?q=${encodeURIComponent(normalized)}`,
+      this.timeoutMs,
+    );
+
+    return (response.pairs ?? []).slice(0, 10).flatMap((pair): MarketSearchResult[] => {
+      const chainId = DEXSCREENER_ROUTE_CHAIN_MAP[pair.chainId] ?? pair.chainId;
+      const base = pair.baseToken;
+      const pool: MarketSearchResult = {
+        id: `dex-pool:${pair.chainId}:${pair.pairAddress}`,
+        kind: "pool",
+        label: `${pair.baseToken.symbol}/${pair.quoteToken?.symbol ?? "PAIR"}`,
+        subtitle: `${pair.dexId} · ${pair.chainId} · liquidity ${formatSearchUsd(pair.liquidity?.usd)}`,
+        href: pair.url,
+        chainKey: pair.chainId,
+        chainId,
+        pairAddress: pair.pairAddress,
+        tokenAddress: base.address,
+        priceUsd: pair.priceUsd ? Number(pair.priceUsd) : null,
+        liquidityUsd: pair.liquidity?.usd ?? null,
+      };
+      const token: MarketSearchResult = {
+        id: `dex-token:${pair.chainId}:${base.address}`,
+        kind: "token",
+        label: base.name,
+        subtitle: `${base.symbol} · ${pair.chainId} · ${pair.dexId}`,
+        href: `/tokens/${encodeURIComponent(String(chainId))}/${encodeURIComponent(base.address)}?family=${String(chainId) === "101" ? "solana" : "evm"}&symbol=${encodeURIComponent(base.symbol)}&name=${encodeURIComponent(base.name)}&source=dexscreener`,
+        symbol: base.symbol,
+        logoUrl: pair.info?.imageUrl ?? null,
+        chainKey: pair.chainId,
+        chainId,
+        tokenAddress: base.address,
+        priceUsd: pair.priceUsd ? Number(pair.priceUsd) : null,
+        liquidityUsd: pair.liquidity?.usd ?? null,
+      };
+      return [token, pool];
+    });
   }
 
   async getMemeBoosts(): Promise<ExploreTokenItem[]> {
@@ -255,6 +326,23 @@ export class DexscreenerMarketDataProvider implements MarketDataProvider {
       return [];
     }
   }
+}
+
+function resolveDexScreenerSocialUrl(pair: DexScreenerPair, platform: string): string | null {
+  const social = pair.info?.socials?.find((item) => item.platform?.toLowerCase() === platform);
+  if (!social) return null;
+  if (social.url) return social.url;
+  if (!social.handle) return null;
+  if (platform === "twitter" || platform === "x") return `https://x.com/${social.handle.replace(/^@/u, "")}`;
+  if (platform === "telegram") return `https://t.me/${social.handle.replace(/^@/u, "")}`;
+  return null;
+}
+
+function formatSearchUsd(value: number | null | undefined): string {
+  if (value == null) return "n/a";
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
 }
 
 function summarizeBoostName(item: {

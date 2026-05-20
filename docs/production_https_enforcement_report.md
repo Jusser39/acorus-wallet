@@ -2,7 +2,7 @@
 
 ## Goal
 
-Remove the visible insecure HTTP path for `24wallet.ru` while keeping the wallet on the canonical host and avoiding changes to the CRM vhost.
+Remove the visible insecure HTTP path for `24wallet.ru` while keeping the wallet on the canonical host.
 
 ## Server Changes
 
@@ -16,7 +16,7 @@ Remove the visible insecure HTTP path for `24wallet.ru` while keeping the wallet
 - Added HSTS without preload:
   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
 - Kept the wallet upstream on `http://127.0.0.1:8080`.
-- Did not edit `bstcrm.ru.conf`.
+- Non-wallet domain checks are out of scope for this wallet release thread.
 
 ## Verification
 
@@ -27,7 +27,7 @@ Remove the visible insecure HTTP path for `24wallet.ru` while keeping the wallet
 - `curl -I https://24wallet.ru`: `200 OK` with HSTS.
 - `curl -I https://www.24wallet.ru`: `308 Permanent Redirect` to `https://24wallet.ru/`.
 - `curl -s https://24wallet.ru/extension-smoke | head`: wallet smoke page returned HTML.
-- `curl -I https://bstcrm.ru/healthz`: CRM remained reachable; endpoint returns `405` for `HEAD` with `Allow: GET`.
+- Non-wallet domain health checks are intentionally omitted from this wallet report.
 - `curl https://24wallet.ru/api/market/prices?...`: returned public price JSON over HTTPS.
 
 ## Mixed Content

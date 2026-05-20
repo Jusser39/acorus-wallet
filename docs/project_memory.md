@@ -928,7 +928,7 @@
 - Domain routing finding:
   - `24wallet.ru` and `www.24wallet.ru` DNS resolve to `85.239.59.199`
   - HTTP serves the Acorus wallet app
-  - HTTPS redirects to `/login?next=%2F`, so the SSL nginx vhost still points at the CRM/login app
+  - HTTPS redirected to `/login?next=%2F`, so the SSL nginx vhost was not serving the wallet app
 - Extension UX changes:
   - popup now has a separate account selector panel for EVM, Solana, Tron, BTC coming soon, and TON coming soon
   - account/profile selection remains independent from active network selection
@@ -964,10 +964,10 @@
 
 - Status: **implemented locally; HTTPS fixed on VPS**
 - Production routing:
-  - fixed `24wallet.ru` / `www.24wallet.ru` HTTPS so nginx serves the Acorus wallet instead of the CRM catch-all
+  - fixed `24wallet.ru` / `www.24wallet.ru` HTTPS so nginx serves the Acorus wallet
   - created nginx backup at `/root/backups/acorus-wallet-nginx-https-fix_20260519_130515/`
   - issued Let's Encrypt certificate for `24wallet.ru` and `www.24wallet.ru`
-  - verified HTTP/HTTPS wallet responses and confirmed CRM still responds on `bstcrm.ru`
+  - verified HTTP/HTTPS wallet responses
   - deployed release `/opt/acorus-wallet-release-current` and verified `/extension-smoke` returns `200 OK`
 - Solana MVP:
   - wallet-core now has Solana RPC timeout, explorer helpers, amount parsing/formatting, send draft validation, message signing, and native SOL send execution
@@ -1000,7 +1000,7 @@
   - `http://24wallet.ru` and `http://www.24wallet.ru` now return `308` to `https://24wallet.ru`
   - `https://www.24wallet.ru` now returns `308` to canonical `https://24wallet.ru`
   - canonical `https://24wallet.ru` returns `200 OK` with HSTS
-  - `bstcrm.ru` was not edited and still responds
+  - non-wallet domain checks are out of scope for this wallet thread
 - Extension API hardening:
   - extension price API bases now prioritize `https://24wallet.ru`
   - `http://24wallet.ru` is no longer a production API priority
@@ -1058,7 +1058,7 @@
   - VPS `api` and `web` rebuilt/recreated from `/opt/acorus-wallet-release-current`
   - `https://24wallet.ru`, `/health`, and `/extension-smoke` return `200`
   - `https://24wallet.ru/api/swap/evm/0x/price?...` still correctly returns `503`
-  - `https://bstcrm.ru/healthz` still returns `200`
+  - non-wallet domain checks are out of scope for this wallet thread
 - Planning documents:
   - `docs/evm_0x_swap_production_hardening_plan.md`
   - `docs/evm_0x_production_activation_plan.md`
@@ -1140,7 +1140,7 @@
   - `https://24wallet.ru/health` -> `200`
   - `https://24wallet.ru/api/market/prices?...` -> `200`
   - `https://24wallet.ru/extension-smoke` -> `200`
-  - `https://bstcrm.ru/healthz` -> `200`
+  - non-wallet domain checks are out of scope for this wallet thread
 - Live smoke result:
   - native ETH -> USDC `price` passed
   - native ETH -> USDC `quote` passed
@@ -1203,5 +1203,36 @@
   - backup `/root/backups/acorus-token-pages-deploy_20260519_232021`
   - Docker Compose `api`, `web`, and `nginx` rebuilt/recreated
   - `https://24wallet.ru/explore`, EVM token page, Solana token page, `range=ALL` chart API, and 0x status were verified
-  - `https://bstcrm.ru/healthz` still returned `200` with GET
+  - non-wallet domain checks are out of scope for this wallet thread
+
+## Uniswap-Like Token Detail Search and Home Swap (2026-05-20)
+
+- Status: **implemented locally, validation passed**
+- Removed non-wallet domain references from wallet docs/memory per the current wallet-only product scope.
+- Fixed CoinGecko-only Explore routing so tokens such as XRP now resolve to `/tokens/coingecko/{id}` instead of incorrectly falling back to `/tokens/1/native`.
+- Added backend `/api/market/token-detail`, `/api/market/coin-chart`, and `/api/market/search`.
+- CoinGecko now supplies token detail metadata, logo, description, market cap, FDV, 24h volume, 24h high/low, website/explorer/X links, platform mappings, and token search.
+- DexScreener now supplies search results for pools/tokens plus website/social/logo metadata where available.
+- Token pages now render richer market stats, about text, links, share action, canonical chart ranges, and EVM 0x swap preselection when a CoinGecko platform contract is available.
+- The global wallet header now includes token/pool/wallet search.
+- The home page now starts with a real backend-proxied 0x EVM swap composer instead of a decorative placeholder.
+- Development CSP now allows local wallet smoke testing without changing production CSP.
+- CoinGecko-id fallback detail/chart data now includes major assets such as XRP, preventing empty stats and zero charts when public CoinGecko endpoints rate-limit long range requests.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+- Local smoke passed:
+  - XRP token detail API returned live market cap, FDV, 24h volume and external links
+  - XRP coin chart API returned usable data for `1H`, `1D`, `1W`, `1M`, `1Y`, and non-zero fallback for rate-limited `ALL`
+  - browser token page rendered stats, about, links, share, search and chart
+  - browser home page rendered the 0x EVM swap composer
+- Known limits:
+  - liquidity depends on DexScreener pair availability;
+  - 0x swap execution remains EVM-only;
+  - Solana/Jupiter, Tron, BTC, TON and cross-chain swap execution remain gated.
 

@@ -113,6 +113,48 @@ const SENSITIVE_FIELD_NAMES = new Set([
   "rawtransaction",
 ]);
 
+function buildWalletSearchResults(query: string) {
+  const trimmed = query.trim();
+
+  if (/^0x[a-fA-F0-9]{40}$/u.test(trimmed)) {
+    return [{
+      id: `wallet:evm:${trimmed.toLowerCase()}`,
+      kind: "wallet" as const,
+      label: `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`,
+      subtitle: "EVM wallet address",
+      href: `/view-only?address=${encodeURIComponent(trimmed)}&family=evm`,
+      chainKey: "evm",
+      chainId: 1,
+    }];
+  }
+
+  if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/u.test(trimmed)) {
+    return [{
+      id: `wallet:tron:${trimmed}`,
+      kind: "wallet" as const,
+      label: `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`,
+      subtitle: "Tron wallet address",
+      href: `/view-only?address=${encodeURIComponent(trimmed)}&family=tron`,
+      chainKey: "tron",
+      chainId: "tron-mainnet",
+    }];
+  }
+
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u.test(trimmed)) {
+    return [{
+      id: `wallet:solana:${trimmed}`,
+      kind: "wallet" as const,
+      label: `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`,
+      subtitle: "Solana wallet address",
+      href: `/view-only?address=${encodeURIComponent(trimmed)}&family=solana`,
+      chainKey: "solana",
+      chainId: 101,
+    }];
+  }
+
+  return [];
+}
+
 export interface BuildAppOptions {
   env?: ApiEnv;
   store?: AppStore;
@@ -768,6 +810,141 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         },
       };
     }
+  });
+
+  app.get("/api/market/coin-chart", async (request) => {
+    const query = z
+      .object({
+        coinId: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/u),
+        currency: fiatCurrencySchema.default("USD"),
+        range: chartRangeSchema.default("1W"),
+      })
+      .parse(request.query);
+
+    if (!marketProvider.getCoinChartById) {
+      const fallback = await mockFallback.getCoinChartById(query.coinId, {
+        currency: query.currency as FiatCurrency,
+        range: query.range as GetMarketChartInput["range"],
+      });
+      return { ok: true, chart: { ...fallback, sourceStatus: "fallback_mock" } };
+    }
+
+    try {
+      const chart = await marketProvider.getCoinChartById(query.coinId, {
+        currency: query.currency as FiatCurrency,
+        range: query.range as GetMarketChartInput["range"],
+      });
+      return {
+        ok: true,
+        chart: {
+          ...chart,
+          sourceStatus: chart.sourceStatus ?? (chart.provider === "mock" ? "fallback_mock" : "live"),
+        },
+      };
+    } catch {
+      const fallback = await mockFallback.getCoinChartById(query.coinId, {
+        currency: query.currency as FiatCurrency,
+        range: query.range as GetMarketChartInput["range"],
+      });
+      return { ok: true, chart: { ...fallback, sourceStatus: "fallback_mock" } };
+    }
+  });
+
+  app.get("/api/market/token-detail", async (request) => {
+    const query = z
+      .object({
+        coinId: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/u).optional(),
+        chainId: z.coerce.number().int().positive().optional(),
+        tokenAddress: z.string().optional(),
+        currency: fiatCurrencySchema.default("USD"),
+      })
+      .parse(request.query);
+
+    if (query.coinId) {
+      const detail = marketProvider.getTokenDetailByCoinId
+        ? await marketProvider.getTokenDetailByCoinId(query.coinId, query.currency as FiatCurrency)
+        : await mockFallback.getTokenDetailByCoinId(query.coinId, query.currency as FiatCurrency);
+      return { ok: true, detail };
+    }
+
+    if (!query.chainId || !query.tokenAddress) {
+      return { ok: false, error: "token_detail_query_required" };
+    }
+
+    assertNoSensitiveFields({ tokenAddress: query.tokenAddress });
+
+    const normalized = normalizeTokenAddress(query.chainId, query.tokenAddress);
+    if (!normalized) {
+      return { ok: false, error: "invalid_token_address" };
+    }
+
+    const discovery = marketProvider.discoverToken
+      ? await marketProvider.discoverToken(query.chainId, normalized).catch(() => null)
+      : null;
+    const prices = await marketProvider.getPrices([{
+      chainId: query.chainId,
+      tokenAddress: normalized,
+      symbol: discovery?.symbol ?? "TOKEN",
+      currency: query.currency as FiatCurrency,
+    }]).catch(() => []);
+    const price = prices[0] ?? null;
+
+    return {
+      ok: true,
+      detail: {
+        id: `${query.chainId}:${normalized}`,
+        symbol: discovery?.symbol ?? price?.symbol ?? "TOKEN",
+        name: discovery?.name ?? price?.symbol ?? "Token",
+        currency: query.currency,
+        price: price?.price ?? null,
+        change24h: price?.change24h ?? null,
+        marketCapUsd: discovery?.marketCapUsd ?? price?.marketCap ?? null,
+        fdvUsd: discovery?.fdvUsd ?? null,
+        volume24hUsd: discovery?.volume24hUsd ?? price?.volume24h ?? null,
+        liquidityUsd: discovery?.liquidityUsd ?? price?.liquidityUsd ?? null,
+        high24hUsd: null,
+        low24hUsd: null,
+        rank: null,
+        description: discovery?.description ?? null,
+        logoUrl: discovery?.logoUrl ?? null,
+        links: [
+          discovery?.pairUrl ? { label: "Pair", url: discovery.pairUrl, kind: "pair" } : null,
+          discovery?.explorerUrl ? { label: "Explorer", url: discovery.explorerUrl, kind: "explorer" } : null,
+          discovery?.websiteUrl ? { label: "Website", url: discovery.websiteUrl, kind: "website" } : null,
+          discovery?.twitterUrl ? { label: "X", url: discovery.twitterUrl, kind: "twitter" } : null,
+          discovery?.telegramUrl ? { label: "Telegram", url: discovery.telegramUrl, kind: "telegram" } : null,
+        ].filter(Boolean),
+        platforms: [{
+          chainId: query.chainId,
+          chainKey: String(query.chainId),
+          tokenAddress: normalized,
+          decimals: discovery?.decimals ?? null,
+        }],
+        provider: discovery ? marketProvider.id : price?.provider ?? "market",
+        sourceStatus: discovery || price ? "live" : "unavailable",
+        updatedAt: new Date().toISOString(),
+      },
+    };
+  });
+
+  app.get("/api/market/search", async (request) => {
+    const query = z
+      .object({
+        query: z.string().min(1).max(120),
+      })
+      .parse(request.query);
+
+    const text = query.query.trim();
+    const walletResults = buildWalletSearchResults(text);
+    const marketResults = marketProvider.searchMarket
+      ? await marketProvider.searchMarket(text).catch(() => [])
+      : [];
+
+    return {
+      ok: true,
+      results: [...walletResults, ...marketResults].slice(0, 14),
+      updatedAt: new Date().toISOString(),
+    };
   });
 
   // ---- Token Discovery ----

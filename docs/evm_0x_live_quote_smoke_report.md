@@ -24,7 +24,7 @@
 4. `GET /api/swap/evm/0x/quote` for approval-needed ERC-20 sell
 5. `GET /api/market/prices`
 6. `GET /extension-smoke`
-7. `GET https://bstcrm.ru/healthz`
+7. Non-wallet domain checks are out of scope for this wallet report.
 8. `node scripts/smoke-zerox-live.mjs`
 
 ## Script result

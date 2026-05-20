@@ -44,7 +44,7 @@ Note: one parallel build attempt hit a Windows `EPERM` file-lock while two build
   - `https://24wallet.ru/tokens/101/NATIVE?family=solana&symbol=SOL&name=Solana` returned `200`.
   - `https://24wallet.ru/api/market/chart?...&range=ALL` returned `ok:true`.
   - `https://24wallet.ru/api/swap/evm/status` returned `configured:true`.
-  - `https://bstcrm.ru/healthz` returned `200` with GET.
+  - Non-wallet domain checks are out of scope for this wallet release thread.
 
 ## Known Limits
 

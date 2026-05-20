@@ -35,6 +35,11 @@ export function SwapComposer(props: {
   initialChainId?: number;
   initialSellToken?: string;
   initialBuyToken?: string;
+  initialBuyTokenMeta?: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
   compact?: boolean;
   title?: string;
   description?: string;
@@ -56,8 +61,8 @@ export function SwapComposer(props: {
   const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
   const tokens = useMemo(
-    () => buildEvmTokenOptions(chainId, props.portfolioAssets),
-    [chainId, props.portfolioAssets],
+    () => buildEvmTokenOptions(chainId, props.portfolioAssets, props.initialBuyToken, props.initialBuyTokenMeta),
+    [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.portfolioAssets],
   );
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
 
@@ -78,7 +83,7 @@ export function SwapComposer(props: {
   }, []);
 
   useEffect(() => {
-    const nextTokens = buildEvmTokenOptions(chainId, props.portfolioAssets);
+    const nextTokens = buildEvmTokenOptions(chainId, props.portfolioAssets, props.initialBuyToken, props.initialBuyTokenMeta);
     const nextSellToken = resolveInitialTokenValue(
       nextTokens,
       props.initialSellToken,
@@ -94,7 +99,7 @@ export function SwapComposer(props: {
     setBuyToken(nextBuyToken);
     setQuote(null);
     setError(null);
-  }, [chainId, props.portfolioAssets, props.initialBuyToken, props.initialSellToken]);
+  }, [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.initialSellToken, props.portfolioAssets]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -548,6 +553,8 @@ export function SwapComposer(props: {
 function buildEvmTokenOptions(
   chainId: number,
   portfolioAssets?: AssetBalance[],
+  initialBuyToken?: string,
+  initialBuyTokenMeta?: { symbol: string; name: string; decimals: number },
 ): TokenOption[] {
   const chain = EVM_CHAINS.find((item) => item.chainId === chainId) ?? EVM_CHAINS[0]!;
   const native: TokenOption = {
@@ -574,7 +581,16 @@ function buildEvmTokenOptions(
     }));
   const byValue = new Map<string, TokenOption>();
 
-  for (const token of [native, ...portfolioTokens, ...curated]) {
+  const initial = initialBuyToken && initialBuyToken !== "native" && initialBuyTokenMeta
+    ? [{
+        value: initialBuyToken,
+        symbol: initialBuyTokenMeta.symbol,
+        name: initialBuyTokenMeta.name,
+        decimals: initialBuyTokenMeta.decimals,
+      }]
+    : [];
+
+  for (const token of [native, ...portfolioTokens, ...curated, ...initial]) {
     byValue.set(token.value.toLowerCase(), token);
   }
 

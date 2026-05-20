@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GlobalMarketSearch } from "@/components/global-market-search";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { formatAddress } from "@/lib/utils";
 
@@ -81,6 +82,9 @@ export function WalletNav() {
               Lock
             </button>
           </div>
+        </div>
+        <div className="flex justify-center">
+          <GlobalMarketSearch />
         </div>
         <nav className="flex gap-1 overflow-x-auto rounded-full border border-slate-900/8 bg-white/82 p-1.5 shadow-[0_16px_42px_rgba(148,163,184,0.16)]">
           {navItems.map((item) => {

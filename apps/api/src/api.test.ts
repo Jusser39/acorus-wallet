@@ -302,6 +302,41 @@ describe("api", () => {
     });
   });
 
+  it("returns canonical token detail and coin chart fallbacks by CoinGecko id", async () => {
+    const detail = await app.inject({
+      method: "GET",
+      url: "/api/market/token-detail?coinId=ripple&currency=USD",
+    });
+    const chart = await app.inject({
+      method: "GET",
+      url: "/api/market/coin-chart?coinId=ripple&currency=USD&range=1M",
+    });
+
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json()).toMatchObject({
+      ok: true,
+      detail: {
+        id: "ripple",
+      },
+    });
+    expect(chart.statusCode).toBe(200);
+    expect(chart.json().chart.range).toBe("1M");
+    expect(chart.json().chart.points.length).toBeGreaterThan(1);
+  });
+
+  it("searches tokens pools and wallet-shaped addresses without secrets", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/market/search?query=0x0000000000000000000000000000000000000001",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().results[0]).toMatchObject({
+      kind: "wallet",
+      subtitle: "EVM wallet address",
+    });
+  });
+
   it("market chart accepts token-page intervals", async () => {
     for (const range of ["1H", "1D", "1W", "1M", "1Y", "ALL"]) {
       const res = await app.inject({

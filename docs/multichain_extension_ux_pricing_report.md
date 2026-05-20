@@ -18,7 +18,7 @@
 
 - `24wallet.ru` DNS points to `85.239.59.199`.
 - `http://24wallet.ru` and `http://www.24wallet.ru` return the Acorus wallet app.
-- `https://24wallet.ru` and `https://www.24wallet.ru` redirect to `/login?next=%2F`, so the HTTPS nginx server block is still routed to the CRM/login app.
+- `https://24wallet.ru` and `https://www.24wallet.ru` redirect to `/login?next=%2F`, so the HTTPS nginx server block is still routed to the wrong app.
 - Fix should be applied on the server TLS vhost: `server_name 24wallet.ru www.24wallet.ru` for port `443` must proxy to the same wallet upstream as HTTP/port `8080`.
 
 ## Tests Added

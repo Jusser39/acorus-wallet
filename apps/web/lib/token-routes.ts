@@ -9,11 +9,13 @@ import {
 } from "@acorus/shared";
 
 type TokenRouteInput = {
+  id?: string | null;
   chainId?: number | string | null;
   chainKey?: string | null;
   tokenAddress?: string | null;
   symbol?: string | null;
   name?: string | null;
+  source?: string | null;
 };
 
 const NATIVE_SYMBOL_ROUTES: Record<string, { chainId: number | string; family: ChainFamily }> = {
@@ -47,6 +49,19 @@ const CHAIN_KEY_ROUTES: Record<string, { chainId: number | string; family: Chain
 
 export function buildTokenDetailHref(input: TokenRouteInput): string {
   const symbol = input.symbol?.trim().toUpperCase() || "TOKEN";
+  const coingeckoId = resolveCoinGeckoId(input);
+
+  if (coingeckoId) {
+    const params = new URLSearchParams({
+      source: "coingecko",
+      symbol,
+    });
+    if (input.name?.trim()) {
+      params.set("name", input.name.trim());
+    }
+    return `/tokens/coingecko/${encodeURIComponent(coingeckoId)}?${params.toString()}`;
+  }
+
   const chainRoute = resolveTokenRoute(input);
   const tokenAddress = normalizeTokenRouteAddress(input.tokenAddress);
   const params = new URLSearchParams({
@@ -63,11 +78,13 @@ export function buildTokenDetailHref(input: TokenRouteInput): string {
 
 export function buildExploreTokenHref(token: ExploreTokenItem): string {
   return buildTokenDetailHref({
+    id: token.id,
     chainId: token.chainId,
     chainKey: token.chainKey,
     tokenAddress: token.tokenAddress,
     symbol: token.symbol,
     name: token.name,
+    source: token.source,
   });
 }
 
@@ -98,6 +115,27 @@ function resolveTokenRoute(input: TokenRouteInput): { chainId: number | string; 
     chainId: 1,
     family: "evm",
   };
+}
+
+function resolveCoinGeckoId(input: TokenRouteInput): string | null {
+  const explicitSource = input.source?.trim().toLowerCase();
+  const id = input.id?.trim();
+  const hasChain = input.chainId !== undefined && input.chainId !== null && String(input.chainId).trim();
+  const hasTokenAddress = input.tokenAddress?.trim();
+
+  if (input.chainKey?.trim().toLowerCase() === "coingecko" && id) {
+    return id;
+  }
+
+  if ((explicitSource?.startsWith("coingecko") || explicitSource === "mock") && id && !hasChain && !hasTokenAddress) {
+    return id;
+  }
+
+  if (!hasChain && !hasTokenAddress && id && !NATIVE_SYMBOL_ROUTES[input.symbol?.trim().toUpperCase() ?? ""]) {
+    return id;
+  }
+
+  return null;
 }
 
 function normalizeTokenRouteAddress(address?: string | null): string {

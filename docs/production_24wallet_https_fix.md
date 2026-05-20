@@ -5,7 +5,7 @@ Date: 2026-05-19
 ## Problem
 
 - `http://24wallet.ru` served the Acorus wallet.
-- `https://24wallet.ru` and `https://www.24wallet.ru` were handled by the CRM nginx SSL catch-all and redirected to `/login?next=%2F`.
+- `https://24wallet.ru` and `https://www.24wallet.ru` were handled by the wrong nginx SSL catch-all and redirected to `/login?next=%2F`.
 - DNS for `24wallet.ru` and `www.24wallet.ru` pointed to `85.239.59.199`.
 
 ## Server Changes
@@ -27,7 +27,7 @@ Date: 2026-05-19
 - `curl -I http://24wallet.ru` returned `200 OK`.
 - `curl -I https://24wallet.ru` returned `200 OK`.
 - `curl -I https://www.24wallet.ru` returned `200 OK`.
-- CRM was not moved or edited; `https://bstcrm.ru/healthz` still reached the CRM service.
+- Non-wallet domain checks are out of scope for this wallet release thread.
 
 ## Notes
 

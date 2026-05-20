@@ -38,7 +38,7 @@ Implemented a safety-gated EVM swap MVP through the Acorus backend and Chrome ex
   - `https://24wallet.ru/extension-smoke` contains the EVM 0x diagnostics block
   - `https://24wallet.ru/api/market/prices?...` still works
   - `https://24wallet.ru` returns 200 over HTTPS
-  - `bstcrm.ru/healthz` remains separate
+  - Non-wallet domain checks are out of scope for this wallet report.
 
 ## Validation
 

@@ -7,12 +7,15 @@ import { SwapComposer } from "@/components/swap-composer";
 import { TokenChart } from "@/components/token-chart";
 import {
   getMarketChart,
+  getMarketCoinChart,
   getMarketPrices,
+  getMarketTokenDetail,
   listUserTokens,
   type ChartRange,
   type FiatCurrency,
   type MarketChart,
   type MarketPrice,
+  type TokenDetail,
 } from "@/lib/api";
 import { getChainFamilyLabel, isSkeletonFamily } from "@/lib/universal-assets";
 import { getUniversalTokenExplorerUrl } from "@/lib/universal-explorer";
@@ -125,16 +128,18 @@ function resolveFamily(
 export default function TokenDetailPage({ params }: { params: Promise<PageParams> | PageParams }) {
   const resolvedParams = "then" in params ? use(params as Promise<PageParams>) : params;
   const rawChainId = decodeURIComponent(resolvedParams.chainId);
+  const isCoinGeckoRoute = rawChainId.toLowerCase() === "coingecko";
   const numericChainId = Number(rawChainId);
   const hasNumericChain = Number.isFinite(numericChainId) && numericChainId > 0;
   const chainId: ChainId = hasNumericChain ? numericChainId : rawChainId;
   const tokenAddress = decodeURIComponent(resolvedParams.tokenAddress);
+  const coinId = isCoinGeckoRoute ? tokenAddress : null;
   const searchParams = useSearchParams();
   const family = resolveFamily(searchParams?.get("family"), chainId);
   const symbolParam = searchParams?.get("symbol") ?? undefined;
   const nameParam = searchParams?.get("name") ?? undefined;
   const isNativeToken = isNativeRouteAddress(tokenAddress);
-  const isSkeleton = isSkeletonFamily(family) || !hasNumericChain;
+  const isSkeleton = isSkeletonFamily(family) || (!hasNumericChain && !isCoinGeckoRoute);
   const familyLabel = getChainFamilyLabel(family);
   const chain = hasNumericChain ? getChainById(numericChainId) ?? getUniversalChain({ family, chainId }) : getUniversalChain({ family, chainId });
 
@@ -145,6 +150,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() =>
     hasNumericChain && !isNativeToken && !isSkeleton ? findCuratedToken(numericChainId, tokenAddress) : null,
   );
+  const [tokenDetail, setTokenDetail] = useState<TokenDetail | null>(null);
   const [price, setPrice] = useState<MarketPrice | null>(null);
   const [chart, setChart] = useState<MarketChart | null>(null);
   const [range, setRange] = useState<ChartRange>("1D");
@@ -167,6 +173,11 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
       if (isNativeToken) {
         const nativeSym = chain?.nativeSymbol ?? symbolParam ?? "TOKEN";
         if (active) setTokenMeta({ symbol: nativeSym, name: nameParam ?? chain?.name ?? nativeSym });
+        return;
+      }
+
+      if (isCoinGeckoRoute) {
+        if (active) setTokenMeta({ symbol: symbolParam ?? "TOKEN", name: nameParam ?? symbolParam ?? "Token" });
         return;
       }
 
@@ -208,16 +219,52 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [activeProfile?.id, chain, hasNumericChain, isNativeToken, isSkeleton, nameParam, numericChainId, symbolParam, tokenAddress, userId]);
+  }, [activeProfile?.id, chain, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, nameParam, numericChainId, symbolParam, tokenAddress, userId]);
 
-  const resolvedSymbol = tokenMeta?.symbol ?? symbolParam ?? "TOKEN";
-  const resolvedName = tokenMeta?.name ?? nameParam ?? price?.symbol ?? "Token";
+  const resolvedSymbol = tokenDetail?.symbol ?? tokenMeta?.symbol ?? symbolParam ?? "TOKEN";
+  const resolvedName = tokenDetail?.name ?? tokenMeta?.name ?? nameParam ?? price?.symbol ?? "Token";
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDetail() {
+      setError(null);
+      try {
+        const detail = await getMarketTokenDetail({
+          coinId: coinId ?? undefined,
+          chainId: !isCoinGeckoRoute && hasNumericChain && !isNativeToken ? numericChainId : undefined,
+          tokenAddress: !isCoinGeckoRoute && hasNumericChain && !isNativeToken ? tokenAddress : undefined,
+          currency,
+        });
+        if (!active) return;
+        setTokenDetail(detail);
+        if (detail) {
+          setTokenMeta({ symbol: detail.symbol, name: detail.name });
+        }
+      } catch (err) {
+        if (active) {
+          setTokenDetail(null);
+          if (isCoinGeckoRoute) {
+            setError(err instanceof Error ? err.message : "Failed to load token detail.");
+          }
+        }
+      }
+    }
+
+    if (isCoinGeckoRoute || (hasNumericChain && !isNativeToken && !isSkeleton)) {
+      void loadDetail();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, tokenAddress]);
 
   useEffect(() => {
     let active = true;
 
     async function loadPrice() {
-      if (isSkeleton || !hasNumericChain) return;
+      if (isSkeleton || !hasNumericChain || isCoinGeckoRoute) return;
       setLoadingPrice(true);
       setError(null);
 
@@ -247,23 +294,25 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [currency, hasNumericChain, isNativeToken, isSkeleton, numericChainId, resolvedSymbol, tokenAddress]);
+  }, [currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, resolvedSymbol, tokenAddress]);
 
   useEffect(() => {
     let active = true;
 
     async function loadChart() {
-      if (isSkeleton || !hasNumericChain) return;
+      if (isSkeleton || (!hasNumericChain && !isCoinGeckoRoute)) return;
       setLoadingChart(true);
 
       try {
-        const data = await getMarketChart({
-          chainId: numericChainId,
-          currency,
-          symbol: resolvedSymbol,
-          tokenAddress: isNativeToken ? null : tokenAddress,
-          range,
-        });
+        const data = isCoinGeckoRoute && coinId
+          ? await getMarketCoinChart({ coinId, currency, range })
+          : await getMarketChart({
+              chainId: numericChainId,
+              currency,
+              symbol: resolvedSymbol,
+              tokenAddress: isNativeToken ? null : tokenAddress,
+              range,
+            });
 
         if (active) {
           setChart(data);
@@ -283,20 +332,51 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [currency, hasNumericChain, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
+  }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
 
   const riskFlags = parseRiskFlags(price);
   const riskLevel = price?.riskLevel;
   const isHighRisk = riskLevel === "high" || riskLevel === "medium";
-  const priceBadge = badgeForStatus(price?.sourceStatus);
+  const priceBadge = badgeForStatus(tokenDetail?.sourceStatus ?? price?.sourceStatus);
   const chartBadge = badgeForStatus(chart?.sourceStatus);
-  const priceChange = price?.change24h?.percent ?? null;
-  const canEvmSwap = family === "evm" && hasNumericChain && EVM_CHAINS.some((item) => item.chainId === numericChainId);
+  const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
+  const tradePlatform = useMemo(
+    () => tokenDetail?.platforms.find((platform) =>
+      typeof platform.chainId === "number"
+      && EVM_CHAINS.some((item) => item.chainId === platform.chainId)
+      && platform.tokenAddress,
+    ) ?? null,
+    [tokenDetail],
+  );
+  const tradeChainId = isCoinGeckoRoute && tradePlatform
+    ? Number(tradePlatform.chainId)
+    : numericChainId;
+  const tradeTokenAddress = isCoinGeckoRoute && tradePlatform?.tokenAddress
+    ? tradePlatform.tokenAddress
+    : tokenAddress;
+  const canEvmSwap = (isCoinGeckoRoute ? Boolean(tradePlatform) : family === "evm")
+    && Number.isFinite(tradeChainId)
+    && EVM_CHAINS.some((item) => item.chainId === tradeChainId);
   const activeEvmAddress = activeProfile?.chainFamily === "evm" ? activeProfile.publicAddress : null;
-  const targetSwapToken = isNativeToken ? "native" : tokenAddress;
-  const defaultSellToken = isNativeToken
-    ? getCuratedTokens(numericChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
+  const targetSwapToken = isNativeToken && !isCoinGeckoRoute ? "native" : tradeTokenAddress;
+  const defaultSellToken = isNativeToken && !isCoinGeckoRoute
+    ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
     : "native";
+  const displayPrice = tokenDetail?.price ?? price?.price ?? null;
+  const displayProvider = tokenDetail?.provider ?? price?.provider ?? "Unavailable";
+  const displayMarketCap = tokenDetail?.marketCapUsd ?? price?.marketCap ?? null;
+  const displayVolume24h = tokenDetail?.volume24hUsd ?? price?.volume24h ?? null;
+  const displayLiquidity = tokenDetail?.liquidityUsd ?? price?.liquidityUsd ?? null;
+  const displayFdv = tokenDetail?.fdvUsd ?? null;
+  const displayHigh24h = tokenDetail?.high24hUsd ?? null;
+  const displayLow24h = tokenDetail?.low24hUsd ?? null;
+  const externalLinks = tokenDetail?.links ?? [];
+  const logoUrl = tokenDetail?.logoUrl ?? null;
+
+  async function handleShare() {
+    if (typeof window === "undefined") return;
+    await navigator.clipboard.writeText(window.location.href);
+  }
 
   return (
     <section className="page mx-auto max-w-7xl space-y-6">
@@ -311,9 +391,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           <div className="app-surface subtle-grid overflow-hidden rounded-[2rem] p-5 sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="flex min-w-0 items-start gap-4">
-                <div className="token-orb h-14 w-14 shrink-0 text-base font-bold">
-                  {resolvedSymbol.slice(0, 4)}
-                </div>
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt={resolvedSymbol} className="h-14 w-14 shrink-0 rounded-full bg-slate-800" />
+                ) : (
+                  <div className="token-orb h-14 w-14 shrink-0 text-base font-bold">
+                    {resolvedSymbol.slice(0, 4)}
+                  </div>
+                )}
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -338,11 +423,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                         Explorer
                       </a>
                     ) : null}
-                    {price?.pairUrl ? (
-                      <a href={price.pairUrl} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
-                        Pair data
+                    {externalLinks.map((link) => (
+                      <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
+                        {link.label}
                       </a>
-                    ) : null}
+                    ))}
+                    <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
+                      Share
+                    </button>
                     <Link href="/receive" className="button-secondary text-sm">
                       Receive
                     </Link>
@@ -357,13 +445,13 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                 ) : null}
                 {loadingPrice ? (
                   <div className="ml-auto mt-4 h-12 w-40 animate-pulse rounded bg-slate-700/50" />
-                ) : price ? (
+                ) : displayPrice != null ? (
                   <>
                     <p className="mt-3 text-4xl font-semibold text-white">
-                      {price.price.toLocaleString("en-US", {
+                      {displayPrice.toLocaleString("en-US", {
                         style: "currency",
                         currency,
-                        maximumFractionDigits: price.price < 1 ? 6 : 2,
+                        maximumFractionDigits: displayPrice < 1 ? 6 : 2,
                       })}
                     </p>
                     {priceChange != null ? (
@@ -421,13 +509,27 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard label="Market cap" value={formatUsd(price?.marketCap)} />
-            <MetricCard label="Liquidity" value={formatUsd(price?.liquidityUsd)} />
-            <MetricCard label="24h volume" value={formatUsd(price?.volume24h)} />
-            <MetricCard label="Price source" value={price?.provider ?? "Unavailable"} />
+            <MetricCard label="Market cap" value={formatUsd(displayMarketCap)} />
+            <MetricCard label="FDV" value={formatUsd(displayFdv)} />
+            <MetricCard label="24h volume" value={formatUsd(displayVolume24h)} />
+            <MetricCard label="Liquidity" value={formatUsd(displayLiquidity)} />
+            <MetricCard label="24h high" value={formatUsd(displayHigh24h)} />
+            <MetricCard label="24h low" value={formatUsd(displayLow24h)} />
+            <MetricCard label="Price source" value={displayProvider} />
             <MetricCard label="Chart source" value={chart?.provider ?? "Unavailable"} />
             <MetricCard label="Risk" value={riskLevel ?? "Unknown"} tone={riskLevel} />
           </div>
+
+          {tokenDetail?.description ? (
+            <div className="panel space-y-3">
+              <h2 className="text-xl font-semibold text-white">About {resolvedName}</h2>
+              <p className="max-w-3xl text-sm leading-7 text-slate-300">
+                {tokenDetail.description.length > 720
+                  ? `${tokenDetail.description.slice(0, 720)}...`
+                  : tokenDetail.description}
+              </p>
+            </div>
+          ) : null}
 
           {isHighRisk || riskFlags.length > 0 ? (
             <div className="panel space-y-3 border-amber-500/30 bg-amber-500/10">
@@ -452,9 +554,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           {canEvmSwap ? (
             <SwapComposer
               compact
-              initialChainId={numericChainId}
+              initialChainId={tradeChainId}
               initialSellToken={defaultSellToken}
               initialBuyToken={targetSwapToken}
+              initialBuyTokenMeta={{
+                symbol: resolvedSymbol,
+                name: resolvedName,
+                decimals: tradePlatform?.decimals ?? 18,
+              }}
               portfolioAssets={[]}
               userAddress={activeEvmAddress}
               title={`Swap ${resolvedSymbol}`}

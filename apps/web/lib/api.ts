@@ -584,6 +584,58 @@ export type TokenDiscoveryResult = {
   providerId: string;
 };
 
+export type TokenDetailLink = {
+  label: string;
+  url: string;
+  kind: "explorer" | "website" | "twitter" | "telegram" | "pair" | "other";
+};
+
+export type TokenDetailPlatform = {
+  chainId: number | string;
+  chainKey: string;
+  tokenAddress: string | null;
+  decimals?: number | null;
+};
+
+export type TokenDetail = {
+  id: string;
+  symbol: string;
+  name: string;
+  currency: FiatCurrency;
+  price: number | null;
+  change24h: { value: number; percent: number } | null;
+  marketCapUsd: number | null;
+  fdvUsd: number | null;
+  volume24hUsd: number | null;
+  liquidityUsd: number | null;
+  high24hUsd: number | null;
+  low24hUsd: number | null;
+  rank: number | null;
+  description: string | null;
+  logoUrl: string | null;
+  links: TokenDetailLink[];
+  platforms: TokenDetailPlatform[];
+  provider: string;
+  sourceStatus: "live" | "mock" | "unavailable";
+  updatedAt: string;
+};
+
+export type MarketSearchResult = {
+  id: string;
+  kind: "token" | "pool" | "wallet";
+  label: string;
+  subtitle: string;
+  href: string;
+  symbol?: string | null;
+  logoUrl?: string | null;
+  chainKey?: string | null;
+  chainId?: number | string | null;
+  tokenAddress?: string | null;
+  pairAddress?: string | null;
+  priceUsd?: number | null;
+  liquidityUsd?: number | null;
+};
+
 export async function discoverToken(
   chainId: number,
   tokenAddress: string,
@@ -596,6 +648,45 @@ export async function discoverToken(
     `/api/market/discover-token?${params.toString()}`,
   );
   return response.discovery;
+}
+
+export async function getMarketTokenDetail(input: {
+  coinId?: string;
+  chainId?: number;
+  tokenAddress?: string;
+  currency: FiatCurrency;
+}): Promise<TokenDetail | null> {
+  const params = new URLSearchParams({ currency: input.currency });
+  if (input.coinId) params.set("coinId", input.coinId);
+  if (input.chainId) params.set("chainId", String(input.chainId));
+  if (input.tokenAddress) params.set("tokenAddress", input.tokenAddress);
+  const response = await apiFetch<{ ok: boolean; detail?: TokenDetail }>(
+    `/api/market/token-detail?${params.toString()}`,
+  );
+  return response.detail ?? null;
+}
+
+export async function getMarketCoinChart(input: {
+  coinId: string;
+  currency: FiatCurrency;
+  range: ChartRange;
+}): Promise<MarketChart> {
+  const params = new URLSearchParams({
+    coinId: input.coinId,
+    currency: input.currency,
+    range: input.range,
+  });
+  const response = await apiFetch<{ ok: true; chart: MarketChart }>(
+    `/api/market/coin-chart?${params.toString()}`,
+  );
+  return response.chart;
+}
+
+export async function searchMarket(query: string): Promise<MarketSearchResult[]> {
+  const response = await apiFetch<{ ok: true; results: MarketSearchResult[] }>(
+    `/api/market/search?query=${encodeURIComponent(query)}`,
+  );
+  return response.results;
 }
 
 // ---- Explore Feed ----

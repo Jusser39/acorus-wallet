@@ -35,6 +35,17 @@ describe("token detail routes", () => {
     ).toBe("/tokens/bitcoin-mainnet/native?family=utxo&symbol=BTC&name=Bitcoin");
   });
 
+  it("routes CoinGecko non-native market tokens to canonical coin detail pages", () => {
+    expect(
+      buildExploreTokenHref({
+        id: "ripple",
+        symbol: "XRP",
+        name: "XRP",
+        source: "coingecko_markets",
+      }),
+    ).toBe("/tokens/coingecko/ripple?source=coingecko&symbol=XRP&name=XRP");
+  });
+
   it("detects EVM token detail routes", () => {
     expect(isEvmTokenDetailRoute("1", "evm")).toBe(true);
     expect(isEvmTokenDetailRoute("101", "solana")).toBe(false);

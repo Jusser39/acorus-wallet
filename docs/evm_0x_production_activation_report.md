@@ -46,7 +46,7 @@ Production activation is **enabled and working** on `https://24wallet.ru`.
   - `https://24wallet.ru/api/swap/evm/0x/quote?...` -> `200`
   - `https://24wallet.ru/api/market/prices?...` -> `200`
   - `https://24wallet.ru/extension-smoke` -> `200`
-  - `https://bstcrm.ru/healthz` -> `200`
+  - Non-wallet domain checks are out of scope for this wallet report.
   - `node scripts/smoke-zerox-live.mjs` -> `PASS`
 
 ## Known limitations
