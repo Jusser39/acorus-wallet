@@ -566,3 +566,4 @@
 308. Re-ran targeted validation for the rate-limit queue patch: `pnpm --filter @acorus/api test` and `pnpm --filter @acorus/api build` passed.
 309. Added an in-memory last-good cache for `/api/market/coin-chart` so repeated token page interval switches can reuse the last live CoinGecko chart during temporary provider failures instead of rendering empty unavailable charts.
 310. Added a real Binance kline fallback for major CoinGecko ids so TON/SOL/BTC/ETH-style token charts can keep rendering real exchange price history when CoinGecko temporarily rejects chart history.
+311. Added a real Binance 24h ticker fallback for major token detail pages so temporary CoinGecko metadata failures still show live price/change/high/low/volume plus safe logo/link metadata instead of empty unavailable cards.

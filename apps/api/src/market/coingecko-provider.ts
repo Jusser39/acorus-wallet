@@ -139,6 +139,15 @@ type BinanceKline = [
   string,
 ];
 
+type BinanceTicker24h = {
+  lastPrice?: string;
+  priceChange?: string;
+  priceChangePercent?: string;
+  highPrice?: string;
+  lowPrice?: string;
+  quoteVolume?: string;
+};
+
 const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   bitcoin: "BTC",
   ethereum: "ETH",
@@ -155,6 +164,52 @@ const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   tether: "USDT",
   "usd-coin": "USDC",
   "the-open-network": "TON",
+};
+
+const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Pick<TokenDetailPayload, "name" | "description" | "logoUrl" | "links" | "platforms">> = {
+  bitcoin: {
+    name: "Bitcoin",
+    description: "Bitcoin is the original decentralized digital asset and settlement network with a fixed 21 million supply schedule.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+    links: [
+      { label: "Blockchain", url: "https://mempool.space/", kind: "explorer" },
+      { label: "Website", url: "https://bitcoin.org/", kind: "website" },
+    ],
+    platforms: [{ chainId: "bitcoin-mainnet", chainKey: "bitcoin", tokenAddress: null }],
+  },
+  ethereum: {
+    name: "Ethereum",
+    description: "Ethereum is a decentralized smart-contract network and the largest ecosystem for EVM DeFi, tokens, NFTs and dApps.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png",
+    links: [
+      { label: "Blockchain", url: "https://etherscan.io/", kind: "explorer" },
+      { label: "Website", url: "https://ethereum.org/", kind: "website" },
+      { label: "X", url: "https://x.com/ethereum", kind: "twitter" },
+    ],
+    platforms: [{ chainId: 1, chainKey: "ethereum", tokenAddress: null }],
+  },
+  solana: {
+    name: "Solana",
+    description: "Solana is a high-throughput smart-contract network used for DeFi, payments, NFTs and consumer crypto applications.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/4128/large/solana.png",
+    links: [
+      { label: "Blockchain", url: "https://solscan.io/", kind: "explorer" },
+      { label: "Website", url: "https://solana.com/", kind: "website" },
+      { label: "X", url: "https://x.com/solana", kind: "twitter" },
+    ],
+    platforms: [{ chainId: 101, chainKey: "solana", tokenAddress: null }],
+  },
+  "the-open-network": {
+    name: "Toncoin",
+    description: "Toncoin is the native asset of The Open Network, a blockchain ecosystem focused on payments, apps and high-throughput consumer crypto.",
+    logoUrl: "https://coin-images.coingecko.com/coins/images/17980/large/ton_symbol.png",
+    links: [
+      { label: "Blockchain", url: "https://tonscan.org/", kind: "explorer" },
+      { label: "Website", url: "https://ton.org/", kind: "website" },
+      { label: "X", url: "https://x.com/ton_blockchain", kind: "twitter" },
+    ],
+    platforms: [{ chainId: "ton-mainnet", chainKey: "ton", tokenAddress: null }],
+  },
 };
 
 function firstUrl(values?: Array<string | null> | null): string | null {
@@ -555,11 +610,20 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       `${this.baseUrl}/coins/${encodeURIComponent(coinId)}` +
       "?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false";
 
-    const response = await httpGet<CoinGeckoDetailResponse>(
-      url,
-      this.timeoutMs,
-      this.getHeaders(),
-    );
+    let response: CoinGeckoDetailResponse;
+    try {
+      response = await httpGet<CoinGeckoDetailResponse>(
+        url,
+        this.timeoutMs,
+        this.getHeaders(),
+      );
+    } catch (error) {
+      const fallback = await this.fetchBinanceTokenDetailFallback(coinId, currency);
+      if (fallback) {
+        return fallback;
+      }
+      throw error;
+    }
 
     const price = response.market_data?.current_price?.[vsCurrency] ?? null;
     const changeValue = response.market_data?.price_change_24h_in_currency?.[vsCurrency] ?? null;
@@ -610,6 +674,67 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  private async fetchBinanceTokenDetailFallback(
+    coinId: string,
+    currency: FiatCurrency,
+  ): Promise<TokenDetailPayload | null> {
+    if (currency !== "USD") {
+      return null;
+    }
+
+    const symbol = COINGECKO_ID_TO_BINANCE_SYMBOL[coinId.toLowerCase()];
+    if (!symbol || symbol === "USDTUSDT" || symbol === "USDCUSDT") {
+      return null;
+    }
+
+    try {
+      const ticker = await httpGet<BinanceTicker24h>(
+        `https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`,
+        this.timeoutMs,
+        {},
+      );
+      const price = Number(ticker.lastPrice);
+      if (!Number.isFinite(price) || price <= 0) {
+        return null;
+      }
+
+      const changeValue = Number(ticker.priceChange);
+      const changePercent = Number(ticker.priceChangePercent);
+      const high = Number(ticker.highPrice);
+      const low = Number(ticker.lowPrice);
+      const volume = Number(ticker.quoteVolume);
+      const safe = COINGECKO_ID_TO_SAFE_DETAIL[coinId.toLowerCase()];
+      const fallbackSymbol = COINGECKO_ID_TO_SYMBOL[coinId.toLowerCase()] ?? coinId.toUpperCase();
+
+      return {
+        id: coinId,
+        symbol: fallbackSymbol,
+        name: safe?.name ?? fallbackSymbol,
+        currency,
+        price,
+        change24h: Number.isFinite(changeValue) && Number.isFinite(changePercent)
+          ? { value: changeValue, percent: changePercent }
+          : null,
+        marketCapUsd: null,
+        fdvUsd: null,
+        volume24hUsd: Number.isFinite(volume) ? volume : null,
+        liquidityUsd: null,
+        high24hUsd: Number.isFinite(high) ? high : null,
+        low24hUsd: Number.isFinite(low) ? low : null,
+        rank: null,
+        description: safe?.description ?? "Live CoinGecko metadata is temporarily unavailable; Acorus is showing real exchange price data for this asset.",
+        logoUrl: safe?.logoUrl ?? null,
+        links: safe?.links ?? [],
+        platforms: safe?.platforms ?? [],
+        provider: "binance",
+        sourceStatus: "live",
+        updatedAt: new Date().toISOString(),
+      };
+    } catch {
+      return null;
+    }
   }
 
   async searchMarket(query: string): Promise<MarketSearchResult[]> {

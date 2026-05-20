@@ -1294,6 +1294,7 @@
   - Changed coin-id chart requests to wait on the shared limiter instead of throwing `market_rate_limited`, so UI interval changes can queue briefly and still receive live/OHLC fallback data.
   - Added an in-memory last-good coin chart cache for `/api/market/coin-chart` so temporary CoinGecko failures on long ranges reuse the last live chart instead of flashing an empty chart.
   - Added a real Binance kline fallback for major CoinGecko ids such as BTC, ETH, SOL, TON, XRP, BNB, TRX, DOGE, ADA, LINK, AVAX, and POL so chart ranges can still render market data when CoinGecko temporarily rejects chart history.
+  - Added a real Binance 24h ticker fallback for major token detail pages so SOL/TON-style pages keep showing a live price, change, high/low, volume, logo, and official links when CoinGecko detail metadata is temporarily unavailable.
   - Validation passed:
     - `pnpm --filter @acorus/api test`
     - `pnpm --filter @acorus/api build`
