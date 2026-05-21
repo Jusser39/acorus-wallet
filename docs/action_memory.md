@@ -616,3 +616,8 @@
 358. The VPS web rebuild hit Docker Hub unauthenticated pull limits for `node:24-alpine`, so the web Dockerfile now uses `node:24-bookworm-slim`, matching the cached API base family.
 359. Production Docker build then exposed a stale generated `.chrome-extension-profile` directory in the release folder; added it to `.dockerignore` so Chrome profile/model files cannot enter future Docker build contexts.
 360. Browser smoke on production `/swap` showed the page still hid the swap shell without an active wallet; updated `/swap` so quotes/provider UI remain visible without a wallet while execution stays gated behind extension approval.
+361. Deployed the final swap-provider wave to `/opt/acorus-wallet-release-current`, preserving backups `/root/backups/acorus-swap-providers-deploy_20260521_200709`, `/root/backups/acorus-docker-context-fix_20260521_202739`, and `/root/backups/acorus-swap-visible-deploy_20260521_205555`.
+362. Removed stale generated `.chrome-extension-profile` directories from production backups/release to free disk space and prevent Docker build context bloat.
+363. Production rebuild/recreate passed for API and web; `https://24wallet.ru/api/swap/status` now reports 0x configured, Jupiter configured, and Rango present but not configured because no Rango key is set.
+364. Production Jupiter read-only quote smoke passed for SOL -> USDC through the backend proxy without exposing the key.
+365. Production browser smoke passed for `/swap`: the page now shows the `0x · Jupiter · Rango` swap shell, Jupiter route fields, and Rango route fields even with no active wallet.

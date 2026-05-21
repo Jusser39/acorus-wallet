@@ -1404,4 +1404,11 @@
   - Switched the web Docker image base from `node:24-alpine` to `node:24-bookworm-slim` after the VPS hit Docker Hub unauthenticated pull limits on the alpine manifest; the API image already uses the bookworm base.
   - Added `.chrome-extension-profile` to `.dockerignore` after production build context included a stale generated browser profile with large model files.
   - Updated `/swap` to render the swap/provider shell without an active wallet; quote discovery remains visible, while transaction execution still requires extension approval.
+- Production deployment:
+  - Deployed latest commit to `/opt/acorus-wallet-release-current`.
+  - Backups preserved at `/root/backups/acorus-swap-providers-deploy_20260521_200709`, `/root/backups/acorus-docker-context-fix_20260521_202739`, and `/root/backups/acorus-swap-visible-deploy_20260521_205555`.
+  - Removed stale generated `.chrome-extension-profile` data from production backups/release to keep Docker build context small.
+  - Rebuilt and recreated wallet `api`, `web`, and nginx-facing services.
+  - Production smoke passed for `/health`, `/api/swap/status`, `/api/swap/solana/jupiter/status`, `/api/swap/rango/status`, `/api/swap/solana/jupiter/quote`, `/create`, and `/swap`.
+  - Browser smoke confirmed `/swap` renders the `0x · Jupiter · Rango` shell and route controls with no active wallet.
 
