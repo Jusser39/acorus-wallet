@@ -1304,6 +1304,7 @@
 - Status: **implemented locally, validation passed**
 - Extended token detail payloads with launch date, categories, circulating supply, total supply, and max supply.
 - Hardened CoinGecko token detail: full coin detail now falls back to CoinGecko markets, then to real Binance 24h price data plus safe public metadata.
+- Added a GeckoTerminal OHLCV chart fallback for known EVM token pages such as Venice Token when CoinGecko chart history is empty or unavailable.
 - Added safe metadata for Zcash and Venice Token so their pages show useful descriptions, logos, links, and platform/explorer choices even when full metadata is rate-limited.
 - Added native ETH multi-network explorer choices for Ethereum, Base, Arbitrum, Optimism, Linea, and zkSync, and made EVM-native CoinGecko token pages eligible for the embedded 0x swap composer.
 - Replaced the technical dApps shell with a user-facing clickable dApps directory grouped by DeFi, Prediction, Social, and NFTs, with search and “See more” expansion.
@@ -1316,4 +1317,5 @@
   - `pnpm test`
   - `pnpm build`
   - `pnpm extension:package`
+- Local live smoke confirmed Venice Token chart points for `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`.
 

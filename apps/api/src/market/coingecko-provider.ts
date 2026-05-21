@@ -66,6 +66,18 @@ const COINGECKO_PLATFORM_TO_ROUTE: Record<string, { chainId: number | string; ch
   tron: { chainId: "tron-mainnet", chainKey: "tron" },
 };
 
+const GECKOTERMINAL_NETWORK_BY_CHAIN_KEY: Record<string, string> = {
+  ethereum: "eth",
+  base: "base",
+  arbitrum: "arbitrum",
+  optimism: "optimism",
+  polygon: "polygon_pos",
+  bsc: "bsc",
+  avalanche: "avax",
+  linea: "linea",
+  zksync: "zksync",
+};
+
 const COINGECKO_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
   bitcoin: "BTCUSDT",
   ethereum: "ETHUSDT",
@@ -92,6 +104,15 @@ const RANGE_TO_BINANCE_KLINES: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", 
   "1M": { interval: "4h", limit: 180 },
   "1Y": { interval: "1d", limit: 365 },
   ALL: { interval: "1d", limit: 1000 },
+};
+
+const RANGE_TO_GECKOTERMINAL_OHLCV: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", { timeframe: "minute" | "hour" | "day"; aggregate: number; limit: number }> = {
+  "1H": { timeframe: "minute", aggregate: 5, limit: 12 },
+  "1D": { timeframe: "minute", aggregate: 5, limit: 288 },
+  "1W": { timeframe: "hour", aggregate: 1, limit: 168 },
+  "1M": { timeframe: "hour", aggregate: 4, limit: 180 },
+  "1Y": { timeframe: "day", aggregate: 1, limit: 365 },
+  ALL: { timeframe: "day", aggregate: 1, limit: 1000 },
 };
 
 function coingeckoCurrency(currency: string): string {
@@ -147,6 +168,23 @@ type BinanceTicker24h = {
   highPrice?: string;
   lowPrice?: string;
   quoteVolume?: string;
+};
+
+type GeckoTerminalPoolsResponse = {
+  data?: Array<{
+    id?: string;
+    attributes?: {
+      reserve_in_usd?: string | null;
+    } | null;
+  }>;
+};
+
+type GeckoTerminalOhlcvResponse = {
+  data?: {
+    attributes?: {
+      ohlcv_list?: Array<[number, number, number, number, number, number]>;
+    } | null;
+  } | null;
 };
 
 const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
@@ -554,6 +592,11 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         return binanceFallback;
       }
 
+      const geckoTerminalFallback = await this.fetchGeckoTerminalKlineFallback(coinId, range);
+      if (geckoTerminalFallback.length > 1) {
+        return geckoTerminalFallback;
+      }
+
       if (range !== "ALL") {
         throw error;
       }
@@ -604,10 +647,20 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         return ohlcFallback;
       }
 
-      return this.fetchBinanceKlineFallback(coinId, "ALL");
+      const binanceFallback = await this.fetchBinanceKlineFallback(coinId, "ALL");
+      if (binanceFallback.length > 1) {
+        return binanceFallback;
+      }
+
+      return this.fetchGeckoTerminalKlineFallback(coinId, "ALL");
     }
 
-    return this.fetchBinanceKlineFallback(coinId, range);
+    const binanceFallback = await this.fetchBinanceKlineFallback(coinId, range);
+    if (binanceFallback.length > 1) {
+      return binanceFallback;
+    }
+
+    return this.fetchGeckoTerminalKlineFallback(coinId, range);
   }
 
   private async fetchCoinOhlcFallback(
@@ -673,6 +726,64 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
           price: Number(Number(close).toFixed(6)),
         }))
         .filter((point) => Number.isFinite(point.price));
+    } catch {
+      return [];
+    }
+  }
+
+  private async fetchGeckoTerminalKlineFallback(
+    coinId: string,
+    range: MarketChartRequest["range"],
+  ): Promise<Array<{ timestamp: string; price: number }>> {
+    const safe = COINGECKO_ID_TO_SAFE_DETAIL[coinId.toLowerCase()];
+    const platform = safe?.platforms?.find((item) => {
+      const network = GECKOTERMINAL_NETWORK_BY_CHAIN_KEY[item.chainKey];
+      return Boolean(network && item.tokenAddress);
+    });
+    if (!platform?.tokenAddress) {
+      return [];
+    }
+
+    const network = GECKOTERMINAL_NETWORK_BY_CHAIN_KEY[platform.chainKey];
+    if (!network) {
+      return [];
+    }
+
+    try {
+      const pools = await httpGet<GeckoTerminalPoolsResponse>(
+        `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/tokens/${encodeURIComponent(platform.tokenAddress)}/pools`,
+        this.timeoutMs,
+        {},
+      );
+      const pool = (pools.data ?? [])
+        .map((item) => ({
+          id: item.id,
+          reserveUsd: Number(item.attributes?.reserve_in_usd ?? 0),
+        }))
+        .filter((item): item is { id: string; reserveUsd: number } => Boolean(item.id))
+        .sort((a, b) => b.reserveUsd - a.reserveUsd)[0];
+      if (!pool?.id) {
+        return [];
+      }
+
+      const poolAddress = pool.id.replace(new RegExp(`^${network}_`, "u"), "");
+      const config = RANGE_TO_GECKOTERMINAL_OHLCV[range];
+      const response = await httpGet<GeckoTerminalOhlcvResponse>(
+        `https://api.geckoterminal.com/api/v2/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddress)}/ohlcv/${config.timeframe}`
+          + `?aggregate=${encodeURIComponent(String(config.aggregate))}`
+          + `&limit=${encodeURIComponent(String(config.limit))}`
+          + "&currency=usd",
+        this.timeoutMs,
+        {},
+      );
+
+      return (response.data?.attributes?.ohlcv_list ?? [])
+        .map(([timestampSeconds, , , , close]) => ({
+          timestamp: new Date(timestampSeconds * 1000).toISOString(),
+          price: Number(Number(close).toFixed(6)),
+        }))
+        .filter((point) => Number.isFinite(point.price) && point.price > 0)
+        .reverse();
     } catch {
       return [];
     }

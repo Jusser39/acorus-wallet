@@ -574,3 +574,4 @@
 316. Updated token pages so native ETH-style CoinGecko assets can show multi-network explorers like BaseScan and still prefill the embedded 0x swap composer.
 317. Replaced the technical `/dapps` bridge page with a user-facing dApps directory grouped by DeFi, Prediction, Social, and NFTs with search, logos, clickable app cards, and “See more” expansion.
 318. Local validation passed: API build, web build, API test, web test, `git diff --check`, root `pnpm test`, root `pnpm build`, and `pnpm extension:package`.
+319. Added GeckoTerminal OHLCV fallback for known EVM token charts after production smoke showed Venice Token detail data but empty CoinGecko chart ranges; local Venice Token chart smoke then returned live points for all token-page intervals.
