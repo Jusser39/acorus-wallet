@@ -11,7 +11,15 @@ import {
   type EvmSwapQuoteResponse,
 } from "@acorus/shared";
 import { buildErc20ApproveTransaction } from "@acorus/wallet-core";
-import { getEvmSwapQuote, getEvmSwapStatus, type EvmSwapStatus } from "@/lib/api";
+import {
+  getEvmSwapQuote,
+  getEvmSwapStatus,
+  getJupiterSwapQuote,
+  getRangoSwapQuote,
+  getUniversalSwapStatus,
+  type EvmSwapStatus,
+  type UniversalSwapStatus,
+} from "@/lib/api";
 import {
   getExtensionChainId,
   hasAcorusExtension,
@@ -45,6 +53,7 @@ export function SwapComposer(props: {
   description?: string;
 }) {
   const [status, setStatus] = useState<EvmSwapStatus | null>(null);
+  const [universalStatus, setUniversalStatus] = useState<UniversalSwapStatus | null>(null);
   const [chainId, setChainId] = useState(props.initialChainId ?? 1);
   const [sellToken, setSellToken] = useState(props.initialSellToken ?? "native");
   const [buyToken, setBuyToken] = useState(props.initialBuyToken ?? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
@@ -58,6 +67,14 @@ export function SwapComposer(props: {
   const [extensionChainId, setExtensionChainId] = useState<number | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState(0);
   const [history, setHistory] = useState<WebSwapActivityEntry[]>([]);
+  const [jupiterInputMint, setJupiterInputMint] = useState("So11111111111111111111111111111111111111112");
+  const [jupiterOutputMint, setJupiterOutputMint] = useState("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+  const [jupiterAmount, setJupiterAmount] = useState("1000000");
+  const [jupiterResult, setJupiterResult] = useState<string | null>(null);
+  const [rangoFrom, setRangoFrom] = useState("ETH.ETH");
+  const [rangoTo, setRangoTo] = useState("SOL.SOL");
+  const [rangoAmount, setRangoAmount] = useState("0.01");
+  const [rangoResult, setRangoResult] = useState<string | null>(null);
   const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
   const tokens = useMemo(
@@ -80,6 +97,7 @@ export function SwapComposer(props: {
         apiBase: "",
         version: "v2",
       }));
+    void getUniversalSwapStatus().then(setUniversalStatus).catch(() => setUniversalStatus(null));
   }, []);
 
   useEffect(() => {
@@ -332,6 +350,42 @@ export function SwapComposer(props: {
     setExtensionChainId(parseChainId(await getExtensionChainId()));
   }
 
+  async function handleJupiterQuote() {
+    setJupiterResult("Fetching Jupiter route...");
+    try {
+      const route = await getJupiterSwapQuote({
+        inputMint: jupiterInputMint,
+        outputMint: jupiterOutputMint,
+        amount: jupiterAmount,
+        slippageBps,
+      });
+      setJupiterResult(
+        `Jupiter: ${route.inAmountRaw} -> ${route.outAmountRaw}. Route: ${
+          route.routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+        }`,
+      );
+    } catch (err) {
+      setJupiterResult(err instanceof Error ? err.message : "Unable to fetch Jupiter route.");
+    }
+  }
+
+  async function handleRangoQuote() {
+    setRangoResult("Fetching Rango route...");
+    try {
+      const route = await getRangoSwapQuote({
+        from: rangoFrom,
+        to: rangoTo,
+        amount: rangoAmount,
+        slippageBps,
+      });
+      setRangoResult(
+        `Rango: ${route.amountRaw} -> ${route.outputAmountFormatted ?? route.outputAmountRaw ?? "unknown"}. Route: ${route.routeLabel}`,
+      );
+    } catch (err) {
+      setRangoResult(err instanceof Error ? err.message : "Unable to fetch Rango route.");
+    }
+  }
+
   const providerReady = Boolean(status?.configured && status.enabled);
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
@@ -345,19 +399,32 @@ export function SwapComposer(props: {
       <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
         <div className="px-3 pt-3">
           <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
-            0x EVM swap
+            0x · Jupiter · Rango
           </span>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-            {props.title ?? "Swap with Acorus extension"}
+            {props.title ?? "Swap with Acorus"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {props.description ?? "Quotes stay backend-only, approvals stay wallet-only, and extension execution stays explicit."}
+            {props.description ?? "0x handles EVM routes, Jupiter handles Solana routes, and Rango prepares cross-chain routes through backend-only API keys."}
           </p>
         </div>
 
+        {universalStatus ? (
+          <div className="grid gap-2 sm:grid-cols-3">
+            {universalStatus.providers.map((provider) => (
+              <div key={provider.provider} className="rounded-2xl border border-fuchsia-100 bg-white/70 p-3">
+                <div className="text-sm font-semibold text-slate-950">{provider.provider}</div>
+                <div className={provider.configured ? "text-xs text-emerald-600" : "text-xs text-amber-700"}>
+                  {provider.configured ? "Configured" : "API key needed"}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {!providerReady ? (
           <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
-            0x provider is not configured on the backend yet. Add `ZEROX_API_KEY` on the API server to enable live quotes.
+            0x provider is not configured on the backend yet. Add `ZEROX_API_KEY` on the API server to enable EVM live quotes.
           </div>
         ) : null}
 
@@ -436,6 +503,34 @@ export function SwapComposer(props: {
         >
           {loading ? "Loading 0x quote..." : "Get 0x firm quote"}
         </button>
+
+        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
+            <p className="text-xs text-slate-500">Quote-only until Solana swap transaction signing is reviewed in the extension.</p>
+          </div>
+          <input className="light-field" value={jupiterInputMint} onChange={(event) => setJupiterInputMint(event.target.value)} placeholder="Input mint" />
+          <input className="light-field" value={jupiterOutputMint} onChange={(event) => setJupiterOutputMint(event.target.value)} placeholder="Output mint" />
+          <input className="light-field" value={jupiterAmount} onChange={(event) => setJupiterAmount(event.target.value)} placeholder="Raw amount" />
+          <button type="button" className="button-secondary" onClick={() => void handleJupiterQuote()}>
+            Get Jupiter route
+          </button>
+          {jupiterResult ? <p className="text-sm text-slate-600">{jupiterResult}</p> : null}
+        </div>
+
+        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
+            <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; execution remains draft/review gated.</p>
+          </div>
+          <input className="light-field" value={rangoFrom} onChange={(event) => setRangoFrom(event.target.value)} placeholder="From asset, e.g. ETH.ETH" />
+          <input className="light-field" value={rangoTo} onChange={(event) => setRangoTo(event.target.value)} placeholder="To asset, e.g. SOL.SOL" />
+          <input className="light-field" value={rangoAmount} onChange={(event) => setRangoAmount(event.target.value)} placeholder="Amount" />
+          <button type="button" className="button-secondary" onClick={() => void handleRangoQuote()}>
+            Get Rango route
+          </button>
+          {rangoResult ? <p className="text-sm text-slate-600">{rangoResult}</p> : null}
+        </div>
       </div>
 
       {showSidePanel ? (

@@ -770,4 +770,121 @@ describe("api", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().error).toBe("validation_error");
   });
+
+  it("GET /api/swap/status reports 0x Jupiter and Rango without exposing keys", async () => {
+    await app.close();
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        ZEROX_API_KEY: "zero-x-secret",
+        JUPITER_API_KEY: "jupiter-secret",
+        RANGO_API_KEY: "rango-secret",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/status",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().providers.map((provider: { provider: string }) => provider.provider)).toEqual([
+      "0x",
+      "jupiter",
+      "rango",
+    ]);
+    expect(JSON.stringify(response.json())).not.toContain("secret");
+  });
+
+  it("GET /api/swap/solana/jupiter/quote sends API key server-side and maps safe quote", async () => {
+    await app.close();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      inAmount: "1000000",
+      outAmount: "150000",
+      otherAmountThreshold: "149250",
+      priceImpactPct: "0.001",
+      routePlan: [{
+        swapInfo: {
+          inputMint: "So11111111111111111111111111111111111111112",
+          outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          inAmount: "1000000",
+          outAmount: "150000",
+          label: "Meteora DLMM",
+        },
+      }],
+      contextSlot: 123,
+      timeTaken: 0.12,
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        JUPITER_API_KEY: "jupiter-secret",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/solana/jupiter/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain("/swap/v1/quote");
+    expect((init as RequestInit).headers).toMatchObject({
+      "x-api-key": "jupiter-secret",
+    });
+    expect(response.json()).toMatchObject({
+      provider: "jupiter",
+      mode: "quote",
+      outAmountRaw: "150000",
+    });
+    expect(JSON.stringify(response.json())).not.toContain("jupiter-secret");
+  });
+
+  it("GET /api/swap/rango/quote keeps api key server-side and maps safe route", async () => {
+    await app.close();
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      requestId: "rango-1",
+      outputAmount: "0.9",
+      outputAmountHumanReadable: "0.9",
+      route: [{ swapperId: "Thorchain", fromBlockchain: "ETH", toBlockchain: "BTC" }],
+      tx: {
+        type: "EVM",
+        to: "0x00000000000000000000000000000000000000bb",
+        data: "0xabcdef",
+        value: "1",
+      },
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    app = buildApp({
+      store: new MemoryStore(),
+      logger: false,
+      env: readEnv({
+        NODE_ENV: "test",
+        RANGO_API_KEY: "rango-secret",
+      }),
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/swap/rango/quote?from=ETH.ETH&to=BTC.BTC&amount=1",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [url] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain("apiKey=rango-secret");
+    expect(response.json()).toMatchObject({
+      provider: "rango",
+      mode: "quote",
+      routeLabel: "Thorchain",
+    });
+    expect(JSON.stringify(response.json())).not.toContain("rango-secret");
+  });
 });

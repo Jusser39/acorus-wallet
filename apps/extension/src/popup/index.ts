@@ -45,6 +45,7 @@ type ExtensionPortfolioSnapshot = {
     name: string;
     decimals: number;
     tokenAddress?: string | null;
+    logoUrl?: string | null;
     balanceRaw: string;
     balanceFormatted: string;
     fiatValue?: number | null;
@@ -305,16 +306,20 @@ function renderAssetRow(asset: ExtensionPortfolioSnapshot["assets"][number]): st
     asset.tokenAddress?.toLowerCase() ?? "native",
     asset.symbol.toUpperCase(),
   ].join(":");
+  const icon = asset.logoUrl
+    ? `<img src="${escapeHtml(asset.logoUrl)}" alt="" loading="lazy">`
+    : escapeHtml(asset.symbol.slice(0, 4).toUpperCase());
+  const balanceText = `${asset.balanceFormatted ?? "0"} ${asset.symbol}`;
+  const chainLabel = asset.family === "evm"
+    ? `Chain ${String(asset.chainId)}`
+    : asset.family.toUpperCase();
 
   return `
     <button class="token-row as-button wide" type="button" data-asset-id="${escapeHtml(assetId)}">
-      <div class="token-icon">${escapeHtml(asset.symbol.slice(0, 4))}</div>
+      <div class="token-icon">${icon}</div>
       <div>
         <div class="token-name">${escapeHtml(asset.name)}</div>
-        <div class="token-meta">
-          ${escapeHtml(asset.balanceFormatted ?? "0")} ${escapeHtml(asset.symbol)}
-          · ${escapeHtml(asset.source ?? "unknown")}
-        </div>
+        <div class="token-meta">${escapeHtml(chainLabel)} · ${escapeHtml(balanceText)}</div>
       </div>
       <div class="token-value">${formatFiat(asset.fiatValue)}</div>
     </button>

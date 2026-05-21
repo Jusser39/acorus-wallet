@@ -20,6 +20,9 @@ import {
   type WalletProfileUpdateInput,
 } from "./store";
 import { createMarketDataProvider, MockMarketDataProvider } from "./market/index.js";
+import { createJupiterSwapService } from "./services/jupiter";
+import { createRangoSwapService } from "./services/rango";
+import { SwapProviderError } from "./services/swap-errors";
 import { createZeroXSwapService, ZeroXSwapError } from "./services/zero-x";
 import { z } from "zod";
 
@@ -102,6 +105,26 @@ const evmZeroXSwapQuerySchema = z
     message: "Use exactly one of sellAmount or buyAmount.",
     path: ["sellAmount"],
   });
+
+const solanaJupiterQuoteSchema = z.object({
+  inputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
+  outputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
+  amount: z.string().regex(/^[1-9][0-9]*$/u),
+  slippageBps: z.coerce.number().int().min(0).max(10_000).optional(),
+});
+
+const solanaJupiterSwapSchema = solanaJupiterQuoteSchema.extend({
+  userPublicKey: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
+});
+
+const rangoSwapQuerySchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  amount: z.string().regex(/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/u),
+  fromAddress: z.string().min(1).optional(),
+  toAddress: z.string().min(1).optional(),
+  slippageBps: z.coerce.number().int().min(0).max(10_000).optional(),
+});
 
 const SENSITIVE_FIELD_NAMES = new Set([
   "mnemonic",
@@ -341,6 +364,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const store = options.store ?? resolveStore(env);
   const swapQuoteEngine = createDefaultSwapQuoteEngine();
   const zeroXSwapService = createZeroXSwapService(env);
+  const jupiterSwapService = createJupiterSwapService(env);
+  const rangoSwapService = createRangoSwapService(env);
 
   app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
@@ -1058,6 +1083,107 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   app.get("/api/swap/evm/status", async () => zeroXSwapService.getStatus());
+
+  app.get("/api/swap/status", async () => ({
+    ok: true,
+    providers: [
+      {
+        provider: "0x",
+        configured: zeroXSwapService.getStatus().configured,
+        enabled: zeroXSwapService.getStatus().enabled,
+        execution: "extension_evm",
+        supportedFamilies: ["evm"],
+        supportedChains: zeroXSwapService.getStatus().supportedChains,
+        apiBase: zeroXSwapService.getStatus().apiBase,
+      },
+      {
+        provider: "jupiter",
+        configured: jupiterSwapService.getStatus().configured,
+        enabled: jupiterSwapService.getStatus().enabled,
+        execution: "solana_transaction_draft",
+        supportedFamilies: jupiterSwapService.getStatus().supportedFamilies,
+        supportedChains: jupiterSwapService.getStatus().supportedChains,
+        apiBase: jupiterSwapService.getStatus().apiBase,
+      },
+      {
+        provider: "rango",
+        configured: rangoSwapService.getStatus().configured,
+        enabled: rangoSwapService.getStatus().enabled,
+        execution: "crosschain_transaction_draft",
+        supportedFamilies: rangoSwapService.getStatus().supportedFamilies,
+        supportedChains: rangoSwapService.getStatus().supportedChains,
+        apiBase: rangoSwapService.getStatus().apiBase,
+      },
+    ],
+  }));
+
+  app.get("/api/swap/solana/jupiter/status", async () => jupiterSwapService.getStatus());
+
+  app.get("/api/swap/solana/jupiter/quote", async (request, reply) => {
+    try {
+      const query = solanaJupiterQuoteSchema.parse(request.query);
+      return await jupiterSwapService.getQuote(query, request.ip);
+    } catch (error) {
+      if (error instanceof SwapProviderError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
+
+  app.get("/api/swap/solana/jupiter/swap", async (request, reply) => {
+    try {
+      const query = solanaJupiterSwapSchema.parse(request.query);
+      return await jupiterSwapService.getSwapTransaction(query, request.ip);
+    } catch (error) {
+      if (error instanceof SwapProviderError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
+
+  app.get("/api/swap/rango/status", async () => rangoSwapService.getStatus());
+
+  app.get("/api/swap/rango/quote", async (request, reply) => {
+    try {
+      const query = rangoSwapQuerySchema.parse(request.query);
+      return await rangoSwapService.getQuote(query, request.ip);
+    } catch (error) {
+      if (error instanceof SwapProviderError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
+
+  app.get("/api/swap/rango/swap", async (request, reply) => {
+    try {
+      const query = rangoSwapQuerySchema.parse(request.query);
+      return await rangoSwapService.getSwap(query, request.ip);
+    } catch (error) {
+      if (error instanceof SwapProviderError) {
+        return reply.code(error.statusCode).send({
+          error: error.code,
+          message: error.message,
+        });
+      }
+
+      throw error;
+    }
+  });
 
   app.get("/api/swap/evm/0x/sources", async () => ({
     ok: true,

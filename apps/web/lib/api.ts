@@ -5,6 +5,9 @@ import type {
   ExploreFeedResponse,
   EvmSwapPriceResponse,
   EvmSwapQuoteResponse,
+  RangoSwapQuoteResponse,
+  SolanaSwapQuoteResponse,
+  SolanaSwapTransactionDraftResponse,
   OnboardingProgressRecord,
   PreferredCurrency,
   SwapQuote,
@@ -104,15 +107,15 @@ function getApiErrorMessage(status: number, payload: ApiErrorPayload | null): st
     case "bad_request":
       return "The API rejected this request.";
     case "swap_provider_not_configured":
-      return "0x swap provider is not configured yet.";
+      return "Swap provider is not configured yet.";
     case "swap_bad_request":
       return "The swap quote request is invalid.";
     case "liquidity_unavailable":
       return "No 0x liquidity is available for this route.";
     case "swap_provider_timeout":
-      return "0x swap provider timed out.";
+      return "Swap provider timed out.";
     case "swap_provider_error":
-      return "0x swap provider failed.";
+      return "Swap provider failed.";
     case "internal_error":
       return "The API failed to process the request.";
     default:
@@ -287,8 +290,25 @@ export type EvmSwapStatus = {
   version: string;
 };
 
+export type UniversalSwapStatus = {
+  ok: true;
+  providers: Array<{
+    provider: "0x" | "jupiter" | "rango";
+    configured: boolean;
+    enabled: boolean;
+    execution: string;
+    supportedFamilies: string[];
+    supportedChains: Array<number | string>;
+    apiBase: string;
+  }>;
+};
+
 export async function getEvmSwapStatus(): Promise<EvmSwapStatus> {
   return apiFetch<EvmSwapStatus>("/api/swap/evm/status");
+}
+
+export async function getUniversalSwapStatus(): Promise<UniversalSwapStatus> {
+  return apiFetch<UniversalSwapStatus>("/api/swap/status");
 }
 
 export async function getEvmSwapPrice(input: {
@@ -317,6 +337,70 @@ export async function getEvmSwapQuote(input: {
   return apiFetch<EvmSwapQuoteResponse>(`/api/swap/evm/0x/quote?${params.toString()}`);
 }
 
+export async function getJupiterSwapQuote(input: {
+  inputMint: string;
+  outputMint: string;
+  amount: string;
+  slippageBps?: number;
+}): Promise<SolanaSwapQuoteResponse> {
+  const params = new URLSearchParams({
+    inputMint: input.inputMint,
+    outputMint: input.outputMint,
+    amount: input.amount,
+  });
+
+  if (input.slippageBps !== undefined) {
+    params.set("slippageBps", String(input.slippageBps));
+  }
+
+  return apiFetch<SolanaSwapQuoteResponse>(`/api/swap/solana/jupiter/quote?${params.toString()}`);
+}
+
+export async function getJupiterSwapTransaction(input: {
+  inputMint: string;
+  outputMint: string;
+  amount: string;
+  userPublicKey: string;
+  slippageBps?: number;
+}): Promise<SolanaSwapTransactionDraftResponse> {
+  const params = new URLSearchParams({
+    inputMint: input.inputMint,
+    outputMint: input.outputMint,
+    amount: input.amount,
+    userPublicKey: input.userPublicKey,
+  });
+
+  if (input.slippageBps !== undefined) {
+    params.set("slippageBps", String(input.slippageBps));
+  }
+
+  return apiFetch<SolanaSwapTransactionDraftResponse>(`/api/swap/solana/jupiter/swap?${params.toString()}`);
+}
+
+export async function getRangoSwapQuote(input: {
+  from: string;
+  to: string;
+  amount: string;
+  fromAddress?: string;
+  toAddress?: string;
+  slippageBps?: number;
+}): Promise<RangoSwapQuoteResponse> {
+  const params = buildRangoSwapSearch(input);
+  return apiFetch<RangoSwapQuoteResponse>(`/api/swap/rango/quote?${params.toString()}`);
+}
+
+export async function getRangoSwapDraft(input: {
+  from: string;
+  to: string;
+  amount: string;
+  fromAddress?: string;
+  toAddress?: string;
+  slippageBps?: number;
+}): Promise<RangoSwapQuoteResponse> {
+  const params = buildRangoSwapSearch(input);
+  return apiFetch<RangoSwapQuoteResponse>(`/api/swap/rango/swap?${params.toString()}`);
+}
+
 function buildEvmSwapSearch(input: {
   chainId: number;
   sellToken: string;
@@ -339,6 +423,35 @@ function buildEvmSwapSearch(input: {
 
   if (input.buyAmount) {
     params.set("buyAmount", input.buyAmount);
+  }
+
+  if (input.slippageBps !== undefined) {
+    params.set("slippageBps", String(input.slippageBps));
+  }
+
+  return params;
+}
+
+function buildRangoSwapSearch(input: {
+  from: string;
+  to: string;
+  amount: string;
+  fromAddress?: string;
+  toAddress?: string;
+  slippageBps?: number;
+}): URLSearchParams {
+  const params = new URLSearchParams({
+    from: input.from,
+    to: input.to,
+    amount: input.amount,
+  });
+
+  if (input.fromAddress) {
+    params.set("fromAddress", input.fromAddress);
+  }
+
+  if (input.toAddress) {
+    params.set("toAddress", input.toAddress);
   }
 
   if (input.slippageBps !== undefined) {

@@ -1367,3 +1367,36 @@
   - Liquidity remains blank unless a DEX/pool data source exposes it for that specific asset.
   - Non-EVM swap execution remains gated; the right-side swap shell is visible, but execution is only enabled for reviewed EVM/0x routes.
 
+## Jupiter/Rango Swap Foundation and Extension Polish (2026-05-21)
+
+- Status: **implemented locally, validation passed**
+- Added shared swap response/status types for 0x, Jupiter, and Rango.
+- Added backend-only Jupiter routes for Solana quote and transaction-draft requests; provider keys are read from env only and are never exposed to web or extension bundles.
+- Added backend-only Rango routes for cross-chain quote and transaction-draft requests with validation, rate limits, timeout handling, and safe provider error mapping.
+- Added universal `/api/swap/status`, returning 0x/Jupiter/Rango availability without leaking API keys.
+- Updated the web swap composer so users can see 0x, Jupiter, and Rango provider status and request supported quote/draft flows from the backend proxy.
+- Reworked `/create` into an extension-first wallet creation page with readable light/purple fields, extension detection, and the legacy local web vault hidden behind a fallback disclosure.
+- Cleaned token-page visual noise by removing repeated live/source badges and keeping the swap card pinned in the right-side column.
+- Polished extension popup token rows with logo support and user-facing balance metadata instead of internal source labels.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Local smoke:
+  - `/api/swap/status` returned 0x/Jupiter/Rango provider entries without exposing any API key.
+  - `/create` rendered the extension-first flow with readable controls and disabled create action when the extension is not detected.
+  - The Bitcoin token page hydrated real CoinGecko-backed metadata locally, showed one Blockchain action, kept the right-side swap panel visible, and removed noisy live/source surfaces.
+- Known limitations:
+  - Jupiter and Rango execution remains draft-only until extension approval/execution integration is added.
+  - A real unpacked-extension import/swap smoke still needs manual Chrome verification with the built `apps/extension/dist` package.
+

@@ -59,23 +59,6 @@ function formatUsd(value: number | null | undefined): string {
   return `$${value.toExponential(2)}`;
 }
 
-function badgeForStatus(status?: string | null): { label: string; className: string } | null {
-  if (!status || status === "fallback_mock" || status === "mock" || status === "unavailable") {
-    return null;
-  }
-
-  const badges: Record<string, { label: string; className: string }> = {
-    live: { label: "Live", className: "border-emerald-500/30 bg-emerald-500/20 text-emerald-300" },
-    cached: { label: "Cached", className: "border-sky-500/30 bg-sky-500/20 text-sky-300" },
-    stale_cache: { label: "Stale", className: "border-amber-500/30 bg-amber-500/20 text-amber-300" },
-  };
-
-  return badges[status] ?? {
-    label: status,
-    className: "border-slate-600 bg-slate-700/60 text-slate-300",
-  };
-}
-
 function findCuratedToken(chainId: number, tokenAddress: string): TokenMeta | null {
   const curated = getCuratedTokens(chainId).find(
     (token) =>
@@ -433,8 +416,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     };
   }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
 
-  const priceBadge = badgeForStatus(tokenDetail?.sourceStatus ?? price?.sourceStatus);
-  const chartBadge = badgeForStatus(chart?.sourceStatus);
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
   const displayFamilyLabel = isCoinGeckoRoute
     ? familyLabelFromTokenDetail(tokenDetail, tokenDetail?.platforms?.length ? "Market" : "CoinGecko")
@@ -552,7 +533,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="space-y-6">
           <div className="app-surface subtle-grid overflow-hidden rounded-[2rem] p-5 sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div className="flex min-w-0 items-start gap-4">
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -574,9 +555,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       {displayFamilyLabel}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {displayChainName}
-                  </p>
+                  <p className="mt-2 text-sm text-slate-600">{displayChainName}</p>
                   {!isNativeToken ? (
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
                   ) : null}
@@ -618,17 +597,13 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                   </div>
                 </div>
               </div>
-              <div className="min-w-[180px] text-right">
-                {priceBadge ? (
-                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${priceBadge.className}`}>
-                    {priceBadge.label}
-                  </span>
-                ) : null}
+              <div className="rounded-[1.5rem] border border-fuchsia-100 bg-white/70 p-4 text-left shadow-[0_18px_50px_rgba(168,85,247,0.08)] lg:text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Price</p>
                 {loadingPrice ? (
-                  <div className="ml-auto mt-4 h-12 w-40 animate-pulse rounded bg-slate-700/50" />
+                  <div className="mt-4 h-12 w-40 animate-pulse rounded bg-fuchsia-100 lg:ml-auto" />
                 ) : displayPrice != null ? (
                   <>
-                    <p className="mt-3 text-4xl font-semibold text-slate-950">
+                    <p className="mt-2 text-3xl font-semibold text-slate-950">
                       {displayPrice.toLocaleString("en-US", {
                         style: "currency",
                         currency,
@@ -636,14 +611,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       })}
                     </p>
                     {priceChange != null ? (
-                      <p className={`mt-1 text-sm ${priceChange >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      <p className={`mt-1 text-sm font-semibold ${priceChange >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
                         {priceChange >= 0 ? "+" : ""}
                         {priceChange.toFixed(2)}% 24h
                       </p>
                     ) : null}
                   </>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-400">No price data.</p>
+                  <p className="mt-3 text-sm text-slate-500">No price data.</p>
                 )}
               </div>
             </div>
@@ -664,11 +639,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                   Hover the curve to inspect point-in-time prices.
                 </p>
               </div>
-              {chartBadge ? (
-                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${chartBadge.className}`}>
-                  {chartBadge.label}
-                </span>
-              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {RANGES.map((item) => (

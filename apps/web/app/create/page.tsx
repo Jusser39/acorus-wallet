@@ -9,7 +9,7 @@ import {
   getSolanaAddressFromMnemonic,
 } from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
-import { createExtensionWallet } from "@/lib/extension-bridge";
+import { createExtensionWallet, getExtensionVaultStatus, hasAcorusExtension, type ExtensionVaultStatus } from "@/lib/extension-bridge";
 import { saveEncryptedVault } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
 
@@ -34,6 +34,8 @@ export default function CreateWalletPage() {
     account: string;
     warning: string;
   } | null>(null);
+  const [extensionDetected, setExtensionDetected] = useState(false);
+  const [extensionStatus, setExtensionStatus] = useState<ExtensionVaultStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const words = useMemo(() => mnemonic.split(" ").filter(Boolean), [mnemonic]);
@@ -44,6 +46,19 @@ export default function CreateWalletPage() {
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const detected = hasAcorusExtension();
+    setExtensionDetected(detected);
+
+    if (!detected) {
+      return;
+    }
+
+    void getExtensionVaultStatus()
+      .then(setExtensionStatus)
+      .catch(() => setExtensionStatus(null));
   }, []);
 
   async function handleCreate() {
@@ -162,41 +177,125 @@ export default function CreateWalletPage() {
   }
 
   return (
-    <section className="page grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <div className="panel space-y-5">
+    <section className="page grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <aside className="panel order-first space-y-5 lg:order-last">
         <div>
-          <h1 className="text-3xl font-semibold">Create wallet</h1>
-          <p className="mt-2 text-sm text-slate-300">
+          <span className="section-kicker !border-slate-900/10 !bg-white/80 !text-slate-700">Extension first</span>
+          <h1 className="mt-3 text-3xl font-semibold text-slate-950">Create in Acorus extension</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Создание кошелька должно происходить в расширении: seed phrase и encrypted vault остаются внутри Chrome extension, сайт только отправляет команду.
+          </p>
+        </div>
+
+        <div className={`rounded-[1.5rem] border p-4 text-sm ${extensionDetected ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+          {extensionDetected
+            ? `Acorus extension detected${extensionStatus?.hasVault ? " · vault exists" : " · ready to create vault"}`
+            : "Acorus extension was not detected in this browser profile. Install/reload the extension before creating the production wallet."}
+        </div>
+
+        <label className="space-y-2">
+          <span className="text-sm text-slate-600">Wallet name</span>
+          <input className="light-field" value={walletName} onChange={(event) => setWalletName(event.target.value)} />
+        </label>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm text-slate-600">Passcode</span>
+            <input
+              className="light-field"
+              type="password"
+              autoComplete="new-password"
+              value={passcode}
+              onChange={(event) => setPasscode(event.target.value)}
+            />
+          </label>
+          <label className="space-y-2">
+            <span className="text-sm text-slate-600">Confirm passcode</span>
+            <input
+              className="light-field"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPasscode}
+              onChange={(event) => setConfirmPasscode(event.target.value)}
+            />
+          </label>
+        </div>
+
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
+        <button
+          type="button"
+          className="button-primary w-full"
+          disabled={!extensionDetected || extensionLoading}
+          onClick={() => void handleCreateInExtension()}
+        >
+          {extensionLoading ? "Creating in extension..." : "Create wallet in extension"}
+        </button>
+        {extensionResult ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <p className="font-semibold">Extension wallet created</p>
+            <p className="mt-2 break-all">{extensionResult.account}</p>
+            <p className="mt-3 text-amber-800">{extensionResult.warning}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {extensionResult.mnemonic.split(" ").map((word, index) => (
+                <span
+                  key={`${word}-${index}`}
+                  className="rounded-xl border border-emerald-200 bg-white px-3 py-2"
+                >
+                  {index + 1}. {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="h-px bg-fuchsia-100" />
+
+        <h2 className="text-xl font-semibold text-slate-950">Security checklist</h2>
+        <ul className="space-y-3 text-sm leading-6 text-slate-600">
+          <li>Подпись транзакций выполняется только на клиенте.</li>
+          <li>Сайт не получает raw mnemonic или private key.</li>
+          <li>Для отправки и swap в mainnet остается отдельное подтверждение.</li>
+          <li>Если потерять seed phrase и passcode, восстановить доступ не получится.</li>
+        </ul>
+      </aside>
+
+      <details className="panel space-y-5">
+        <summary className="cursor-pointer text-lg font-semibold text-slate-950">Legacy local web vault fallback</summary>
+        <div className="mt-5 space-y-5">
+        <div>
+          <h2 className="text-2xl font-semibold text-slate-950">Local browser fallback</h2>
+          <p className="mt-2 text-sm text-slate-600">
             Seed phrase создается только в браузере, локально шифруется и используется для EVM + Solana адресов. Backend ее не получает.
           </p>
         </div>
 
-        <div className="warning-box text-sm leading-6">
+        <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4 text-sm leading-6 text-rose-800">
           Seed phrase = полный доступ к средствам. Не отправляйте ее в Telegram, WhatsApp,
           сайты или чаты. Администрация кошелька не сможет восстановить ваши слова.
         </div>
 
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Wallet name</span>
-          <input value={walletName} onChange={(event) => setWalletName(event.target.value)} />
+          <span className="text-sm text-slate-600">Wallet name</span>
+          <input className="light-field" value={walletName} onChange={(event) => setWalletName(event.target.value)} />
         </label>
 
         {words.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-3">
             {words.map((word, index) => (
-              <div key={`${word}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm">
+              <div key={`${word}-${index}`} className="rounded-2xl border border-fuchsia-100 bg-white px-4 py-3 text-sm text-slate-950">
                 <span className="mr-2 text-slate-500">{index + 1}.</span>
                 {word}
               </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-5 text-sm text-slate-300">
+          <div className="rounded-2xl border border-fuchsia-100 bg-white/70 px-4 py-5 text-sm text-slate-600">
             Генерируем seed phrase в браузере...
           </div>
         )}
 
-        <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-200">
+        <label className="flex items-start gap-3 rounded-2xl border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-700">
           <input
             type="checkbox"
             checked={savedSeed}
@@ -208,8 +307,9 @@ export default function CreateWalletPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">Passcode</span>
+            <span className="text-sm text-slate-600">Passcode</span>
             <input
+              className="light-field"
               type="password"
               autoComplete="new-password"
               value={passcode}
@@ -217,8 +317,9 @@ export default function CreateWalletPage() {
             />
           </label>
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">Confirm passcode</span>
+            <span className="text-sm text-slate-600">Confirm passcode</span>
             <input
+              className="light-field"
               type="password"
               autoComplete="new-password"
               value={confirmPasscode}
@@ -227,7 +328,7 @@ export default function CreateWalletPage() {
           </label>
         </div>
 
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
         <button
           type="button"
@@ -237,51 +338,8 @@ export default function CreateWalletPage() {
         >
           {loading ? "Creating..." : "Create encrypted wallet"}
         </button>
-      </div>
-
-      <aside className="panel space-y-4">
-        <h2 className="text-xl font-semibold">Create in extension</h2>
-        <p className="text-sm leading-6 text-slate-300">
-          Production flow: сайт отправляет команду, seed и encrypted vault
-          создаются внутри Chrome extension. Так же работает модель
-          MetaMask/Trust: сайт не становится хранилищем ключей.
-        </p>
-        <button
-          type="button"
-          className="button-primary w-full"
-          disabled={extensionLoading}
-          onClick={() => void handleCreateInExtension()}
-        >
-          {extensionLoading ? "Creating in extension..." : "Create in extension"}
-        </button>
-        {extensionResult ? (
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-            <p className="font-semibold">Extension wallet created</p>
-            <p className="mt-2 break-all">{extensionResult.account}</p>
-            <p className="mt-3 text-amber-100">{extensionResult.warning}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {extensionResult.mnemonic.split(" ").map((word, index) => (
-                <span
-                  key={`${word}-${index}`}
-                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"
-                >
-                  {index + 1}. {word}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="h-px bg-white/10" />
-
-        <h2 className="text-xl font-semibold">Security checklist</h2>
-        <ul className="space-y-3 text-sm leading-6 text-slate-300">
-          <li>Подпись транзакций будет выполняться только на клиенте.</li>
-          <li>В localStorage хранится только encrypted vault, а не raw mnemonic.</li>
-          <li>Для каждой отправки в mainnet будет отдельное подтверждение.</li>
-          <li>Если потерять и seed phrase, и passcode — восстановить доступ не получится.</li>
-        </ul>
-      </aside>
+        </div>
+      </details>
     </section>
   );
 }

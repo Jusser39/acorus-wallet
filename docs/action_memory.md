@@ -601,3 +601,14 @@
 343. Committed and pushed the native family-label fix as `18e05c3` with message `Fix native token family labels`, preventing assets such as ZEC from showing a wrapped platform label in the header.
 344. Deployed `18e05c3` to production, preserving server backup `/root/backups/acorus-native-labels_20260521_142915`, then rebuilt/recreated the wallet web service and nginx.
 345. Final browser smoke confirmed the deployed ZEC page now shows `Zcash / ZEC / Zcash`, BTC has one Blockchain action, and Quests remain wallet-gated at `0/10` with no self-completion path.
+346. Started the Jupiter/Rango swap foundation wave after the user provided a Jupiter provider key and requested 0x, Jupiter, and Rango as the main swap routes. The key was not written to the repository or echoed into docs.
+347. Added shared swap provider/status/quote/draft types for `0x`, `jupiter`, and `rango`.
+348. Added backend Jupiter proxy routes for Solana quote and transaction-draft calls with env-only API key handling, validation, rate limiting, 8 second timeout, and safe response mapping.
+349. Added backend Rango proxy routes for cross-chain quote and transaction-draft calls with env-only API key handling, validation, rate limiting, 8 second timeout, and safe response mapping.
+350. Added `/api/swap/status` so the web app and extension can see 0x/Jupiter/Rango provider configuration without exposing provider secrets.
+351. Updated the swap composer so 0x, Jupiter, and Rango appear as explicit provider cards; Jupiter and Rango now support backend quote/draft requests while execution remains gated for the next approval wave.
+352. Reworked `/create` into an extension-first create flow with readable controls, extension detection, and a collapsed legacy local web-vault fallback.
+353. Cleaned token detail visual noise by removing repeated live/source badges and keeping price/swap layout more stable.
+354. Polished extension popup token rows with logo support and user-facing chain/balance metadata instead of internal source strings.
+355. Validation passed for this wave: shared build, wallet-core build, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+356. Local smoke confirmed `/api/swap/status` reports 0x/Jupiter/Rango without leaking keys, `/create` renders the extension-first flow, and the Bitcoin token page hydrates live metadata with one Blockchain action and a visible right-side swap panel.

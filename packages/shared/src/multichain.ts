@@ -243,6 +243,81 @@ export type SwapQuote = {
 
 export type EvmSwapProvider = "0x";
 
+export type UniversalLiveSwapProvider = "0x" | "jupiter" | "rango";
+
+export type UniversalSwapStatusResponse = {
+  ok: true;
+  providers: Array<{
+    provider: UniversalLiveSwapProvider;
+    configured: boolean;
+    enabled: boolean;
+    execution: "extension_evm" | "solana_transaction_draft" | "crosschain_transaction_draft";
+    supportedFamilies: ChainFamily[];
+    supportedChains: ChainId[];
+    apiBase: string;
+  }>;
+};
+
+export type SolanaSwapBaseResponse = {
+  ok: true;
+  provider: "jupiter";
+  mode: "quote" | "swap";
+  inputMint: string;
+  outputMint: string;
+  inAmountRaw: string;
+  outAmountRaw: string;
+  otherAmountThresholdRaw?: string | null;
+  slippageBps: number;
+  priceImpactPct?: string | null;
+  routeSummary: SwapRouteStep[];
+  warnings: string[];
+  rawSafeSubset: {
+    contextSlot?: number | null;
+    timeTaken?: number | null;
+  };
+  expiresAt: string;
+};
+
+export type SolanaSwapQuoteResponse = SolanaSwapBaseResponse & {
+  mode: "quote";
+};
+
+export type SolanaSwapTransactionDraftResponse = SolanaSwapBaseResponse & {
+  mode: "swap";
+  userPublicKey: string;
+  swapTransaction: string;
+  lastValidBlockHeight?: number | null;
+};
+
+export type RangoSwapQuoteResponse = {
+  ok: true;
+  provider: "rango";
+  mode: "quote" | "swap";
+  requestId: string;
+  from: string;
+  to: string;
+  amountRaw: string;
+  outputAmountRaw?: string | null;
+  outputAmountFormatted?: string | null;
+  routeLabel: string;
+  routeSummary: Array<{
+    swapper?: string | null;
+    from?: string | null;
+    to?: string | null;
+  }>;
+  resultType?: string | null;
+  warnings: string[];
+  tx?: {
+    type?: string | null;
+    from?: string | null;
+    to?: string | null;
+    data?: string | null;
+    value?: string | null;
+    gasLimit?: string | null;
+  } | null;
+  expiresAt: string;
+};
+
 export type EvmSwapApprovalModel = "allowance_holder";
 
 export type EvmSwapQuoteMode = "price" | "quote";

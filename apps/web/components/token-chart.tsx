@@ -20,23 +20,6 @@ type ChartPoint = MarketChart["points"][number] & {
   y: number;
 };
 
-function statusBadge(status?: string | null): { label: string; className: string } | null {
-  if (!status || status === "fallback_mock" || status === "mock" || status === "unavailable") {
-    return null;
-  }
-
-  const badges: Record<string, { label: string; className: string }> = {
-    live: { label: "Live chart", className: "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" },
-    cached: { label: "Cached chart", className: "border-sky-500/30 bg-sky-500/15 text-sky-200" },
-    stale_cache: { label: "Stale cache", className: "border-amber-500/30 bg-amber-500/15 text-amber-200" },
-  };
-
-  return badges[status] ?? {
-    label: status,
-    className: "border-slate-600 bg-slate-700/60 text-slate-300",
-  };
-}
-
 function formatPrice(value: number, currency = "USD"): string {
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -88,7 +71,6 @@ function findClosestPoint(points: ChartPoint[], clientX: number, rect: DOMRect):
 
 export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) {
   const [hovered, setHovered] = useState<ChartPoint | null>(null);
-  const badge = statusBadge(chart?.sourceStatus);
   const points = useMemo(() => buildChartPoints(chart?.points ?? []), [chart?.points]);
   const path = buildSvgPath(points);
   const first = points[0];
@@ -111,14 +93,7 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
   if (!chart || points.length < 2) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-slate-500">Chart</p>
-          {badge ? (
-            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${badge.className}`}>
-              {badge.label}
-            </span>
-          ) : null}
-        </div>
+        <p className="text-xs text-slate-500">Chart</p>
         <div className="flex h-64 w-full items-center justify-center rounded-[1.5rem] border border-fuchsia-100 bg-white/70">
           <p className="text-xs text-slate-500">No chart data for {symbol}</p>
         </div>
@@ -137,13 +112,6 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
           <p className="text-xs text-slate-500">
             {activePoint ? formatTimestamp(activePoint.timestamp) : "Move over the chart"}
           </p>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          {badge ? (
-            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${badge.className}`}>
-              {badge.label}
-            </span>
-          ) : null}
         </div>
       </div>
 

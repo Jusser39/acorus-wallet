@@ -92,6 +92,16 @@ const envSchema = z.object({
   ),
   ZEROX_FEE_RECIPIENT: optionalStringFromEnv,
   ZEROX_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
+
+  JUPITER_API_KEY: optionalStringFromEnv,
+  JUPITER_API_BASE: z.string().url().default("https://api.jup.ag"),
+  JUPITER_ENABLED: boolFromEnv.default(true),
+  JUPITER_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(45),
+
+  RANGO_API_KEY: optionalStringFromEnv,
+  RANGO_API_BASE: z.string().url().default("https://api.rango.exchange"),
+  RANGO_ENABLED: boolFromEnv.default(true),
+  RANGO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;
