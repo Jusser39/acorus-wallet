@@ -155,6 +155,19 @@ function familyLabelFromTokenDetail(
   detail: TokenDetail | null,
   fallback: string,
 ): string {
+  const nativeSymbolLabels: Record<string, string> = {
+    BTC: "Bitcoin",
+    ETH: "Ethereum",
+    SOL: "Solana",
+    TON: "TON",
+    ZEC: "Zcash",
+    HYPE: "Hyperliquid",
+  };
+  const symbolLabel = detail?.symbol ? nativeSymbolLabels[detail.symbol.toUpperCase()] : null;
+  if (symbolLabel) {
+    return symbolLabel;
+  }
+
   const firstPlatform = detail?.platforms?.[0];
   if (!firstPlatform) {
     return fallback;
