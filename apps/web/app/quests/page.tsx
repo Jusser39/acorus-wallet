@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useWalletStore } from "@/store/wallet-store";
-
-const STORAGE_KEY = "acorus.quests.completed";
 
 interface Quest {
   id: string;
@@ -12,7 +11,9 @@ interface Quest {
   xp: number;
   icon: string;
   category: string;
-  autoDetect?: (params: { profiles: { type: string }[]; autoLockMinutes: number }) => boolean;
+  href: string;
+  action: string;
+  autoDetect?: (params: { hasWallet: boolean; profiles: { type: string }[]; completedEvents: string[] }) => boolean;
 }
 
 const QUESTS: Quest[] = [
@@ -23,7 +24,9 @@ const QUESTS: Quest[] = [
     xp: 50,
     icon: "🔑",
     category: "Getting started",
-    autoDetect: ({ profiles }) => profiles.length > 0,
+    href: "/wallet",
+    action: "Create or import wallet",
+    autoDetect: ({ hasWallet }) => hasWallet,
   },
   {
     id: "q_receive_address",
@@ -32,6 +35,9 @@ const QUESTS: Quest[] = [
     xp: 15,
     icon: "📬",
     category: "Getting started",
+    href: "/receive",
+    action: "Open receive",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("receive_viewed"),
   },
   {
     id: "q_backup_check",
@@ -40,6 +46,9 @@ const QUESTS: Quest[] = [
     xp: 20,
     icon: "🛡️",
     category: "Security",
+    href: "/security",
+    action: "Open security guide",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("security_reviewed"),
   },
   {
     id: "q_autolock_set",
@@ -48,7 +57,9 @@ const QUESTS: Quest[] = [
     xp: 20,
     icon: "⏱️",
     category: "Security",
-    autoDetect: ({ autoLockMinutes }) => autoLockMinutes <= 30,
+    href: "/settings",
+    action: "Open settings",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("autolock_changed"),
   },
   {
     id: "q_contact_added",
@@ -57,6 +68,9 @@ const QUESTS: Quest[] = [
     xp: 25,
     icon: "👤",
     category: "Power user",
+    href: "/settings",
+    action: "Manage contacts",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("contact_added"),
   },
   {
     id: "q_swap_preview",
@@ -65,6 +79,9 @@ const QUESTS: Quest[] = [
     xp: 20,
     icon: "🔄",
     category: "DeFi",
+    href: "/swap",
+    action: "Preview swap",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("swap_quote_requested"),
   },
   {
     id: "q_send_draft",
@@ -73,6 +90,9 @@ const QUESTS: Quest[] = [
     xp: 20,
     icon: "📤",
     category: "DeFi",
+    href: "/send",
+    action: "Create draft",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("send_draft_created"),
   },
   {
     id: "q_practice_wallet",
@@ -81,7 +101,9 @@ const QUESTS: Quest[] = [
     xp: 30,
     icon: "🎓",
     category: "Getting started",
-    autoDetect: ({ profiles }) => profiles.some((p) => p.type === "practice"),
+    href: "/practice",
+    action: "Open practice",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("practice_wallet_started"),
   },
   {
     id: "q_explore_visit",
@@ -90,6 +112,9 @@ const QUESTS: Quest[] = [
     xp: 15,
     icon: "🌐",
     category: "DeFi",
+    href: "/explore",
+    action: "Explore markets",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("explore_opened"),
   },
   {
     id: "q_dapp_connect",
@@ -98,50 +123,40 @@ const QUESTS: Quest[] = [
     xp: 40,
     icon: "🔌",
     category: "Power user",
+    href: "/dapps",
+    action: "Open dApps",
+    autoDetect: ({ completedEvents }) => completedEvents.includes("dapp_opened"),
   },
 ];
 
-function loadManual(): string[] {
+function loadCompletedEvents(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as string[];
+    return JSON.parse(localStorage.getItem("acorus.quests.events") ?? "[]") as string[];
   } catch {
     return [];
   }
-}
-
-function saveManual(ids: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
 }
 
 const CATEGORIES = ["Getting started", "Security", "DeFi", "Power user"];
 
 export default function QuestsPage() {
   const profiles = useWalletStore((state) => state.profiles);
-  const autoLockMinutes = useWalletStore((state) => state.autoLockMinutes);
+  const hasWallet = profiles.some((profile) => profile.type !== "practice");
 
-  // Manually completed quests persisted in localStorage (lazy init avoids SSR issues)
-  const [manualCompleted, setManualCompleted] = useState<string[]>(loadManual);
-
-  // Auto-detected quests are computed from current store state — no state needed
+  const [completedEvents] = useState<string[]>(loadCompletedEvents);
   const autoCompleted = useMemo(
     () =>
-      QUESTS.filter((q) => q.autoDetect?.({ profiles, autoLockMinutes })).map((q) => q.id),
-    [profiles, autoLockMinutes],
+      hasWallet
+        ? QUESTS.filter((q) => q.autoDetect?.({ hasWallet, profiles, completedEvents })).map((q) => q.id)
+        : [],
+    [completedEvents, hasWallet, profiles],
   );
 
   const completed = useMemo(
-    () => [...new Set([...manualCompleted, ...autoCompleted])],
-    [manualCompleted, autoCompleted],
+    () => [...new Set(autoCompleted)],
+    [autoCompleted],
   );
-
-  function completeQuest(id: string) {
-    setManualCompleted((prev) => {
-      const next = [...new Set([...prev, id])];
-      saveManual(next);
-      return next;
-    });
-  }
 
   const totalXp = useMemo(
     () => QUESTS.filter((q) => completed.includes(q.id)).reduce((sum, q) => sum + q.xp, 0),
@@ -154,34 +169,39 @@ export default function QuestsPage() {
     <section className="page space-y-6">
       {/* Header */}
       <div className="glass-panel space-y-3">
-        <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Quests</p>
-        <h1 className="text-3xl font-semibold text-white">Learn Web3 by doing</h1>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm uppercase tracking-[0.22em] text-fuchsia-500">Quests</p>
+        <h1 className="text-3xl font-semibold text-slate-950">Learn Web3 by doing</h1>
+        <p className="text-sm text-slate-600">
           Complete quests to earn XP and level up your Web3 knowledge — safely, without
           risking real funds.
         </p>
       </div>
 
       {/* XP / Level bar */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+      <div className="premium-card space-y-3 p-5">
         <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold text-white">Level {level}</span>
-          <span className="text-sm text-slate-400">
+          <span className="text-lg font-semibold text-slate-950">Level {level}</span>
+          <span className="text-sm text-slate-500">
             {completed.length}/{QUESTS.length} quests complete
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-3 rounded-full bg-slate-800 overflow-hidden">
+          <div className="flex-1 h-3 rounded-full bg-fuchsia-50 overflow-hidden">
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-fuchsia-400 to-sky-400 transition-all duration-500"
               style={{ width: `${levelProgress}%` }}
             />
           </div>
-          <span className="text-sm text-emerald-300 tabular-nums w-16 text-right">
+          <span className="text-sm text-fuchsia-600 tabular-nums w-16 text-right">
             {levelProgress}/100 XP
           </span>
         </div>
         <p className="text-xs text-slate-500">Total XP: {totalXp}</p>
+        {!hasWallet ? (
+          <p className="rounded-2xl border border-fuchsia-100 bg-white/75 px-3 py-2 text-sm text-slate-600">
+            Quest progress starts only after a real wallet is created or imported. Opening pages alone no longer grants XP.
+          </p>
+        ) : null}
       </div>
 
       {/* Quest cards by category */}
@@ -196,37 +216,36 @@ export default function QuestsPage() {
                 return (
                   <div
                     key={quest.id}
-                    className={`rounded-2xl border bg-slate-900/80 p-4 shadow-[0_18px_48px_rgba(2,6,23,0.18)] transition-all ${
+                    className={`rounded-2xl border bg-white/80 p-4 shadow-[0_18px_48px_rgba(168,85,247,0.10)] transition-all ${
                       done
                         ? "border-emerald-500/40 border-l-4 border-l-emerald-500 opacity-70"
-                        : "border-slate-800"
+                        : "border-fuchsia-100"
                     }`}
                   >
                     <div className="flex items-start gap-4">
                       <span className="text-2xl">{quest.icon}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-white">{quest.title}</span>
+                          <span className="font-semibold text-slate-950">{quest.title}</span>
                           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
                             +{quest.xp} XP
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-slate-400">{quest.desc}</p>
+                        <p className="mt-1 text-sm text-slate-600">{quest.desc}</p>
                       </div>
                       <div className="flex-shrink-0">
                         {done ? (
                           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-slate-950 text-sm font-bold">
                             ✓
                           </span>
-                        ) : !quest.autoDetect ? (
-                          <button
-                            type="button"
-                            onClick={() => completeQuest(quest.id)}
-                            className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 transition hover:bg-emerald-500/20"
+                        ) : (
+                          <Link
+                            href={quest.href}
+                            className="rounded-full border border-fuchsia-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-fuchsia-300 hover:bg-fuchsia-50"
                           >
-                            Complete
-                          </button>
-                        ) : null}
+                            {quest.action}
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -238,4 +257,4 @@ export default function QuestsPage() {
       })}
     </section>
   );
-}
+}

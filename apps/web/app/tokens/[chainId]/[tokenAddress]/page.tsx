@@ -125,6 +125,12 @@ function formatExplorerLabel(url: string, fallback: string): string {
       "snowtrace.io": "Snowtrace",
       "solscan.io": "Solscan",
       "tonscan.org": "TONScan",
+      "tonviewer.com": "TONViewer",
+      "mempool.space": "Mempool",
+      "zecblockexplorer.com": "Zcash Explorer",
+      "blockchair.com": "Blockchair",
+      "hypurrscan.io": "Hypurrscan",
+      "nearblocks.io": "Nearblocks",
     };
     return labels[host] ?? fallback;
   } catch {
@@ -143,6 +149,62 @@ function resolveFamily(
   return getUniversalChain({ chainId })?.family
     ?? (typeof chainId === "number" ? getChainById(chainId)?.family : undefined)
     ?? "evm";
+}
+
+function familyLabelFromTokenDetail(
+  detail: TokenDetail | null,
+  fallback: string,
+): string {
+  const firstPlatform = detail?.platforms?.[0];
+  if (!firstPlatform) {
+    return fallback;
+  }
+
+  const labels: Record<string, string> = {
+    bitcoin: "Bitcoin",
+    solana: "Solana",
+    ton: "TON",
+    zcash: "Zcash",
+    hyperliquid: "Hyperliquid",
+    ethereum: "Ethereum",
+    base: "Base",
+    arbitrum: "Arbitrum",
+    optimism: "Optimism",
+    polygon: "Polygon",
+    bsc: "BNB Chain",
+  };
+
+  return labels[firstPlatform.chainKey] ?? labels[String(firstPlatform.chainId)] ?? firstPlatform.chainKey;
+}
+
+function normalizeLinkUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    url.search = "";
+    url.pathname = url.pathname.replace(/\/+$/u, "");
+    return `${url.hostname.replace(/^www\./u, "").toLowerCase()}${url.pathname}`;
+  } catch {
+    return value.trim().replace(/\/+$/u, "").toLowerCase();
+  }
+}
+
+function dedupeLinks(links: TokenDetail["links"]): TokenDetail["links"] {
+  const seen = new Set<string>();
+  return links.filter((link) => {
+    const key = `${link.kind}:${link.kind === "explorer" ? normalizeLinkUrl(link.url) : normalizeLinkHost(link.url)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeLinkHost(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./u, "").toLowerCase();
+  } catch {
+    return normalizeLinkUrl(value);
+  }
 }
 
 export default function TokenDetailPage({ params }: { params: Promise<PageParams> | PageParams }) {
@@ -256,6 +318,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           coinId: coinId ?? undefined,
           chainId: !isCoinGeckoRoute && hasNumericChain && !isNativeToken ? numericChainId : undefined,
           tokenAddress: !isCoinGeckoRoute && hasNumericChain && !isNativeToken ? tokenAddress : undefined,
+          symbol: symbolParam,
+          name: nameParam,
           currency,
         });
         if (!active) return;
@@ -359,6 +423,12 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const priceBadge = badgeForStatus(tokenDetail?.sourceStatus ?? price?.sourceStatus);
   const chartBadge = badgeForStatus(chart?.sourceStatus);
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
+  const displayFamilyLabel = isCoinGeckoRoute
+    ? familyLabelFromTokenDetail(tokenDetail, tokenDetail?.platforms?.length ? "Market" : "CoinGecko")
+    : familyLabel;
+  const displayChainName = isCoinGeckoRoute
+    ? displayFamilyLabel
+    : chain?.name ?? `Chain ${String(chainId)}`;
   const tradePlatform = useMemo(
     () => tokenDetail?.platforms.find((platform) =>
       typeof platform.chainId === "number"
@@ -387,13 +457,19 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const displayFdv = tokenDetail?.fdvUsd ?? null;
   const displayHigh24h = tokenDetail?.high24hUsd ?? null;
   const displayLow24h = tokenDetail?.low24hUsd ?? null;
-  const externalLinks = tokenDetail?.links ?? [];
+  const externalLinks = dedupeLinks((tokenDetail?.links ?? []).filter((link) => link.kind !== "explorer"));
   const logoUrl = tokenDetail?.logoUrl ?? null;
   const explorerOptions = useMemo(() => {
     const entries: Array<{ label: string; url: string }> = [];
 
     if (explorerTokenUrl) {
       entries.push({ label: formatExplorerLabel(explorerTokenUrl, chain?.name ?? "Explorer"), url: explorerTokenUrl });
+    }
+
+    for (const link of tokenDetail?.links ?? []) {
+      if (link.kind === "explorer") {
+        entries.push({ label: formatExplorerLabel(link.url, link.label), url: link.url });
+      }
     }
 
     for (const platform of tokenDetail?.platforms ?? []) {
@@ -417,11 +493,12 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
 
     const seen = new Set<string>();
     return entries.filter((entry) => {
-      if (seen.has(entry.url)) return false;
-      seen.add(entry.url);
+      const key = normalizeLinkUrl(entry.url);
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
-  }, [chain?.name, explorerTokenUrl, family, tokenDetail?.platforms]);
+  }, [chain?.name, explorerTokenUrl, family, tokenDetail?.links, tokenDetail?.platforms]);
 
   async function handleShare() {
     if (typeof window === "undefined") return;
@@ -481,11 +558,11 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       {resolvedSymbol}
                     </span>
                     <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
-                      {familyLabel}
+                      {displayFamilyLabel}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-slate-600">
-                    {chain?.name ?? `Chain ${String(chainId)}`}
+                    {displayChainName}
                   </p>
                   {!isNativeToken ? (
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
@@ -648,22 +725,54 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
               description="Get a backend 0x quote and review the final transaction inside Acorus extension."
             />
           ) : (
-            <div className="premium-card space-y-4 p-5">
-              <span className="section-kicker">Swap status</span>
-              <h2 className="text-2xl font-semibold text-slate-950">
-                {resolvedSymbol} swap is coming next
-              </h2>
-              <p className="text-sm leading-6 text-slate-600">
-                This wave executes 0x swaps only on EVM chains. Solana/Jupiter, Tron, Bitcoin, TON and cross-chain routes stay gated until their adapters are reviewed.
-              </p>
-              <Link href="/swap" className="button-secondary inline-flex">
-                Open swap shell
-              </Link>
-            </div>
+            <UnsupportedSwapPanel symbol={resolvedSymbol} name={resolvedName} />
           )}
         </aside>
       </div>
     </section>
+  );
+}
+
+function UnsupportedSwapPanel({ symbol, name }: { symbol: string; name: string }) {
+  return (
+    <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
+      <div className="px-3 pt-3">
+        <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
+          Swap
+        </span>
+        <h2 className="mt-3 text-3xl font-semibold text-slate-950">Swap {symbol}</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          {name} is visible in the swap shell. Execution for this route is gated until the matching adapter is reviewed.
+        </p>
+      </div>
+
+      <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2">
+        <label className="space-y-2">
+          <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
+          <div className="light-field flex items-center justify-between">
+            <span>Choose token</span>
+            <span className="text-slate-400">0</span>
+          </div>
+        </label>
+        <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-fuchsia-100 bg-white text-slate-500">
+          ↓
+        </div>
+        <label className="space-y-2">
+          <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
+          <div className="light-field flex items-center justify-between">
+            <span>{symbol} · {name}</span>
+            <span>0</span>
+          </div>
+        </label>
+      </div>
+
+      <button type="button" className="button-primary w-full opacity-70" disabled>
+        Route coming next
+      </button>
+      <Link href="/swap" className="button-secondary inline-flex w-full justify-center">
+        Open EVM swap
+      </Link>
+    </div>
   );
 }
 

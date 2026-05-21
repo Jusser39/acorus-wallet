@@ -584,3 +584,12 @@
 326. Production Venice Token chart smoke passed with `coinId=venice-token&currency=USD`: `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL` all returned chart points.
 327. Production dApps smoke passed: `/dapps` returns the clickable user-facing directory with categorized apps and “Open and connect” affordances.
 328. Did not execute a real swap or import a mnemonic into a browser profile automatically during this final smoke; those remain manual guarded checks to avoid exposing seed material or triggering value-moving transactions without a human confirmation.
+329. Started the token metadata and quest integrity stabilization after the user reported blank coin cards, duplicate BTC Blockchain buttons, missing right-side swap surfaces, and Quests counting progress without a wallet.
+330. Added CoinPaprika fallback metadata and ticker support to the API provider, with safe mapped ids for BTC, ETH, SOL, TON, ZEC, and HYPE.
+331. Added supplemental detail enrichment so successful CoinGecko detail responses with null price/market-cap/volume fields are completed from Binance and CoinPaprika instead of rendering empty token metrics.
+332. Updated the token detail route/API client to pass requested symbol/name through unavailable states, and updated token pages to dedupe explorer links into a single Blockchain dropdown while keeping non-explorer links separate.
+333. Added clearer explorer labels for Mempool, TONViewer, Zcash Explorer, Blockchair, Hypurrscan, and Nearblocks.
+334. Replaced manual Quests completion with wallet-gated event detection: without a real wallet, quest progress remains 0/10 and opening pages alone no longer grants XP.
+335. Added regression coverage for CoinPaprika arbitrary fallback and supplemental market-field enrichment when CoinGecko detail returns null numeric fields.
+336. Local validation passed for this stabilization: `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `git diff --check`, `pnpm test`, `pnpm build`, and `pnpm extension:package`.
+337. Local live provider smoke confirmed BTC, ETH, SOL, ZEC, HYPE, Venice Token, and TON return real or supplemental market metadata; TON now returns real price, market cap, 24h volume, high/low, and multi-platform data when CoinGecko detail fields are null.

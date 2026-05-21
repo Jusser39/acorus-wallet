@@ -1333,3 +1333,30 @@
   - Liquidity remains shown only when the DEX/pair provider exposes it for the selected asset.
   - Third-party dApp wallet connection still depends on each dApp seeing and accepting the Acorus injected providers.
 
+## Token Metadata and Quest Integrity Stabilization (2026-05-21)
+
+- Status: **implemented locally, validation in progress**
+- Hardened token detail enrichment again after production review showed blank or partial cards for assets such as TON, HYPE, ZEC, BTC, and Venice Token.
+- Added CoinPaprika as a public fallback metadata provider for arbitrary CoinGecko coin ids, including logo, rank, market cap, volume, supply, categories, website, X, Telegram, and description data where available.
+- Added supplemental market-field enrichment: if CoinGecko `/coins/{id}` succeeds but returns null price/market-cap/volume fields, Acorus now fills missing numeric fields from Binance and CoinPaprika instead of leaving the card empty.
+- Added safe CoinPaprika mappings for Bitcoin, Ethereum, Solana, TON, Zcash, and Hyperliquid so common token pages resolve without relying on fuzzy search.
+- Token pages now pass the requested symbol/name to the backend for unavailable states, keep the right-side swap panel visible even for non-EVM routes, and route all explorer links through one deduped Blockchain dropdown.
+- Added explorer labels for Mempool, TONViewer, Blockchair, Zcash Explorer, Hypurrscan, and Nearblocks so dropdown entries are clearer than a generic "Blockchain" label.
+- Fixed token explorer memoization so the dropdown updates when the active token's own links change.
+- Removed quest self-completion: the old manual complete button/localStorage key is no longer used, and quest XP is now gated behind a real wallet plus explicit future event keys. Opening the Quests page alone should show 0/10 without a wallet.
+- Validation passed so far:
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `git diff --check`
+  - `pnpm test`
+  - `pnpm build`
+  - `pnpm extension:package`
+- Local live smoke:
+  - BTC, ETH, SOL, ZEC, HYPE, Venice Token, and TON token-detail provider calls returned live or supplemental real metadata rather than mock data.
+  - TON now gets a real price, market cap, volume, high/low, and multi-platform data even when CoinGecko detail market fields are null.
+- Known limitations:
+  - Liquidity remains blank unless a DEX/pool data source exposes it for that specific asset.
+  - Non-EVM swap execution remains gated; the right-side swap shell is visible, but execution is only enabled for reviewed EVM/0x routes.
+

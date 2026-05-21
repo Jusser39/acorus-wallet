@@ -659,12 +659,16 @@ export async function getMarketTokenDetail(input: {
   coinId?: string;
   chainId?: number;
   tokenAddress?: string;
+  symbol?: string;
+  name?: string;
   currency: FiatCurrency;
 }): Promise<TokenDetail | null> {
   const params = new URLSearchParams({ currency: input.currency });
   if (input.coinId) params.set("coinId", input.coinId);
   if (input.chainId) params.set("chainId", String(input.chainId));
   if (input.tokenAddress) params.set("tokenAddress", input.tokenAddress);
+  if (input.symbol) params.set("symbol", input.symbol);
+  if (input.name) params.set("name", input.name);
   const response = await apiFetch<{ ok: boolean; detail?: TokenDetail }>(
     `/api/market/token-detail?${params.toString()}`,
   );

@@ -95,6 +95,7 @@ const COINGECKO_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
   tether: "USDTUSDT",
   "usd-coin": "USDCUSDT",
   zcash: "ZECUSDT",
+  hyperliquid: "HYPEUSDT",
 };
 
 const RANGE_TO_BINANCE_KLINES: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", { interval: string; limit: number }> = {
@@ -170,6 +171,57 @@ type BinanceTicker24h = {
   quoteVolume?: string;
 };
 
+type CoinPaprikaSearchResponse = {
+  currencies?: Array<{
+    id?: string;
+    name?: string;
+    symbol?: string;
+    rank?: number | null;
+    is_active?: boolean;
+  }>;
+};
+
+type CoinPaprikaCoinResponse = {
+  id?: string;
+  name?: string;
+  symbol?: string;
+  rank?: number | null;
+  logo?: string | null;
+  description?: string | null;
+  started_at?: string | null;
+  first_data_at?: string | null;
+  tags?: Array<{ name?: string | null }> | null;
+  links?: {
+    website?: string[] | null;
+  } | null;
+  links_extended?: Array<{
+    url?: string | null;
+    type?: string | null;
+  }> | null;
+  contract?: string | null;
+  platform?: string | null;
+};
+
+type CoinPaprikaTickerResponse = {
+  id?: string;
+  name?: string;
+  symbol?: string;
+  rank?: number | null;
+  total_supply?: number | null;
+  max_supply?: number | null;
+  circulating_supply?: number | null;
+  first_data_at?: string | null;
+  quotes?: {
+    USD?: {
+      price?: number | null;
+      volume_24h?: number | null;
+      market_cap?: number | null;
+      percent_change_24h?: number | null;
+      ath_price?: number | null;
+    };
+  };
+};
+
 type GeckoTerminalPoolsResponse = {
   data?: Array<{
     id?: string;
@@ -205,6 +257,7 @@ const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   "the-open-network": "TON",
   zcash: "ZEC",
   "venice-token": "VVV",
+  hyperliquid: "HYPE",
 };
 
 const ETH_NATIVE_PLATFORMS: TokenDetailPayload["platforms"] = [
@@ -298,6 +351,27 @@ const COINGECKO_ID_TO_SAFE_DETAIL: Record<string, Partial<Pick<
     ],
     platforms: [{ chainId: 8453, chainKey: "base", tokenAddress: "0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf", decimals: 18 }],
   },
+  hyperliquid: {
+    name: "Hyperliquid",
+    categories: ["Layer 1", "DeFi", "Derivatives", "DEX"],
+    description: "Hyperliquid is a high-performance blockchain and decentralized exchange ecosystem focused on perpetual futures, on-chain order books and low-latency trading. HYPE is the ecosystem asset used across the Hyperliquid network and governance/economic flows.",
+    logoUrl: "https://static.coinpaprika.com/coin/hype-hyperliquid/logo.png",
+    links: [
+      { label: "Blockchain", url: "https://hypurrscan.io/", kind: "explorer" },
+      { label: "Website", url: "https://hyperliquid.xyz/", kind: "website" },
+      { label: "X", url: "https://x.com/HyperliquidX", kind: "twitter" },
+    ],
+    platforms: [{ chainId: "hyperliquid", chainKey: "hyperliquid", tokenAddress: "0x0d01dc56dcaaca66ad901c959b4011ec" }],
+  },
+};
+
+const COINGECKO_TO_COINPAPRIKA_ID: Record<string, string> = {
+  bitcoin: "btc-bitcoin",
+  ethereum: "eth-ethereum",
+  solana: "sol-solana",
+  "the-open-network": "toncoin-the-open-network",
+  zcash: "zec-zcash",
+  hyperliquid: "hype-hyperliquid",
 };
 
 function firstUrl(values?: Array<string | null> | null): string | null {
@@ -319,10 +393,31 @@ function mergeLinks(
 ): TokenDetailPayload["links"] {
   const seen = new Set<string>();
   return [...primary, ...(fallback ?? [])].filter((link) => {
-    if (seen.has(link.url)) return false;
-    seen.add(link.url);
+    const key = `${link.kind}:${link.kind === "explorer" ? normalizeLinkUrl(link.url) : normalizeLinkHost(link.url)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
+}
+
+function normalizeLinkHost(value: string): string {
+  try {
+    return new URL(value).hostname.replace(/^www\./u, "").toLowerCase();
+  } catch {
+    return normalizeLinkUrl(value);
+  }
+}
+
+function normalizeLinkUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    url.search = "";
+    url.pathname = url.pathname.replace(/\/+$/u, "");
+    return `${url.hostname.replace(/^www\./u, "").toLowerCase()}${url.pathname}`;
+  } catch {
+    return value.trim().replace(/\/+$/u, "").toLowerCase();
+  }
 }
 
 function mergePlatforms(
@@ -343,6 +438,34 @@ function mergeCategories(
   fallback: string[] | undefined,
 ): string[] {
   return Array.from(new Set([...(primary ?? []), ...(fallback ?? [])].filter(Boolean))).slice(0, 8);
+}
+
+function buildCoinPaprikaLinks(coin: CoinPaprikaCoinResponse | null): TokenDetailPayload["links"] {
+  if (!coin) {
+    return [];
+  }
+
+  const links: TokenDetailPayload["links"] = [];
+  const website = firstUrl(coin.links?.website);
+  if (website) {
+    links.push({ label: "Website", url: website, kind: "website" });
+  }
+
+  for (const item of coin.links_extended ?? []) {
+    if (!item.url || !/^https?:\/\//u.test(item.url)) {
+      continue;
+    }
+
+    if (item.type === "twitter") {
+      links.push({ label: "X", url: item.url, kind: "twitter" });
+    } else if (item.type === "telegram") {
+      links.push({ label: "Telegram", url: item.url, kind: "telegram" });
+    } else if (item.type === "website") {
+      links.push({ label: "Website", url: item.url, kind: "website" });
+    }
+  }
+
+  return mergeLinks(links, []);
 }
 
 interface CoinGeckoDetailResponse {
@@ -823,7 +946,8 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       );
     } catch (error) {
       const fallback = await this.fetchCoinMarketsTokenDetailFallback(coinId, currency)
-        ?? await this.fetchBinanceTokenDetailFallback(coinId, currency);
+        ?? await this.fetchBinanceTokenDetailFallback(coinId, currency)
+        ?? await this.fetchCoinPaprikaTokenDetailFallback(coinId, currency);
       if (fallback) {
         return fallback;
       }
@@ -833,6 +957,15 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     const price = response.market_data?.current_price?.[vsCurrency] ?? null;
     const changeValue = response.market_data?.price_change_24h_in_currency?.[vsCurrency] ?? null;
     const changePercent = response.market_data?.price_change_percentage_24h_in_currency?.[vsCurrency] ?? null;
+    const marketCap = response.market_data?.market_cap?.[vsCurrency] ?? null;
+    const volume24h = response.market_data?.total_volume?.[vsCurrency] ?? null;
+    const shouldSupplement = price === null || marketCap === null || volume24h === null;
+    const binanceSupplemental = shouldSupplement
+      ? await this.fetchBinanceTokenDetailFallback(coinId, currency)
+      : null;
+    const paprikaSupplemental = shouldSupplement
+      ? await this.fetchCoinPaprikaTokenDetailFallback(coinId, currency)
+      : null;
     const explorer = firstUrl(response.links?.blockchain_site);
     const website = firstUrl(response.links?.homepage);
     const twitter = response.links?.twitter_screen_name
@@ -863,26 +996,26 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       symbol: response.symbol.toUpperCase(),
       name: response.name,
       currency,
-      price,
+      price: price ?? binanceSupplemental?.price ?? paprikaSupplemental?.price ?? null,
       change24h: changePercent !== null && changeValue !== null
         ? { value: changeValue, percent: changePercent }
-        : null,
-      marketCapUsd: response.market_data?.market_cap?.[vsCurrency] ?? null,
-      fdvUsd: response.market_data?.fully_diluted_valuation?.[vsCurrency] ?? null,
-      volume24hUsd: response.market_data?.total_volume?.[vsCurrency] ?? null,
-      liquidityUsd: null,
-      high24hUsd: response.market_data?.high_24h?.[vsCurrency] ?? null,
-      low24hUsd: response.market_data?.low_24h?.[vsCurrency] ?? null,
-      rank: response.market_cap_rank ?? null,
+        : binanceSupplemental?.change24h ?? paprikaSupplemental?.change24h ?? null,
+      marketCapUsd: marketCap ?? binanceSupplemental?.marketCapUsd ?? paprikaSupplemental?.marketCapUsd ?? null,
+      fdvUsd: response.market_data?.fully_diluted_valuation?.[vsCurrency] ?? binanceSupplemental?.fdvUsd ?? paprikaSupplemental?.fdvUsd ?? null,
+      volume24hUsd: volume24h ?? binanceSupplemental?.volume24hUsd ?? paprikaSupplemental?.volume24hUsd ?? null,
+      liquidityUsd: binanceSupplemental?.liquidityUsd ?? paprikaSupplemental?.liquidityUsd ?? null,
+      high24hUsd: response.market_data?.high_24h?.[vsCurrency] ?? binanceSupplemental?.high24hUsd ?? paprikaSupplemental?.high24hUsd ?? null,
+      low24hUsd: response.market_data?.low_24h?.[vsCurrency] ?? binanceSupplemental?.low24hUsd ?? paprikaSupplemental?.low24hUsd ?? null,
+      rank: response.market_cap_rank ?? binanceSupplemental?.rank ?? paprikaSupplemental?.rank ?? null,
       launchedAt: response.genesis_date ?? safe?.launchedAt ?? null,
-      categories: mergeCategories(response.categories, safe?.categories),
-      circulatingSupply: response.market_data?.circulating_supply ?? null,
-      totalSupply: response.market_data?.total_supply ?? safe?.totalSupply ?? null,
-      maxSupply: response.market_data?.max_supply ?? safe?.maxSupply ?? null,
-      description: stripHtml(response.description?.en ?? "").trim() || safe?.description || null,
-      logoUrl: response.image?.large ?? response.image?.small ?? response.image?.thumb ?? safe?.logoUrl ?? null,
-      links: mergeLinks(links, safe?.links),
-      platforms: mergePlatforms(platforms, safe?.platforms),
+      categories: mergeCategories(response.categories, mergeCategories(binanceSupplemental?.categories, mergeCategories(paprikaSupplemental?.categories, safe?.categories))),
+      circulatingSupply: response.market_data?.circulating_supply ?? binanceSupplemental?.circulatingSupply ?? paprikaSupplemental?.circulatingSupply ?? null,
+      totalSupply: response.market_data?.total_supply ?? binanceSupplemental?.totalSupply ?? paprikaSupplemental?.totalSupply ?? safe?.totalSupply ?? null,
+      maxSupply: response.market_data?.max_supply ?? binanceSupplemental?.maxSupply ?? paprikaSupplemental?.maxSupply ?? safe?.maxSupply ?? null,
+      description: stripHtml(response.description?.en ?? "").trim() || binanceSupplemental?.description || paprikaSupplemental?.description || safe?.description || null,
+      logoUrl: response.image?.large ?? response.image?.small ?? response.image?.thumb ?? binanceSupplemental?.logoUrl ?? paprikaSupplemental?.logoUrl ?? safe?.logoUrl ?? null,
+      links: mergeLinks(mergeLinks(mergeLinks(links, binanceSupplemental?.links), paprikaSupplemental?.links), safe?.links),
+      platforms: mergePlatforms(mergePlatforms(mergePlatforms(platforms, binanceSupplemental?.platforms), paprikaSupplemental?.platforms), safe?.platforms),
       provider: this.id,
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
@@ -943,7 +1076,8 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
         updatedAt: new Date().toISOString(),
       };
     } catch {
-      return safe ? this.buildSafeMetadataTokenDetail(coinId, currency, safe) : null;
+      return await this.fetchCoinPaprikaTokenDetailFallback(coinId, currency)
+        ?? (safe ? this.buildSafeMetadataTokenDetail(coinId, currency, safe) : null);
     }
   }
 
@@ -984,6 +1118,108 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
       sourceStatus: "live",
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  private async fetchCoinPaprikaTokenDetailFallback(
+    coinId: string,
+    currency: FiatCurrency,
+  ): Promise<TokenDetailPayload | null> {
+    if (currency !== "USD") {
+      return null;
+    }
+
+    try {
+      const paprikaId = await this.resolveCoinPaprikaId(coinId);
+      if (!paprikaId) {
+        return null;
+      }
+
+      const [coin, ticker] = await Promise.all([
+        httpGet<CoinPaprikaCoinResponse>(
+          `https://api.coinpaprika.com/v1/coins/${encodeURIComponent(paprikaId)}`,
+          this.timeoutMs,
+          {},
+        ).catch(() => null),
+        httpGet<CoinPaprikaTickerResponse>(
+          `https://api.coinpaprika.com/v1/tickers/${encodeURIComponent(paprikaId)}`,
+          this.timeoutMs,
+          {},
+        ).catch(() => null),
+      ]);
+
+      if (!coin && !ticker) {
+        return null;
+      }
+
+      const safe = COINGECKO_ID_TO_SAFE_DETAIL[coinId.toLowerCase()];
+      const quote = ticker?.quotes?.USD;
+      const symbol = (ticker?.symbol ?? coin?.symbol ?? COINGECKO_ID_TO_SYMBOL[coinId.toLowerCase()] ?? coinId).toUpperCase();
+      const name = ticker?.name ?? coin?.name ?? safe?.name ?? symbol;
+      const links = buildCoinPaprikaLinks(coin);
+      const categories = mergeCategories(
+        coin?.tags?.map((tag) => tag.name ?? "").filter(Boolean),
+        safe?.categories,
+      );
+
+      return {
+        id: coinId,
+        symbol,
+        name,
+        currency,
+        price: quote?.price ?? null,
+        change24h: quote?.percent_change_24h != null && quote.price != null
+          ? { value: quote.price * (quote.percent_change_24h / 100), percent: quote.percent_change_24h }
+          : null,
+        marketCapUsd: quote?.market_cap ?? null,
+        fdvUsd: null,
+        volume24hUsd: quote?.volume_24h ?? null,
+        liquidityUsd: null,
+        high24hUsd: quote?.ath_price ?? null,
+        low24hUsd: null,
+        rank: ticker?.rank ?? coin?.rank ?? null,
+        launchedAt: coin?.started_at ?? coin?.first_data_at ?? ticker?.first_data_at ?? safe?.launchedAt ?? null,
+        categories,
+        circulatingSupply: ticker?.circulating_supply ?? null,
+        totalSupply: ticker?.total_supply ?? safe?.totalSupply ?? null,
+        maxSupply: ticker?.max_supply ?? safe?.maxSupply ?? null,
+        description: coin?.description?.trim() || safe?.description || "Live CoinGecko metadata is temporarily unavailable, so Acorus is showing public CoinPaprika market data for this asset.",
+        logoUrl: coin?.logo ?? safe?.logoUrl ?? null,
+        links: mergeLinks(links, safe?.links),
+        platforms: safe?.platforms ?? [],
+        provider: "coinpaprika",
+        sourceStatus: "live",
+        updatedAt: new Date().toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveCoinPaprikaId(coinId: string): Promise<string | null> {
+    const mapped = COINGECKO_TO_COINPAPRIKA_ID[coinId.toLowerCase()];
+    if (mapped) {
+      return mapped;
+    }
+
+    const response = await httpGet<CoinPaprikaSearchResponse>(
+      `https://api.coinpaprika.com/v1/search?${new URLSearchParams({
+        q: coinId.replace(/-/gu, " "),
+        c: "currencies",
+        limit: "5",
+      }).toString()}`,
+      this.timeoutMs,
+      {},
+    );
+
+    const normalized = coinId.replace(/[-_\s]/gu, "").toLowerCase();
+    const currencies = response.currencies ?? [];
+    return currencies.find((item) =>
+      item.is_active !== false
+      && (
+        item.id?.replace(/[-_\s]/gu, "").toLowerCase().includes(normalized)
+        || item.name?.replace(/[-_\s]/gu, "").toLowerCase() === normalized
+      )
+    )?.id ?? currencies.find((item) => item.is_active !== false)?.id ?? null;
   }
 
   private async fetchBinanceTokenDetailFallback(

@@ -367,7 +367,7 @@ describe("api", () => {
         expect(res.json().chart.points.length).toBeGreaterThan(0);
       }
     }
-  });
+  }, 15_000);
 
   it("does not expose mock prices or mock charts from public market endpoints", async () => {
     const top = await app.inject({

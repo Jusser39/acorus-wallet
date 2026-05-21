@@ -874,6 +874,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         coinId: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/u).optional(),
         chainId: z.coerce.number().int().positive().optional(),
         tokenAddress: z.string().optional(),
+        symbol: z.string().min(1).max(20).optional(),
+        name: z.string().min(1).max(120).optional(),
         currency: fiatCurrencySchema.default("USD"),
       })
       .parse(request.query);
@@ -882,7 +884,17 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       const detail = marketProvider.getTokenDetailByCoinId
         ? await marketProvider.getTokenDetailByCoinId(query.coinId, query.currency as FiatCurrency)
         : await mockFallback.getTokenDetailByCoinId(query.coinId, query.currency as FiatCurrency);
-      return { ok: true, detail };
+      return {
+        ok: true,
+        detail: detail.sourceStatus === "unavailable"
+          ? {
+              ...detail,
+              symbol: query.symbol?.toUpperCase() ?? detail.symbol,
+              name: query.name ?? detail.name,
+              description: detail.description ?? `Live market metadata is temporarily unavailable for ${query.name ?? detail.name}.`,
+            }
+          : detail,
+      };
     }
 
     if (!query.chainId || !query.tokenAddress) {
