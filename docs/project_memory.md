@@ -1335,7 +1335,7 @@
 
 ## Token Metadata and Quest Integrity Stabilization (2026-05-21)
 
-- Status: **implemented locally, validation in progress**
+- Status: **implemented, pushed, deployed, validation passed**
 - Hardened token detail enrichment again after production review showed blank or partial cards for assets such as TON, HYPE, ZEC, BTC, and Venice Token.
 - Added CoinPaprika as a public fallback metadata provider for arbitrary CoinGecko coin ids, including logo, rank, market cap, volume, supply, categories, website, X, Telegram, and description data where available.
 - Added supplemental market-field enrichment: if CoinGecko `/coins/{id}` succeeds but returns null price/market-cap/volume fields, Acorus now fills missing numeric fields from Binance and CoinPaprika instead of leaving the card empty.
@@ -1356,6 +1356,13 @@
 - Local live smoke:
   - BTC, ETH, SOL, ZEC, HYPE, Venice Token, and TON token-detail provider calls returned live or supplemental real metadata rather than mock data.
   - TON now gets a real price, market cap, volume, high/low, and multi-platform data even when CoinGecko detail market fields are null.
+- Production deploy:
+  - Code commit `2be8cae` (`Stabilize token metadata and quest progress`) and follow-up commit `18e05c3` (`Fix native token family labels`) were pushed to `origin/main`.
+  - Wallet production was updated at `https://24wallet.ru`; backups were preserved at `/root/backups/acorus-token-metadata-quests_20260521_141700` and `/root/backups/acorus-native-labels_20260521_142915`.
+- Production smoke after deploy:
+  - BTC, TON, and HYPE token detail APIs returned live/supplemental real price, market cap, volume, logo/link/platform metadata.
+  - Browser smoke confirmed BTC, SOL, and ZEC pages render a visible right-side swap shell without a connected wallet, non-empty market caps, and a single visible Blockchain action in the header.
+  - Browser smoke confirmed `/quests` shows `0/10 quests complete` and no manual Complete buttons when no real wallet is active.
 - Known limitations:
   - Liquidity remains blank unless a DEX/pool data source exposes it for that specific asset.
   - Non-EVM swap execution remains gated; the right-side swap shell is visible, but execution is only enabled for reviewed EVM/0x routes.

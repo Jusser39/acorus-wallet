@@ -593,3 +593,11 @@
 335. Added regression coverage for CoinPaprika arbitrary fallback and supplemental market-field enrichment when CoinGecko detail returns null numeric fields.
 336. Local validation passed for this stabilization: `pnpm --filter @acorus/api test`, `pnpm --filter @acorus/api build`, `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `git diff --check`, `pnpm test`, `pnpm build`, and `pnpm extension:package`.
 337. Local live provider smoke confirmed BTC, ETH, SOL, ZEC, HYPE, Venice Token, and TON return real or supplemental market metadata; TON now returns real price, market cap, 24h volume, high/low, and multi-platform data when CoinGecko detail fields are null.
+338. Committed and pushed the token metadata/quest stabilization as `2be8cae` with message `Stabilize token metadata and quest progress`.
+339. Deployed `2be8cae` to the wallet production release, preserving server backup `/root/backups/acorus-token-metadata-quests_20260521_141700`, then rebuilt/recreated the wallet API, web, and nginx services.
+340. Production API smoke confirmed BTC, TON, and HYPE token detail endpoints return real price, market cap, 24h volume, link, and platform metadata instead of empty/mock cards.
+341. Browser smoke confirmed BTC, SOL, and ZEC token pages render a right-side swap shell without a connected wallet, non-empty market metrics where providers expose them, and one deduped visible Blockchain action.
+342. Browser smoke confirmed `/quests` shows `0/10 quests complete`, `Total XP: 0`, and no manual Complete buttons when no real wallet is active.
+343. Committed and pushed the native family-label fix as `18e05c3` with message `Fix native token family labels`, preventing assets such as ZEC from showing a wrapped platform label in the header.
+344. Deployed `18e05c3` to production, preserving server backup `/root/backups/acorus-native-labels_20260521_142915`, then rebuilt/recreated the wallet web service and nginx.
+345. Final browser smoke confirmed the deployed ZEC page now shows `Zcash / ZEC / Zcash`, BTC has one Blockchain action, and Quests remain wallet-gated at `0/10` with no self-completion path.
