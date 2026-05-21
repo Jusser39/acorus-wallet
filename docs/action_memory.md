@@ -575,3 +575,12 @@
 317. Replaced the technical `/dapps` bridge page with a user-facing dApps directory grouped by DeFi, Prediction, Social, and NFTs with search, logos, clickable app cards, and “See more” expansion.
 318. Local validation passed: API build, web build, API test, web test, `git diff --check`, root `pnpm test`, root `pnpm build`, and `pnpm extension:package`.
 319. Added GeckoTerminal OHLCV fallback for known EVM token charts after production smoke showed Venice Token detail data but empty CoinGecko chart ranges; local Venice Token chart smoke then returned live points for all token-page intervals.
+320. Committed and pushed the token enrichment/dApps wave as `2e3a297` with message `Enrich token details and dApps directory`.
+321. Deployed `2e3a297` to the wallet production release, preserving server backup `/root/backups/acorus-token-dapps-enrichment_20260520_235920`, then rebuilt/recreated the wallet API and web services.
+322. Production smoke after the first deploy confirmed `https://24wallet.ru/dapps`, ETH/ZEC/Venice token detail pages, and the downloadable extension package were reachable.
+323. Committed and pushed the Venice chart stabilization as `e31e1ca` with message `Add GeckoTerminal token chart fallback`.
+324. Deployed `e31e1ca` to the wallet production release, preserving server backup `/root/backups/acorus-geckoterminal-chart-fallback_20260521_001558`, then rebuilt/recreated the wallet API and web services.
+325. Production wallet-only smoke passed: ETH, ZEC, and Venice Token detail APIs returned `200`; ETH included market cap, volume, launch date, categories, logo, links, and multi-platform explorer choices; ZEC included live/safe detail metadata; Venice Token included live price/market stats and Base metadata.
+326. Production Venice Token chart smoke passed with `coinId=venice-token&currency=USD`: `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL` all returned chart points.
+327. Production dApps smoke passed: `/dapps` returns the clickable user-facing directory with categorized apps and “Open and connect” affordances.
+328. Did not execute a real swap or import a mnemonic into a browser profile automatically during this final smoke; those remain manual guarded checks to avoid exposing seed material or triggering value-moving transactions without a human confirmation.

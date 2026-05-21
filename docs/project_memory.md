@@ -1301,7 +1301,7 @@
 
 ## Token Detail and dApps Enrichment (2026-05-21)
 
-- Status: **implemented locally, validation passed**
+- Status: **implemented, deployed, validation passed**
 - Extended token detail payloads with launch date, categories, circulating supply, total supply, and max supply.
 - Hardened CoinGecko token detail: full coin detail now falls back to CoinGecko markets, then to real Binance 24h price data plus safe public metadata.
 - Added a GeckoTerminal OHLCV chart fallback for known EVM token pages such as Venice Token when CoinGecko chart history is empty or unavailable.
@@ -1318,4 +1318,18 @@
   - `pnpm build`
   - `pnpm extension:package`
 - Local live smoke confirmed Venice Token chart points for `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`.
+- Deployment:
+  - Commit `2e3a297` (`Enrich token details and dApps directory`) was pushed to `origin/main` and deployed to `https://24wallet.ru`.
+  - Commit `e31e1ca` (`Add GeckoTerminal token chart fallback`) was pushed to `origin/main` and deployed to `https://24wallet.ru`.
+  - Server backups were preserved at `/root/backups/acorus-token-dapps-enrichment_20260520_235920` and `/root/backups/acorus-geckoterminal-chart-fallback_20260521_001558`.
+- Production smoke after deploy:
+  - `https://24wallet.ru/api/market/token-detail?coinId=ethereum&currency=USD` returned live ETH detail with price, market cap, 24h volume, logo, links, launch date, categories, and 6 platform/explorer choices.
+  - `https://24wallet.ru/api/market/token-detail?coinId=zcash&currency=USD` returned live/safe ZEC detail with price, market cap, 24h volume, logo, links, launch date, categories, and explorer choices.
+  - `https://24wallet.ru/api/market/token-detail?coinId=venice-token&currency=USD` returned Venice Token detail with live price, market cap, 24h volume, logo, links, categories, and Base platform metadata.
+  - `https://24wallet.ru/api/market/coin-chart?coinId=venice-token&currency=USD&range=...` returned live chart points for `1H`, `1D`, `1W`, `1M`, `1Y`, and `ALL`.
+  - `https://24wallet.ru/dapps` returned the user-facing clickable dApps directory.
+- Known limitations:
+  - Venice Token launch date is not currently available from the public metadata providers used here, so Acorus leaves it blank instead of inventing a date.
+  - Liquidity remains shown only when the DEX/pair provider exposes it for the selected asset.
+  - Third-party dApp wallet connection still depends on each dApp seeing and accepting the Acorus injected providers.
 
