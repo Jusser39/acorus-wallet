@@ -8,3 +8,9 @@ dist
 coverage
 *.log
 .env
+.chrome-extension-profile
+**/.chrome-extension-profile
+.turbo
+tmp
+backups
+*.tar.gz

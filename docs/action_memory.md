@@ -614,3 +614,4 @@
 356. Local smoke confirmed `/api/swap/status` reports 0x/Jupiter/Rango without leaking keys, `/create` renders the extension-first flow, and the Bitcoin token page hydrates live metadata with one Blockchain action and a visible right-side swap panel.
 357. During production rollout prep, found that `infra/docker-compose.yml` did not yet pass `JUPITER_*` and `RANGO_*` env values into the API container; added explicit backend-only env pass-through.
 358. The VPS web rebuild hit Docker Hub unauthenticated pull limits for `node:24-alpine`, so the web Dockerfile now uses `node:24-bookworm-slim`, matching the cached API base family.
+359. Production Docker build then exposed a stale generated `.chrome-extension-profile` directory in the release folder; added it to `.dockerignore` so Chrome profile/model files cannot enter future Docker build contexts.
