@@ -615,3 +615,4 @@
 357. During production rollout prep, found that `infra/docker-compose.yml` did not yet pass `JUPITER_*` and `RANGO_*` env values into the API container; added explicit backend-only env pass-through.
 358. The VPS web rebuild hit Docker Hub unauthenticated pull limits for `node:24-alpine`, so the web Dockerfile now uses `node:24-bookworm-slim`, matching the cached API base family.
 359. Production Docker build then exposed a stale generated `.chrome-extension-profile` directory in the release folder; added it to `.dockerignore` so Chrome profile/model files cannot enter future Docker build contexts.
+360. Browser smoke on production `/swap` showed the page still hid the swap shell without an active wallet; updated `/swap` so quotes/provider UI remain visible without a wallet while execution stays gated behind extension approval.

@@ -1403,4 +1403,5 @@
   - Added Docker Compose pass-through for `JUPITER_*` and `RANGO_*` provider env values so production API containers can read backend-only swap keys.
   - Switched the web Docker image base from `node:24-alpine` to `node:24-bookworm-slim` after the VPS hit Docker Hub unauthenticated pull limits on the alpine manifest; the API image already uses the bookworm base.
   - Added `.chrome-extension-profile` to `.dockerignore` after production build context included a stale generated browser profile with large model files.
+  - Updated `/swap` to render the swap/provider shell without an active wallet; quote discovery remains visible, while transaction execution still requires extension approval.
 
