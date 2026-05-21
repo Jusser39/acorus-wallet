@@ -22,7 +22,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - Backend stores only public data and user preferences
 - Local storage contains only the encrypted vault, public identifiers, and non-sensitive UI settings
 - Logger redaction is configured for mnemonic, seed, privateKey, passcode, password, signature, rawTransaction, encryptedVault, and backend swap provider secrets
-- `ZEROX_API_KEY` is backend-only and should be configured through `.env` / VPS secrets; see `docs/production_0x_env_setup.md`
+- Swap provider keys such as `ZEROX_API_KEY`, `JUPITER_API_KEY`, and `RANGO_API_KEY` are backend-only and should be configured through `.env` / VPS secrets; see `docs/production_0x_env_setup.md`
 
 ## Quick start
 

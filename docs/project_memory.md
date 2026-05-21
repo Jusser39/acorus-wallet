@@ -1399,4 +1399,7 @@
 - Known limitations:
   - Jupiter and Rango execution remains draft-only until extension approval/execution integration is added.
   - A real unpacked-extension import/swap smoke still needs manual Chrome verification with the built `apps/extension/dist` package.
+- Deployment hardening follow-up:
+  - Added Docker Compose pass-through for `JUPITER_*` and `RANGO_*` provider env values so production API containers can read backend-only swap keys.
+  - Switched the web Docker image base from `node:24-alpine` to `node:24-bookworm-slim` after the VPS hit Docker Hub unauthenticated pull limits on the alpine manifest; the API image already uses the bookworm base.
 
