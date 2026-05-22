@@ -16,3 +16,4 @@
 14. Mobile app packaging
 15. External security audit
 16. Premium design-system rollout: shared white/purple UI tokens and reusable wallet/trading components are now in place; remaining legacy dark-only pages should migrate to the Acorus component primitives
+17. Magic Glass product skin: home, unlock/repair, wallet repair, nav, and design-system reference now use the cyber glass Acorus style; next QA should verify Chrome extension import, stale local reset, and mobile breakpoints

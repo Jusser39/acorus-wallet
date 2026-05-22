@@ -29,14 +29,14 @@ export function WalletNav() {
   const setError = useWalletStore((state) => state.setError);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-900/6 bg-white/72 backdrop-blur-2xl">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3">
+    <header className="relative z-40 border-b border-white/40 bg-white/36 backdrop-blur-2xl">
+      <div className="magic-container flex flex-col gap-3 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-3 rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(148,163,184,0.18)]"
+            className="inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/62 px-3 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(85,166,255,0.15)]"
           >
-            <span className="token-orb size-8 text-sm font-black">
+            <span className="magic-orb size-8 text-sm font-black text-white">
               A
             </span>
             <span className="flex flex-col leading-none">
@@ -48,7 +48,7 @@ export function WalletNav() {
           </Link>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
             {activeProfile ? (
-              <span className="max-w-full truncate rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(148,163,184,0.14)]">
+              <span className="max-w-full truncate rounded-full border border-white/60 bg-white/62 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(85,166,255,0.12)]">
                 <span className="font-semibold text-slate-950">{activeProfile.name}</span>{" "}
                 <span className="text-slate-400">•</span>{" "}
                 {activeProfile.chainFamily.toUpperCase()}{" "}
@@ -56,7 +56,7 @@ export function WalletNav() {
                 {formatAddress(activeProfile.publicAddress)}
               </span>
             ) : (
-              <span className="rounded-full border border-slate-900/8 bg-white/82 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(148,163,184,0.14)]">
+              <span className="rounded-full border border-white/60 bg-white/62 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(85,166,255,0.12)]">
                 No active wallet
               </span>
             )}
@@ -76,7 +76,7 @@ export function WalletNav() {
             ) : null}
             <button
               type="button"
-              className="rounded-full border border-slate-900/8 bg-white/82 px-4 py-2 text-xs font-semibold text-slate-900 shadow-[0_12px_28px_rgba(148,163,184,0.14)] transition hover:-translate-y-0.5 hover:border-fuchsia-300/30 hover:bg-white"
+              className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5"
               onClick={() => lockWallet()}
             >
               Lock
@@ -86,16 +86,16 @@ export function WalletNav() {
         <div className="flex justify-center">
           <GlobalMarketSearch />
         </div>
-        <nav className="flex gap-1 overflow-x-auto rounded-full border border-slate-900/8 bg-white/82 p-1.5 shadow-[0_16px_42px_rgba(148,163,184,0.16)]">
+        <nav className="magic-nav overflow-x-auto p-1.5">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
                   isActive
-                    ? "bg-[linear-gradient(135deg,rgba(255,70,183,0.94),rgba(139,92,246,0.94),rgba(56,189,248,0.94))] text-white shadow-[0_16px_38px_rgba(139,92,246,0.28)]"
+                    ? "bg-[linear-gradient(135deg,rgba(124,247,255,0.95),rgba(139,92,246,0.95),rgba(255,122,223,0.95))] text-white shadow-[0_16px_38px_rgba(139,92,246,0.28)]"
                     : "text-slate-700 hover:bg-slate-900/5 hover:text-slate-950"
                 }`}
               >

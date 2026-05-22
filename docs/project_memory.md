@@ -1501,3 +1501,42 @@
   - Jupiter and Rango execution remain review-only until route decoding/signing is audited.
   - Manual Chrome extension reload is still required to visually confirm the new popup in the user's browser profile.
 
+## Magic Glass Redesign and Wallet Lock Repair (2026-05-22)
+
+- Status: **implemented locally, validation passed**
+- Root cause: `/wallet` considered any local profile without an in-memory `unlockedVault` to be locked. Stale profile state without an encrypted vault therefore rendered an unlock/passcode path even if the user had never created a passcode.
+- Added `resolveWalletVaultUiState()` to distinguish empty onboarding, valid locked vault, active unlocked vault, and repair-required stale/corrupted state.
+- Added `acorus.vaultMeta` for newly saved encrypted vaults and a local reset helper that removes browser wallet state without touching backend public data or blockchain assets.
+- Updated `/unlock` with onboarding, unlock, already-unlocked, and repair/reset Magic Glass screens. Updated `/wallet` to show a repair card instead of the unlock CTA when a stale local profile has no vault.
+- Added the Acorus Magic Glass visual layer: cyan/violet/pink glass panels, orb stage, floating token chips, readable light surfaces, updated global nav, home hero, and design-system reference page.
+- Validation passed:
+  - `pnpm --filter @acorus/web test -- wallet-vault-state reset-local-wallet storage design-system-page`
+  - `pnpm --filter @acorus/shared test`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Root `pnpm test` hung in the Windows desktop session, but the same workspace
+  test suites passed package-by-package.
+- Local browser smoke generated screenshots for home desktop, home mobile,
+  unlock/repair, and design-system under `artifacts/screenshots/`.
+- Production deployed to `/opt/acorus-wallet-release-current` with backup
+  `/root/backups/acorus-magic-glass-lock-fix_20260523_004344`.
+- Production smoke passed for `/health`, `/wallet`, `/unlock?repair=1`,
+  `/design-system`, `/extension-smoke`, the extension zip download, and
+  `/api/swap/status`. Browser smoke passed for production `/unlock?repair=1`
+  and `/`.
+- Known limitations:
+  - No new swap execution path was added.
+  - Manual Chrome extension import/swap smoke still needs user-profile
+    verification after reloading the unpacked extension.
+

@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { CapabilityStatusBoard } from "@/components/capability-status-board";
 import { SwapComposer } from "@/components/swap-composer";
-import { NetworkPill } from "@/components/ui/network-pill";
-import { PremiumCard } from "@/components/ui/premium-card";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildExploreTokenHref } from "@/lib/token-routes";
 import type { ExploreTokenItem } from "@acorus/shared";
@@ -16,26 +13,49 @@ function formatUsd(value: number | null | undefined): string {
   return `$${value.toFixed(value < 1 ? 4 : 2)}`;
 }
 
-function MiniMarketRow({ token }: { token: ExploreTokenItem }) {
+function MagicMarketRow({ token }: { token: ExploreTokenItem }) {
   return (
-    <Link href={buildExploreTokenHref(token)} className="flex items-center gap-3 rounded-2xl border border-fuchsia-100 bg-white/70 p-3 transition hover:-translate-y-0.5 hover:border-fuchsia-200 hover:bg-white">
+    <Link
+      href={buildExploreTokenHref(token)}
+      className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/45 p-3 transition hover:-translate-y-0.5 hover:bg-white/70"
+    >
       {token.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={token.logoUrl} alt={token.symbol} className="h-9 w-9 rounded-full bg-fuchsia-50" />
+        <img src={token.logoUrl} alt={token.symbol} className="h-10 w-10 rounded-full bg-white" />
       ) : (
-        <span className="token-orb h-9 w-9 text-xs font-bold">{token.symbol.slice(0, 3)}</span>
+        <span className="magic-orb h-10 w-10 text-[11px] font-black text-white">
+          {token.symbol.slice(0, 3)}
+        </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-slate-950">{token.name}</span>
-        <span className="block text-xs text-slate-500">{token.symbol}</span>
+        <span className="block truncate text-sm font-black text-slate-950">{token.name}</span>
+        <span className="block text-xs font-semibold text-slate-500">{token.symbol}</span>
       </span>
       <span className="text-right">
-        <span className="block text-sm font-semibold text-slate-950">{formatUsd(token.price)}</span>
-        <span className={token.change24h == null ? "text-xs text-slate-400" : token.change24h >= 0 ? "text-xs font-semibold text-emerald-600" : "text-xs font-semibold text-rose-600"}>
-          {token.change24h == null ? "—" : `${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`}
+        <span className="block text-sm font-black text-slate-950">{formatUsd(token.price)}</span>
+        <span
+          className={
+            token.change24h == null
+              ? "text-xs text-slate-400"
+              : token.change24h >= 0
+                ? "text-xs font-black text-emerald-600"
+                : "text-xs font-black text-rose-600"
+          }
+        >
+          {token.change24h == null
+            ? "—"
+            : `${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`}
         </span>
       </span>
     </Link>
+  );
+}
+
+function FloatingChip(props: { symbol: string; className: string }) {
+  return (
+    <span className={`magic-token-chip absolute px-4 py-2 text-sm font-black shadow-lg ${props.className}`}>
+      {props.symbol}
+    </span>
   );
 }
 
@@ -46,140 +66,124 @@ export default async function Home() {
   ]);
 
   return (
-    <section className="acorus-shell">
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
-      <div className="app-surface subtle-grid grid gap-6 rounded-[2rem] p-6 md:p-8 xl:grid-cols-[1.02fr_0.98fr] xl:items-center">
-        <div className="space-y-5">
-          <div className="flex flex-wrap gap-2">
-            <NetworkPill label="EVM 0x live" />
-            <NetworkPill label="Solana SOL/SPL" />
-            <NetworkPill label="Jupiter and Rango review" status="soon" />
-          </div>
-          <span className="section-kicker">Acorus Wallet</span>
-          <h1 className="max-w-4xl text-4xl font-black tracking-[-0.055em] text-slate-950 sm:text-6xl">
-            One wallet for markets, swaps and Web3 approvals
-          </h1>
-          <p className="max-w-2xl text-base leading-8 text-slate-600">
-            Create or import a wallet, inspect live token pages, receive assets across EVM, Solana and Tron, and route EVM swaps through backend 0x quotes with explicit extension approval.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/create" className="button-primary inline-flex">Create wallet</Link>
-            <Link href="/import" className="button-secondary inline-flex">Import wallet</Link>
-            <Link href="/extension" className="button-secondary inline-flex">Install extension</Link>
-            <Link href="/explore" className="button-secondary inline-flex">Explore markets</Link>
-          </div>
-        </div>
+    <main className="magic-shell">
+      <section className="magic-container py-8">
+        <div className="relative overflow-hidden rounded-[48px] border border-white/60 bg-gradient-to-br from-sky-200/55 via-violet-200/30 to-pink-200/40 p-5 shadow-[0_35px_120px_rgba(32,92,155,0.22)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(124,247,255,0.40),transparent_24%),radial-gradient(circle_at_50%_58%,rgba(139,92,246,0.20),transparent_30%)]" />
 
-        <PremiumCard className="p-4 sm:p-5">
-          <SwapComposer
-            compact
-            portfolioAssets={[]}
-            title="Swap"
-            description="Choose a route, get a live backend quote, then review every approval or swap inside the Acorus extension."
-          />
-        </PremiumCard>
-      </div>
+          <div className="relative z-10 grid min-h-[690px] gap-6 lg:grid-cols-[330px_1fr_330px]">
+            <div className="grid content-center gap-4">
+              <section className="magic-panel p-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black">Portfolio</h2>
+                  <span className="rounded-full bg-white/50 px-3 py-1 text-xs font-bold">local</span>
+                </div>
+                <div className="mt-4 text-4xl font-black tracking-tight">$—</div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Connect the extension or unlock a local vault to calculate live balances.
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <Link href="/create" className="magic-button px-4 py-3 text-center text-sm">Create</Link>
+                  <Link href="/import" className="magic-button-secondary px-4 py-3 text-center text-sm">Import</Link>
+                </div>
+              </section>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        {[
-          ["EVM swaps", "0x quotes, allowance review, extension confirmation."],
-          ["Solana wallet", "Live SOL/SPL portfolio and guarded send foundation."],
-          ["Token pages", "Charts, links, explorers, market cap and instant swap panel."],
-          ["Security", "Seed, passcode and signing stay client-side."],
-        ].map(([title, copy]) => (
-          <div key={title} className="premium-card p-5">
-            <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="panel space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <span className="section-kicker">Live discovery</span>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-950">Trending now</h2>
+              <section className="magic-panel p-4">
+                <SwapComposer
+                  compact
+                  portfolioAssets={[]}
+                  title="Swap"
+                  description="0x EVM live quotes. Jupiter and Rango routes stay behind review until adapters are ready."
+                />
+              </section>
             </div>
-            <Link href="/explore" className="button-secondary px-4 py-2 text-sm">Open Explore</Link>
-          </div>
-          <div className="grid gap-2">
-            {trending.length ? trending.map((token) => <MiniMarketRow key={token.id} token={token} />) : (
-              <p className="text-sm text-slate-500">Trending data is temporarily unavailable.</p>
-            )}
-          </div>
-        </div>
 
-        <div className="panel space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <span className="section-kicker">Market cap</span>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-950">Top tokens</h2>
+            <div className="relative flex min-h-[620px] items-center justify-center">
+              <div className="absolute bottom-14 h-36 w-72 rounded-[999px] border border-white/60 bg-white/24 shadow-[0_0_80px_rgba(124,247,255,0.45)]" />
+              <div className="magic-orb magic-floating h-60 w-60 text-7xl font-black text-white">
+                A
+              </div>
+              <FloatingChip symbol="ETH" className="left-[8%] top-[23%] rotate-[-16deg]" />
+              <FloatingChip symbol="BTC" className="right-[10%] top-[20%] rotate-[12deg]" />
+              <FloatingChip symbol="SOL" className="bottom-[24%] left-[15%] rotate-[10deg]" />
+              <FloatingChip symbol="USDC" className="bottom-[18%] right-[14%] rotate-[-10deg]" />
+              <FloatingChip symbol="0x" className="left-[44%] top-[10%]" />
             </div>
-            <Link href="/explore" className="button-secondary px-4 py-2 text-sm">See all</Link>
-          </div>
-          <div className="grid gap-2">
-            {top.length ? top.map((token) => <MiniMarketRow key={token.id} token={token} />) : (
-              <p className="text-sm text-slate-500">Top token data is temporarily unavailable.</p>
-            )}
+
+            <div className="grid content-center gap-4">
+              <section className="magic-panel p-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-black">Trending</h2>
+                  <Link href="/explore" className="text-sm font-bold text-violet-700">Explore</Link>
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {trending.length ? (
+                    trending.slice(0, 3).map((token) => <MagicMarketRow key={token.id} token={token} />)
+                  ) : (
+                    <p className="text-sm text-slate-600">Market feed is temporarily unavailable.</p>
+                  )}
+                </div>
+              </section>
+
+              <section className="magic-panel p-5">
+                <h2 className="text-xl font-black">Market pulse</h2>
+                <div className="mt-5 flex h-28 items-end gap-3">
+                  {[30, 54, 78, 46, 72, 90].map((height, index) => (
+                    <span
+                      key={index}
+                      className="flex-1 rounded-t-xl bg-gradient-to-t from-violet-500 via-pink-400 to-cyan-300"
+                      style={{ height }}
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
         </div>
-      </div>
 
-      <CapabilityStatusBoard />
+        <section className="mt-10 grid gap-4 md:grid-cols-4">
+          {[
+            ["0x swaps", "Backend-proxied EVM routes with extension approval."],
+            ["Solana send", "SOL and SPL transfers behind local vault confirmation."],
+            ["Explore", "Token discovery, charts, metrics and market pages."],
+            ["Security", "Seed, passcode and signing stay client-side."],
+          ].map(([title, copy]) => (
+            <div key={title} className="magic-panel p-5">
+              <h3 className="text-lg font-black">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
+            </div>
+          ))}
+        </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            href: "/create",
-            title: "Create wallet",
-            description: "Новый EVM-кошелек с локальной seed phrase и passcode.",
-          },
-          {
-            href: "/import",
-            title: "Import wallet",
-            description: "Импорт по seed phrase с локальным шифрованием vault.",
-          },
-          {
-            href: "/view-only",
-            title: "View-only wallet",
-            description: "Просмотр балансов без приватного ключа и отправки.",
-          },
-          {
-            href: "/practice",
-            title: "Practice wallet",
-            description: "Учебный режим без реальных средств и настоящего seed.",
-          },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="premium-card p-6 transition hover:-translate-y-0.5 hover:border-fuchsia-300/30"
-          >
-            <h2 className="text-xl font-semibold text-slate-950">{item.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              {item.description}
-            </p>
-            <div className="mt-5 text-sm font-medium text-fuchsia-700">Open flow →</div>
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        {[
-          "Seed phrase никогда не отправляется на сервер.",
-          "Подпись и расшифровка выполняются только на клиенте.",
-          "Каждая сеть проходит через единую capability matrix: live, preview, planned или blocked.",
-        ].map((item) => (
-          <div
-            key={item}
-            className="data-card rounded-2xl p-5 text-sm text-slate-600"
-          >
-            {item}
+        <section className="mt-10 grid gap-4 lg:grid-cols-2">
+          <div className="magic-panel p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Live discovery</p>
+                <h2 className="mt-2 text-2xl font-black">Top tokens</h2>
+              </div>
+              <Link href="/explore" className="magic-button-secondary px-4 py-2 text-sm">See all</Link>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {top.length ? (
+                top.map((token) => <MagicMarketRow key={token.id} token={token} />)
+              ) : (
+                <p className="text-sm text-slate-600">Top token data is temporarily unavailable.</p>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-    </section>
+
+          <div className="magic-panel p-5">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Safety model</p>
+            <h2 className="mt-2 text-2xl font-black">Local keys, explicit approvals</h2>
+            <div className="mt-5 grid gap-3 text-sm leading-6 text-slate-600">
+              <p>Seed phrase, passcode, and transaction signing stay inside the client or extension vault.</p>
+              <p>Backend swap providers receive only public quote metadata and never receive key material.</p>
+              <p>Each send, approval, and swap execution is reviewed before broadcast.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
   );
 }

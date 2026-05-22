@@ -650,3 +650,17 @@
 392. Added design-system and product-parity docs, updated README/roadmap, and recorded the wave in project memory.
 393. Validation passed for the design-system wave: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
 394. Local browser smoke passed for `/design-system`, `/`, `/explore`, and an ETH token detail route; local token detail API hydration showed the expected missing local API proxy limitation, while production will use the deployed API path.
+395. Started the Magic Glass redesign and wallet-lock repair wave after the user reported an unlock/passcode screen despite not setting a passcode.
+396. Audited web storage/bootstrap/wallet routes and found that `/wallet` used `activeProfile.type === "local" && !unlockedVault` as the lock condition, which misclassified stale local profiles without a real encrypted vault as locked wallets.
+397. Added wallet vault UI state resolution, vault metadata persistence, local wallet reset helper, and regression tests for empty, stale, missing marker, locked, and unlocked states.
+398. Reworked `/unlock` into onboarding, valid unlock, already-unlocked, and repair/reset flows with Magic Glass styling and a `RESET` confirmation path.
+399. Reworked `/wallet` stale local-profile handling so it shows repair/reset instead of an unlock CTA when no encrypted vault exists.
+400. Added the Magic Glass design layer, global nav update, Magic Glass home hero, and updated `/design-system` reference page.
+401. Focused validation passed: `pnpm --filter @acorus/web test -- wallet-vault-state reset-local-wallet storage design-system-page` and `pnpm --filter @acorus/web build`.
+402. Fixed `/unlock?repair=1` so the explicit repair path is not swallowed by the empty onboarding branch.
+403. Broader validation passed package-by-package: shared test, wallet-core test, API test, extension lint/test, web test, API/web/extension builds, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+404. Root `pnpm test` was attempted but hung in this Windows desktop session; the equivalent workspace test suites passed individually.
+405. Generated local browser smoke screenshots for home desktop, home mobile, unlock/repair, and design-system; added `artifacts/` to `.gitignore` so screenshots stay local.
+406. Committed and pushed the wave as `f1bd66f` with message `Fix wallet lock state and add magic glass redesign`.
+407. Deployed the wave to `/opt/acorus-wallet-release-current`, preserving backup `/root/backups/acorus-magic-glass-lock-fix_20260523_004344`, then rebuilt/recreated wallet API, web, and nginx services.
+408. Production smoke passed for `/health`, `/wallet`, `/unlock?repair=1`, `/design-system`, `/extension-smoke`, `/downloads/acorus-wallet-extension.zip`, and `/api/swap/status`; browser smoke passed for production `/unlock?repair=1` and `/`.

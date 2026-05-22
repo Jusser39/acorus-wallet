@@ -35,6 +35,9 @@ import { formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getSendAvailability } from "@/lib/send-policy";
 import { buildWalletHealthSummary } from "@/lib/wallet-health";
+import { clearAcorusLocalWalletState } from "@/lib/reset-local-wallet";
+import { loadVaultMeta, type VaultMeta } from "@/lib/storage";
+import { resolveWalletVaultUiState } from "@/lib/wallet-vault-state";
 
 export default function WalletPage() {
   const activeProfile = useActiveProfile();
@@ -47,6 +50,8 @@ export default function WalletPage() {
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const setWalletError = useWalletStore((state) => state.setError);
   const lockWallet = useWalletStore((state) => state.lockWallet);
+  const clearWalletState = useWalletStore((state) => state.clearWalletState);
+  const encryptedVault = useWalletStore((state) => state.encryptedVault);
 
   const [portfolio, setPortfolio] = useState<PortfolioSummaryView | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,9 +62,28 @@ export default function WalletPage() {
   const [busyTokenKey, setBusyTokenKey] = useState<string | null>(null);
   const [addingSolana, setAddingSolana] = useState(false);
   const [selectedAssetKey, setSelectedAssetKey] = useState<string | null>(null);
+  const [vaultMeta, setVaultMeta] = useState<VaultMeta | null>(null);
 
   const hiddenBalance = activeProfile?.hiddenBalance ?? false;
-  const isLocked = activeProfile?.type === "local" && !unlockedVault;
+  useEffect(() => {
+    setVaultMeta(loadVaultMeta());
+  }, [encryptedVault]);
+
+  const vaultUiState = useMemo(
+    () =>
+      resolveWalletVaultUiState({
+        hasEncryptedVault: Boolean(encryptedVault),
+        encryptedVaultVersion: encryptedVault?.version ?? null,
+        hasVaultMeta: Boolean(vaultMeta),
+        profileCount: profiles.filter((profile) => profile.type === "local").length,
+        hasLocalProfile: profiles.some((profile) => profile.type === "local"),
+        isUnlocked: Boolean(unlockedVault),
+        passcodeInitialized: vaultMeta?.passcodeInitialized,
+        walletName: activeProfile?.name ?? null,
+      }),
+    [activeProfile?.name, encryptedVault, profiles, unlockedVault, vaultMeta],
+  );
+  const isLocked = activeProfile?.type === "local" && vaultUiState.kind === "locked";
   const isViewOnly = activeProfile?.type === "view_only";
   const isEvm = activeProfile?.chainFamily === "evm";
   const isSolana = activeProfile?.chainFamily === "solana";
@@ -292,17 +316,64 @@ export default function WalletPage() {
     }
   }
 
+  function handleResetLocalWallet() {
+    clearAcorusLocalWalletState();
+    clearWalletState();
+    window.location.assign("/");
+  }
+
   if (!activeProfile) {
     return (
-      <section className="page">
-        <div className="premium-card space-y-3 p-5">
+      <section className="magic-shell px-4 py-10">
+        <div className="magic-container">
+        <div className="magic-panel space-y-4 p-6">
           <h1 className="text-2xl font-semibold">No active wallet</h1>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600">
             Create, import or add a view-only/practice wallet on the home page.
           </p>
-          <Link href="/" className="button-primary inline-flex">
+          <Link href="/" className="magic-button inline-flex px-5 py-3">
             Go to onboarding
           </Link>
+        </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (activeProfile.type === "local" && vaultUiState.kind === "repair_required") {
+    return (
+      <section className="magic-shell px-4 py-10">
+        <div className="magic-container">
+          <div className="magic-panel p-7">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="magic-orb h-16 w-16 text-xl font-black text-white">A</div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.24em] text-violet-700">
+                  Wallet repair
+                </p>
+                <h1 className="mt-2 text-3xl font-black">Local wallet state needs repair</h1>
+              </div>
+            </div>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600">
+              {vaultUiState.message} If you never created a passcode, clear the
+              stale local state and create or import your wallet again.
+            </p>
+            <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950">
+              Resetting removes only local browser wallet data. It does not delete
+              blockchain assets, but you need your seed phrase backup to restore access.
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="rounded-full bg-rose-500 px-5 py-3 font-black text-white"
+                onClick={handleResetLocalWallet}
+              >
+                Reset stale local state
+              </button>
+              <Link href="/import" className="magic-button-secondary px-5 py-3">Import wallet</Link>
+              <Link href="/create" className="magic-button-secondary px-5 py-3">Create wallet</Link>
+            </div>
+          </div>
         </div>
       </section>
     );

@@ -129,6 +129,9 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/wallet_product_benchmark_ux_upgrade_report.md`
 - `docs/acorus_premium_design_system_plan.md`
 - `docs/acorus_design_system_report.md`
+- `docs/magic_glass_redesign_wallet_lock_fix_plan.md`
+- `docs/magic_glass_redesign_wallet_lock_fix_report.md`
+- `docs/wallet_lock_repair_flow_report.md`
 - `docs/product_parity_audit_metamask_trust_uniswap.md`
 - `docs/roadmap.md`
 - `docs/api.md`

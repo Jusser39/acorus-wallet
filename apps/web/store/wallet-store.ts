@@ -8,6 +8,7 @@ import {
   type WalletProfileRecord,
 } from "@acorus/shared";
 import { create } from "zustand";
+import { clearAcorusLocalWalletState } from "../lib/reset-local-wallet";
 import { clearSessionDecryptedState } from "../lib/storage";
 
 function resolveChainIdForProfile(
@@ -164,10 +165,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
   clearWalletState() {
     clearSensitiveMemoryBestEffort(get().unlockedVault);
+    clearAcorusLocalWalletState();
     clearSessionDecryptedState();
     set({
+      userId: null,
       encryptedVault: null,
       unlockedVault: null,
+      profiles: [],
       activeProfileId: null,
       selectedChainId: getDefaultChainIdForFamily("evm"),
       lastHiddenAt: null,

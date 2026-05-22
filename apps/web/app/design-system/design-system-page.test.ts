@@ -3,13 +3,13 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("design system smoke page", () => {
-  it("renders the premium Acorus component catalog", async () => {
+  it("renders the magic glass Acorus component catalog", async () => {
     const source = await readFile(resolve(process.cwd(), "app/design-system/page.tsx"), "utf8");
 
-    expect(source).toContain("Acorus design system");
-    expect(source).toContain("Premium white and violet wallet shell");
-    expect(source).toContain("Primary action");
-    expect(source).toContain("Network Pills");
-    expect(source).toContain("Review 0x swap");
+    expect(source).toContain("Acorus Magic Glass");
+    expect(source).toContain("Unlock state");
+    expect(source).toContain("Wallet dashboard");
+    expect(source).toContain("Swap panel");
+    expect(source).toContain("Approval review");
   });
 });

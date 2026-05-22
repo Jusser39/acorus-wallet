@@ -6,6 +6,7 @@ import {
   loadEncryptedVault,
   loadLocalSettings,
   loadUserId,
+  loadVaultMeta,
   saveEncryptedVault,
   saveLocalSettings,
   saveUserId,
@@ -28,11 +29,17 @@ describe("storage helpers", () => {
     });
 
     expect(loadEncryptedVault()?.ciphertextBase64).toBe("cipher");
+    expect(loadVaultMeta()).toEqual({
+      version: 1,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      passcodeInitialized: true,
+    });
     expect(hasVault()).toBe(true);
     expect(window.localStorage.getItem("acorus.encryptedVault")).toContain("cipher");
 
     clearEncryptedVault();
     expect(loadEncryptedVault()).toBeNull();
+    expect(loadVaultMeta()).toBeNull();
     expect(hasVault()).toBe(false);
   });
 

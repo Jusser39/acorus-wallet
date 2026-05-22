@@ -1,87 +1,107 @@
 import { GradientButton } from "@/components/ui/gradient-button";
-import { MetricCard } from "@/components/ui/metric-card";
-import { NetworkPill } from "@/components/ui/network-pill";
-import { PremiumCard } from "@/components/ui/premium-card";
 import { StatusBanner } from "@/components/ui/status-banner";
 
 export default function DesignSystemPage() {
   return (
-    <main className="acorus-shell">
-      <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10">
-        <div className="acorus-card p-7">
-          <span className="section-kicker">Acorus design system</span>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-[var(--acorus-text)]">
-            Premium white and violet wallet shell
+    <main className="magic-shell">
+      <section className="magic-container grid gap-6 py-10">
+        <div className="magic-panel p-7">
+          <span className="text-xs font-black uppercase tracking-[0.28em] text-violet-700">
+            Acorus Magic Glass
+          </span>
+          <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+            Cyber glass wallet surfaces
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--acorus-muted)]">
-            Reusable tokens and components for wallet, swap, token research, extension and approval surfaces.
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            Reusable visual language for wallet onboarding, swaps, approvals,
+            extension popup, market discovery and token research pages.
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <PremiumCard className="grid gap-3 p-5">
-            <h2 className="text-lg font-black">Buttons</h2>
-            <GradientButton>Primary action</GradientButton>
-            <GradientButton variant="secondary">Secondary action</GradientButton>
-            <GradientButton variant="danger">Danger action</GradientButton>
-          </PremiumCard>
-
-          <PremiumCard className="grid gap-3 p-5">
-            <h2 className="text-lg font-black">Network Pills</h2>
-            <NetworkPill label="EVM 0x live" />
-            <NetworkPill label="Jupiter review" status="soon" />
-            <NetworkPill label="TON gated" status="disabled" />
-          </PremiumCard>
-
-          <PremiumCard className="grid gap-3 p-5">
-            <h2 className="text-lg font-black">Status</h2>
-            <StatusBanner title="Quote ready" message="Route details are ready for extension review." tone="success" />
-            <StatusBanner title="Adapter gated" message="Execution stays disabled until the chain adapter is reviewed." tone="warning" />
-          </PremiumCard>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Market cap" value="$256.8B" caption="CoinGecko enriched" />
-          <MetricCard label="24h volume" value="$405.6M" caption="Live provider" />
-          <MetricCard label="Route" value="0x + Acorus" caption="Backend proxy" />
-        </div>
-
-        <PremiumCard className="p-5">
-          <div className="grid gap-3">
-            {["Ethereum", "Solana", "Venice Token"].map((name, index) => (
-              <div
-                key={name}
-                className="explore-row rounded-2xl border border-fuchsia-100"
-              >
-                <span className="w-7 text-right text-xs font-semibold text-slate-400">{index + 1}</span>
-                <span className="token-orb h-10 w-10 text-xs font-bold">{name.slice(0, 3).toUpperCase()}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-slate-950">{name}</span>
-                  <span className="block text-xs text-slate-500">Token row surface</span>
-                </span>
-                <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">+2.4%</span>
+          <section className="magic-panel grid gap-3 p-5">
+            <h2 className="text-lg font-black">Swap panel</h2>
+            <div className="rounded-3xl border border-white/60 bg-white/45 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">You pay</div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-3xl font-black">0</span>
+                <span className="magic-token-chip px-3 py-2 text-sm font-black">ETH</span>
               </div>
-            ))}
-          </div>
-        </PremiumCard>
+            </div>
+            <div className="rounded-3xl border border-white/60 bg-white/45 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">You receive</div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-3xl font-black">—</span>
+                <span className="magic-token-chip px-3 py-2 text-sm font-black">USDC</span>
+              </div>
+            </div>
+            <button type="button" className="magic-button px-4 py-3">Get quote</button>
+          </section>
 
-        <PremiumCard className="grid gap-4 p-5 md:grid-cols-2">
-          <div className="rounded-3xl border border-fuchsia-100 bg-white/70 p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--acorus-subtle)]">Approval</p>
-            <h2 className="mt-2 text-2xl font-black">Review 0x swap</h2>
-            <p className="mt-2 text-sm text-[var(--acorus-muted)]">
-              Sanitized approval card, no raw calldata, no provider secrets, explicit user confirmation.
+          <section className="magic-panel grid gap-3 p-5">
+            <h2 className="text-lg font-black">Unlock state</h2>
+            <div className="magic-orb mx-auto h-16 w-16 text-xl font-black text-white">A</div>
+            <p className="text-center text-sm leading-6 text-slate-600">
+              Local decryption card with onboarding, locked and repair states.
             </p>
-          </div>
-          <div className="rounded-3xl border border-fuchsia-100 bg-white/70 p-5">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--acorus-subtle)]">Skeleton</p>
-            <div className="mt-4 grid gap-3">
-              <div className="acorus-skeleton h-4 w-2/3 rounded-full" />
-              <div className="acorus-skeleton h-4 w-1/2 rounded-full" />
-              <div className="acorus-skeleton h-16 rounded-2xl" />
+            <div className="grid grid-cols-3 gap-2">
+              {["", "", "", ""].map((_, index) => (
+                <span key={index} className="mx-auto h-3 w-3 rounded-full bg-violet-400" />
+              ))}
+            </div>
+          </section>
+
+          <section className="magic-panel grid gap-3 p-5">
+            <h2 className="text-lg font-black">Approval review</h2>
+            <StatusBanner
+              title="Review required"
+              message="Every swap, approval and send is shown in a sanitized card before execution."
+              tone="warning"
+            />
+            <GradientButton>Confirm</GradientButton>
+            <GradientButton variant="secondary">Reject</GradientButton>
+          </section>
+        </div>
+
+        <section className="magic-panel p-5">
+          <h2 className="text-2xl font-black">Wallet dashboard</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-[1fr_0.8fr]">
+            <div className="rounded-3xl border border-white/60 bg-white/45 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-700">Balance</p>
+              <div className="mt-3 text-5xl font-black">$45.16</div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button type="button" className="magic-button px-4 py-4">Send</button>
+                <button type="button" className="magic-button-secondary px-4 py-4">Receive</button>
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/60 bg-white/45 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-700">Activity</p>
+              <div className="mt-4 grid gap-3">
+                {["ETH received", "USDC approval", "0x quote"].map((item) => (
+                  <div key={item} className="rounded-2xl bg-white/50 p-3 text-sm font-bold">
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </PremiumCard>
+        </section>
+
+        <section className="magic-panel p-5">
+          <h2 className="text-2xl font-black">Token chips and skeletons</h2>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {["ETH", "SOL", "BTC", "USDC", "0x"].map((symbol) => (
+              <span key={symbol} className="magic-token-chip px-4 py-2 text-sm font-black">
+                {symbol}
+              </span>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-3">
+            <div className="acorus-skeleton h-4 w-2/3 rounded-full" />
+            <div className="acorus-skeleton h-4 w-1/2 rounded-full" />
+            <div className="acorus-skeleton h-16 rounded-2xl" />
+          </div>
+        </section>
       </section>
     </main>
   );
