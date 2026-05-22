@@ -1437,6 +1437,7 @@
   - `pnpm build`
   - `git diff --check`
   - `pnpm extension:package`
+- Local browser smoke passed for `/design-system`, `/`, `/explore`, and an ETH token detail URL. The token detail page rendered the new shell locally; live market hydration still depends on the API/proxy path in deployed mode.
 - Known limitations:
   - Jupiter and Rango execution remain gated until the extension approval/execution integration is completed.
   - Manual Chrome reload of the unpacked extension is still required to verify imported balances in the user's browser profile.
@@ -1469,4 +1470,34 @@
   - Jupiter Solana swap signing/execution remains disabled.
   - Rango cross-chain execution remains disabled.
   - The internal popup message exists for future in-extension universal swap review, but the current user-facing trigger is the web swap composer through the injected provider.
+
+## Acorus Premium Design System and Wallet Trading Shell (2026-05-22)
+
+- Status: **implemented locally, validation passed**
+- Added a unified white/purple Acorus design token layer, reusable premium UI primitives, and a `/design-system` smoke page for future visual QA.
+- Reworked the home screen into a wallet/trading shell with network capability pills, a live swap composer card, market preview rows, product action cards, and security copy.
+- Upgraded the swap composer surface with the shared CTA state helper, lighter glass card styling, clearer route labels, and quote/action states that stay consistent across home, swap, and token pages.
+- Polished Explore with loading skeleton rows and richer market rows that include price, 24h change, market cap, and 24h volume where available.
+- Refined token detail pages with a stronger trade CTA, copy-address action, more readable error/skeleton states, and cleaner white/purple controls while keeping the sticky swap card on desktop.
+- Lightened the extension popup shell to match the product palette without changing approval queue, dApp, send, receive, or swap review logic.
+- Added product parity documentation comparing Acorus against MetaMask, Trust Wallet, and Uniswap targets.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Known limitations:
+  - This wave focused on visual/system polish, not new signing or swap execution paths.
+  - Jupiter and Rango execution remain review-only until route decoding/signing is audited.
+  - Manual Chrome extension reload is still required to visually confirm the new popup in the user's browser profile.
 

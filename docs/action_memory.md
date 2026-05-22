@@ -639,3 +639,14 @@
 381. Updated the web swap composer so loaded Jupiter and Rango backend routes can be sent to the extension for review, with clear copy that execution remains gated.
 382. Rebuilt the public extension zip after the popup/background/protocol changes.
 383. Validation passed for the universal review wave: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+384. Started the Acorus premium design-system wave after reviewing the current home, swap composer, Explore, token detail, and extension popup surfaces.
+385. Added unified white/purple CSS tokens, premium card/button/pill/status/metric primitives, skeleton shimmer styles, and removed remaining decorative dark/orb surfaces from the default app shell.
+386. Added `/design-system` as a local visual smoke route with buttons, network pills, metric cards, approval mock, token rows, banners, and skeleton examples.
+387. Reworked the home page into a wallet/trading shell with capability pills, a reusable `SwapComposer`, market preview rows, product action cards, and security/service status sections.
+388. Added a shared swap CTA helper and tests so swap action labels remain consistent across provider-missing, disconnected, loading, stale, approval-required, wrong-chain, and review-ready states.
+389. Polished Explore loading and row data density with skeleton rows and 24h volume cells while preserving existing tabs and pagination.
+390. Refined token detail actions with copy-address and trade CTA controls, cleaner unavailable states, and lighter white/purple interaction styling.
+391. Lightened the extension popup shell and wallet-card styling to match the web palette while leaving approval, dApp, send, receive, and swap review behavior intact.
+392. Added design-system and product-parity docs, updated README/roadmap, and recorded the wave in project memory.
+393. Validation passed for the design-system wave: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+394. Local browser smoke passed for `/design-system`, `/`, `/explore`, and an ETH token detail route; local token detail API hydration showed the expected missing local API proxy limitation, while production will use the deployed API path.

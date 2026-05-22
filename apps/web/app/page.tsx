@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CapabilityStatusBoard } from "@/components/capability-status-board";
-import { HomeSwapPanel } from "@/components/home-swap-panel";
+import { SwapComposer } from "@/components/swap-composer";
+import { NetworkPill } from "@/components/ui/network-pill";
+import { PremiumCard } from "@/components/ui/premium-card";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildExploreTokenHref } from "@/lib/token-routes";
 import type { ExploreTokenItem } from "@acorus/shared";
@@ -44,12 +46,18 @@ export default async function Home() {
   ]);
 
   return (
-    <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
-      <div className="app-surface subtle-grid grid gap-6 rounded-[2rem] p-6 md:p-8 xl:grid-cols-[1.05fr_0.95fr] xl:items-center">
+    <section className="acorus-shell">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
+      <div className="app-surface subtle-grid grid gap-6 rounded-[2rem] p-6 md:p-8 xl:grid-cols-[1.02fr_0.98fr] xl:items-center">
         <div className="space-y-5">
+          <div className="flex flex-wrap gap-2">
+            <NetworkPill label="EVM 0x live" />
+            <NetworkPill label="Solana SOL/SPL" />
+            <NetworkPill label="Jupiter and Rango review" status="soon" />
+          </div>
           <span className="section-kicker">Acorus Wallet</span>
-          <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
-            Multichain wallet, market radar and 0x swaps in one clean workspace
+          <h1 className="max-w-4xl text-4xl font-black tracking-[-0.055em] text-slate-950 sm:text-6xl">
+            One wallet for markets, swaps and Web3 approvals
           </h1>
           <p className="max-w-2xl text-base leading-8 text-slate-600">
             Create or import a wallet, inspect live token pages, receive assets across EVM, Solana and Tron, and route EVM swaps through backend 0x quotes with explicit extension approval.
@@ -62,22 +70,29 @@ export default async function Home() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            ["EVM swaps", "0x quotes, allowance review, extension confirmation."],
-            ["Solana wallet", "Live SOL/SPL portfolio and guarded send foundation."],
-            ["Token pages", "Charts, links, explorers, market cap and instant swap panel."],
-            ["Security", "Seed, passcode and signing stay client-side."],
-          ].map(([title, copy]) => (
-            <div key={title} className="premium-card p-5">
-              <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
-            </div>
-          ))}
-        </div>
+        <PremiumCard className="p-4 sm:p-5">
+          <SwapComposer
+            compact
+            portfolioAssets={[]}
+            title="Swap"
+            description="Choose a route, get a live backend quote, then review every approval or swap inside the Acorus extension."
+          />
+        </PremiumCard>
       </div>
 
-      <HomeSwapPanel />
+      <div className="grid gap-3 md:grid-cols-4">
+        {[
+          ["EVM swaps", "0x quotes, allowance review, extension confirmation."],
+          ["Solana wallet", "Live SOL/SPL portfolio and guarded send foundation."],
+          ["Token pages", "Charts, links, explorers, market cap and instant swap panel."],
+          ["Security", "Seed, passcode and signing stay client-side."],
+        ].map(([title, copy]) => (
+          <div key={title} className="premium-card p-5">
+            <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
+          </div>
+        ))}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel space-y-4">
@@ -164,6 +179,7 @@ export default async function Home() {
           </div>
         ))}
       </div>
+    </div>
     </section>
   );
 }

@@ -522,12 +522,17 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     }
   }
 
+  async function handleCopyAddress() {
+    if (typeof navigator === "undefined" || isNativeToken) return;
+    await navigator.clipboard.writeText(tokenAddress).catch(() => undefined);
+  }
+
   return (
     <section className="page mx-auto max-w-7xl space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/explore" className="text-sm text-slate-400 hover:text-white">Explore</Link>
+        <Link href="/explore" className="text-sm text-slate-500 hover:text-fuchsia-700">Explore</Link>
         <span className="text-slate-600">/</span>
-        <Link href="/swap" className="text-sm text-slate-400 hover:text-white">Swap</Link>
+        <Link href="/swap" className="text-sm text-slate-500 hover:text-fuchsia-700">Swap</Link>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -591,6 +596,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
                       {shareState === "copied" ? "Copied" : shareState === "failed" ? "Copy failed" : "Share"}
                     </button>
+                    {!isNativeToken ? (
+                      <button type="button" onClick={() => void handleCopyAddress()} className="button-secondary text-sm">
+                        Copy address
+                      </button>
+                    ) : null}
+                    <Link href="/swap" className="button-primary inline-flex text-sm">
+                      Trade this token
+                    </Link>
                     <Link href="/receive" className="button-secondary text-sm">
                       Receive
                     </Link>
@@ -623,9 +636,9 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
               </div>
             </div>
 
-            {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+            {error ? <p className="mt-4 text-sm text-rose-700">{error}</p> : null}
             {isSkeleton ? (
-              <div className="mt-5 rounded-2xl border border-amber-700/40 bg-amber-900/20 p-3 text-sm text-amber-300">
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 {familyLabel} token page is enabled for discovery, but live chart and swap execution are not enabled for this chain yet.
               </div>
             ) : null}

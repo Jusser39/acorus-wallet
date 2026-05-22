@@ -11,6 +11,7 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - `packages/shared` with chain config, curated token list, shared DTOs, multichain asset/send/swap/dapp types, practice content
 - EVM 0x swap MVP with backend-only API key handling, decimal-safe token amount parsing, explicit ERC-20 approval review, local swap activity history, and extension-gated execution; non-EVM/cross-chain swaps remain gated
 - White/purple wallet dashboard plus Explore token pages with searchable/paged market radar tabs, hoverable charts, token metrics, multi-network explorer links, share actions, and embedded EVM 0x swap panels
+- Premium Acorus design-system primitives for cards, buttons, network pills, metric cards, status banners, shimmer loading states, and a `/design-system` smoke route
 - Practice wallet mode with fake balances and fake transactions
 - View-only wallet flow
 - Contacts, history, settings, receive QR, send review flow, autolock, safety mode
@@ -126,6 +127,9 @@ Prisma/PostgreSQL persistence is controlled by `ACORUS_ENABLE_PRISMA_STORE=true`
 - `docs/token_detail_explore_swap_plan.md`
 - `docs/token_detail_explore_swap_report.md`
 - `docs/wallet_product_benchmark_ux_upgrade_report.md`
+- `docs/acorus_premium_design_system_plan.md`
+- `docs/acorus_design_system_report.md`
+- `docs/product_parity_audit_metamask_trust_uniswap.md`
 - `docs/roadmap.md`
 - `docs/api.md`
 - `docs/project_memory.md`

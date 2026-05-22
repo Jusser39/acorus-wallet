@@ -30,6 +30,7 @@ import {
   requestExtensionUniversalSwap,
   switchExtensionChain,
 } from "@/lib/extension-bridge";
+import { getSwapCtaLabel } from "@/lib/swap-cta";
 import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
 
 type TokenOption = {
@@ -436,12 +437,21 @@ export function SwapComposer(props: {
   const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
   const showSidePanel = !props.compact || Boolean(quote || extensionResult || history.length > 0);
+  const ctaLabel = getSwapCtaLabel({
+    extensionDetected,
+    connected: Boolean(props.userAddress),
+    quoteLoading: loading,
+    quoteReady: Boolean(quote),
+    approvalRequired: Boolean(quote?.approvalRequired),
+    wrongChain,
+    quoteExpired,
+  });
 
   return (
     <div className={props.compact ? "grid gap-5" : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"}>
-      <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
+      <div className="acorus-card space-y-5 p-4 sm:p-5">
         <div className="px-3 pt-3">
-          <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
+          <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
             0x · Jupiter · Rango
           </span>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">
@@ -477,7 +487,7 @@ export function SwapComposer(props: {
           </div>
         ) : null}
 
-        <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2">
+        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/72 p-3 shadow-sm">
           <label className="space-y-2">
             <span className="px-2 text-sm font-medium text-slate-600">EVM network</span>
             <select className="light-field" value={chainId} onChange={(event) => setChainId(Number(event.target.value))}>
@@ -512,7 +522,7 @@ export function SwapComposer(props: {
 
           <div className="grid gap-2 md:grid-cols-[1fr_180px]">
             <label className="space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">Sell amount</span>
+              <span className="px-2 text-sm font-medium text-slate-600">You pay</span>
               <input
                 className="light-field"
                 inputMode="decimal"
@@ -544,10 +554,10 @@ export function SwapComposer(props: {
           disabled={!providerReady || !sellAmount || loading}
           onClick={() => void handleQuote()}
         >
-          {loading ? "Loading 0x quote..." : "Get 0x firm quote"}
+          {ctaLabel}
         </button>
 
-        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
+        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
           <div>
             <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
             <p className="text-xs text-slate-500">Fetch a live Solana route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
@@ -571,7 +581,7 @@ export function SwapComposer(props: {
           ) : null}
         </div>
 
-        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
+        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
           <div>
             <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
             <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>

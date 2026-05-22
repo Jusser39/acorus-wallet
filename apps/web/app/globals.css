@@ -1,19 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050816;
-  --foreground: #f8fafc;
-  --surface-strong: rgba(10, 15, 30, 0.9);
-  --surface-soft: rgba(15, 23, 42, 0.62);
-  --line-soft: rgba(148, 163, 184, 0.18);
-  --line-bright: rgba(255, 255, 255, 0.12);
-  --accent-primary: #ff46b7;
-  --accent-secondary: #8b5cf6;
+  --background: #fbf7ff;
+  --foreground: #15111f;
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --surface-soft: rgba(255, 255, 255, 0.78);
+  --line-soft: rgba(85, 53, 160, 0.12);
+  --line-bright: rgba(85, 53, 160, 0.22);
+  --accent-primary: #ec4899;
+  --accent-secondary: #7c3aed;
   --accent-tertiary: #38bdf8;
-  --accent-soft: rgba(244, 114, 182, 0.12);
-  --accent-hot: #fb7185;
-  --shadow-shell: 0 28px 90px rgba(2, 6, 23, 0.48);
-  --shadow-card: 0 22px 48px rgba(2, 6, 23, 0.32);
+  --accent-soft: rgba(236, 72, 153, 0.12);
+  --accent-hot: #ec4899;
+  --shadow-shell: 0 28px 90px rgba(44, 31, 84, 0.13);
+  --shadow-card: 0 22px 48px rgba(44, 31, 84, 0.1);
+  --acorus-bg: #f7f4ff;
+  --acorus-bg-soft: #fbfaff;
+  --acorus-surface: rgba(255, 255, 255, 0.84);
+  --acorus-surface-solid: #ffffff;
+  --acorus-border: rgba(85, 53, 160, 0.12);
+  --acorus-border-strong: rgba(85, 53, 160, 0.22);
+  --acorus-text: #15111f;
+  --acorus-muted: #706987;
+  --acorus-subtle: #9b92b6;
+  --acorus-purple: #7c3aed;
+  --acorus-purple-2: #a855f7;
+  --acorus-pink: #ec4899;
+  --acorus-blue: #38bdf8;
+  --acorus-green: #16a34a;
+  --acorus-red: #ef4444;
+  --acorus-amber: #f59e0b;
+  --acorus-gradient: linear-gradient(135deg, #7c3aed 0%, #ec4899 55%, #38bdf8 100%);
+  --acorus-radius-sm: 12px;
+  --acorus-radius-md: 18px;
+  --acorus-radius-lg: 28px;
+  --acorus-radius-xl: 36px;
+  --acorus-shadow-sm: 0 8px 24px rgba(44, 31, 84, 0.06);
+  --acorus-shadow-md: 0 18px 48px rgba(44, 31, 84, 0.1);
+  --acorus-shadow-lg: 0 28px 80px rgba(44, 31, 84, 0.16);
 }
 
 @theme inline {
@@ -28,16 +52,14 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(255, 70, 183, 0.18), transparent 24%),
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 26%),
-    radial-gradient(circle at 50% 120%, rgba(139, 92, 246, 0.2), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 18%),
-    linear-gradient(140deg, rgba(5, 8, 22, 0.99) 0%, rgba(8, 14, 32, 0.97) 45%, rgba(6, 10, 22, 1) 100%);
+    radial-gradient(circle at 14% 0%, rgba(168, 85, 247, 0.18), transparent 30%),
+    radial-gradient(circle at 84% 8%, rgba(236, 72, 153, 0.13), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #fbf7ff 54%, #f6edff 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   min-height: 100vh;
@@ -59,12 +81,10 @@ select,
 textarea {
   width: 100%;
   border-radius: 1.35rem;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
-    rgba(2, 6, 23, 0.58);
+  border: 1px solid var(--acorus-border);
+  background: rgba(255, 255, 255, 0.9);
   padding: 0.875rem 1rem;
-  color: white;
+  color: var(--acorus-text);
   outline: none;
   transition:
     background 160ms ease,
@@ -81,7 +101,7 @@ textarea:focus {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgb(100 116 139);
+  color: rgba(76, 29, 149, 0.46);
 }
 
 button {
@@ -136,14 +156,7 @@ button:disabled {
 }
 
 .app-surface::before {
-  content: "";
-  position: absolute;
-  inset: -40% auto auto -10%;
-  height: 14rem;
-  width: 14rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(255, 70, 183, 0.22), transparent 68%);
-  pointer-events: none;
+  content: none;
 }
 
 .app-surface > * {
@@ -245,14 +258,7 @@ button:disabled {
 }
 
 .premium-card::after {
-  content: "";
-  position: absolute;
-  inset: auto -10% -45% auto;
-  height: 12rem;
-  width: 12rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 70%);
-  pointer-events: none;
+  content: none;
 }
 
 .data-card {
@@ -284,8 +290,8 @@ button:disabled {
 
 .subtle-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(85, 53, 160, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(85, 53, 160, 0.045) 1px, transparent 1px);
   background-size: 72px 72px;
 }
 
@@ -879,4 +885,81 @@ textarea:focus,
   box-shadow:
     0 12px 26px rgba(168, 85, 247, 0.22),
     inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.acorus-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(85, 53, 160, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(85, 53, 160, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, #ffffff 0%, var(--acorus-bg) 58%, #f5e9ff 100%);
+  background-size: 88px 88px, 88px 88px, auto;
+}
+
+.acorus-card {
+  border: 1px solid var(--acorus-border);
+  border-radius: var(--acorus-radius-lg);
+  background: var(--acorus-surface);
+  color: var(--acorus-text);
+  box-shadow: var(--acorus-shadow-md);
+  backdrop-filter: blur(18px);
+}
+
+.acorus-button-primary {
+  border-radius: 999px;
+  background: var(--acorus-gradient);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 14px 34px rgba(124, 58, 237, 0.28);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.acorus-button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(124, 58, 237, 0.34);
+}
+
+.acorus-button-secondary {
+  border: 1px solid var(--acorus-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--acorus-text);
+  font-weight: 750;
+}
+
+.acorus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--acorus-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  padding: 8px 12px;
+  color: var(--acorus-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.acorus-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.acorus-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.58), transparent);
+  animation: acorus-shimmer 1.25s infinite;
+}
+
+@keyframes acorus-shimmer {
+  to {
+    transform: translateX(100%);
+  }
 }

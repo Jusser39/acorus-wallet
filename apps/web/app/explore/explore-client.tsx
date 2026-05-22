@@ -76,10 +76,32 @@ function TokenRow({ token, rank }: { token: ExploreTokenItem; rank: number }) {
         <span className="block text-sm font-semibold text-slate-950">{formatUsd(token.price)}</span>
         <span className="block text-xs text-slate-500">MCap {formatUsd(token.marketCapUsd)}</span>
       </span>
+      <span className="hidden text-right lg:block">
+        <span className="block text-xs text-slate-500">24h volume</span>
+        <span className="block text-sm font-semibold text-slate-950">{formatUsd(token.volume24hUsd)}</span>
+      </span>
       <span className="text-right">
         <PriceChangeBadge value={token.change24h} />
       </span>
     </Link>
+  );
+}
+
+function SkeletonRows() {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-white">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={index} className="explore-row">
+          <span className="acorus-skeleton h-4 w-7 rounded-full" />
+          <span className="acorus-skeleton h-9 w-9 rounded-full" />
+          <span className="grid flex-1 gap-2">
+            <span className="acorus-skeleton h-4 w-44 rounded-full" />
+            <span className="acorus-skeleton h-3 w-28 rounded-full" />
+          </span>
+          <span className="acorus-skeleton h-4 w-20 rounded-full" />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -209,20 +231,22 @@ export function ExploreClient({ initialTrending, initialTop, initialMemes }: Pro
           </div>
         </div>
 
-        {loading ? <p className="text-sm text-slate-500">Loading markets...</p> : null}
-        {!loading && visible.length === 0 ? (
-          <p className="text-sm text-slate-500">Market data is temporarily unavailable.</p>
-        ) : tab === "memes" ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {visible.map((token) => <MemeCard key={token.id} token={token} />)}
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-white">
-            {visible.map((token, index) => (
-              <TokenRow key={`${token.id}-${index}`} token={token} rank={(page - 1) * PAGE_SIZE + index + 1} />
-            ))}
-          </div>
-        )}
+        {loading ? <SkeletonRows /> : null}
+        {!loading ? (
+          visible.length === 0 ? (
+            <p className="text-sm text-slate-500">Market data is temporarily unavailable.</p>
+          ) : tab === "memes" ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {visible.map((token) => <MemeCard key={token.id} token={token} />)}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-[1.5rem] border border-fuchsia-100 bg-white">
+              {visible.map((token, index) => (
+                <TokenRow key={`${token.id}-${index}`} token={token} rank={(page - 1) * PAGE_SIZE + index + 1} />
+              ))}
+            </div>
+          )
+        ) : null}
 
         <div className="flex items-center justify-between">
           <button type="button" className="button-secondary px-4 py-2 text-sm" disabled={!canPrev} onClick={() => setPage((value) => Math.max(1, value - 1))}>

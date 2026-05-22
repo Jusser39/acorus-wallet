@@ -15,3 +15,4 @@
 13. Quests and onboarding progression
 14. Mobile app packaging
 15. External security audit
+16. Premium design-system rollout: shared white/purple UI tokens and reusable wallet/trading components are now in place; remaining legacy dark-only pages should migrate to the Acorus component primitives
