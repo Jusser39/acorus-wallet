@@ -475,7 +475,7 @@ export default function WalletPage() {
               <p className="mt-3 text-sm text-slate-400">Currency: {currency}</p>
             </div>
             <div className="premium-card flex flex-col items-center justify-center gap-3 p-5">
-              <QRCodeSVG value={walletAddress} size={148} bgColor="transparent" fgColor="#ffffff" />
+              <QRCodeSVG value={walletAddress} size={148} bgColor="transparent" fgColor="#111827" />
               <p className="text-center text-xs text-slate-300">
                 {isSolana ? "Receive only on Solana-compatible routes." : "Only send assets on the selected network."}
               </p>

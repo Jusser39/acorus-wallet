@@ -1114,6 +1114,42 @@ async function handleProviderMethod(
     };
   }
 
+  if (!session && (method === "acorus_addChain" || method === "acorus_watchAsset")) {
+    const providerParams = params ?? [];
+    const activeChainId = await getActiveExtensionChainId();
+    const queued = queueDappRequest(state, {
+      id: requestId,
+      sessionId: null,
+      kind: getRequestKindForMethod(method),
+      origin,
+      account: null,
+      chainId: activeChainId,
+      summary: buildConnectionlessApprovalSummary(method, providerParams, activeChainId),
+      warning: buildApprovalRiskWarning({
+        method,
+        params: providerParams,
+      }),
+      reviewDetails: buildRequestReviewDetails(
+        method,
+        providerParams,
+        activeChainId,
+      ),
+    });
+
+    if (queued.created) {
+      await setDappShellState(queued.snapshot);
+    }
+
+    pendingProviderExecutions.set(queued.request.id, {
+      method,
+      params: providerParams,
+    });
+
+    await setActivePromptOrigin(origin);
+    openApprovalWindow();
+    return waitForProviderApproval(queued.request);
+  }
+
   if (isApprovalMethod(method)) {
     if (!session) {
       return {
@@ -2371,6 +2407,24 @@ function buildApprovalSummary(
     default:
       return `Request review on chain ${chain}. Payload preview: ${payload}.`;
   }
+}
+
+function buildConnectionlessApprovalSummary(
+  method: AcorusProviderMethod,
+  params: unknown[] | undefined,
+  activeChainId: ChainId | null,
+): string {
+  if (method === "acorus_addChain") {
+    const addChain = parseAddChainPreview(params ?? []);
+    return `Confirm network add: ${addChain.chainName || "Unknown network"} · chainId ${addChain.chainId || "n/a"} · symbol ${addChain.symbol || "n/a"} · RPC ${addChain.rpcUrl || "n/a"} · explorer ${addChain.explorerUrl || "n/a"}.`;
+  }
+
+  if (method === "acorus_watchAsset") {
+    const asset = parseWatchAssetPreview(params ?? []);
+    return `Confirm token add on chain ${String(activeChainId ?? "n/a")}: ${asset.symbol || "UNKNOWN"} · ${asset.address || "no address"} · decimals ${asset.decimals}.`;
+  }
+
+  return `Review request on chain ${String(activeChainId ?? "n/a")}.`;
 }
 
 function parseAddChainPreview(params: unknown[]): {

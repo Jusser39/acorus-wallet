@@ -1,8 +1,12 @@
+import getpass
+import os
 import paramiko, json
 
 host = "85.239.59.199"
 user = "root"
-password = "yhNc+9-BE@FKAo"
+password = os.environ.get("ACORUS_VPS_PASSWORD") or getpass.getpass(
+    f"Enter password for {user}@{host}: ",
+)
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

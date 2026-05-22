@@ -721,10 +721,58 @@ textarea:focus,
 .page .bg-slate-950\/60,
 .page .bg-slate-950\/70,
 .page .bg-slate-950\/80,
+.page .bg-slate-950\/40,
 .page .bg-slate-900\/50,
+.page .bg-slate-900\/70,
+.page .bg-slate-900\/80,
 .page .bg-slate-800,
+.page .bg-slate-800\/60,
+.page .bg-slate-800\/70,
 .page .bg-slate-800\/50 {
   background-color: rgba(255, 255, 255, 0.74) !important;
+}
+
+.page .border-slate-700,
+.page .border-slate-800 {
+  border-color: rgba(88, 28, 135, 0.12) !important;
+}
+
+.page .text-slate-100,
+.page .text-emerald-100,
+.page .text-teal-100,
+.page .text-cyan-100,
+.page .text-violet-100,
+.page .text-amber-100,
+.page .text-rose-100,
+.panel .text-slate-100,
+.panel .text-emerald-100,
+.panel .text-teal-100,
+.panel .text-cyan-100,
+.panel .text-violet-100,
+.panel .text-amber-100,
+.panel .text-rose-100 {
+  color: #111827 !important;
+}
+
+.page .text-emerald-300,
+.page .text-teal-300,
+.page .text-cyan-300 {
+  color: #047857 !important;
+}
+
+.page .text-amber-300 {
+  color: #92400e !important;
+}
+
+.page .text-rose-300,
+.page .text-rose-400 {
+  color: #be123c !important;
+}
+
+.warning-box {
+  border-color: rgba(244, 63, 94, 0.22);
+  background: rgba(255, 241, 242, 0.88);
+  color: #881337;
 }
 
 .market-search-shell {

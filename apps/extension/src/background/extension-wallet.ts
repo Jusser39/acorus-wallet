@@ -337,11 +337,13 @@ async function installExtensionWallet(input: {
 
 function normalizeMnemonic(value: string): string {
   return value
+    .normalize("NFKD")
     .trim()
     .toLowerCase()
     .replace(/\b\d{1,2}[.)]\s*/gu, " ")
-    .replace(/[,;|/\\]+/gu, " ")
-    .replace(/\s+/gu, " ");
+    .replace(/[^a-z\s]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 function requireUnlockedSession(): NonNullable<typeof unlockedSession> {

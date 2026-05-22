@@ -621,3 +621,13 @@
 363. Production rebuild/recreate passed for API and web; `https://24wallet.ru/api/swap/status` now reports 0x configured, Jupiter configured, and Rango present but not configured because no Rango key is set.
 364. Production Jupiter read-only quote smoke passed for SOL -> USDC through the backend proxy without exposing the key.
 365. Production browser smoke passed for `/swap`: the page now shows the `0x · Jupiter · Rango` swap shell, Jupiter route fields, and Rango route fields even with no active wallet.
+366. Continued the extension/runtime stabilization after the user reported failed seed import, `Buffer is not defined` during create wallet, a stale initial demo sign-message prompt, unreadable light-theme cards, and Rango not being configured in production.
+367. Configured the Rango provider key in the VPS release environment only, preserving env backup `/root/backups/acorus-rango-env_20260521_220917`; no provider key was written to the repository or docs.
+368. Restarted the production API with `docker compose --env-file .env` after confirming the compose file needs the env file for interpolation, and production `/api/swap/status` now reports 0x, Jupiter, and Rango as configured.
+369. Replaced Node `Buffer` usage in wallet-core base64 helpers with browser-safe `btoa`/`atob` loops so extension wallet creation no longer depends on Node globals.
+370. Hardened extension seed import normalization to tolerate pasted quotes, punctuation, and numbered word lists while still validating only BIP-39 mnemonic words.
+371. Removed auto-seeded demo dApp sessions/requests from extension state, added pruning for old demo preview entries, and added a connectionless approval path for `wallet_addEthereumChain` and `wallet_watchAsset` so sites can request add-network/add-token prompts without exposing accounts first.
+372. Added regression tests for empty dApp shell state, demo preview pruning, and quoted mnemonic import; extension stabilization tests now cover add-chain/watch-asset approval queues without a preconnected demo session.
+373. Improved web light-theme readability by overriding remaining dark slate cards/text in wallet pages and fixing receive/wallet QR colors for the white/purple palette.
+374. Validation passed for the stabilization so far: shared build, wallet-core build, API test/build, web test/build, extension lint/test/build/test, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+375. Removed hardcoded VPS credentials from legacy deploy/verify scripts; they now read `ACORUS_VPS_PASSWORD` or prompt interactively. A repository scan for the supplied seed phrase, provider keys, and VPS password returned no remaining plaintext matches in tracked source paths.

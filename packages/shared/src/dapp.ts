@@ -256,7 +256,7 @@ export type EnsureDappConnectionProposalResult = {
 
 export type QueueDappRequestInput = {
   id: string;
-  sessionId: string;
+  sessionId: string | null;
   kind: DappRequestKind;
   origin: string;
   transport?: DappConnectionTransport;
@@ -387,6 +387,16 @@ const DEMO_TIMESTAMPS = {
   session: "2026-05-16T12:05:00.000Z",
   request: "2026-05-16T12:10:00.000Z",
 } as const;
+
+export function createEmptyDappShellSnapshot(): DappShellSnapshot {
+  return {
+    proposals: [],
+    sessions: [],
+    pendingRequests: [],
+    approvalResults: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export function getDappPermissionDefinition(
   permission: DappPermissionScope,

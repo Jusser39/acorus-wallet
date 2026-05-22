@@ -1412,3 +1412,32 @@
   - Production smoke passed for `/health`, `/api/swap/status`, `/api/swap/solana/jupiter/status`, `/api/swap/rango/status`, `/api/swap/solana/jupiter/quote`, `/create`, and `/swap`.
   - Browser smoke confirmed `/swap` renders the `0x · Jupiter · Rango` shell and route controls with no active wallet.
 
+## Extension Import/Create Stabilization and Rango Production Config (2026-05-22)
+
+- Status: **implemented locally, validation passed, production Rango env configured**
+- Fixed a browser runtime crash in wallet-core encoding by removing Node `Buffer` from base64 encode/decode helpers. This addresses the extension create-wallet alert that showed `Buffer is not defined`.
+- Hardened mnemonic import in the extension so pasted seed phrases can include quotes, punctuation, and numbered words, while still requiring a valid BIP-39 mnemonic.
+- Removed the seeded demo dApp state from new extension installs and added pruning for old demo preview sessions/requests. The popup should no longer start with a stale "Acorus Demo Swap" sign-message request.
+- Added connectionless approval queuing for `wallet_addEthereumChain` and `wallet_watchAsset`: sites can request add-network/add-token review without a connected account, but signing, sending, and swap execution still require a connected session and explicit approval.
+- Light-theme readability was improved on wallet pages by overriding remaining dark slate surfaces and fixing QR/address cards on receive/wallet views.
+- Production Rango provider configuration was added only to the VPS env file; the key was not committed. Env backup: `/root/backups/acorus-rango-env_20260521_220917`.
+- Production API was restarted with `docker compose --env-file .env` so provider env interpolation is loaded; `/api/swap/status` now reports 0x, Jupiter, and Rango configured.
+- Legacy VPS deploy/verify scripts no longer contain plaintext credentials; they use `ACORUS_VPS_PASSWORD` or an interactive prompt instead. A repository scan found no remaining plaintext matches for the supplied mnemonic, provider keys, or VPS password in tracked source paths.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Known limitations:
+  - Jupiter and Rango execution remain gated until the extension approval/execution integration is completed.
+  - Manual Chrome reload of the unpacked extension is still required to verify imported balances in the user's browser profile.
+

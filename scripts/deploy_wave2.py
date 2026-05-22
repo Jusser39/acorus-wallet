@@ -1,8 +1,12 @@
+import getpass
+import os
 import paramiko, tarfile, io, pathlib
 
 host = "85.239.59.199"
 user = "root"
-password = "yhNc+9-BE@FKAo"
+password = os.environ.get("ACORUS_VPS_PASSWORD") or getpass.getpass(
+    f"Enter password for {user}@{host}: ",
+)
 
 project_root = pathlib.Path(r"C:\Users\NZXT\acorus-wallet")
 

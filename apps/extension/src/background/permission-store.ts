@@ -7,7 +7,7 @@ import {
   approveDappProposal,
   approveDappRequest,
   createDappBridgeSessionView,
-  createDemoDappShellSnapshot,
+  createEmptyDappShellSnapshot,
   ensureDappConnectionProposal,
   getActiveDappSession,
   getChainsByFamily,
@@ -55,11 +55,15 @@ export async function getDappShellState(): Promise<DappShellSnapshot> {
   const value = result[DAPP_SHELL_STATE_KEY];
 
   if (value && typeof value === "object") {
-    return normalizeStoredSnapshot(value as DappShellSnapshot);
+    const normalized = pruneDemoPreviewState(
+      normalizeStoredSnapshot(value as DappShellSnapshot),
+    );
+    await setDappShellState(normalized);
+    return normalized;
   }
 
   const seeded = reconcileSnapshotWithWalletState(
-    createDemoDappShellSnapshot(),
+    createEmptyDappShellSnapshot(),
     await getWalletSyncState(),
   );
   await setDappShellState(seeded);
@@ -544,5 +548,40 @@ function normalizeStoredSnapshot(snapshot: DappShellSnapshot): DappShellSnapshot
           : undefined)
         ?? "injected",
     })),
+  };
+}
+
+function pruneDemoPreviewState(snapshot: DappShellSnapshot): DappShellSnapshot {
+  const demoSessionIds = new Set(
+    snapshot.sessions
+      .filter((session) => session.id.startsWith("session_demo_"))
+      .map((session) => session.id),
+  );
+  const proposals = snapshot.proposals.filter(
+    (proposal) => !proposal.id.startsWith("proposal_demo_"),
+  );
+  const sessions = snapshot.sessions.filter(
+    (session) => !demoSessionIds.has(session.id),
+  );
+  const pendingRequests = snapshot.pendingRequests.filter(
+    (request) =>
+      !demoSessionIds.has(request.sessionId ?? "")
+      && !request.id.startsWith("request_demo_"),
+  );
+
+  if (
+    proposals.length === snapshot.proposals.length
+    && sessions.length === snapshot.sessions.length
+    && pendingRequests.length === snapshot.pendingRequests.length
+  ) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    proposals,
+    sessions,
+    pendingRequests,
+    updatedAt: new Date().toISOString(),
   };
 }

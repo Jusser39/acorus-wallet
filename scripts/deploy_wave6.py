@@ -1,11 +1,14 @@
 import os
 import tarfile
 import time
+import getpass
 import paramiko
 
 HOST = "85.239.59.199"
 USER = "root"
-PASS = "yhNc+9-BE@FKAo"
+PASS = os.environ.get("ACORUS_VPS_PASSWORD") or getpass.getpass(
+    f"Enter password for {USER}@{HOST}: ",
+)
 REMOTE_PATH = "/opt/acorus-wallet"
 LOCAL_ROOT = r"C:\Users\NZXT\acorus-wallet"
 TARBALL = r"C:\Users\NZXT\acorus-wave6-deploy.tar.gz"

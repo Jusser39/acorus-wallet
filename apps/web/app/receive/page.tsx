@@ -124,10 +124,10 @@ export default function ReceivePage() {
           </select>
         </label>
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-          <p className="text-sm text-slate-400">Address</p>
-          <p className="mt-3 break-all text-lg font-medium">{address}</p>
-          <p className="mt-2 text-sm text-slate-400">{formatAddress(address)}</p>
+        <div className="rounded-3xl border border-fuchsia-100 bg-white/82 p-5 shadow-[0_18px_42px_rgba(126,34,206,0.08)]">
+          <p className="text-sm font-semibold text-slate-600">Address</p>
+          <p className="mt-3 break-all text-lg font-semibold text-slate-950">{address}</p>
+          <p className="mt-2 text-sm text-slate-500">{formatAddress(address)}</p>
           {extensionAddress ? (
             <p className="mt-3 text-sm text-emerald-300">
               Address served by Acorus Extension vault.
@@ -162,7 +162,7 @@ export default function ReceivePage() {
       </div>
 
       <aside className="panel flex flex-col items-center justify-center gap-4">
-        <QRCodeSVG value={address} size={220} bgColor="transparent" fgColor="#ffffff" />
+        <QRCodeSVG value={address} size={220} bgColor="transparent" fgColor="#111827" />
         <p className="text-center text-sm text-slate-300">
           Receive on {chain?.name ?? "selected chain"} · {activeProfile.type.replace("_", " ")}
         </p>

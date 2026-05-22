@@ -1,8 +1,12 @@
+import getpass
+import os
 import paramiko
 
 VPS_HOST = '85.239.59.199'
 VPS_USER = 'root'
-VPS_PASS = 'yhNc+9-BE@FKAo'
+VPS_PASS = os.environ.get("ACORUS_VPS_PASSWORD") or getpass.getpass(
+    f"Enter password for {VPS_USER}@{VPS_HOST}: ",
+)
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
