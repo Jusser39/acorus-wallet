@@ -631,3 +631,11 @@
 373. Improved web light-theme readability by overriding remaining dark slate cards/text in wallet pages and fixing receive/wallet QR colors for the white/purple palette.
 374. Validation passed for the stabilization so far: shared build, wallet-core build, API test/build, web test/build, extension lint/test/build/test, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
 375. Removed hardcoded VPS credentials from legacy deploy/verify scripts; they now read `ACORUS_VPS_PASSWORD` or prompt interactively. A repository scan for the supplied seed phrase, provider keys, and VPS password returned no remaining plaintext matches in tracked source paths.
+376. Started the universal swap extension review foundation after the 0x/Jupiter/Rango backend provider wave, keeping live transaction execution limited to the already-reviewed 0x EVM path.
+377. Added shared `universal_swap` dApp review details for Jupiter and Rango so approval cards can show sanitized provider, network, route, amount, slippage, expiration, and review-only status data.
+378. Added extension protocol support for `queue_universal_swap_approval` and widened extension activity records to track `0x`, `jupiter`, and `rango` providers.
+379. Updated the extension background so Jupiter/Rango `acorus_swap` approvals are queued, reviewed, and resolved as preview results only; no Solana or Rango transaction is signed or broadcast in this wave.
+380. Added popup approval card rendering for universal swaps and regression coverage to ensure raw transaction blobs/calldata/route JSON are not rendered in the UI.
+381. Updated the web swap composer so loaded Jupiter and Rango backend routes can be sent to the extension for review, with clear copy that execution remains gated.
+382. Rebuilt the public extension zip after the popup/background/protocol changes.
+383. Validation passed for the universal review wave: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.

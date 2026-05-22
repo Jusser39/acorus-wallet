@@ -89,6 +89,19 @@ describe("popup receive composer", () => {
     expect(source).not.toContain("<dt>Data</dt>");
   });
 
+  it("renders universal Jupiter and Rango swap cards without raw transaction blobs", async () => {
+    const source = await readFile(
+      resolve(process.cwd(), "src/popup/index.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("details?.kind === \"universal_swap\"");
+    expect(source).toContain("Review only");
+    expect(source).toContain("details.provider");
+    expect(source).not.toContain("swapTransaction");
+    expect(source).not.toContain("<dt>Raw</dt>");
+  });
+
   it("contains the simplified wallet home and settings sheet UI", async () => {
     const source = await readFile(
       resolve(process.cwd(), "src/popup/index.ts"),

@@ -21,7 +21,7 @@ export function HomeSwapPanel() {
           {[
             ["Backend quote", "0x API key stays server-side."],
             ["Wallet approval", "Token approval and swap review are separate."],
-            ["Multichain shell", "Solana, Tron, BTC and TON stay visible but gated for swap execution."],
+            ["Multichain routes", "Jupiter and Rango route reviews are visible in the extension before execution is enabled."],
           ].map(([title, copy]) => (
             <div key={title} className="data-card rounded-2xl p-4">
               <p className="text-sm font-semibold text-slate-950">{title}</p>

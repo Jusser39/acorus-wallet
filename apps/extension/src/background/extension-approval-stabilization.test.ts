@@ -122,6 +122,18 @@ describe("extension approval stabilization", () => {
     expect(source).toContain("executeExtensionSolanaSend");
     expect(source).toContain("pendingProviderExecutions.set");
   });
+
+  it("contains review-only universal swap approval for Jupiter and Rango", async () => {
+    const source = await readFile(resolve(process.cwd(), "src/background/index.ts"), "utf8");
+
+    expect(source).toContain("queue_universal_swap_approval");
+    expect(source).toContain("queueInternalUniversalSwapRequest");
+    expect(source).toContain("acorus_backend_jupiter");
+    expect(source).toContain("acorus_backend_rango");
+    expect(source).toContain("executionStatus: \"review_only\"");
+    expect(source).toContain("payload.provider !== \"0x\"");
+    expect(source).toContain("createApprovedPreviewDappResult(request, approvedAt)");
+  });
 });
 
 function providerMessage(method: "acorus_addChain" | "acorus_watchAsset", params: unknown[]) {

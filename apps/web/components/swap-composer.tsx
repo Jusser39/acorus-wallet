@@ -9,6 +9,8 @@ import {
   validateFormattedAmount,
   type AssetBalance,
   type EvmSwapQuoteResponse,
+  type RangoSwapQuoteResponse,
+  type SolanaSwapQuoteResponse,
 } from "@acorus/shared";
 import { buildErc20ApproveTransaction } from "@acorus/wallet-core";
 import {
@@ -25,6 +27,7 @@ import {
   hasAcorusExtension,
   requestExtensionEvmSendTransaction,
   requestExtensionSwap,
+  requestExtensionUniversalSwap,
   switchExtensionChain,
 } from "@/lib/extension-bridge";
 import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
@@ -71,10 +74,12 @@ export function SwapComposer(props: {
   const [jupiterOutputMint, setJupiterOutputMint] = useState("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
   const [jupiterAmount, setJupiterAmount] = useState("1000000");
   const [jupiterResult, setJupiterResult] = useState<string | null>(null);
+  const [jupiterRoute, setJupiterRoute] = useState<SolanaSwapQuoteResponse | null>(null);
   const [rangoFrom, setRangoFrom] = useState("ETH.ETH");
   const [rangoTo, setRangoTo] = useState("SOL.SOL");
   const [rangoAmount, setRangoAmount] = useState("0.01");
   const [rangoResult, setRangoResult] = useState<string | null>(null);
+  const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
   const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
   const tokens = useMemo(
@@ -352,6 +357,7 @@ export function SwapComposer(props: {
 
   async function handleJupiterQuote() {
     setJupiterResult("Fetching Jupiter route...");
+    setJupiterRoute(null);
     try {
       const route = await getJupiterSwapQuote({
         inputMint: jupiterInputMint,
@@ -359,6 +365,7 @@ export function SwapComposer(props: {
         amount: jupiterAmount,
         slippageBps,
       });
+      setJupiterRoute(route);
       setJupiterResult(
         `Jupiter: ${route.inAmountRaw} -> ${route.outAmountRaw}. Route: ${
           route.routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
@@ -371,6 +378,7 @@ export function SwapComposer(props: {
 
   async function handleRangoQuote() {
     setRangoResult("Fetching Rango route...");
+    setRangoRoute(null);
     try {
       const route = await getRangoSwapQuote({
         from: rangoFrom,
@@ -378,11 +386,46 @@ export function SwapComposer(props: {
         amount: rangoAmount,
         slippageBps,
       });
+      setRangoRoute(route);
       setRangoResult(
         `Rango: ${route.amountRaw} -> ${route.outputAmountFormatted ?? route.outputAmountRaw ?? "unknown"}. Route: ${route.routeLabel}`,
       );
     } catch (err) {
       setRangoResult(err instanceof Error ? err.message : "Unable to fetch Rango route.");
+    }
+  }
+
+  async function handleUniversalSwapReview(provider: "jupiter" | "rango") {
+    setExtensionResult(null);
+
+    try {
+      const route = provider === "jupiter" ? jupiterRoute : rangoRoute;
+
+      if (!route) {
+        throw new Error(`Request a ${provider} route before opening extension review.`);
+      }
+
+      await requestExtensionUniversalSwap({
+        provider,
+        quoteSource: provider === "jupiter" ? "acorus_backend_jupiter" : "acorus_backend_rango",
+        chainId: provider === "jupiter" ? 101 : "crosschain",
+        fromLabel: provider === "jupiter" ? routeLabelFromJupiter(route as SolanaSwapQuoteResponse, "input") : (route as RangoSwapQuoteResponse).from,
+        toLabel: provider === "jupiter" ? routeLabelFromJupiter(route as SolanaSwapQuoteResponse, "output") : (route as RangoSwapQuoteResponse).to,
+        sellAmountRaw: provider === "jupiter" ? (route as SolanaSwapQuoteResponse).inAmountRaw : (route as RangoSwapQuoteResponse).amountRaw,
+        buyAmountRaw: provider === "jupiter" ? (route as SolanaSwapQuoteResponse).outAmountRaw : (route as RangoSwapQuoteResponse).outputAmountRaw ?? null,
+        buyAmountFormatted: provider === "rango" ? (route as RangoSwapQuoteResponse).outputAmountFormatted ?? null : null,
+        minBuyAmountRaw: provider === "jupiter" ? (route as SolanaSwapQuoteResponse).otherAmountThresholdRaw ?? null : null,
+        routeLabel: provider === "jupiter"
+          ? (route as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+          : (route as RangoSwapQuoteResponse).routeLabel,
+        slippageBps,
+        expiresAt: route.expiresAt,
+        executionStatus: "review_only",
+      });
+
+      setExtensionResult(`${provider} route review queued in Acorus extension. Execution remains gated until the adapter is audited.`);
+    } catch (err) {
+      setExtensionResult(err instanceof Error ? err.message : "Unable to queue universal swap review.");
     }
   }
 
@@ -405,7 +448,7 @@ export function SwapComposer(props: {
             {props.title ?? "Swap with Acorus"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {props.description ?? "0x handles EVM routes, Jupiter handles Solana routes, and Rango prepares cross-chain routes through backend-only API keys."}
+            {props.description ?? "0x handles EVM execution, while Jupiter and Rango routes can be inspected in the extension before adapter execution is enabled."}
           </p>
         </div>
 
@@ -507,7 +550,7 @@ export function SwapComposer(props: {
         <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
           <div>
             <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
-            <p className="text-xs text-slate-500">Quote-only until Solana swap transaction signing is reviewed in the extension.</p>
+            <p className="text-xs text-slate-500">Fetch a live Solana route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
           </div>
           <input className="light-field" value={jupiterInputMint} onChange={(event) => setJupiterInputMint(event.target.value)} placeholder="Input mint" />
           <input className="light-field" value={jupiterOutputMint} onChange={(event) => setJupiterOutputMint(event.target.value)} placeholder="Output mint" />
@@ -516,12 +559,22 @@ export function SwapComposer(props: {
             Get Jupiter route
           </button>
           {jupiterResult ? <p className="text-sm text-slate-600">{jupiterResult}</p> : null}
+          {jupiterRoute ? (
+            <button
+              type="button"
+              className="button-primary"
+              disabled={!extensionDetected}
+              onClick={() => void handleUniversalSwapReview("jupiter")}
+            >
+              Review Jupiter route in extension
+            </button>
+          ) : null}
         </div>
 
         <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/55 p-3">
           <div>
             <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
-            <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; execution remains draft/review gated.</p>
+            <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>
           </div>
           <input className="light-field" value={rangoFrom} onChange={(event) => setRangoFrom(event.target.value)} placeholder="From asset, e.g. ETH.ETH" />
           <input className="light-field" value={rangoTo} onChange={(event) => setRangoTo(event.target.value)} placeholder="To asset, e.g. SOL.SOL" />
@@ -530,6 +583,16 @@ export function SwapComposer(props: {
             Get Rango route
           </button>
           {rangoResult ? <p className="text-sm text-slate-600">{rangoResult}</p> : null}
+          {rangoRoute ? (
+            <button
+              type="button"
+              className="button-primary"
+              disabled={!extensionDetected}
+              onClick={() => void handleUniversalSwapReview("rango")}
+            >
+              Review Rango route in extension
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -611,7 +674,7 @@ export function SwapComposer(props: {
             </div>
           ) : (
             <p className="text-sm text-slate-600">
-              Select an EVM route and request a quote. Solana/Jupiter, Tron, Bitcoin, TON, and cross-chain swaps stay out of scope for this wave.
+              Select a route and request a quote. 0x EVM can execute after extension approval; Jupiter and Rango routes queue review-only approval cards.
             </p>
           )}
         </div>
@@ -721,4 +784,18 @@ function parseChainId(value: string | number | null): number | null {
     : Number(value);
 
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function routeLabelFromJupiter(route: SolanaSwapQuoteResponse, side: "input" | "output"): string {
+  const mint = side === "input" ? route.inputMint : route.outputMint;
+
+  if (mint === "So11111111111111111111111111111111111111112") {
+    return "SOL";
+  }
+
+  if (mint === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+    return "USDC";
+  }
+
+  return `${mint.slice(0, 4)}...${mint.slice(-4)}`;
 }

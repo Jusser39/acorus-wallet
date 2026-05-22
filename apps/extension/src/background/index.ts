@@ -13,6 +13,9 @@ import {
   type DappRequestKind,
   type DappRequestReviewDetails,
   type EvmSwapQuoteResponse,
+  type RangoSwapQuoteResponse,
+  type SolanaSwapQuoteResponse,
+  type SolanaSwapTransactionDraftResponse,
   type ChainId,
   type ChainFamily,
   type DappShellSnapshot,
@@ -329,6 +332,27 @@ export async function handleRuntimeMessage(
         requestId,
         "evm_swap_queue_failed",
         error instanceof Error ? error.message : "Unable to queue swap review.",
+      );
+    }
+  }
+
+  if (input.kind === "queue_universal_swap_approval") {
+    try {
+      return {
+        requestId,
+        ok: true,
+        result: await queueInternalUniversalSwapRequest({
+          requestId,
+          provider: input.provider,
+          route: input.route,
+          slippageBps: input.slippageBps ?? null,
+        }),
+      };
+    } catch (error) {
+      return providerError(
+        requestId,
+        "universal_swap_queue_failed",
+        error instanceof Error ? error.message : "Unable to queue universal swap review.",
       );
     }
   }
@@ -1618,9 +1642,14 @@ async function executeApprovedRequest(
         return createApprovedLiveDappResult(request, approvedAt, {
           transactionHash,
         });
-      }
+    }
     case "acorus_swap": {
       const payload = normalizeRecord(execution.params[0]);
+      if (payload.provider !== "0x") {
+        assertFreshSwapQuote(payload);
+        return createApprovedPreviewDappResult(request, approvedAt);
+      }
+
       if (!payload.to || !payload.data) {
         return createApprovedPreviewDappResult(request, approvedAt);
       }
@@ -2057,6 +2086,92 @@ async function queueInternalEvmSwapRequest(input: {
   };
 }
 
+async function queueInternalUniversalSwapRequest(input: {
+  requestId: string;
+  provider: "jupiter" | "rango";
+  route:
+    | SolanaSwapQuoteResponse
+    | SolanaSwapTransactionDraftResponse
+    | RangoSwapQuoteResponse;
+  slippageBps?: number | null;
+}): Promise<{ requestId: string; queued: true }> {
+  const vaultStatus = await getExtensionVaultStatus();
+
+  if (!vaultStatus.isUnlocked) {
+    throw new Error("Unlock Acorus Wallet extension before reviewing this swap route.");
+  }
+
+  const payload = buildUniversalSwapProviderPayload(input);
+  assertFreshSwapQuote({ expiresAt: payload.expiresAt });
+
+  const preferredFamily = input.provider === "jupiter"
+    ? "solana"
+    : inferRangoSourceFamily(payload.fromLabel);
+  const profile = vaultStatus.profiles.find((item) => item.chainFamily === preferredFamily)
+    ?? vaultStatus.profiles.find((item) => item.selected)
+    ?? vaultStatus.profiles[0];
+
+  if (!profile) {
+    throw new Error("No wallet profile is available for swap review.");
+  }
+
+  const origin = "chrome-extension://acorus-popup";
+  const state = await getDappShellState();
+  const session = ensureInternalUniversalSwapSession(
+    state,
+    origin,
+    profile.account,
+    payload.chainId,
+  );
+  const stateWithSession = state.sessions.some((item) => item.id === session.id)
+    ? state
+    : { ...state, sessions: [session, ...state.sessions] };
+  const providerParams = [{
+    ...payload,
+    from: profile.account,
+  }];
+  const queued = queueDappRequest(stateWithSession, {
+    id: input.requestId,
+    sessionId: session.id,
+    kind: "swap",
+    origin,
+    account: profile.account,
+    chainId: payload.chainId,
+    summary: `${payload.provider} route review: ${payload.sellAmountRaw} ${payload.fromLabel} to ${payload.toLabel}.`,
+    warning: "This route is review-only in the extension until the matching adapter execution is fully audited.",
+    reviewDetails: buildRequestReviewDetails(
+      "acorus_swap",
+      providerParams,
+      payload.chainId,
+    ),
+  });
+
+  await setDappShellState(queued.snapshot);
+  await appendExtensionActivity({
+    id: `${queued.request.id}_swap_requested`,
+    kind: "swap_requested",
+    provider: input.provider,
+    chainId: payload.chainId,
+    account: profile.account,
+    sellTokenSymbol: payload.fromLabel,
+    buyTokenSymbol: payload.toLabel,
+    amountFormatted: payload.sellAmountFormatted ?? payload.sellAmountRaw,
+    buyAmountFormatted: payload.buyAmountFormatted ?? payload.buyAmountRaw ?? null,
+    status: "queued",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+  pendingProviderExecutions.set(queued.request.id, {
+    method: "acorus_swap",
+    params: providerParams,
+  });
+
+  return {
+    requestId: queued.request.id,
+    queued: true,
+  };
+}
+
 function ensureInternalEvmSession(
   state: DappShellSnapshot,
   origin: string,
@@ -2082,6 +2197,130 @@ function ensureInternalEvmSession(
       lastUsedAt: null,
       warning: "Internal extension swap approval.",
     };
+}
+
+function ensureInternalUniversalSwapSession(
+  state: DappShellSnapshot,
+  origin: string,
+  account: string,
+  chainId: ChainId,
+) {
+  const id = `session_internal_universal_swap_${String(chainId)}`;
+  return state.sessions.find((item) => item.id === id)
+    ?? {
+      id,
+      origin: createDappOriginMetadata({
+        origin,
+        title: "Acorus Wallet Popup",
+        trustLevel: "trusted",
+      }),
+      transport: "injected" as const,
+      providerMode: "wallet_backed" as const,
+      accounts: [account],
+      chainIds: [chainId],
+      activeChainId: chainId,
+      permissions: ["swap"] as const,
+      status: "active" as const,
+      connectedAt: new Date().toISOString(),
+      lastUsedAt: null,
+      warning: "Internal universal swap review.",
+    };
+}
+
+function buildUniversalSwapProviderPayload(input: {
+  provider: "jupiter" | "rango";
+  route:
+    | SolanaSwapQuoteResponse
+    | SolanaSwapTransactionDraftResponse
+    | RangoSwapQuoteResponse;
+  slippageBps?: number | null;
+}): Record<string, unknown> & {
+  provider: "jupiter" | "rango";
+  quoteSource: "acorus_backend_jupiter" | "acorus_backend_rango";
+  chainId: ChainId;
+  fromLabel: string;
+  toLabel: string;
+  sellAmountRaw: string;
+  sellAmountFormatted?: string | null;
+  buyAmountRaw?: string | null;
+  buyAmountFormatted?: string | null;
+  minBuyAmountRaw?: string | null;
+  routeLabel: string;
+  slippageBps?: number | null;
+  expiresAt: string;
+  executionStatus: "review_only";
+} {
+  if (input.provider === "jupiter" && input.route.provider === "jupiter") {
+    const routeLabel = input.route.routeSummary
+      .map((step) => step.protocolName)
+      .filter((label): label is string => Boolean(label))
+      .join(" + ");
+
+    return {
+      provider: "jupiter",
+      quoteSource: "acorus_backend_jupiter",
+      chainId: 101,
+      fromLabel: shortMintLabel(input.route.inputMint),
+      toLabel: shortMintLabel(input.route.outputMint),
+      sellAmountRaw: input.route.inAmountRaw,
+      buyAmountRaw: input.route.outAmountRaw,
+      minBuyAmountRaw: input.route.otherAmountThresholdRaw ?? null,
+      routeLabel: routeLabel || "Jupiter best route",
+      slippageBps: input.slippageBps ?? input.route.slippageBps,
+      expiresAt: input.route.expiresAt,
+      executionStatus: "review_only",
+      swapTransactionHash: "swapTransaction" in input.route
+        ? hashSwapData(input.route.swapTransaction)
+        : null,
+    };
+  }
+
+  if (input.provider === "rango" && input.route.provider === "rango") {
+    return {
+      provider: "rango",
+      quoteSource: "acorus_backend_rango",
+      chainId: "crosschain",
+      fromLabel: input.route.from,
+      toLabel: input.route.to,
+      sellAmountRaw: input.route.amountRaw,
+      sellAmountFormatted: input.route.amountRaw,
+      buyAmountRaw: input.route.outputAmountRaw ?? null,
+      buyAmountFormatted: input.route.outputAmountFormatted ?? input.route.outputAmountRaw ?? null,
+      routeLabel: input.route.routeLabel || "Rango best route",
+      slippageBps: input.slippageBps ?? null,
+      expiresAt: input.route.expiresAt,
+      executionStatus: "review_only",
+      resultType: input.route.resultType ?? null,
+    };
+  }
+
+  throw new Error("Swap provider and route payload do not match.");
+}
+
+function inferRangoSourceFamily(label: string): ChainFamily {
+  const upper = label.toUpperCase();
+
+  if (upper.startsWith("SOL.")) {
+    return "solana";
+  }
+
+  if (upper.startsWith("TRON.") || upper.startsWith("TRX.")) {
+    return "tron";
+  }
+
+  return "evm";
+}
+
+function shortMintLabel(value: string): string {
+  if (value === "So11111111111111111111111111111111111111112") {
+    return "SOL";
+  }
+
+  if (value === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
+    return "USDC";
+  }
+
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
 function assertFreshSwapQuote(payload: Record<string, unknown>): void {
@@ -2394,6 +2633,9 @@ function buildApprovalSummary(
       if (swap.provider === "0x") {
         return `Confirm 0x swap on chain ${chain}: ${String(swap.sellTokenSymbol ?? "sell")} to ${String(swap.buyTokenSymbol ?? "buy")}.`;
       }
+      if (swap.provider === "jupiter" || swap.provider === "rango") {
+        return `Review ${String(swap.provider)} route: ${String(swap.fromLabel ?? "sell")} to ${String(swap.toLabel ?? "buy")}.`;
+      }
       return `Swap review. Active chain ${chain}. Route preview: ${payload}.`;
     }
     case "acorus_signMessage":
@@ -2603,6 +2845,47 @@ function buildRequestReviewDetails(
         routeLabel: String(payload.routeLabel ?? "0x route"),
         contractAddress: String(payload.to ?? ""),
         value: String(payload.value ?? "0"),
+        riskLabels,
+      };
+    }
+
+    if (payload.provider === "jupiter" || payload.provider === "rango") {
+      const riskLabels = [
+        payload.provider === "jupiter" ? "Solana aggregator" : "Cross-chain aggregator",
+        "Review-only route",
+      ];
+
+      if (payload.provider === "rango") {
+        riskLabels.push("Bridge route");
+      }
+
+      return {
+        kind: "universal_swap",
+        provider: payload.provider,
+        chainId: typeof payload.chainId === "string" || typeof payload.chainId === "number"
+          ? payload.chainId
+          : activeChainId,
+        fromLabel: String(payload.fromLabel ?? "Sell asset"),
+        toLabel: String(payload.toLabel ?? "Buy asset"),
+        sellAmountRaw: String(payload.sellAmountRaw ?? ""),
+        sellAmountFormatted: typeof payload.sellAmountFormatted === "string"
+          ? payload.sellAmountFormatted
+          : null,
+        buyAmountRaw: typeof payload.buyAmountRaw === "string"
+          ? payload.buyAmountRaw
+          : null,
+        buyAmountFormatted: typeof payload.buyAmountFormatted === "string"
+          ? payload.buyAmountFormatted
+          : null,
+        minBuyAmountRaw: typeof payload.minBuyAmountRaw === "string"
+          ? payload.minBuyAmountRaw
+          : null,
+        slippageBps: typeof payload.slippageBps === "number"
+          ? payload.slippageBps
+          : null,
+        routeLabel: String(payload.routeLabel ?? `${payload.provider} route`),
+        executionStatus: "review_only",
+        expiresAt: typeof payload.expiresAt === "string" ? payload.expiresAt : null,
         riskLabels,
       };
     }

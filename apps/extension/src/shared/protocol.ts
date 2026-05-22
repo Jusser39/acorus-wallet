@@ -8,6 +8,9 @@ import type {
   DappSession,
   DappSessionProposal,
   EvmSwapQuoteResponse,
+  RangoSwapQuoteResponse,
+  SolanaSwapQuoteResponse,
+  SolanaSwapTransactionDraftResponse,
   DappWalletExposure,
   DappWalletSyncEnvelope,
 } from "@acorus/shared";
@@ -103,8 +106,8 @@ export type ExtensionActivityRecord = {
     | "swap_submitted"
     | "swap_rejected"
     | "swap_failed";
-  provider: "0x";
-  chainId: number;
+  provider: "0x" | "jupiter" | "rango";
+  chainId: number | string;
   account: string;
   tokenSymbol?: string | null;
   sellTokenSymbol?: string | null;
@@ -220,6 +223,17 @@ export type ExtensionRuntimeMessage =
       requestId: string;
       surface: "popup" | "options";
       quote: EvmSwapQuoteResponse;
+      slippageBps?: number | null;
+    }
+  | {
+      kind: "queue_universal_swap_approval";
+      requestId: string;
+      surface: "popup" | "options";
+      provider: "jupiter" | "rango";
+      route:
+        | SolanaSwapQuoteResponse
+        | SolanaSwapTransactionDraftResponse
+        | RangoSwapQuoteResponse;
       slippageBps?: number | null;
     }
   | {

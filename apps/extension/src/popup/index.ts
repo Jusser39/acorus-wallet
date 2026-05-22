@@ -714,6 +714,23 @@ function renderApprovalDetailCard(
     `;
   }
 
+  if (details?.kind === "universal_swap") {
+    return `
+      <div class="approval-card">
+        <div class="row"><strong>${escapeHtml(details.provider)} Swap Route</strong>${renderRiskLabels(details.riskLabels)}</div>
+        <dl>
+          <div><dt>Network</dt><dd>${escapeHtml(String(details.chainId ?? "multi"))}</dd></div>
+          <div><dt>Sell</dt><dd>${escapeHtml(details.sellAmountFormatted ?? details.sellAmountRaw)} ${escapeHtml(details.fromLabel)}</dd></div>
+          <div><dt>Buy</dt><dd>${escapeHtml(details.buyAmountFormatted ?? details.buyAmountRaw ?? "route estimate")} ${escapeHtml(details.toLabel)}</dd></div>
+          <div><dt>Route</dt><dd>${escapeHtml(details.routeLabel)}</dd></div>
+          <div><dt>Execution</dt><dd>${escapeHtml(details.executionStatus === "review_only" ? "Review only" : "Disabled")}</dd></div>
+          ${details.slippageBps !== null && details.slippageBps !== undefined ? `<div><dt>Slippage</dt><dd>${escapeHtml(String(details.slippageBps / 100))}%</dd></div>` : ""}
+          ${details.expiresAt ? `<div><dt>Expires</dt><dd>${escapeHtml(new Date(details.expiresAt).toLocaleTimeString())}</dd></div>` : ""}
+        </dl>
+      </div>
+    `;
+  }
+
   return `<span>${escapeHtml(request.summary)}</span>`;
 }
 

@@ -111,6 +111,10 @@ export function requestExtensionSwap(input: Record<string, unknown>): Promise<un
   return requestAcorusExtension("acorus_swap", [input]);
 }
 
+export function requestExtensionUniversalSwap(input: Record<string, unknown>): Promise<unknown> {
+  return requestAcorusExtension("acorus_swap", [input]);
+}
+
 export function getExtensionChainId(): Promise<string | number | null> {
   return requestAcorusExtension("acorus_chainId");
 }

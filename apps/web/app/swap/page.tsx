@@ -17,7 +17,7 @@ export default function SwapPage() {
           compact
           eyebrow="Universal swap"
           title="Swap across Acorus routes"
-          description="0x routes execute through extension approvals. Jupiter and Rango are wired as backend quote and transaction-draft providers, so users can inspect routes before wallet execution is enabled."
+          description="0x routes execute through extension approvals. Jupiter and Rango are wired as backend quote providers with extension review cards before adapter execution is enabled."
           primaryHref="/swap"
           primaryLabel="Stay on swap"
           secondaryHref="/wallet"

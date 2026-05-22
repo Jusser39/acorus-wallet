@@ -175,6 +175,23 @@ export type DappRequestReviewDetails =
       createdAt?: string | null;
       expiresAt?: string | null;
       riskLabels: string[];
+    }
+  | {
+      kind: "universal_swap";
+      provider: "jupiter" | "rango";
+      chainId: ChainId | null;
+      fromLabel: string;
+      toLabel: string;
+      sellAmountRaw: string;
+      sellAmountFormatted?: string | null;
+      buyAmountRaw?: string | null;
+      buyAmountFormatted?: string | null;
+      minBuyAmountRaw?: string | null;
+      routeLabel: string;
+      slippageBps?: number | null;
+      executionStatus: "review_only" | "disabled";
+      expiresAt?: string | null;
+      riskLabels: string[];
     };
 
 export type DappApprovalResult = {

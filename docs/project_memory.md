@@ -1441,3 +1441,32 @@
   - Jupiter and Rango execution remain gated until the extension approval/execution integration is completed.
   - Manual Chrome reload of the unpacked extension is still required to verify imported balances in the user's browser profile.
 
+## Universal Swap Extension Review Foundation (2026-05-22)
+
+- Status: **implemented locally, validation passed**
+- Added shared `universal_swap` dApp review details for Jupiter and Rango routes so non-0x swap routes can be reviewed in the extension with a sanitized, product-facing approval card.
+- Added extension runtime support for `queue_universal_swap_approval` and an `acorus_swap` non-0x review path. Jupiter/Rango approvals now resolve as review-only previews and never broadcast transactions in this wave.
+- Kept the existing 0x EVM execution path unchanged: it still validates trusted backend quote payloads, freshness, chain/taker match, calldata hash, and explicit extension approval before broadcasting.
+- Added dedicated popup approval rendering for Jupiter/Rango routes with provider, network, sell/buy summary, route, slippage, expiration, execution status, and risk labels. Raw transaction blobs, calldata, and full route JSON are not rendered in the card.
+- Added web swap controls so a loaded Jupiter or Rango backend quote can be queued for extension review. The UI labels these routes as review-only until audited route decoding/signing is implemented.
+- Rebuilt the downloadable extension package at `apps/web/public/downloads/acorus-wallet-extension.zip`.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Known limitations:
+  - Jupiter Solana swap signing/execution remains disabled.
+  - Rango cross-chain execution remains disabled.
+  - The internal popup message exists for future in-extension universal swap review, but the current user-facing trigger is the web swap composer through the injected provider.
+
