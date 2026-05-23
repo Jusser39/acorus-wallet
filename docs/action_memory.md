@@ -686,3 +686,7 @@
 428. Validation passed for the repair: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `git diff --check`, `pnpm build`, `pnpm extension:package`, and `pnpm test`.
 429. Local browser smoke on `127.0.0.1:3010` confirmed the home Guardian scene, Fear & Greed card, `/swap` composer-first layout, working extension zip link, and searchable token picker with popular Ethereum tokens.
 430. Local `/send` smoke reached the no-active-wallet guard; the active-wallet send/review card contrast remains covered by source-level repair and production build validation.
+431. Committed and pushed the swap/send UX repair as `44150b8` with message `Repair swap token picker and send UX`.
+432. Deployed `44150b8` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-swap-send-ux_20260523_115622`, then rebuilt and recreated the wallet API and web containers.
+433. Production checks passed for `https://24wallet.ru`, `/health`, `/api/swap/status`, and `/downloads/acorus-wallet-extension.zip`; swap provider status reports 0x, Jupiter, and Rango configured without exposing keys.
+434. Production browser smoke passed for `/`, `/swap`, `/wallet`, `/create`, `/receive`, and `/send`: the Guardian scene shows Fear & Greed, `/swap` opens the network-aware token picker, the old public Jupiter/Rango debug blocks are hidden, and the wallet routes no longer show the browser-level page-load failure.

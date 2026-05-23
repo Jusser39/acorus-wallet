@@ -1591,7 +1591,7 @@
 
 ## Swap and Send UX Repair (2026-05-23)
 
-- Status: **implemented locally, validation passed**
+- Status: **deployed to production**
 - Fixed the dead `Install Acorus Extension` action by turning the provider-missing
   swap CTA into a direct download link for `/downloads/acorus-wallet-extension.zip`.
 - Added a network-aware popular token catalog for the swap composer and replaced
@@ -1618,8 +1618,22 @@
   Ethereum popular tokens.
 - Local `/send` smoke reached the no-active-wallet guard; the active-wallet
   form contrast was validated by build/tests and source inspection.
+- Committed and pushed as `44150b8` with message
+  `Repair swap token picker and send UX`.
+- Production deployed to `/opt/acorus-wallet-release-current` with backup
+  `/root/backups/acorus-swap-send-ux_20260523_115622`, then the wallet API
+  and web containers were rebuilt/recreated.
+- Production checks passed for:
+  - `https://24wallet.ru`
+  - `https://24wallet.ru/health`
+  - `https://24wallet.ru/api/swap/status`
+  - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
+- Production browser smoke passed for `/`, `/swap`, `/wallet`, `/create`,
+  `/receive`, and `/send`.
 - Known limitations:
   - No new transaction execution path was added in this small repair wave.
   - Jupiter/Rango execution remains gated until transaction decoding and
     extension approval execution are fully reviewed.
+  - Active-wallet `/send` execution still needs manual smoke with an unlocked
+    extension/local profile before enabling any broader send UX claims.
 
