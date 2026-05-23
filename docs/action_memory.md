@@ -672,3 +672,6 @@
 414. Hardened app bootstrap so local browser smoke does not show a global wallet-bootstrap error when the API is temporarily unavailable; it now falls back to a local anonymous id without exposing secrets.
 415. Local validation passed for this repair: web test/build, shared build, wallet-core build, API test/build, extension lint/test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
 416. Local production route smoke returned `200` for `/`, `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`, `/send`, `/settings`, `/security`, `/extension`, `/extension-smoke`, and `/design-system`.
+417. Committed and pushed the route/design repair as `9a56afc` with message `Fix wallet route crash and add Acorus guardian design`.
+418. Deployed `9a56afc` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-guardian-design-route-fix_20260523_013147`, then rebuilt/recreated the wallet API and web containers.
+419. Production smoke passed for `/health`, `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`, `/design-system`, `/extension-smoke`, and `/api/swap/status`; production screenshots confirmed the Acorus Guardian home scene and a non-crashing wallet empty state.

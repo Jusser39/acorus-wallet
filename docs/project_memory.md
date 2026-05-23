@@ -1574,7 +1574,18 @@
 - Local production smoke returned `200` for the main wallet routes including
   `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`,
   `/send`, `/settings`, `/security`, `/extension-smoke`, and `/design-system`.
+- Committed and pushed as `9a56afc` with message
+  `Fix wallet route crash and add Acorus guardian design`.
+- Production deployed to `/opt/acorus-wallet-release-current` with backup
+  `/root/backups/acorus-guardian-design-route-fix_20260523_013147`, then the
+  wallet API and web containers were rebuilt/recreated.
+- Production smoke passed for `/health`, `/wallet`, `/create`, `/swap`,
+  `/explore`, `/dapps`, `/quests`, `/receive`, `/design-system`,
+  `/extension-smoke`, and `/api/swap/status`.
+- Production screenshots confirmed the Acorus Guardian home scene and the
+  `/wallet` empty state rendering inside the app instead of the browser error.
 - Known limitations:
   - This wave did not add new swap execution paths.
-  - Production deploy still needs to be run after committing this repair.
+  - Manual Chrome extension import/swap smoke still needs user-profile
+    verification after reloading the unpacked extension.
 
