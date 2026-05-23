@@ -1687,7 +1687,7 @@
 
 ## Wallet Account Menu and Preferences (2026-05-23)
 
-- Status: **local validation complete, production deployment pending**
+- Status: **deployed to production**
 - Replaced the top-right static wallet badge with an interactive account menu.
 - The menu now opens to a wallet card with copy address, send, receive,
   portfolio, recent activity, settings, and history actions.
@@ -1712,6 +1712,20 @@
 - Local browser smoke passed for `/wallet`: clicking the top-right wallet badge
   opens the wallet menu, and the nested settings view shows currency, language,
   Google Translate, and privacy toggles.
+- Committed and pushed as `a054950` with message
+  `Add wallet account menu and preferences`.
+- Production deployed to `/opt/acorus-wallet-release-current` with backup
+  `/root/backups/acorus-wallet-menu-preferences_20260523_231012`, then the web
+  and nginx containers were rebuilt/recreated.
+- Production checks passed for:
+  - `https://24wallet.ru/health`
+  - `https://24wallet.ru/wallet`
+  - `https://24wallet.ru/settings`
+  - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
+- Production browser smoke passed for `/wallet`: the top-right wallet account
+  menu opens, exposes send/receive/portfolio/activity/settings/history actions,
+  and the nested settings view shows currency, language, Google Translate, and
+  balance/activity privacy toggles.
 - Known limitations:
   - Google Translate is linked out instead of embedded as a third-party script.
   - Activity history still depends on existing local event sources.

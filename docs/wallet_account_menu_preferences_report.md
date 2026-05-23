@@ -59,6 +59,22 @@ Browser smoke:
 - Confirmed the menu exposes send, receive, portfolio, copy address, recent activity, settings, and history controls.
 - Confirmed the embedded settings view shows theme, currency, language, Google Translate, analytics, and balance/activity privacy toggles.
 
+## Production Deployment
+
+- Commit: `a054950` (`Add wallet account menu and preferences`)
+- Release path: `/opt/acorus-wallet-release-current`
+- Server backup: `/root/backups/acorus-wallet-menu-preferences_20260523_231012`
+- Rebuilt/recreated services: web and nginx
+
+Production checks passed:
+
+- `https://24wallet.ru/health`
+- `https://24wallet.ru/wallet`
+- `https://24wallet.ru/settings`
+- `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
+
+Production browser smoke passed for `/wallet`: the top-right wallet account menu opens, exposes the requested wallet actions, and the nested settings view exposes currency, language, Google Translate, analytics, and balance/activity privacy toggles.
+
 ## Known Limitations
 
 - Google Translate is implemented as a safe external link, not as an embedded third-party script, to avoid injecting another script into the wallet surface.

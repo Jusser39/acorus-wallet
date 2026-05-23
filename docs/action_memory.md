@@ -709,3 +709,6 @@
 451. Reworked `/settings` to use the same preference model and a clearer wallet-style settings layout, including currency/language and balance/activity privacy controls.
 452. Validation passed for the menu/preferences repair: web preference/storage/store focused tests, full web test/build, extension lint/test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
 453. Local browser smoke on `/wallet` confirmed that clicking the top-right wallet badge opens the account menu and that the nested settings view exposes currency, language, Google Translate, analytics, and balance/activity privacy toggles.
+454. Committed and pushed the wallet account menu/preferences repair as `a054950` with message `Add wallet account menu and preferences`.
+455. Deployed `a054950` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-wallet-menu-preferences_20260523_231012`, then rebuilt/recreated the web and nginx containers.
+456. Production checks passed for `/health`, `/wallet`, `/settings`, and `/downloads/acorus-wallet-extension.zip`; production browser smoke confirmed the account menu and nested settings panel work on `https://24wallet.ru/wallet`.
