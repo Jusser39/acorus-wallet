@@ -701,3 +701,11 @@
 443. Deployed `685e229` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-swap-discovery-chart_20260523_183147`, then rebuilt and recreated the wallet API and web containers.
 444. Production checks passed for `https://24wallet.ru`, `/health`, `/api/swap/status`, `/swap`, and `/downloads/acorus-wallet-extension.zip`; provider status reports 0x, Jupiter, and Rango configured without exposing provider keys.
 445. Production browser smoke passed for `/swap`: Solana route mode opens the token picker with popular Solana tokens by 24h volume, cross-chain mode exposes Rango-style route assets, and the BTC token chart inspector shows active price, full date/time, and percent change from the selected range start.
+446. Started a focused wallet account menu/preferences repair after the user pointed out that the top-right wallet badge was visible but not interactive.
+447. Added `apps/web/lib/app-preferences.ts` with normalized theme, display currency, language, Google Translate, analytics, and balance/activity privacy preference helpers.
+448. Extended web local settings and the Zustand wallet store so app preferences persist locally without touching seed phrases, private keys, passcodes, or signing payloads.
+449. Replaced the static top-right wallet badge with an interactive `WalletAccountMenu` containing copy address, send, receive, portfolio, recent activity, settings, and history actions.
+450. Added an embedded account-menu settings view with theme controls, a broad currency list, language selection, a safe Google Translate link, and privacy toggles.
+451. Reworked `/settings` to use the same preference model and a clearer wallet-style settings layout, including currency/language and balance/activity privacy controls.
+452. Validation passed for the menu/preferences repair: web preference/storage/store focused tests, full web test/build, extension lint/test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+453. Local browser smoke on `/wallet` confirmed that clicking the top-right wallet badge opens the account menu and that the nested settings view exposes currency, language, Google Translate, analytics, and balance/activity privacy toggles.

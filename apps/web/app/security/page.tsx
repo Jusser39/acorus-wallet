@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useWalletStore } from "@/store/wallet-store";
-import { saveLocalSettings } from "@/lib/storage";
 
 const SECURITY_ITEMS = [
   {
@@ -54,7 +53,6 @@ export default function SecurityPage() {
   const lockWallet = useWalletStore((state) => state.lockWallet);
   const autoLockMinutes = useWalletStore((state) => state.autoLockMinutes);
   const setAutoLockMinutes = useWalletStore((state) => state.setAutoLockMinutes);
-  const safetyMode = useWalletStore((state) => state.safetyMode);
 
   function handleQuickLock() {
     lockWallet();
@@ -63,7 +61,6 @@ export default function SecurityPage() {
 
   function handleAutoLockChange(minutes: number) {
     setAutoLockMinutes(minutes);
-    saveLocalSettings({ autoLockMinutes: minutes, safetyMode });
   }
 
   return (

@@ -45,12 +45,40 @@ describe("storage helpers", () => {
 
   it("persists user id and settings", () => {
     saveUserId("user-1");
-    saveLocalSettings({ autoLockMinutes: 15, safetyMode: false });
+    saveLocalSettings({
+      autoLockMinutes: 15,
+      safetyMode: false,
+      theme: "dark",
+      displayCurrency: "JPY",
+      preferredLanguage: "ja",
+      analyticsEnabled: true,
+      hideSmallBalances: false,
+      hideUnknownTokens: false,
+      hideFlaggedActivity: false,
+    });
 
     expect(loadUserId()).toBe("user-1");
     expect(loadLocalSettings()).toEqual({
       autoLockMinutes: 15,
       safetyMode: false,
+      theme: "dark",
+      displayCurrency: "JPY",
+      preferredLanguage: "ja",
+      analyticsEnabled: true,
+      hideSmallBalances: false,
+      hideUnknownTokens: false,
+      hideFlaggedActivity: false,
+    });
+  });
+
+  it("falls back to default settings when stored JSON is corrupted", () => {
+    window.localStorage.setItem("acorus.settings", "{broken");
+
+    expect(loadLocalSettings()).toMatchObject({
+      autoLockMinutes: 10,
+      safetyMode: true,
+      displayCurrency: "USD",
+      preferredLanguage: "ru",
     });
   });
 

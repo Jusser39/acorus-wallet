@@ -27,6 +27,13 @@ export function AppBootstrap() {
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const setSafetyMode = useWalletStore((state) => state.setSafetyMode);
   const setAutoLockMinutes = useWalletStore((state) => state.setAutoLockMinutes);
+  const setTheme = useWalletStore((state) => state.setTheme);
+  const setDisplayCurrency = useWalletStore((state) => state.setDisplayCurrency);
+  const setPreferredLanguage = useWalletStore((state) => state.setPreferredLanguage);
+  const setAnalyticsEnabled = useWalletStore((state) => state.setAnalyticsEnabled);
+  const setHideSmallBalances = useWalletStore((state) => state.setHideSmallBalances);
+  const setHideUnknownTokens = useWalletStore((state) => state.setHideUnknownTokens);
+  const setHideFlaggedActivity = useWalletStore((state) => state.setHideFlaggedActivity);
   const setError = useWalletStore((state) => state.setError);
   const markActivity = useWalletStore((state) => state.markActivity);
   const autoLockMinutes = useWalletStore((state) => state.autoLockMinutes);
@@ -69,6 +76,13 @@ export function AppBootstrap() {
       setEncryptedVault(storedVault);
       setSafetyMode(storedSettings.safetyMode);
       setAutoLockMinutes(storedSettings.autoLockMinutes);
+      setTheme(storedSettings.theme);
+      setDisplayCurrency(storedSettings.displayCurrency);
+      setPreferredLanguage(storedSettings.preferredLanguage);
+      setAnalyticsEnabled(storedSettings.analyticsEnabled);
+      setHideSmallBalances(storedSettings.hideSmallBalances);
+      setHideUnknownTokens(storedSettings.hideUnknownTokens);
+      setHideFlaggedActivity(storedSettings.hideFlaggedActivity);
       setActiveProfileId(storedActiveProfileId);
 
       const profiles = await fetchWalletProfiles(userId).catch(() => []);
@@ -91,27 +105,34 @@ export function AppBootstrap() {
     };
   }, [
     setActiveProfileId,
+    setAnalyticsEnabled,
     setAutoLockMinutes,
     setBootstrapped,
+    setDisplayCurrency,
     setEncryptedVault,
+    setHideFlaggedActivity,
+    setHideSmallBalances,
+    setHideUnknownTokens,
     setProfiles,
+    setPreferredLanguage,
     setSafetyMode,
     setError,
+    setTheme,
     setUserId,
   ]);
-
-  useEffect(() => {
-    saveLocalSettings({
-      autoLockMinutes,
-      safetyMode: useWalletStore.getState().safetyMode,
-    });
-  }, [autoLockMinutes]);
 
   useEffect(() => {
     const unsubscribe = useWalletStore.subscribe((state) => {
       saveLocalSettings({
         autoLockMinutes: state.autoLockMinutes,
         safetyMode: state.safetyMode,
+        theme: state.theme,
+        displayCurrency: state.displayCurrency,
+        preferredLanguage: state.preferredLanguage,
+        analyticsEnabled: state.analyticsEnabled,
+        hideSmallBalances: state.hideSmallBalances,
+        hideUnknownTokens: state.hideUnknownTokens,
+        hideFlaggedActivity: state.hideFlaggedActivity,
       });
       saveActiveProfileId(state.activeProfileId);
     });

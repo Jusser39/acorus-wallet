@@ -8,11 +8,22 @@ import {
   USER_ID_KEY,
   VAULT_META_KEY,
 } from "./constants";
+import {
+  DEFAULT_APP_PREFERENCES,
+  normalizeAppPreferences,
+  type AppPreferences,
+} from "./app-preferences";
 
-export interface LocalSettings {
+export interface LocalSettings extends AppPreferences {
   autoLockMinutes: number;
   safetyMode: boolean;
 }
+
+const DEFAULT_LOCAL_SETTINGS: LocalSettings = {
+  autoLockMinutes: DEFAULT_AUTOLOCK_MINUTES,
+  safetyMode: DEFAULT_SAFETY_MODE,
+  ...DEFAULT_APP_PREFERENCES,
+};
 
 export interface VaultMeta {
   version: 1;
@@ -134,17 +145,22 @@ export function loadLocalSettings(): LocalSettings {
   const raw = getStorage()?.getItem(SETTINGS_KEY);
 
   if (!raw) {
-    return {
-      autoLockMinutes: DEFAULT_AUTOLOCK_MINUTES,
-      safetyMode: DEFAULT_SAFETY_MODE,
-    };
+    return DEFAULT_LOCAL_SETTINGS;
   }
 
-  const parsed = JSON.parse(raw) as Partial<LocalSettings>;
-  return {
-    autoLockMinutes: parsed.autoLockMinutes ?? DEFAULT_AUTOLOCK_MINUTES,
-    safetyMode: parsed.safetyMode ?? DEFAULT_SAFETY_MODE,
-  };
+  try {
+    const parsed = JSON.parse(raw) as Partial<LocalSettings>;
+    return {
+      autoLockMinutes:
+        typeof parsed.autoLockMinutes === "number" && Number.isFinite(parsed.autoLockMinutes)
+          ? parsed.autoLockMinutes
+          : DEFAULT_AUTOLOCK_MINUTES,
+      safetyMode: parsed.safetyMode ?? DEFAULT_SAFETY_MODE,
+      ...normalizeAppPreferences(parsed),
+    };
+  } catch {
+    return DEFAULT_LOCAL_SETTINGS;
+  }
 }
 
 export function saveLocalSettings(settings: LocalSettings): void {

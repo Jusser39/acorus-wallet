@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { DEFAULT_APP_PREFERENCES } from "../lib/app-preferences";
 import { useWalletStore } from "./wallet-store";
 
 describe("wallet store", () => {
@@ -14,6 +15,7 @@ describe("wallet store", () => {
       selectedChainId: 1,
       safetyMode: true,
       autoLockMinutes: 10,
+      ...DEFAULT_APP_PREFERENCES,
       lastHiddenAt: null,
       lastUnlockedAt: null,
       lastActivityAt: null,
@@ -51,5 +53,19 @@ describe("wallet store", () => {
     ]);
 
     expect(useWalletStore.getState().selectedChainId).toBe(101);
+  });
+
+  it("stores app-level display preferences", () => {
+    useWalletStore.getState().setDisplayCurrency("JPY");
+    useWalletStore.getState().setPreferredLanguage("ja");
+    useWalletStore.getState().setTheme("dark");
+    useWalletStore.getState().setHideSmallBalances(false);
+
+    expect(useWalletStore.getState()).toMatchObject({
+      displayCurrency: "JPY",
+      preferredLanguage: "ja",
+      theme: "dark",
+      hideSmallBalances: false,
+    });
   });
 });

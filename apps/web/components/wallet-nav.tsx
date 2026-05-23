@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GlobalMarketSearch } from "@/components/global-market-search";
+import { WalletAccountMenu } from "@/components/wallet-account-menu";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { formatAddress } from "@/lib/utils";
 
 const navItems = [
   { href: "/wallet", label: "Wallet" },
@@ -47,19 +47,7 @@ export function WalletNav() {
             </span>
           </Link>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
-            {activeProfile ? (
-              <span className="max-w-full truncate rounded-full border border-white/60 bg-white/62 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(85,166,255,0.12)]">
-                <span className="font-semibold text-slate-950">{activeProfile.name}</span>{" "}
-                <span className="text-slate-400">•</span>{" "}
-                {activeProfile.chainFamily.toUpperCase()}{" "}
-                <span className="text-slate-400">•</span>{" "}
-                {formatAddress(activeProfile.publicAddress)}
-              </span>
-            ) : (
-              <span className="rounded-full border border-white/60 bg-white/62 px-3 py-2 text-xs text-slate-700 shadow-[0_12px_28px_rgba(85,166,255,0.12)]">
-                No active wallet
-              </span>
-            )}
+            <WalletAccountMenu />
             {profiles.length > 0 ? (
               <select
                 value={activeProfile?.id ?? ""}

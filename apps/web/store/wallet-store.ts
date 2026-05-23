@@ -8,6 +8,7 @@ import {
   type WalletProfileRecord,
 } from "@acorus/shared";
 import { create } from "zustand";
+import { DEFAULT_APP_PREFERENCES, type AppTheme } from "../lib/app-preferences";
 import { clearAcorusLocalWalletState } from "../lib/reset-local-wallet";
 import { clearSessionDecryptedState } from "../lib/storage";
 
@@ -42,10 +43,17 @@ interface WalletState {
   selectedChainId: ChainId;
   safetyMode: boolean;
   autoLockMinutes: number;
+  theme: AppTheme;
+  displayCurrency: string;
+  preferredLanguage: string;
+  analyticsEnabled: boolean;
+  hideSmallBalances: boolean;
+  hideUnknownTokens: boolean;
+  hideFlaggedActivity: boolean;
   lastHiddenAt: number | null;
-   lastUnlockedAt: number | null;
-   lastActivityAt: number | null;
-   error: string | null;
+  lastUnlockedAt: number | null;
+  lastActivityAt: number | null;
+  error: string | null;
   setBootstrapped(value: boolean): void;
   setUserId(userId: string | null): void;
   setEncryptedVault(vault: EncryptedVaultV1 | null): void;
@@ -57,9 +65,16 @@ interface WalletState {
   setSelectedChainId(chainId: ChainId): void;
   setSafetyMode(value: boolean): void;
   setAutoLockMinutes(value: number): void;
+  setTheme(value: AppTheme): void;
+  setDisplayCurrency(value: string): void;
+  setPreferredLanguage(value: string): void;
+  setAnalyticsEnabled(value: boolean): void;
+  setHideSmallBalances(value: boolean): void;
+  setHideUnknownTokens(value: boolean): void;
+  setHideFlaggedActivity(value: boolean): void;
   setLastHiddenAt(value: number | null): void;
-   markActivity(): void;
-   setError(message: string | null): void;
+  markActivity(): void;
+  setError(message: string | null): void;
   clearWalletState(): void;
 }
 
@@ -73,6 +88,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   selectedChainId: 1,
   safetyMode: true,
   autoLockMinutes: 10,
+  theme: DEFAULT_APP_PREFERENCES.theme,
+  displayCurrency: DEFAULT_APP_PREFERENCES.displayCurrency,
+  preferredLanguage: DEFAULT_APP_PREFERENCES.preferredLanguage,
+  analyticsEnabled: DEFAULT_APP_PREFERENCES.analyticsEnabled,
+  hideSmallBalances: DEFAULT_APP_PREFERENCES.hideSmallBalances,
+  hideUnknownTokens: DEFAULT_APP_PREFERENCES.hideUnknownTokens,
+  hideFlaggedActivity: DEFAULT_APP_PREFERENCES.hideFlaggedActivity,
   lastHiddenAt: null,
   lastUnlockedAt: null,
   lastActivityAt: null,
@@ -149,6 +171,27 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
   setAutoLockMinutes(value) {
     set({ autoLockMinutes: value });
+  },
+  setTheme(value) {
+    set({ theme: value });
+  },
+  setDisplayCurrency(value) {
+    set({ displayCurrency: value });
+  },
+  setPreferredLanguage(value) {
+    set({ preferredLanguage: value });
+  },
+  setAnalyticsEnabled(value) {
+    set({ analyticsEnabled: value });
+  },
+  setHideSmallBalances(value) {
+    set({ hideSmallBalances: value });
+  },
+  setHideUnknownTokens(value) {
+    set({ hideUnknownTokens: value });
+  },
+  setHideFlaggedActivity(value) {
+    set({ hideFlaggedActivity: value });
   },
   setLastHiddenAt(value) {
     set({ lastHiddenAt: value });

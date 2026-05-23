@@ -1685,3 +1685,35 @@
   - Solana token ordering is a curated high-volume list in this wave; fully
     live volume sorting per selected chain is still a follow-up.
 
+## Wallet Account Menu and Preferences (2026-05-23)
+
+- Status: **local validation complete, production deployment pending**
+- Replaced the top-right static wallet badge with an interactive account menu.
+- The menu now opens to a wallet card with copy address, send, receive,
+  portfolio, recent activity, settings, and history actions.
+- Added an embedded settings view in the menu with theme, local currency,
+  preferred language, Google Translate link, analytics, hidden small balances,
+  hidden unknown tokens, and hidden flagged activity controls.
+- Expanded app preference storage and wallet store state so those settings
+  persist locally without touching vault secrets.
+- Reworked `/settings` to use the same preference model and a clearer
+  wallet-style settings layout.
+- Validation passed:
+  - `pnpm --filter @acorus/web test -- app-preferences storage wallet-store`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Local browser smoke passed for `/wallet`: clicking the top-right wallet badge
+  opens the wallet menu, and the nested settings view shows currency, language,
+  Google Translate, and privacy toggles.
+- Known limitations:
+  - Google Translate is linked out instead of embedded as a third-party script.
+  - Activity history still depends on existing local event sources.
+  - Display currency persistence is broader than backend live conversion support.
+
