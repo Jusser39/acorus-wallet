@@ -697,3 +697,7 @@
 439. Added a token chart hover/touch inspector that shows price, full date/time, and percent change from the selected range start.
 440. Validation passed so far: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension test`, and `git diff --check`.
 441. Added a `TokenChart` component test for mouse inspection and re-ran validation: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension test`, `pnpm test`, and `git diff --check` all passed.
+442. Committed and pushed the swap discovery/chart inspector wave as `685e229` with message `Improve swap discovery and chart inspection`.
+443. Deployed `685e229` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-swap-discovery-chart_20260523_183147`, then rebuilt and recreated the wallet API and web containers.
+444. Production checks passed for `https://24wallet.ru`, `/health`, `/api/swap/status`, `/swap`, and `/downloads/acorus-wallet-extension.zip`; provider status reports 0x, Jupiter, and Rango configured without exposing provider keys.
+445. Production browser smoke passed for `/swap`: Solana route mode opens the token picker with popular Solana tokens by 24h volume, cross-chain mode exposes Rango-style route assets, and the BTC token chart inspector shows active price, full date/time, and percent change from the selected range start.

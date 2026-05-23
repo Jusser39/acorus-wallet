@@ -1639,7 +1639,7 @@
 
 ## Swap Token Discovery and Chart Inspector (2026-05-23)
 
-- Status: **local validation passed; deploy pending**
+- Status: **deployed to production**
 - Replaced confusing Fear & Greed breadth labels with user-facing
   `Rising 24h` and `Falling 24h` copy.
 - Expanded the swap token catalog with per-token logo URLs, deterministic
@@ -1662,4 +1662,26 @@
   - `pnpm --filter @acorus/extension test`
   - `pnpm test`
   - `git diff --check`
+- Committed and pushed as `685e229` with message
+  `Improve swap discovery and chart inspection`.
+- Production deployed to `/opt/acorus-wallet-release-current` with backup
+  `/root/backups/acorus-swap-discovery-chart_20260523_183147`, then the
+  wallet API and web containers were rebuilt/recreated.
+- Production checks passed for:
+  - `https://24wallet.ru`
+  - `https://24wallet.ru/health`
+  - `https://24wallet.ru/api/swap/status`
+  - `https://24wallet.ru/swap`
+  - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
+- Production browser smoke passed for `/swap`: Solana and cross-chain route
+  modes are present, the Solana token picker shows popular Solana tokens by
+  24h volume, and cross-chain mode exposes Rango-style route assets.
+- Production browser smoke passed for a BTC token detail route: the chart
+  inspector renders active price, full date/time, and percent change from the
+  range start while inspecting the curve.
+- Known limitations:
+  - Solana and Rango route execution remains extension-review gated until
+    decoded transaction execution is separately audited.
+  - Solana token ordering is a curated high-volume list in this wave; fully
+    live volume sorting per selected chain is still a follow-up.
 
