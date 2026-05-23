@@ -13,8 +13,8 @@ import {
   decryptVault,
   encryptVault,
   generateWalletMnemonic,
+  getWalletMnemonicValidation,
   getEvmAddressFromMnemonic,
-  validateWalletMnemonic,
   getSolanaAddressFromMnemonic,
   getTronAddressFromMnemonic,
   executeSplTransfer,
@@ -85,9 +85,9 @@ export async function importExtensionWallet(input: {
   mnemonic: string;
   passcode: string;
 }): Promise<ExtensionWalletImportResult> {
-  const normalizedMnemonic = normalizeMnemonic(input.mnemonic);
+  const validation = getWalletMnemonicValidation(input.mnemonic);
 
-  if (!validateWalletMnemonic(normalizedMnemonic)) {
+  if (!validation.importable) {
     throw new Error(
       "Invalid seed phrase. Paste 12/18/24 BIP-39 words only, separated by spaces.",
     );
@@ -95,7 +95,7 @@ export async function importExtensionWallet(input: {
 
   return installExtensionWallet({
     name: input.name,
-    mnemonic: normalizedMnemonic,
+    mnemonic: validation.normalized,
     passcode: input.passcode,
   });
 }
@@ -333,17 +333,6 @@ async function installExtensionWallet(input: {
     warning:
       "Seed phrase was generated inside the extension and only the encrypted vault was persisted. Store the words offline now; they will not be shown again.",
   };
-}
-
-function normalizeMnemonic(value: string): string {
-  return value
-    .normalize("NFKD")
-    .trim()
-    .toLowerCase()
-    .replace(/\b\d{1,2}[.)]\s*/gu, " ")
-    .replace(/[^a-z\s]+/gu, " ")
-    .replace(/\s+/gu, " ")
-    .trim();
 }
 
 function requireUnlockedSession(): NonNullable<typeof unlockedSession> {

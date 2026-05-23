@@ -74,16 +74,16 @@ export function resolveWalletVaultUiState(input: {
     };
   }
 
-  if (input.hasVaultMeta === false && input.passcodeInitialized === false) {
+  if (input.hasVaultMeta === false) {
     return {
       kind: "repair_required",
-      reason: "passcode_not_initialized",
+      reason: "missing_meta",
       message:
-        "A local wallet lock was found, but no passcode setup marker exists.",
+        "Local wallet metadata is missing. Reset local wallet state or import your seed phrase again.",
     };
   }
 
-  if (input.passcodeInitialized === false) {
+  if (input.passcodeInitialized !== true) {
     return {
       kind: "repair_required",
       reason: "passcode_not_initialized",

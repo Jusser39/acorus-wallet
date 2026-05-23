@@ -109,8 +109,8 @@ function renderPopup(
 ): string {
   const vault = state.extensionVaultStatus;
   const selectedProfile =
-    vault.profiles.find((profile) => profile.selected)
-    ?? state.walletExposedAccounts.find((profile) => profile.selected)
+    state.walletExposedAccounts.find((profile) => profile.selected)
+    ?? vault.profiles.find((profile) => profile.selected)
     ?? vault.profiles[0]
     ?? state.walletExposedAccounts[0]
     ?? null;
@@ -799,11 +799,29 @@ function renderRecentActivity(state: BackgroundStateSnapshot): string {
           </div>
         `).join("")
         : `<p class="copy">No recent wallet activity yet.</p>`}
-      <button class="portfolio-button compact-portfolio" type="button" data-open-url="https://24wallet.ru/history">
+      <button class="portfolio-button compact-portfolio" type="button" data-action="open-action-panel" data-id="activity">
         View all activity <span>→</span>
       </button>
     </section>
   `;
+}
+
+function openActionPanel(targetId: string): void {
+  const panel = root.querySelector<HTMLElement>("#action-panel");
+  const title = root.querySelector<HTMLElement>("#action-title");
+  const content = root.querySelector<HTMLElement>("#action-content");
+
+  if (!panel || !title || !content) {
+    return;
+  }
+
+  panel.hidden = false;
+  title.textContent = `${targetId[0]?.toUpperCase() ?? ""}${targetId.slice(1)}`;
+  content.innerHTML = renderActionContent(targetId);
+  wireInlineButtons(content);
+  wireReceiveNetworkSelector(content);
+  wireSendForm(content);
+  wireEvmSwapForm(content);
 }
 
 function wirePopupActions(): void {
@@ -852,19 +870,7 @@ function wirePopupActions(): void {
       }
 
       if (action === "open-action-panel" && targetId) {
-        const panel = root.querySelector<HTMLElement>("#action-panel");
-        const title = root.querySelector<HTMLElement>("#action-title");
-        const content = root.querySelector<HTMLElement>("#action-content");
-
-        if (panel && title && content) {
-          panel.hidden = false;
-          title.textContent = `${targetId[0]?.toUpperCase() ?? ""}${targetId.slice(1)}`;
-          content.innerHTML = renderActionContent(targetId);
-          wireInlineButtons(content);
-          wireReceiveNetworkSelector(content);
-          wireSendForm(content);
-          wireEvmSwapForm(content);
-        }
+        openActionPanel(targetId);
         return;
       }
 
@@ -1214,7 +1220,7 @@ function wireEvmSwapQuoteButtons(
 }
 
 function wireInlineButtons(scope: HTMLElement): void {
-  scope.querySelectorAll<HTMLButtonElement>("[data-open-url], [data-copy]").forEach((button) => {
+  scope.querySelectorAll<HTMLButtonElement>("[data-action], [data-open-url], [data-copy]").forEach((button) => {
     button.addEventListener("click", async () => {
       const copyValue = button.dataset.copy;
       if (copyValue) {
@@ -1225,6 +1231,22 @@ function wireInlineButtons(scope: HTMLElement): void {
       const openUrl = button.dataset.openUrl;
       if (openUrl) {
         await chrome.tabs.create({ url: openUrl.startsWith("http") ? openUrl : chrome.runtime.getURL(openUrl) });
+        return;
+      }
+
+      const action = button.dataset.action;
+      const targetId = button.dataset.id;
+
+      if (action === "close-action-panel") {
+        const panel = root.querySelector<HTMLElement>("#action-panel");
+        if (panel) {
+          panel.hidden = true;
+        }
+        return;
+      }
+
+      if (action === "open-action-panel" && targetId) {
+        openActionPanel(targetId);
       }
     });
   });
@@ -1423,6 +1445,8 @@ function renderActionContent(target: string): string {
       return renderEvmSwapComposer();
     case "send":
       return renderSendComposer();
+    case "activity":
+      return renderActivityComposer(currentPopupState);
     case "settings":
       return renderSettingsComposer();
     case "receive":
@@ -1431,21 +1455,67 @@ function renderActionContent(target: string): string {
   }
 }
 
+function renderActivityComposer(state: BackgroundStateSnapshot): string {
+  const items = state.activityLog.slice(0, 18);
+
+  return `
+    <div class="settings-sheet">
+      <button class="settings-back as-button" type="button" data-action="close-action-panel" data-id="activity">← Activity</button>
+      <div class="settings-section-label">Recent wallet activity</div>
+      ${items.length
+        ? items.map((item) => `
+          <div class="settings-row activity-row">
+            <span class="settings-icon">${escapeHtml(activityIcon(item.kind))}</span>
+            <span>
+              <span class="settings-label">${escapeHtml(item.kind.replace(/_/gu, " "))}</span>
+              <span class="token-meta">
+                ${escapeHtml((item.amountFormatted ?? `${item.sellTokenSymbol ?? item.tokenSymbol ?? ""}${item.buyAmountFormatted ? ` -> ${item.buyAmountFormatted} ${item.buyTokenSymbol ?? ""}` : ""}`.trim()) || item.account)}
+              </span>
+            </span>
+            <span class="badge">${escapeHtml(item.status)}</span>
+          </div>
+        `).join("")
+        : `<p class="copy">No approvals, sends, swaps, or dApp sessions have been recorded in this extension yet.</p>`}
+      <button class="ghost-button" type="button" data-action="close-action-panel" data-id="activity">Back to wallet</button>
+    </div>
+  `;
+}
+
+function activityIcon(kind: string): string {
+  if (kind.includes("swap")) {
+    return "⇄";
+  }
+
+  if (kind.includes("send")) {
+    return "↗";
+  }
+
+  if (kind.includes("approval")) {
+    return "✓";
+  }
+
+  if (kind.includes("sign")) {
+    return "✎";
+  }
+
+  return "•";
+}
+
 function renderSettingsComposer(): string {
   return `
     <div class="settings-sheet">
       <button class="settings-back as-button" type="button" data-action="close-action-panel" data-id="settings">← Settings</button>
-      <div class="settings-section-label">Settings</div>
+      <div class="settings-section-label">Preferences</div>
       ${renderSettingsRow("◐", "Theme", `<span class="segmented"><span>Auto</span><span>☼</span><span>☾</span></span>`)}
-      ${renderSettingsRow("◉", "Local currency", `<span>USD ›</span>`)}
-      ${renderSettingsRow("文", "Language", `<span>English ›</span>`)}
-      ${renderSettingsRow("▮", "Balances and activity", `<span>›</span>`)}
+      ${renderSettingsRow("◉", "Display currency", `<select class="mini-select"><option>USD</option><option>EUR</option><option>RUB</option><option>GBP</option><option>JPY</option></select>`)}
+      ${renderSettingsRow("文", "Language", `<select class="mini-select"><option>English</option><option>Русский</option><option>Deutsch</option><option>Español</option><option>中文</option></select>`)}
+      ${renderSettingsRow("▮", "Balances and activity", `<button class="settings-link" type="button" data-action="open-action-panel" data-id="activity">Open ›</button>`)}
       <div class="settings-section-label">Security and privacy</div>
       ${renderSettingsRow("⌁", "Allow analytics", `<span class="toggle on"><span></span></span>`)}
-      <div class="settings-section-label">Advanced</div>
+      <div class="settings-section-label">Developer tools</div>
       ${renderSettingsRow("▤", "App data", `<span>›</span>`)}
       ${renderSettingsRow("⚒", "Testnet mode", `<span class="toggle"><span></span></span>`)}
-      <button class="ghost-button" type="button" data-open-url="options.html">Advanced provider tools</button>
+      <button class="ghost-button" type="button" data-open-url="options.html">Open provider diagnostics</button>
     </div>
   `;
 }

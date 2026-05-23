@@ -1,4 +1,4 @@
-import { generateMnemonic, validateMnemonic } from "bip39";
+import { generateMnemonic, validateMnemonic, wordlists } from "bip39";
 import { keccak256, sha256 } from "viem";
 import { mnemonicToAccount } from "viem/accounts";
 import type { Address } from "viem";
@@ -8,11 +8,56 @@ export function generateWalletMnemonic(): string {
 }
 
 export function validateWalletMnemonic(mnemonic: string): boolean {
-  return validateMnemonic(mnemonic.trim().toLowerCase());
+  return validateMnemonic(normalizeWalletMnemonic(mnemonic));
+}
+
+export type WalletMnemonicValidation = {
+  normalized: string;
+  words: string[];
+  validWordCount: boolean;
+  allWordsKnown: boolean;
+  checksumValid: boolean;
+  importable: boolean;
+};
+
+export function normalizeWalletMnemonic(value: string): string {
+  return value
+    .normalize("NFKD")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\d{1,2}[.)]\s*/gu, " ")
+    .replace(/[^a-z\s]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+export function getWalletMnemonicValidation(
+  value: string,
+): WalletMnemonicValidation {
+  const normalized = normalizeWalletMnemonic(value);
+  const words = normalized ? normalized.split(" ") : [];
+  const validWordCount = [12, 18, 24].includes(words.length);
+  const englishWords = new Set(wordlists.english);
+  const allWordsKnown = words.length > 0
+    && words.every((word) => englishWords.has(word));
+  const checksumValid = validateMnemonic(normalized);
+
+  return {
+    normalized,
+    words,
+    validWordCount,
+    allWordsKnown,
+    checksumValid,
+    importable: validWordCount && allWordsKnown,
+  };
+}
+
+export function isImportableWalletMnemonic(value: string): boolean {
+  return getWalletMnemonicValidation(value).importable;
 }
 
 export function deriveEvmAccountFromMnemonic(mnemonic: string) {
-  return mnemonicToAccount(mnemonic.trim().toLowerCase());
+  return mnemonicToAccount(normalizeWalletMnemonic(mnemonic));
 }
 
 export function getEvmAddressFromMnemonic(mnemonic: string): Address {

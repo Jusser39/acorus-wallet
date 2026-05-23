@@ -1,5 +1,9 @@
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { createSolanaConnection, toSolanaPublicKey } from "./client";
+import {
+  createSolanaConnections,
+  formatSolanaRpcError,
+  toSolanaPublicKey,
+} from "./client";
 
 export type SolanaNativeBalance = {
   lamports: string;
@@ -10,12 +14,21 @@ export async function getSolanaNativeBalance(input: {
   address: string;
   rpcUrl?: string;
 }): Promise<SolanaNativeBalance> {
-  const connection = createSolanaConnection(input.rpcUrl);
   const publicKey = toSolanaPublicKey(input.address);
-  const lamports = await connection.getBalance(publicKey, "confirmed");
+  let lastError: unknown = null;
 
-  return {
-    lamports: lamports.toString(),
-    sol: (lamports / LAMPORTS_PER_SOL).toString(),
-  };
+  for (const connection of createSolanaConnections(input.rpcUrl)) {
+    try {
+      const lamports = await connection.getBalance(publicKey, "confirmed");
+
+      return {
+        lamports: lamports.toString(),
+        sol: (lamports / LAMPORTS_PER_SOL).toString(),
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(formatSolanaRpcError(lastError));
 }

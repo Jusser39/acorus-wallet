@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   APP_CURRENCIES,
   APP_LANGUAGES,
-  buildGoogleTranslateUrl,
   getCurrencyOption,
   getLanguageOption,
   toMarketDataCurrency,
@@ -72,24 +71,15 @@ export default function SettingsPage() {
   const [dangerText, setDangerText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [currentUrl, setCurrentUrl] = useState("https://24wallet.ru/settings");
 
   useEffect(() => {
     setWalletName(activeProfile?.name ?? "");
     setHiddenBalance(activeProfile?.hiddenBalance ?? false);
   }, [activeProfile]);
 
-  useEffect(() => {
-    setCurrentUrl(window.location.href);
-  }, []);
-
   const canSave = useMemo(() => Boolean(activeProfile && userId), [activeProfile, userId]);
   const currency = getCurrencyOption(displayCurrency);
   const language = getLanguageOption(preferredLanguage);
-  const translateUrl = buildGoogleTranslateUrl({
-    targetLanguage: preferredLanguage,
-    pageUrl: currentUrl,
-  });
 
   async function handleSave() {
     if (!activeProfile || !userId) {
@@ -187,29 +177,41 @@ export default function SettingsPage() {
             </select>
           </label>
 
-          <label className="wallet-settings-row">
+          <div className="wallet-settings-row items-start">
             <span>
               <span className="block font-black text-slate-950">Язык</span>
               <span className="block text-sm text-slate-500">
                 Сейчас выбрано: {language.nativeName}.
               </span>
             </span>
-            <select
-              value={preferredLanguage}
-              onChange={(event) => setPreferredLanguage(event.target.value)}
-              className="wallet-menu-select min-w-40"
-            >
-              {APP_LANGUAGES.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.nativeName}
-                </option>
-              ))}
-            </select>
-          </label>
+            <span className="rounded-full bg-white/70 px-4 py-2 text-sm font-black text-violet-700">
+              {language.code.toUpperCase()}
+            </span>
+          </div>
 
-          <a href={translateUrl} target="_blank" rel="noreferrer" className="wallet-outline-action">
-            Открыть эту страницу в Google Translate <span>↗</span>
-          </a>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {APP_LANGUAGES.map((item) => (
+              <button
+                key={item.code}
+                type="button"
+                className="flex items-center justify-between rounded-[20px] border border-violet-100 bg-white/70 px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md"
+                data-active={preferredLanguage === item.code}
+                onClick={() => setPreferredLanguage(item.code)}
+              >
+                <span>
+                  <span className="block font-black text-slate-950">{item.nativeName}</span>
+                  <span className="block text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                    {item.code}
+                  </span>
+                </span>
+                {preferredLanguage === item.code ? (
+                  <span className="rounded-full bg-fuchsia-500 px-3 py-1 text-sm font-black text-white">
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="grid gap-4">

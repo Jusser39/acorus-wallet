@@ -15,6 +15,8 @@ import {
   parseDecimalAmountToRaw,
   getEvmAddressFromMnemonic,
   getRpcUrl,
+  getWalletMnemonicValidation,
+  isImportableWalletMnemonic,
   isValidSolanaAddress,
   buildSolanaExplorerAddressUrl,
   buildSolanaExplorerTxUrl,
@@ -57,6 +59,19 @@ describe("wallet-core", () => {
 
   it("rejects invalid mnemonic phrases", () => {
     expect(validateWalletMnemonic("hello world")).toBe(false);
+  });
+
+  it("distinguishes strict mnemonic checksums from importable BIP-39 word lists", () => {
+    const relaxedChecksum =
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon";
+    const validation = getWalletMnemonicValidation(relaxedChecksum);
+
+    expect(validateWalletMnemonic(relaxedChecksum)).toBe(false);
+    expect(validation.importable).toBe(true);
+    expect(validation.allWordsKnown).toBe(true);
+    expect(isImportableWalletMnemonic(relaxedChecksum)).toBe(true);
+    expect(() => deriveEvmAccountFromMnemonic(relaxedChecksum)).not.toThrow();
+    expect(() => deriveSolanaAddressFromMnemonic({ mnemonic: relaxedChecksum })).not.toThrow();
   });
 
   it("fails on wrong passcode", async () => {

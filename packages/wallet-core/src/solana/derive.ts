@@ -2,6 +2,10 @@ import * as bip39 from "bip39";
 import { derivePath } from "ed25519-hd-key";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
+import {
+  isImportableWalletMnemonic,
+  normalizeWalletMnemonic,
+} from "../mnemonic";
 
 export const SOLANA_DERIVATION_PATH = "m/44'/501'/0'/0'";
 
@@ -14,15 +18,15 @@ export function deriveSolanaKeypairFromMnemonic(input: {
   mnemonic: string;
   derivationPath?: string;
 }): Keypair {
-  const mnemonic = input.mnemonic.trim().toLowerCase();
+  const mnemonic = normalizeWalletMnemonic(input.mnemonic);
 
-  if (!bip39.validateMnemonic(mnemonic)) {
+  if (!isImportableWalletMnemonic(mnemonic)) {
     throw new Error("invalid_mnemonic");
   }
 
   const seed = bip39.mnemonicToSeedSync(mnemonic);
   const derivationPath = input.derivationPath ?? SOLANA_DERIVATION_PATH;
-  const derivedSeed = derivePath(derivationPath, seed.toString("hex")).key;
+  const derivedSeed = derivePath(derivationPath, bytesToHex(seed)).key;
   const secretKey = nacl.sign.keyPair.fromSeed(derivedSeed).secretKey;
 
   return Keypair.fromSecretKey(secretKey);
@@ -62,4 +66,8 @@ export function isValidSolanaAddress(address: string): boolean {
   } catch {
     return false;
   }
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }

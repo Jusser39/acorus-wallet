@@ -50,17 +50,32 @@ describe("resolveWalletVaultUiState", () => {
     ).toBe("locked");
   });
 
-  it("keeps legacy encrypted vaults unlockable when meta is absent", () => {
-    expect(
-      resolveWalletVaultUiState({
-        hasEncryptedVault: true,
-        hasVaultMeta: false,
-        encryptedVaultVersion: 1,
-        profileCount: 1,
-        isUnlocked: false,
-        passcodeInitialized: undefined,
-      }).kind,
-    ).toBe("locked");
+  it("requires repair when encrypted vault metadata is absent", () => {
+    const state = resolveWalletVaultUiState({
+      hasEncryptedVault: true,
+      hasVaultMeta: false,
+      encryptedVaultVersion: 1,
+      profileCount: 1,
+      isUnlocked: false,
+      passcodeInitialized: undefined,
+    });
+
+    expect(state.kind).toBe("repair_required");
+    expect(state.reason).toBe("missing_meta");
+  });
+
+  it("requires repair when passcode marker is unknown", () => {
+    const state = resolveWalletVaultUiState({
+      hasEncryptedVault: true,
+      hasVaultMeta: true,
+      encryptedVaultVersion: 1,
+      profileCount: 1,
+      isUnlocked: false,
+      passcodeInitialized: undefined,
+    });
+
+    expect(state.kind).toBe("repair_required");
+    expect(state.reason).toBe("passcode_not_initialized");
   });
 
   it("shows unlocked when session is active", () => {
