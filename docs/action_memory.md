@@ -690,3 +690,10 @@
 432. Deployed `44150b8` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-swap-send-ux_20260523_115622`, then rebuilt and recreated the wallet API and web containers.
 433. Production checks passed for `https://24wallet.ru`, `/health`, `/api/swap/status`, and `/downloads/acorus-wallet-extension.zip`; swap provider status reports 0x, Jupiter, and Rango configured without exposing keys.
 434. Production browser smoke passed for `/`, `/swap`, `/wallet`, `/create`, `/receive`, and `/send`: the Guardian scene shows Fear & Greed, `/swap` opens the network-aware token picker, the old public Jupiter/Rango debug blocks are hidden, and the wallet routes no longer show the browser-level page-load failure.
+435. Started a focused swap discovery/chart inspector repair after the user asked to replace confusing `Advancing`/`Declining` copy, add token-specific icons, show Solana popular tokens in the swap picker, support cross-chain route selection, and show price/date/percent while moving over charts.
+436. Expanded the swap token catalog with curated EVM logos, Solana/Jupiter popular token entries, and Rango cross-chain assets while preserving portfolio-token merging and search.
+437. Updated the swap composer so the primary route selector includes EVM via 0x, Solana via Jupiter, and cross-chain via Rango; Solana and Rango modes now use the same token picker and queue loaded routes for extension review.
+438. Replaced home Fear & Greed breadth labels with `Rising 24h` and `Falling 24h`.
+439. Added a token chart hover/touch inspector that shows price, full date/time, and percent change from the selected range start.
+440. Validation passed so far: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension test`, and `git diff --check`.
+441. Added a `TokenChart` component test for mouse inspection and re-ran validation: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension test`, `pnpm test`, and `git diff --check` all passed.

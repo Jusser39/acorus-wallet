@@ -1637,3 +1637,29 @@
   - Active-wallet `/send` execution still needs manual smoke with an unlocked
     extension/local profile before enabling any broader send UX claims.
 
+## Swap Token Discovery and Chart Inspector (2026-05-23)
+
+- Status: **local validation passed; deploy pending**
+- Replaced confusing Fear & Greed breadth labels with user-facing
+  `Rising 24h` and `Falling 24h` copy.
+- Expanded the swap token catalog with per-token logo URLs, deterministic
+  fallback gradients, Solana/Jupiter popular token picks, and a Rango
+  cross-chain asset list.
+- Added `Solana via Jupiter` and `Cross-chain via Rango` to the main swap
+  network selector so the same token picker can show Solana 24h-volume-style
+  popular tokens or cross-chain assets instead of only EVM tokens.
+- Wired the main swap CTA to request Jupiter/Rango routes for those modes and
+  send loaded routes to the existing extension review queue; execution remains
+  gated until decoded transaction execution is audited.
+- Upgraded token charts with a hover/touch inspector that shows price, full
+  date/time, and percent change from the selected range start.
+- Added a component test that simulates chart mouse movement and verifies that
+  the inspector renders the active price, timestamp, and percentage.
+- Validation passed so far:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm test`
+  - `git diff --check`
+

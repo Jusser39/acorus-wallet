@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type { MarketChart } from "@/lib/api";
 
 interface Props {
@@ -32,9 +32,19 @@ function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatPercent(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
 }
 
 function buildChartPoints(points: MarketChart["points"]): ChartPoint[] {
@@ -77,6 +87,9 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
   const last = points[points.length - 1];
   const activePoint = hovered ?? last ?? null;
   const isUp = Boolean(first && last && last.price >= first.price);
+  const activeChangePercent = first && activePoint && first.price > 0
+    ? ((activePoint.price - first.price) / first.price) * 100
+    : null;
   const strokeColor = isUp ? "#10b981" : "#f43f5e";
 
   if (loading) {
@@ -112,10 +125,29 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
           <p className="text-xs text-slate-500">
             {activePoint ? formatTimestamp(activePoint.timestamp) : "Move over the chart"}
           </p>
+          <p className={activeChangePercent !== null && activeChangePercent >= 0 ? "text-xs font-bold text-emerald-600" : "text-xs font-bold text-rose-600"}>
+            {activePoint ? `${formatPercent(activeChangePercent)} from range start` : "Hover to inspect price, time, and percent"}
+          </p>
         </div>
       </div>
 
       <div className="relative rounded-[1.5rem] border border-fuchsia-100 bg-white/75 p-3 shadow-inner">
+        {hovered ? (
+          <div
+            className="token-chart-tooltip"
+            style={{
+              left: `${(hovered.x / CHART_WIDTH) * 100}%`,
+              top: `${(hovered.y / CHART_HEIGHT) * 100}%`,
+              "--chart-tip-color": strokeColor,
+            } as CSSProperties}
+          >
+            <strong>{formatPrice(hovered.price, currency)}</strong>
+            <span>{formatTimestamp(hovered.timestamp)}</span>
+            <span className={activeChangePercent !== null && activeChangePercent >= 0 ? "text-emerald-600" : "text-rose-600"}>
+              {formatPercent(activeChangePercent)}
+            </span>
+          </div>
+        ) : null}
         <svg
           viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
           className="h-72 w-full touch-none"
@@ -124,7 +156,17 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
             const rect = event.currentTarget.getBoundingClientRect();
             setHovered(findClosestPoint(points, event.clientX, rect));
           }}
+          onTouchMove={(event) => {
+            const touch = event.touches[0];
+            if (!touch) {
+              return;
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            setHovered(findClosestPoint(points, touch.clientX, rect));
+          }}
           onMouseLeave={() => setHovered(null)}
+          onTouchEnd={() => setHovered(null)}
         >
           <defs>
             <linearGradient id="token-chart-fill" x1="0" x2="0" y1="0" y2="1">

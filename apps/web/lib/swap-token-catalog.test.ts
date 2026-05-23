@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { filterSwapTokens, getPopularSwapTokens } from "./swap-token-catalog";
+import {
+  CROSS_CHAIN_SWAP_ID,
+  SOLANA_SWAP_CHAIN_ID,
+  filterSwapTokens,
+  getPopularSwapTokens,
+  getSwapNetworkLabel,
+  getSwapProviderLabel,
+} from "./swap-token-catalog";
 
 describe("swap token catalog", () => {
   it("returns native and popular Ethereum tokens", () => {
@@ -15,6 +22,24 @@ describe("swap token catalog", () => {
 
     expect(tokens.some((token) => token.symbol === "ETH" && token.value === "native")).toBe(true);
     expect(tokens.some((token) => token.symbol === "VVV")).toBe(true);
+  });
+
+  it("returns Solana tokens ordered for the Jupiter picker", () => {
+    const tokens = getPopularSwapTokens({ chainId: SOLANA_SWAP_CHAIN_ID });
+
+    expect(tokens[0]?.symbol).toBe("SOL");
+    expect(tokens.some((token) => token.symbol === "JUP" && token.source === "volume_24h")).toBe(true);
+    expect(getSwapNetworkLabel(SOLANA_SWAP_CHAIN_ID)).toBe("Solana");
+    expect(getSwapProviderLabel(SOLANA_SWAP_CHAIN_ID)).toBe("Jupiter");
+  });
+
+  it("returns cross-chain Rango assets", () => {
+    const tokens = getPopularSwapTokens({ chainId: CROSS_CHAIN_SWAP_ID });
+
+    expect(tokens.some((token) => token.value === "ETH.ETH")).toBe(true);
+    expect(tokens.some((token) => token.value === "SOL.SOL")).toBe(true);
+    expect(getSwapNetworkLabel(CROSS_CHAIN_SWAP_ID)).toBe("Cross-chain");
+    expect(getSwapProviderLabel(CROSS_CHAIN_SWAP_ID)).toBe("Rango");
   });
 
   it("filters by symbol, name, and address", () => {

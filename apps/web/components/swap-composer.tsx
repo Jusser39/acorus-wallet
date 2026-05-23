@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   EVM_CHAINS,
   normalizeEvmTokenAmount,
@@ -33,6 +33,10 @@ import { getSwapCtaLabel } from "@/lib/swap-cta";
 import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
 import {
   filterSwapTokens,
+  CROSS_CHAIN_SWAP_ID,
+  SOLANA_SWAP_CHAIN_ID,
+  getSwapNetworkLabel,
+  getSwapProviderLabel,
   getPopularSwapTokens,
   type SwapTokenOption,
 } from "@/lib/swap-token-catalog";
@@ -93,6 +97,18 @@ export function SwapComposer(props: {
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
   const selectedBuyToken = tokens.find((token) => token.value === buyToken) ?? tokens[1] ?? selectedSellToken;
   const pickerTokens = useMemo(() => filterSwapTokens(tokens, tokenSearch), [tokenSearch, tokens]);
+  const isSolanaSwap = chainId === SOLANA_SWAP_CHAIN_ID;
+  const isCrossChainSwap = chainId === CROSS_CHAIN_SWAP_ID;
+  const isEvmSwap = !isSolanaSwap && !isCrossChainSwap;
+  const swapProvider = getSwapProviderLabel(chainId);
+  const universalRoute = isSolanaSwap ? jupiterRoute : isCrossChainSwap ? rangoRoute : null;
+  const universalProviderReady = Boolean(
+    universalStatus?.providers.some((provider) =>
+      provider.provider === (isSolanaSwap ? "jupiter" : "rango")
+      && provider.configured
+      && provider.enabled,
+    ),
+  );
 
   useEffect(() => {
     setHistory(loadSwapHistory());
@@ -132,6 +148,10 @@ export function SwapComposer(props: {
     setSellToken(nextSellToken);
     setBuyToken(nextBuyToken);
     setQuote(null);
+    setJupiterRoute(null);
+    setJupiterResult(null);
+    setRangoRoute(null);
+    setRangoResult(null);
     setError(null);
   }, [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.initialSellToken, props.portfolioAssets]);
 
@@ -375,11 +395,28 @@ export function SwapComposer(props: {
   async function handleJupiterQuote() {
     setJupiterResult("Fetching Jupiter route...");
     setJupiterRoute(null);
+    setError(null);
     try {
+      const inputMint = isSolanaSwap ? selectedSellToken.value : jupiterInputMint;
+      const outputMint = isSolanaSwap ? selectedBuyToken.value : jupiterOutputMint;
+      const formattedAmount = isSolanaSwap ? sellAmount : jupiterAmount;
+
+      if (inputMint.toLowerCase() === outputMint.toLowerCase()) {
+        throw new Error("Choose different Solana tokens.");
+      }
+
+      if (!validateFormattedAmount(formattedAmount)) {
+        throw new Error(`Enter a valid ${selectedSellToken.symbol} amount.`);
+      }
+
+      const amount = isSolanaSwap
+        ? normalizeEvmTokenAmount(formattedAmount, selectedSellToken.decimals)
+        : formattedAmount;
+
       const route = await getJupiterSwapQuote({
-        inputMint: jupiterInputMint,
-        outputMint: jupiterOutputMint,
-        amount: jupiterAmount,
+        inputMint,
+        outputMint,
+        amount,
         slippageBps,
       });
       setJupiterRoute(route);
@@ -389,11 +426,33 @@ export function SwapComposer(props: {
         }`,
       );
     } catch (err) {
-      setJupiterResult(err instanceof Error ? err.message : "Unable to fetch Jupiter route.");
+      const message = err instanceof Error ? err.message : "Unable to fetch Jupiter route.";
+      setJupiterResult(message);
+      setError(message);
     }
   }
 
   async function handlePrimaryAction() {
+    if (isSolanaSwap) {
+      if (!jupiterRoute) {
+        await handleJupiterQuote();
+        return;
+      }
+
+      await handleUniversalSwapReview("jupiter");
+      return;
+    }
+
+    if (isCrossChainSwap) {
+      if (!rangoRoute) {
+        await handleRangoQuote();
+        return;
+      }
+
+      await handleUniversalSwapReview("rango");
+      return;
+    }
+
     if (!props.userAddress) {
       setError("Connect Acorus extension before requesting or executing a swap.");
       return;
@@ -440,6 +499,10 @@ export function SwapComposer(props: {
     }
 
     setQuote(null);
+    setJupiterRoute(null);
+    setJupiterResult(null);
+    setRangoRoute(null);
+    setRangoResult(null);
     setError(null);
     setTokenPickerSide(null);
   }
@@ -447,11 +510,24 @@ export function SwapComposer(props: {
   async function handleRangoQuote() {
     setRangoResult("Fetching Rango route...");
     setRangoRoute(null);
+    setError(null);
     try {
+      const from = isCrossChainSwap ? selectedSellToken.value : rangoFrom;
+      const to = isCrossChainSwap ? selectedBuyToken.value : rangoTo;
+      const amount = isCrossChainSwap ? sellAmount : rangoAmount;
+
+      if (from.toLowerCase() === to.toLowerCase()) {
+        throw new Error("Choose different cross-chain assets.");
+      }
+
+      if (!validateFormattedAmount(amount)) {
+        throw new Error(`Enter a valid ${selectedSellToken.symbol} amount.`);
+      }
+
       const route = await getRangoSwapQuote({
-        from: rangoFrom,
-        to: rangoTo,
-        amount: rangoAmount,
+        from,
+        to,
+        amount,
         slippageBps,
       });
       setRangoRoute(route);
@@ -459,7 +535,9 @@ export function SwapComposer(props: {
         `Rango: ${route.amountRaw} -> ${route.outputAmountFormatted ?? route.outputAmountRaw ?? "unknown"}. Route: ${route.routeLabel}`,
       );
     } catch (err) {
-      setRangoResult(err instanceof Error ? err.message : "Unable to fetch Rango route.");
+      const message = err instanceof Error ? err.message : "Unable to fetch Rango route.";
+      setRangoResult(message);
+      setError(message);
     }
   }
 
@@ -497,23 +575,31 @@ export function SwapComposer(props: {
     }
   }
 
-  const providerReady = Boolean(status?.configured && status.enabled);
+  const providerReady = isEvmSwap
+    ? Boolean(status?.configured && status.enabled)
+    : universalProviderReady;
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
     : false;
-  const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
+  const wrongChain = Boolean(isEvmSwap && quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
-  const showSidePanel = !props.compact || Boolean(quote || extensionResult || history.length > 0);
+  const showSidePanel = !props.compact || Boolean(quote || universalRoute || extensionResult || history.length > 0);
   const showUniversalRouteForms = false;
-  const ctaLabel = getSwapCtaLabel({
-    extensionDetected,
-    connected: Boolean(props.userAddress),
-    quoteLoading: loading,
-    quoteReady: Boolean(quote),
-    approvalRequired: Boolean(quote?.approvalRequired),
-    wrongChain,
-    quoteExpired,
-  });
+  const ctaLabel = isEvmSwap
+    ? getSwapCtaLabel({
+        extensionDetected,
+        connected: Boolean(props.userAddress),
+        quoteLoading: loading,
+        quoteReady: Boolean(quote),
+        approvalRequired: Boolean(quote?.approvalRequired),
+        wrongChain,
+        quoteExpired,
+      })
+    : getUniversalSwapCtaLabel({
+        provider: swapProvider,
+        loading,
+        routeReady: Boolean(universalRoute),
+      });
 
   return (
     <div className={props.compact ? "grid gap-5" : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"}>
@@ -545,7 +631,7 @@ export function SwapComposer(props: {
 
         {!props.compact && !providerReady ? (
           <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
-            0x provider is not configured on the backend yet. Add `ZEROX_API_KEY` on the API server to enable EVM live quotes.
+            {swapProvider} is not configured on the backend yet. Add the provider key on the API server to enable live routes.
           </div>
         ) : null}
 
@@ -557,11 +643,19 @@ export function SwapComposer(props: {
 
         <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/72 p-3 shadow-sm">
           <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">EVM network</span>
+            <span className="px-2 text-sm font-medium text-slate-600">Route network</span>
             <select className="light-field" value={chainId} onChange={(event) => setChainId(Number(event.target.value))}>
-              {EVM_CHAINS.map((chain) => (
-                <option key={chain.chainId} value={chain.chainId}>{chain.name}</option>
-              ))}
+              <optgroup label="EVM via 0x">
+                {EVM_CHAINS.map((chain) => (
+                  <option key={chain.chainId} value={chain.chainId}>{chain.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Solana via Jupiter">
+                <option value={SOLANA_SWAP_CHAIN_ID}>Solana</option>
+              </optgroup>
+              <optgroup label="Cross-chain via Rango">
+                <option value={CROSS_CHAIN_SWAP_ID}>Any network</option>
+              </optgroup>
             </select>
           </label>
 
@@ -569,7 +663,7 @@ export function SwapComposer(props: {
             <label className="space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
               <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("sell")}>
-                <span className="swap-token-icon">{tokenAvatarLabel(selectedSellToken)}</span>
+                <TokenIcon token={selectedSellToken} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-black">{selectedSellToken.symbol}</span>
                   <span className="block truncate text-xs text-slate-500">{selectedSellToken.name}</span>
@@ -580,7 +674,7 @@ export function SwapComposer(props: {
             <label className="space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
               <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("buy")}>
-                <span className="swap-token-icon">{tokenAvatarLabel(selectedBuyToken)}</span>
+                <TokenIcon token={selectedBuyToken} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
                   <span className="block truncate text-xs text-slate-500">{selectedBuyToken.name}</span>
@@ -630,7 +724,7 @@ export function SwapComposer(props: {
           <button
             type="button"
             className="button-primary w-full"
-            disabled={!providerReady || (!sellAmount && !quote) || loading}
+            disabled={!providerReady || (!sellAmount && !quote && !universalRoute) || loading}
             onClick={() => void handlePrimaryAction()}
           >
             {ctaLabel}
@@ -693,7 +787,7 @@ export function SwapComposer(props: {
       {showSidePanel ? (
       <aside className="space-y-6">
         <div className="premium-card space-y-3 p-5">
-          <h2 className="text-xl font-semibold text-slate-950">{quote ? "Route review" : "Swap status"}</h2>
+          <h2 className="text-xl font-semibold text-slate-950">{quote || universalRoute ? "Route review" : "Swap status"}</h2>
           {quote ? (
             <div className="space-y-3 text-sm text-slate-600">
               <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
@@ -766,6 +860,48 @@ export function SwapComposer(props: {
                 Review swap in extension
               </button>
             </div>
+          ) : universalRoute ? (
+            <div className="space-y-3 text-sm text-slate-600">
+              <div className="flex justify-between gap-3">
+                <span>Provider</span>
+                <strong>{swapProvider}</strong>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>You pay</span>
+                <strong>
+                  {isSolanaSwap
+                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).inAmountRaw, selectedSellToken.decimals)
+                    : (universalRoute as RangoSwapQuoteResponse).amountRaw} {selectedSellToken.symbol}
+                </strong>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>You receive</span>
+                <strong>
+                  {isSolanaSwap
+                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals)
+                    : (universalRoute as RangoSwapQuoteResponse).outputAmountFormatted ?? (universalRoute as RangoSwapQuoteResponse).outputAmountRaw ?? "Route estimate"} {selectedBuyToken.symbol}
+                </strong>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>Route</span>
+                <strong>
+                  {isSolanaSwap
+                    ? (universalRoute as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+                    : (universalRoute as RangoSwapQuoteResponse).routeLabel}
+                </strong>
+              </div>
+              <div className="rounded-2xl border border-sky-400/30 bg-sky-400/10 p-3 text-sky-900">
+                This route is ready for extension review. Execution remains gated until the {swapProvider} transaction adapter is audited.
+              </div>
+              <button
+                type="button"
+                className="button-primary w-full"
+                disabled={!extensionDetected}
+                onClick={() => void handleUniversalSwapReview(isSolanaSwap ? "jupiter" : "rango")}
+              >
+                Review {swapProvider} route in extension
+              </button>
+            </div>
           ) : (
             <p className="text-sm text-slate-600">
               Select a route and request a quote. 0x EVM can execute after extension approval; Jupiter and Rango routes queue review-only approval cards.
@@ -819,7 +955,7 @@ export function SwapComposer(props: {
                 placeholder="Search by token, symbol, or address"
                 aria-label="Search token"
               />
-              <span className="token-picker-chain">{EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM"}</span>
+              <span className="token-picker-chain">{getSwapNetworkLabel(chainId)}</span>
             </div>
             <div className="token-picker-quick">
               {tokens.slice(0, 5).map((token) => (
@@ -829,11 +965,12 @@ export function SwapComposer(props: {
                   className="token-picker-chip"
                   onClick={() => handleTokenPick(tokenPickerSide, token.value)}
                 >
-                  <span className="swap-token-icon">{tokenAvatarLabel(token)}</span>
+                  <TokenIcon token={token} />
                   {token.symbol}
                 </button>
               ))}
             </div>
+            <p className="token-picker-section-label">{getTokenPickerSectionLabel(chainId)}</p>
             <div className="token-picker-list">
               {pickerTokens.length ? pickerTokens.map((token) => (
                 <button
@@ -842,7 +979,7 @@ export function SwapComposer(props: {
                   className="token-picker-row"
                   onClick={() => handleTokenPick(tokenPickerSide, token.value)}
                 >
-                  <span className="swap-token-icon">{tokenAvatarLabel(token)}</span>
+                  <TokenIcon token={token} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
                     <span className="block truncate text-sm text-slate-500">
@@ -885,6 +1022,71 @@ function resolveInitialTokenValue(
 
 function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
   return token.symbol.slice(0, 4).toUpperCase();
+}
+
+function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl"> }) {
+  return (
+    <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
+      <span>{tokenAvatarLabel(token)}</span>
+      {token.logoUrl ? (
+        <img
+          src={token.logoUrl}
+          alt=""
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+function tokenIconStyle(symbol: string): CSSProperties {
+  const gradients = [
+    ["#7cf7ff", "#8b5cf6", "#ff7adf"],
+    ["#ffd166", "#f97316", "#ef4444"],
+    ["#34d399", "#14b8a6", "#2563eb"],
+    ["#a7f3d0", "#22c55e", "#0f766e"],
+    ["#c4b5fd", "#7c3aed", "#312e81"],
+    ["#f9a8d4", "#ec4899", "#7e22ce"],
+  ];
+  const index = Array.from(symbol).reduce((sum, char) => sum + char.charCodeAt(0), 0) % gradients.length;
+  const [a, b, c] = gradients[index]!;
+
+  return {
+    "--token-icon-a": a,
+    "--token-icon-b": b,
+    "--token-icon-c": c,
+  } as CSSProperties;
+}
+
+function getTokenPickerSectionLabel(chainId: number): string {
+  if (chainId === SOLANA_SWAP_CHAIN_ID) {
+    return "Popular Solana tokens by 24h volume";
+  }
+
+  if (chainId === CROSS_CHAIN_SWAP_ID) {
+    return "Cross-chain assets available through Rango";
+  }
+
+  return "Popular tokens on this network";
+}
+
+function getUniversalSwapCtaLabel(input: {
+  provider: string;
+  loading: boolean;
+  routeReady: boolean;
+}): string {
+  if (input.loading) {
+    return `Finding ${input.provider} route...`;
+  }
+
+  if (!input.routeReady) {
+    return `Get ${input.provider} route`;
+  }
+
+  return `Review ${input.provider} route`;
 }
 
 function shortTokenAddress(value: string): string {

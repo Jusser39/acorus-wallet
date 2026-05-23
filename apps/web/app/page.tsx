@@ -119,7 +119,7 @@ export default async function Home() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black">Fear & Greed</h2>
-                    <p className="mt-1 text-sm text-slate-600">Market mood from live 24h breadth.</p>
+                    <p className="mt-1 text-sm text-slate-600">How many tracked markets are rising or falling today.</p>
                   </div>
                   <div
                     className="fear-greed-meter"
@@ -135,11 +135,11 @@ export default async function Home() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
-                      <div className="text-xs font-bold text-slate-500">Advancing</div>
+                      <div className="text-xs font-bold text-slate-500">Rising 24h</div>
                       <div className="mt-1 font-black text-emerald-600">{pulse.positiveCount}</div>
                     </div>
                     <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
-                      <div className="text-xs font-bold text-slate-500">Declining</div>
+                      <div className="text-xs font-bold text-slate-500">Falling 24h</div>
                       <div className="mt-1 font-black text-rose-600">{pulse.negativeCount}</div>
                     </div>
                   </div>
