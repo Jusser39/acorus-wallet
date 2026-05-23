@@ -2,7 +2,6 @@
 
 import { ExtensionWalletCard } from "@/components/extension-wallet-card";
 import { SwapComposer } from "@/components/swap-composer";
-import { TokenDiscoveryHero } from "@/components/token-discovery-hero";
 import { useActiveProfile } from "@/store/wallet-store";
 
 export default function SwapPage() {
@@ -13,23 +12,13 @@ export default function SwapPage() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-8">
       <div className="space-y-6">
-        <TokenDiscoveryHero
-          compact
-          eyebrow="Universal swap"
-          title="Swap across Acorus routes"
-          description="0x routes execute through extension approvals. Jupiter and Rango are wired as backend quote providers with extension review cards before adapter execution is enabled."
-          primaryHref="/swap"
-          primaryLabel="Stay on swap"
-          secondaryHref="/wallet"
-          secondaryLabel="Open wallet"
-        />
-        <ExtensionWalletCard title="Extension swap account" />
         <SwapComposer
           portfolioAssets={[]}
           userAddress={evmAddress}
-          title="Swap"
-          description="Choose a provider route, network, token pair and amount. Quotes stay visible without a connected wallet; execution still requires Acorus extension approval."
+          title="Universal swap"
+          description="Choose a network, pick popular tokens for that chain, then request a routed quote. Execution always stays behind Acorus extension approval."
         />
+        <ExtensionWalletCard title="Extension swap account" />
       </div>
     </section>
   );

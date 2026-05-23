@@ -1,7 +1,9 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { AcorusMage } from "@/components/acorus-mage";
 import { SwapComposer } from "@/components/swap-composer";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
+import { buildFearGreedPulse } from "@/lib/market-pulse";
 import { buildExploreTokenHref } from "@/lib/token-routes";
 import type { ExploreTokenItem } from "@acorus/shared";
 
@@ -57,6 +59,8 @@ export default async function Home() {
     fetchExploreTrending().then((response) => response.items.slice(0, 4)).catch(() => []),
     fetchExploreTop({ view: "top", limit: 4 }).then((response) => response.items.slice(0, 4)).catch(() => []),
   ]);
+  const pulse = buildFearGreedPulse([...trending, ...top]);
+  const pulseColor = pulse.score <= 42 ? "#f43f5e" : pulse.score <= 58 ? "#f59e0b" : "#22c55e";
 
   return (
     <main className="magic-shell">
@@ -112,15 +116,33 @@ export default async function Home() {
               </section>
 
               <section className="magic-mini-panel p-5">
-                <h2 className="text-xl font-black">Market pulse</h2>
-                <div className="mt-5 flex h-28 items-end gap-3">
-                  {[30, 54, 78, 46, 72, 90].map((height, index) => (
-                    <span
-                      key={index}
-                      className="flex-1 rounded-t-xl bg-gradient-to-t from-violet-500 via-pink-400 to-cyan-300"
-                      style={{ height }}
-                    />
-                  ))}
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-black">Fear & Greed</h2>
+                    <p className="mt-1 text-sm text-slate-600">Market mood from live 24h breadth.</p>
+                  </div>
+                  <div
+                    className="fear-greed-meter"
+                    style={{ "--fear-score": `${pulse.score}%`, "--fear-color": pulseColor } as CSSProperties}
+                  >
+                    <span>{pulse.score}</span>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-2">
+                  <div className="rounded-2xl border border-white/50 bg-white/45 p-3">
+                    <div className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Status</div>
+                    <div className="mt-1 text-2xl font-black text-slate-950">{pulse.label}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                      <div className="text-xs font-bold text-slate-500">Advancing</div>
+                      <div className="mt-1 font-black text-emerald-600">{pulse.positiveCount}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                      <div className="text-xs font-bold text-slate-500">Declining</div>
+                      <div className="mt-1 font-black text-rose-600">{pulse.negativeCount}</div>
+                    </div>
+                  </div>
                 </div>
               </section>
             </div>

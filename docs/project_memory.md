@@ -1589,3 +1589,37 @@
   - Manual Chrome extension import/swap smoke still needs user-profile
     verification after reloading the unpacked extension.
 
+## Swap and Send UX Repair (2026-05-23)
+
+- Status: **implemented locally, validation passed**
+- Fixed the dead `Install Acorus Extension` action by turning the provider-missing
+  swap CTA into a direct download link for `/downloads/acorus-wallet-extension.zip`.
+- Added a network-aware popular token catalog for the swap composer and replaced
+  compact sell/buy selects with a Uniswap-style token picker, quick chips, search,
+  address snippets, and portfolio balance display where available.
+- Moved the real swap composer to the top of `/swap`, removed the obsolete mock
+  hero from that route, and hid raw Jupiter/Rango debug route forms from the
+  public UI while keeping provider plumbing available for reviewed execution.
+- Replaced the decorative Market pulse bars with a Fear & Greed style market
+  breadth meter based on live 24h token changes.
+- Repaired `/send` light-theme contrast by replacing dark review blocks with
+  readable Magic Glass review cards and clearer status/error colors.
+- Validation passed so far:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `git diff --check`
+  - `pnpm build`
+  - `pnpm extension:package`
+  - `pnpm test`
+- Local browser smoke passed for `/` and `/swap` on `127.0.0.1:3010`:
+  the Magic Guardian scene renders, the Fear & Greed card replaces Market
+  pulse bars, the swap composer is first on `/swap`, the Install Extension CTA
+  points to the packaged extension zip, and the token picker opens with
+  Ethereum popular tokens.
+- Local `/send` smoke reached the no-active-wallet guard; the active-wallet
+  form contrast was validated by build/tests and source inspection.
+- Known limitations:
+  - No new transaction execution path was added in this small repair wave.
+  - Jupiter/Rango execution remains gated until transaction decoding and
+    extension approval execution are fully reviewed.
+

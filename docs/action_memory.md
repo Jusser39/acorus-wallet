@@ -675,3 +675,14 @@
 417. Committed and pushed the route/design repair as `9a56afc` with message `Fix wallet route crash and add Acorus guardian design`.
 418. Deployed `9a56afc` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-guardian-design-route-fix_20260523_013147`, then rebuilt/recreated the wallet API and web containers.
 419. Production smoke passed for `/health`, `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`, `/design-system`, `/extension-smoke`, and `/api/swap/status`; production screenshots confirmed the Acorus Guardian home scene and a non-crashing wallet empty state.
+420. Started a focused swap/send UX repair after the user reported a dead Install Extension button, shifted swap layout, fake Market pulse bars, obsolete Jupiter/Rango raw forms, and unreadable send review cards.
+421. Added `apps/web/lib/swap-token-catalog.ts` with network-aware popular EVM tokens, portfolio token inclusion, curated-token merging, and search filtering for the swap token picker.
+422. Added `apps/web/lib/market-pulse.ts` to derive a Fear & Greed style score from live Explore 24h token breadth instead of showing decorative static bars.
+423. Updated the swap composer so provider-missing users get a working extension zip download link, token selects open a searchable picker, and the primary CTA now routes through connect/switch/quote/approve/review states.
+424. Moved the real `/swap` composer above the extension account card and removed the old TokenDiscoveryHero mock from that route.
+425. Hid low-level Jupiter/Rango route debug forms from the public swap surface while keeping backend provider plumbing intact for the next reviewed execution wave.
+426. Replaced dark unreadable `/send` review blocks with light Magic Glass review boxes and readable status/error text.
+427. Replaced the home Market pulse mock bars with a live Fear & Greed market breadth card.
+428. Validation passed for the repair: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `git diff --check`, `pnpm build`, `pnpm extension:package`, and `pnpm test`.
+429. Local browser smoke on `127.0.0.1:3010` confirmed the home Guardian scene, Fear & Greed card, `/swap` composer-first layout, working extension zip link, and searchable token picker with popular Ethereum tokens.
+430. Local `/send` smoke reached the no-active-wallet guard; the active-wallet send/review card contrast remains covered by source-level repair and production build validation.

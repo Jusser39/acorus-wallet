@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   EVM_CHAINS,
-  getCuratedTokens,
   normalizeEvmTokenAmount,
   shortenFormattedEvmTokenAmount,
   validateFormattedAmount,
@@ -32,14 +31,11 @@ import {
 } from "@/lib/extension-bridge";
 import { getSwapCtaLabel } from "@/lib/swap-cta";
 import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
-
-type TokenOption = {
-  value: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-  balanceFormatted?: string | null;
-};
+import {
+  filterSwapTokens,
+  getPopularSwapTokens,
+  type SwapTokenOption,
+} from "@/lib/swap-token-catalog";
 
 export function SwapComposer(props: {
   portfolioAssets?: AssetBalance[];
@@ -71,6 +67,8 @@ export function SwapComposer(props: {
   const [extensionChainId, setExtensionChainId] = useState<number | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState(0);
   const [history, setHistory] = useState<WebSwapActivityEntry[]>([]);
+  const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
+  const [tokenSearch, setTokenSearch] = useState("");
   const [jupiterInputMint, setJupiterInputMint] = useState("So11111111111111111111111111111111111111112");
   const [jupiterOutputMint, setJupiterOutputMint] = useState("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
   const [jupiterAmount, setJupiterAmount] = useState("1000000");
@@ -84,10 +82,17 @@ export function SwapComposer(props: {
   const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
 
   const tokens = useMemo(
-    () => buildEvmTokenOptions(chainId, props.portfolioAssets, props.initialBuyToken, props.initialBuyTokenMeta),
+    () => getPopularSwapTokens({
+      chainId,
+      portfolioAssets: props.portfolioAssets,
+      initialBuyToken: props.initialBuyToken,
+      initialBuyTokenMeta: props.initialBuyTokenMeta,
+    }),
     [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.portfolioAssets],
   );
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
+  const selectedBuyToken = tokens.find((token) => token.value === buyToken) ?? tokens[1] ?? selectedSellToken;
+  const pickerTokens = useMemo(() => filterSwapTokens(tokens, tokenSearch), [tokenSearch, tokens]);
 
   useEffect(() => {
     setHistory(loadSwapHistory());
@@ -107,7 +112,12 @@ export function SwapComposer(props: {
   }, []);
 
   useEffect(() => {
-    const nextTokens = buildEvmTokenOptions(chainId, props.portfolioAssets, props.initialBuyToken, props.initialBuyTokenMeta);
+    const nextTokens = getPopularSwapTokens({
+      chainId,
+      portfolioAssets: props.portfolioAssets,
+      initialBuyToken: props.initialBuyToken,
+      initialBuyTokenMeta: props.initialBuyTokenMeta,
+    });
     const nextSellToken = resolveInitialTokenValue(
       nextTokens,
       props.initialSellToken,
@@ -124,6 +134,12 @@ export function SwapComposer(props: {
     setQuote(null);
     setError(null);
   }, [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.initialSellToken, props.portfolioAssets]);
+
+  useEffect(() => {
+    if (tokenPickerSide) {
+      setTokenSearch("");
+    }
+  }, [tokenPickerSide]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -377,6 +393,57 @@ export function SwapComposer(props: {
     }
   }
 
+  async function handlePrimaryAction() {
+    if (!props.userAddress) {
+      setError("Connect Acorus extension before requesting or executing a swap.");
+      return;
+    }
+
+    if (wrongChain) {
+      await handleSwitchChain();
+      return;
+    }
+
+    if (!quote || quoteExpired) {
+      await handleQuote();
+      return;
+    }
+
+    if (quote.approvalRequired) {
+      await handleApprove();
+      return;
+    }
+
+    await handleExtensionSwap();
+  }
+
+  function handleTokenPick(side: "sell" | "buy", value: string) {
+    const currentOpposite = side === "sell" ? buyToken : sellToken;
+    const nextToken = tokens.find((token) => token.value.toLowerCase() === value.toLowerCase());
+
+    if (!nextToken) {
+      return;
+    }
+
+    if (side === "sell") {
+      setSellToken(nextToken.value);
+
+      if (nextToken.value.toLowerCase() === currentOpposite.toLowerCase()) {
+        setBuyToken(tokens.find((token) => token.value.toLowerCase() !== nextToken.value.toLowerCase())?.value ?? nextToken.value);
+      }
+    } else {
+      setBuyToken(nextToken.value);
+
+      if (nextToken.value.toLowerCase() === currentOpposite.toLowerCase()) {
+        setSellToken(tokens.find((token) => token.value.toLowerCase() !== nextToken.value.toLowerCase())?.value ?? nextToken.value);
+      }
+    }
+
+    setQuote(null);
+    setError(null);
+    setTokenPickerSide(null);
+  }
+
   async function handleRangoQuote() {
     setRangoResult("Fetching Rango route...");
     setRangoRoute(null);
@@ -437,7 +504,7 @@ export function SwapComposer(props: {
   const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
   const showSidePanel = !props.compact || Boolean(quote || extensionResult || history.length > 0);
-  const showUniversalRouteForms = !props.compact;
+  const showUniversalRouteForms = false;
   const ctaLabel = getSwapCtaLabel({
     extensionDetected,
     connected: Boolean(props.userAddress),
@@ -498,30 +565,32 @@ export function SwapComposer(props: {
             </select>
           </label>
 
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-2"}>
             <label className="space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
-              <select className="light-field" value={sellToken} onChange={(event) => setSellToken(event.target.value)}>
-                {tokens.map((token) => (
-                  <option key={`sell-${token.value}`} value={token.value}>
-                    {token.symbol} · {token.name}{token.balanceFormatted ? ` · ${token.balanceFormatted}` : ""}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("sell")}>
+                <span className="swap-token-icon">{tokenAvatarLabel(selectedSellToken)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-black">{selectedSellToken.symbol}</span>
+                  <span className="block truncate text-xs text-slate-500">{selectedSellToken.name}</span>
+                </span>
+                <span className="text-lg">⌄</span>
+              </button>
             </label>
             <label className="space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
-              <select className="light-field" value={buyToken} onChange={(event) => setBuyToken(event.target.value)}>
-                {tokens.map((token) => (
-                  <option key={`buy-${token.value}`} value={token.value}>
-                    {token.symbol} · {token.name}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("buy")}>
+                <span className="swap-token-icon">{tokenAvatarLabel(selectedBuyToken)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
+                  <span className="block truncate text-xs text-slate-500">{selectedBuyToken.name}</span>
+                </span>
+                <span className="text-lg">⌄</span>
+              </button>
             </label>
           </div>
 
-          <div className="grid gap-2 md:grid-cols-[1fr_180px]">
+          <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-[1fr_180px]"}>
             <label className="space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">You pay</span>
               <input
@@ -549,14 +618,24 @@ export function SwapComposer(props: {
           </div>
         ) : null}
 
-        <button
-          type="button"
-          className="button-primary w-full"
-          disabled={!providerReady || !sellAmount || loading}
-          onClick={() => void handleQuote()}
-        >
-          {ctaLabel}
-        </button>
+        {!extensionDetected ? (
+          <a
+            className="button-primary block w-full text-center"
+            href="/downloads/acorus-wallet-extension.zip"
+            download
+          >
+            Install Acorus Extension
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="button-primary w-full"
+            disabled={!providerReady || (!sellAmount && !quote) || loading}
+            onClick={() => void handlePrimaryAction()}
+          >
+            {ctaLabel}
+          </button>
+        )}
 
         {showUniversalRouteForms ? (
           <>
@@ -722,59 +801,74 @@ export function SwapComposer(props: {
         </div>
       </aside>
       ) : null}
+
+      {tokenPickerSide ? (
+        <div className="token-picker-overlay" role="dialog" aria-modal="true" aria-label="Choose token">
+          <div className="token-picker-card">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-2xl font-black text-slate-950">Choose token</h2>
+              <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
+                ×
+              </button>
+            </div>
+            <div className="token-picker-search">
+              <span className="text-xl text-violet-500">⌕</span>
+              <input
+                value={tokenSearch}
+                onChange={(event) => setTokenSearch(event.target.value)}
+                placeholder="Search by token, symbol, or address"
+                aria-label="Search token"
+              />
+              <span className="token-picker-chain">{EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM"}</span>
+            </div>
+            <div className="token-picker-quick">
+              {tokens.slice(0, 5).map((token) => (
+                <button
+                  key={`quick-${token.value}`}
+                  type="button"
+                  className="token-picker-chip"
+                  onClick={() => handleTokenPick(tokenPickerSide, token.value)}
+                >
+                  <span className="swap-token-icon">{tokenAvatarLabel(token)}</span>
+                  {token.symbol}
+                </button>
+              ))}
+            </div>
+            <div className="token-picker-list">
+              {pickerTokens.length ? pickerTokens.map((token) => (
+                <button
+                  key={`picker-${token.value}`}
+                  type="button"
+                  className="token-picker-row"
+                  onClick={() => handleTokenPick(tokenPickerSide, token.value)}
+                >
+                  <span className="swap-token-icon">{tokenAvatarLabel(token)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
+                    <span className="block truncate text-sm text-slate-500">
+                      {token.symbol}
+                      {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
+                    </span>
+                  </span>
+                  {token.balanceFormatted ? (
+                    <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
+                  ) : null}
+                </button>
+              )) : (
+                <p className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-600">
+                  No tokens found for this network.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function buildEvmTokenOptions(
-  chainId: number,
-  portfolioAssets?: AssetBalance[],
-  initialBuyToken?: string,
-  initialBuyTokenMeta?: { symbol: string; name: string; decimals: number },
-): TokenOption[] {
-  const chain = EVM_CHAINS.find((item) => item.chainId === chainId) ?? EVM_CHAINS[0]!;
-  const native: TokenOption = {
-    value: "native",
-    symbol: chain.nativeSymbol,
-    name: chain.name,
-    decimals: 18,
-  };
-  const portfolioTokens = (portfolioAssets ?? [])
-    .filter((asset) => asset.family === "evm" && Number(asset.chainId) === chainId && asset.type === "erc20" && asset.tokenAddress)
-    .map((asset) => ({
-      value: asset.tokenAddress!,
-      symbol: asset.symbol,
-      name: asset.name,
-      decimals: asset.decimals,
-      balanceFormatted: asset.balanceFormatted,
-    }));
-  const curated = getCuratedTokens(chainId)
-    .map((token) => ({
-      value: token.address,
-      symbol: token.symbol,
-      name: token.name,
-      decimals: token.decimals,
-    }));
-  const byValue = new Map<string, TokenOption>();
-
-  const initial = initialBuyToken && initialBuyToken !== "native" && initialBuyTokenMeta
-    ? [{
-        value: initialBuyToken,
-        symbol: initialBuyTokenMeta.symbol,
-        name: initialBuyTokenMeta.name,
-        decimals: initialBuyTokenMeta.decimals,
-      }]
-    : [];
-
-  for (const token of [native, ...portfolioTokens, ...curated, ...initial]) {
-    byValue.set(token.value.toLowerCase(), token);
-  }
-
-  return Array.from(byValue.values());
-}
-
 function resolveInitialTokenValue(
-  tokens: TokenOption[],
+  tokens: SwapTokenOption[],
   preferred?: string,
   avoid?: string,
 ): string | null {
@@ -787,6 +881,18 @@ function resolveInitialTokenValue(
   }
 
   return tokens.find((token) => token.value.toLowerCase() !== avoid?.toLowerCase())?.value ?? null;
+}
+
+function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
+  return token.symbol.slice(0, 4).toUpperCase();
+}
+
+function shortTokenAddress(value: string): string {
+  if (value.length <= 12) {
+    return value;
+  }
+
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }
 
 function parseChainId(value: string | number | null): number | null {

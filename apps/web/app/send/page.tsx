@@ -553,9 +553,9 @@ export default function SendPage() {
       <div id="evm-send-form" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
       <div className="panel space-y-5">
         <div>
-          <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">EVM send · real transaction</p>
+          <p className="text-sm uppercase tracking-[0.22em] text-emerald-600">EVM send · real transaction</p>
           <h2 className="mt-2 text-2xl font-semibold">Send assets</h2>
-          <p className="mt-2 text-sm text-slate-300">
+          <p className="mt-2 text-sm text-slate-600">
             Проверьте сеть, адрес и сумму. Транзакции в блокчейне нельзя отменить.
           </p>
         </div>
@@ -577,7 +577,7 @@ export default function SendPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">Chain</span>
+            <span className="text-sm text-slate-600">Chain</span>
             <select
               value={evmSelectedChainId}
               onChange={(event) => {
@@ -594,7 +594,7 @@ export default function SendPage() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">Asset</span>
+            <span className="text-sm text-slate-600">Asset</span>
             <select
               value={assetKey}
               onChange={(event) => {
@@ -615,7 +615,7 @@ export default function SendPage() {
         </div>
 
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Select contact</span>
+          <span className="text-sm text-slate-600">Select contact</span>
           <select value={selectedContactId} onChange={(event) => setRecipientFromContact(event.target.value)}>
             <option value="">Choose contact</option>
             {contacts.map((contact) => (
@@ -627,7 +627,7 @@ export default function SendPage() {
         </label>
 
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Recipient</span>
+          <span className="text-sm text-slate-600">Recipient</span>
           <input
             value={recipient}
             onChange={(event) => {
@@ -641,7 +641,7 @@ export default function SendPage() {
 
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <label className="space-y-2">
-            <span className="text-sm text-slate-300">Amount</span>
+            <span className="text-sm text-slate-600">Amount</span>
             <input
               type="number"
               min="0"
@@ -663,7 +663,7 @@ export default function SendPage() {
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
+        <div className="send-review-box text-sm">
           <p>
             Available:{" "}
             {selectedAsset.type === "native"
@@ -671,14 +671,14 @@ export default function SendPage() {
               : `${formatAmount(selectedToken?.balance ?? "0")} ${selectedToken?.symbol ?? "TOKEN"}`}
           </p>
           {selectedAsset.type === "native" && activeProfile.type !== "practice" ? (
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-slate-500">
               Для native Max нужен корректный recipient, чтобы вычесть network fee.
             </p>
           ) : null}
         </div>
 
-        {assetsLoading ? <p className="text-sm text-slate-400">Loading balances...</p> : null}
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {assetsLoading ? <p className="text-sm text-slate-500">Loading balances...</p> : null}
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -697,43 +697,43 @@ export default function SendPage() {
 
       <aside className="panel space-y-5">
         <h2 className="text-xl font-semibold">Review</h2>
-        <div className="grid gap-3 text-sm text-slate-300">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">Stage</p>
+        <div className="grid gap-3 text-sm text-slate-700">
+          <div className="send-review-box">
+            <p className="text-slate-500">Stage</p>
             <p className="mt-2 font-medium">{stage}</p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">Network</p>
+          <div className="send-review-box">
+            <p className="text-slate-500">Network</p>
             <p className="mt-2 font-medium">{chain.name}</p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">From</p>
+          <div className="send-review-box">
+            <p className="text-slate-500">From</p>
             <p className="mt-2 font-medium break-all">{activeProfile.publicAddress}</p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">To</p>
+          <div className="send-review-box">
+            <p className="text-slate-500">To</p>
             <p className="mt-2 font-medium break-all">
               {(review?.recipient ?? recipient) || "—"}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">Asset</p>
+          <div className="send-review-box">
+            <p className="text-slate-500">Asset</p>
             <p className="mt-2 font-medium">
               {review?.asset.symbol ?? selectedAsset.symbol} ·{" "}
               {(review?.amountDisplay ?? amount) || "—"}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-slate-400">Estimated network fee</p>
+          <div className="send-review-box">
+            <p className="text-slate-500">Estimated network fee</p>
             <p className="mt-2 font-medium">{review?.estimatedFeeDisplay ?? "—"}</p>
             {review?.gasLimit ? (
-              <p className="mt-2 text-xs text-slate-400">Gas limit: {review.gasLimit.toString()}</p>
+              <p className="mt-2 text-xs text-slate-500">Gas limit: {review.gasLimit.toString()}</p>
             ) : null}
           </div>
         </div>
 
         {activeProfile.type === "practice" ? (
-          <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm text-sky-100">
+          <div className="rounded-2xl border border-sky-300 bg-sky-50 p-4 text-sm text-sky-900">
             Practice mode: отправка полностью симулируется и не создаёт real-chain transaction.
           </div>
         ) : (
@@ -744,7 +744,7 @@ export default function SendPage() {
         )}
 
         {activeProfile.type === "local" ? (
-          <label className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
+          <label className="send-review-box flex items-start gap-3 text-sm">
             <input
               type="checkbox"
               checked={mainnetConfirmed}
@@ -770,7 +770,7 @@ export default function SendPage() {
         </button>
 
         {stage === "submitted" && submittedRecord ? (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="font-medium">Transaction submitted</p>
               <StatusBadge status={submittedRecord.status} />
@@ -780,7 +780,7 @@ export default function SendPage() {
               <Link
                 href={submittedRecord.explorerUrl ?? buildExplorerTxUrl(evmSelectedChainId, submittedRecord.hash)}
                 target="_blank"
-                className="mt-3 inline-flex text-emerald-200 underline underline-offset-4"
+                className="mt-3 inline-flex text-emerald-700 underline underline-offset-4"
               >
                 Open explorer
               </Link>
@@ -807,8 +807,8 @@ export default function SendPage() {
         ) : null}
 
         {stage === "error" && errorDetails ? (
-          <details className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
-            <summary className="cursor-pointer text-white">Error details</summary>
+          <details className="send-review-box text-sm">
+            <summary className="cursor-pointer font-semibold text-slate-950">Error details</summary>
             <p className="mt-3 break-words">{errorDetails}</p>
           </details>
         ) : null}
