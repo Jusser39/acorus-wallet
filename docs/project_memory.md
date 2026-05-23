@@ -1540,3 +1540,41 @@
   - Manual Chrome extension import/swap smoke still needs user-profile
     verification after reloading the unpacked extension.
 
+## Acorus Guardian Design Repair (2026-05-23)
+
+- Status: **implemented locally, validation passed**
+- Fixed a `/wallet` runtime crash risk caused by token asset hooks running after
+  conditional returns in some wallet states. The route now keeps React hook order
+  stable across empty, repair, locked, and active wallet branches.
+- Added a local `AcorusMage` character system for the product's visual identity:
+  a cyber/magic guardian, orbiting token chips, staff/orb details, and responsive
+  CSS/SVG layers without external copied assets.
+- Reworked the home stage into a compact Magic Glass scene with left
+  portfolio/swap panels, central Acorus Guardian, right market panels, and a
+  cleaner compact swap card that hides low-level Jupiter/Rango forms.
+- Added a stronger global Magic Glass CSS pass for page spacing, navigation,
+  readable form fields, wallet pages, compact swap surfaces, mobile layout, and
+  screenshot hygiene.
+- Hardened web bootstrap so local smoke sessions fall back to a local anonymous
+  id if the API is unavailable instead of showing a global bootstrap failure.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Local production smoke returned `200` for the main wallet routes including
+  `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`,
+  `/send`, `/settings`, `/security`, `/extension-smoke`, and `/design-system`.
+- Known limitations:
+  - This wave did not add new swap execution paths.
+  - Production deploy still needs to be run after committing this repair.
+

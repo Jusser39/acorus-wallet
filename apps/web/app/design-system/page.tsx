@@ -1,3 +1,4 @@
+import { AcorusMage } from "@/components/acorus-mage";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { StatusBanner } from "@/components/ui/status-banner";
 
@@ -17,6 +18,32 @@ export default function DesignSystemPage() {
             extension popup, market discovery and token research pages.
           </p>
         </div>
+
+        <section className="magic-home-stage min-h-[520px]">
+          <div className="magic-home-grid !min-h-[520px]">
+            <div className="magic-home-side">
+              <div className="magic-mini-panel p-5">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-700">Character system</p>
+                <h2 className="mt-2 text-2xl font-black">Acorus Guardian</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  A custom CSS/SVG mascot anchors the product identity without depending on copied brand assets.
+                </p>
+              </div>
+            </div>
+            <div className="magic-stage-center !min-h-[460px]">
+              <AcorusMage compact />
+            </div>
+            <div className="magic-home-side">
+              <div className="magic-mini-panel p-5">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-700">Visual language</p>
+                <h2 className="mt-2 text-2xl font-black">Compact cyber glass</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Cyan glow, violet depth, pink energy and readable white surfaces across all wallet pages.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="grid gap-4 md:grid-cols-3">
           <section className="magic-panel grid gap-3 p-5">

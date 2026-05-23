@@ -208,6 +208,42 @@ export default function WalletPage() {
     };
   }, [activeProfile, selectedChainId, userId, refreshNonce, currency, isSkeletonFamily, isSolana]);
 
+  const tokenAssets = useMemo(
+    () => portfolio?.assets.filter((asset) => asset.type !== "native") ?? [],
+    [portfolio?.assets],
+  );
+  const selectedAsset =
+    tokenAssets.find((asset) =>
+      selectedAssetKey === (
+        asset.tokenAddress
+          ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
+          : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`
+      ),
+    ) ?? tokenAssets[0] ?? null;
+  const selectedAssetDetailHref =
+    selectedAsset && activeProfile?.chainFamily === "evm" && selectedAsset.type === "erc20" && selectedAsset.tokenAddress
+      ? `/tokens/${selectedAsset.chainId}/${selectedAsset.tokenAddress}`
+      : null;
+
+  useEffect(() => {
+    if (!tokenAssets.length) {
+      if (selectedAssetKey !== null) {
+        setSelectedAssetKey(null);
+      }
+      return;
+    }
+
+    const keys = tokenAssets.map((asset) =>
+      asset.tokenAddress
+        ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
+        : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`,
+    );
+
+    if (!selectedAssetKey || !keys.includes(selectedAssetKey)) {
+      setSelectedAssetKey(keys[0] ?? null);
+    }
+  }, [selectedAssetKey, tokenAssets]);
+
   async function handleCopyAddress() {
     if (!activeProfile) {
       return;
@@ -384,41 +420,9 @@ export default function WalletPage() {
       ? getPracticeAddress(activeProfile.chainFamily)
       : activeProfile.publicAddress;
   const nativeBalance = portfolio?.assets.find((asset) => asset.type === "native")?.balanceFormatted ?? "0";
-  const tokenAssets = portfolio?.assets.filter((asset) => asset.type !== "native") ?? [];
-  const selectedAsset =
-    tokenAssets.find((asset) =>
-      selectedAssetKey === (
-        asset.tokenAddress
-          ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
-          : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`
-      ),
-    ) ?? tokenAssets[0] ?? null;
-  const selectedAssetDetailHref =
-    selectedAsset && activeProfile.chainFamily === "evm" && selectedAsset.type === "erc20" && selectedAsset.tokenAddress
-      ? `/tokens/${selectedAsset.chainId}/${selectedAsset.tokenAddress}`
-      : null;
-
-  useEffect(() => {
-    if (!tokenAssets.length) {
-      if (selectedAssetKey !== null) {
-        setSelectedAssetKey(null);
-      }
-      return;
-    }
-
-    const keys = tokenAssets.map((asset) =>
-      asset.tokenAddress
-        ? `${asset.chainId}:${normalizeAddressForChain(asset.chainId, asset.tokenAddress)}`
-        : `native:${asset.chainId}:${asset.symbol.toUpperCase()}`,
-    );
-
-    if (!selectedAssetKey || !keys.includes(selectedAssetKey)) {
-      setSelectedAssetKey(keys[0] ?? null);
-    }
-  }, [selectedAssetKey, tokenAssets]);
 
   return (
-    <section className="page grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+    <section className="page magic-wallet-page grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
       <div className="space-y-6">
         <div className="app-surface space-y-5 rounded-[2rem] p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">

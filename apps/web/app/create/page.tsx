@@ -177,7 +177,7 @@ export default function CreateWalletPage() {
   }
 
   return (
-    <section className="page grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+    <section className="page grid items-start gap-6 lg:grid-cols-[0.95fr_1.05fr]">
       <aside className="panel order-first space-y-5 lg:order-last">
         <div>
           <span className="section-kicker !border-slate-900/10 !bg-white/80 !text-slate-700">Extension first</span>

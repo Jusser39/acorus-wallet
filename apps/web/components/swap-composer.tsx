@@ -437,6 +437,7 @@ export function SwapComposer(props: {
   const wrongChain = Boolean(quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
   const showSidePanel = !props.compact || Boolean(quote || extensionResult || history.length > 0);
+  const showUniversalRouteForms = !props.compact;
   const ctaLabel = getSwapCtaLabel({
     extensionDetected,
     connected: Boolean(props.userAddress),
@@ -462,7 +463,7 @@ export function SwapComposer(props: {
           </p>
         </div>
 
-        {universalStatus ? (
+        {universalStatus && showUniversalRouteForms ? (
           <div className="grid gap-2 sm:grid-cols-3">
             {universalStatus.providers.map((provider) => (
               <div key={provider.provider} className="rounded-2xl border border-fuchsia-100 bg-white/70 p-3">
@@ -475,13 +476,13 @@ export function SwapComposer(props: {
           </div>
         ) : null}
 
-        {!providerReady ? (
+        {!props.compact && !providerReady ? (
           <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
             0x provider is not configured on the backend yet. Add `ZEROX_API_KEY` on the API server to enable EVM live quotes.
           </div>
         ) : null}
 
-        {!extensionDetected ? (
+        {!props.compact && !extensionDetected ? (
           <div className="mx-1 rounded-[1.5rem] border border-sky-400/30 bg-sky-400/10 p-4 text-sm text-sky-900">
             Acorus extension was not detected. Install or reload the extension to execute swaps.
           </div>
@@ -557,53 +558,57 @@ export function SwapComposer(props: {
           {ctaLabel}
         </button>
 
-        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
-          <div>
-            <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
-            <p className="text-xs text-slate-500">Fetch a live Solana route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
-          </div>
-          <input className="light-field" value={jupiterInputMint} onChange={(event) => setJupiterInputMint(event.target.value)} placeholder="Input mint" />
-          <input className="light-field" value={jupiterOutputMint} onChange={(event) => setJupiterOutputMint(event.target.value)} placeholder="Output mint" />
-          <input className="light-field" value={jupiterAmount} onChange={(event) => setJupiterAmount(event.target.value)} placeholder="Raw amount" />
-          <button type="button" className="button-secondary" onClick={() => void handleJupiterQuote()}>
-            Get Jupiter route
-          </button>
-          {jupiterResult ? <p className="text-sm text-slate-600">{jupiterResult}</p> : null}
-          {jupiterRoute ? (
-            <button
-              type="button"
-              className="button-primary"
-              disabled={!extensionDetected}
-              onClick={() => void handleUniversalSwapReview("jupiter")}
-            >
-              Review Jupiter route in extension
-            </button>
-          ) : null}
-        </div>
+        {showUniversalRouteForms ? (
+          <>
+            <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
+                <p className="text-xs text-slate-500">Fetch a live Solana route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
+              </div>
+              <input className="light-field" value={jupiterInputMint} onChange={(event) => setJupiterInputMint(event.target.value)} placeholder="Input mint" />
+              <input className="light-field" value={jupiterOutputMint} onChange={(event) => setJupiterOutputMint(event.target.value)} placeholder="Output mint" />
+              <input className="light-field" value={jupiterAmount} onChange={(event) => setJupiterAmount(event.target.value)} placeholder="Raw amount" />
+              <button type="button" className="button-secondary" onClick={() => void handleJupiterQuote()}>
+                Get Jupiter route
+              </button>
+              {jupiterResult ? <p className="text-sm text-slate-600">{jupiterResult}</p> : null}
+              {jupiterRoute ? (
+                <button
+                  type="button"
+                  className="button-primary"
+                  disabled={!extensionDetected}
+                  onClick={() => void handleUniversalSwapReview("jupiter")}
+                >
+                  Review Jupiter route in extension
+                </button>
+              ) : null}
+            </div>
 
-        <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
-          <div>
-            <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
-            <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>
-          </div>
-          <input className="light-field" value={rangoFrom} onChange={(event) => setRangoFrom(event.target.value)} placeholder="From asset, e.g. ETH.ETH" />
-          <input className="light-field" value={rangoTo} onChange={(event) => setRangoTo(event.target.value)} placeholder="To asset, e.g. SOL.SOL" />
-          <input className="light-field" value={rangoAmount} onChange={(event) => setRangoAmount(event.target.value)} placeholder="Amount" />
-          <button type="button" className="button-secondary" onClick={() => void handleRangoQuote()}>
-            Get Rango route
-          </button>
-          {rangoResult ? <p className="text-sm text-slate-600">{rangoResult}</p> : null}
-          {rangoRoute ? (
-            <button
-              type="button"
-              className="button-primary"
-              disabled={!extensionDetected}
-              onClick={() => void handleUniversalSwapReview("rango")}
-            >
-              Review Rango route in extension
-            </button>
-          ) : null}
-        </div>
+            <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
+                <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>
+              </div>
+              <input className="light-field" value={rangoFrom} onChange={(event) => setRangoFrom(event.target.value)} placeholder="From asset, e.g. ETH.ETH" />
+              <input className="light-field" value={rangoTo} onChange={(event) => setRangoTo(event.target.value)} placeholder="To asset, e.g. SOL.SOL" />
+              <input className="light-field" value={rangoAmount} onChange={(event) => setRangoAmount(event.target.value)} placeholder="Amount" />
+              <button type="button" className="button-secondary" onClick={() => void handleRangoQuote()}>
+                Get Rango route
+              </button>
+              {rangoResult ? <p className="text-sm text-slate-600">{rangoResult}</p> : null}
+              {rangoRoute ? (
+                <button
+                  type="button"
+                  className="button-primary"
+                  disabled={!extensionDetected}
+                  onClick={() => void handleUniversalSwapReview("rango")}
+                >
+                  Review Rango route in extension
+                </button>
+              ) : null}
+            </div>
+          </>
+        ) : null}
       </div>
 
       {showSidePanel ? (

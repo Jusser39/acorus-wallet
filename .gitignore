@@ -41,5 +41,6 @@ id_ed25519
 
 backups/
 artifacts/
+.screens/
 *.tar.gz
 *.zip

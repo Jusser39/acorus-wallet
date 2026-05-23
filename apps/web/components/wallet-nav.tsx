@@ -29,8 +29,8 @@ export function WalletNav() {
   const setError = useWalletStore((state) => state.setError);
 
   return (
-    <header className="relative z-40 border-b border-white/40 bg-white/36 backdrop-blur-2xl">
-      <div className="magic-container flex flex-col gap-3 py-4">
+    <header className="magic-topbar relative z-40">
+      <div className="magic-container flex flex-col gap-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"

@@ -52,7 +52,10 @@ export function AppBootstrap() {
       const storedActiveProfileId = loadActiveProfileId();
       const existingUserId = loadUserId();
       const userId: string =
-        existingUserId ?? (await createAnonymousUser().then((response) => response.id));
+        existingUserId
+          ?? (await createAnonymousUser()
+            .then((response) => response.id)
+            .catch(() => `local_${crypto.randomUUID()}`));
 
       if (!active) {
         return;

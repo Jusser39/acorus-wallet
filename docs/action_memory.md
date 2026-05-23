@@ -664,3 +664,11 @@
 406. Committed and pushed the wave as `f1bd66f` with message `Fix wallet lock state and add magic glass redesign`.
 407. Deployed the wave to `/opt/acorus-wallet-release-current`, preserving backup `/root/backups/acorus-magic-glass-lock-fix_20260523_004344`, then rebuilt/recreated wallet API, web, and nginx services.
 408. Production smoke passed for `/health`, `/wallet`, `/unlock?repair=1`, `/design-system`, `/extension-smoke`, `/downloads/acorus-wallet-extension.zip`, and `/api/swap/status`; browser smoke passed for production `/unlock?repair=1` and `/`.
+409. Started a follow-up professional design repair after the user reported production `/wallet` showing a generic page-load failure and asked for a more compact magic/cyber glass style with a distinct Acorus character.
+410. Fixed the `/wallet` runtime crash risk by moving token asset selection hooks above all conditional returns, preserving React hook order for empty, repair, locked, and active wallet states.
+411. Added the reusable `AcorusMage` character component with local SVG/CSS layers, orbiting asset chips, and no external or copied brand assets.
+412. Reworked the home hero into a compact Acorus Guardian stage with left portfolio/swap panels, central character, and right market panels, while hiding low-level Jupiter/Rango forms in compact swap mode.
+413. Added a stronger Magic Glass CSS pass for page sizing, global nav, readable form fields, wallet pages, compact swap cards, mobile layout, and local screenshot hygiene through `.screens/` gitignore.
+414. Hardened app bootstrap so local browser smoke does not show a global wallet-bootstrap error when the API is temporarily unavailable; it now falls back to a local anonymous id without exposing secrets.
+415. Local validation passed for this repair: web test/build, shared build, wallet-core build, API test/build, extension lint/test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+416. Local production route smoke returned `200` for `/`, `/wallet`, `/create`, `/swap`, `/explore`, `/dapps`, `/quests`, `/receive`, `/send`, `/settings`, `/security`, `/extension`, `/extension-smoke`, and `/design-system`.

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AcorusMage } from "@/components/acorus-mage";
 import { SwapComposer } from "@/components/swap-composer";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildExploreTokenHref } from "@/lib/token-routes";
@@ -51,14 +52,6 @@ function MagicMarketRow({ token }: { token: ExploreTokenItem }) {
   );
 }
 
-function FloatingChip(props: { symbol: string; className: string }) {
-  return (
-    <span className={`magic-token-chip absolute px-4 py-2 text-sm font-black shadow-lg ${props.className}`}>
-      {props.symbol}
-    </span>
-  );
-}
-
 export default async function Home() {
   const [trending, top] = await Promise.all([
     fetchExploreTrending().then((response) => response.items.slice(0, 4)).catch(() => []),
@@ -68,12 +61,10 @@ export default async function Home() {
   return (
     <main className="magic-shell">
       <section className="magic-container py-8">
-        <div className="relative overflow-hidden rounded-[48px] border border-white/60 bg-gradient-to-br from-sky-200/55 via-violet-200/30 to-pink-200/40 p-5 shadow-[0_35px_120px_rgba(32,92,155,0.22)]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(124,247,255,0.40),transparent_24%),radial-gradient(circle_at_50%_58%,rgba(139,92,246,0.20),transparent_30%)]" />
-
-          <div className="relative z-10 grid min-h-[690px] gap-6 lg:grid-cols-[330px_1fr_330px]">
-            <div className="grid content-center gap-4">
-              <section className="magic-panel p-5">
+        <div className="magic-home-stage">
+          <div className="magic-home-grid">
+            <div className="magic-home-side">
+              <section className="magic-mini-panel p-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black">Portfolio</h2>
                   <span className="rounded-full bg-white/50 px-3 py-1 text-xs font-bold">local</span>
@@ -88,7 +79,7 @@ export default async function Home() {
                 </div>
               </section>
 
-              <section className="magic-panel p-4">
+              <section className="magic-mini-panel magic-compact-swap p-4">
                 <SwapComposer
                   compact
                   portfolioAssets={[]}
@@ -98,20 +89,15 @@ export default async function Home() {
               </section>
             </div>
 
-            <div className="relative flex min-h-[620px] items-center justify-center">
-              <div className="absolute bottom-14 h-36 w-72 rounded-[999px] border border-white/60 bg-white/24 shadow-[0_0_80px_rgba(124,247,255,0.45)]" />
-              <div className="magic-orb magic-floating h-60 w-60 text-7xl font-black text-white">
-                A
+            <div className="magic-stage-center">
+              <AcorusMage />
+              <div className="absolute left-1/2 top-10 -translate-x-1/2 rounded-full border border-white/70 bg-white/54 px-5 py-3 text-sm font-black uppercase tracking-[0.28em] text-violet-800 shadow-[0_18px_44px_rgba(85,166,255,0.18)] backdrop-blur-xl">
+                Acorus guardian
               </div>
-              <FloatingChip symbol="ETH" className="left-[8%] top-[23%] rotate-[-16deg]" />
-              <FloatingChip symbol="BTC" className="right-[10%] top-[20%] rotate-[12deg]" />
-              <FloatingChip symbol="SOL" className="bottom-[24%] left-[15%] rotate-[10deg]" />
-              <FloatingChip symbol="USDC" className="bottom-[18%] right-[14%] rotate-[-10deg]" />
-              <FloatingChip symbol="0x" className="left-[44%] top-[10%]" />
             </div>
 
-            <div className="grid content-center gap-4">
-              <section className="magic-panel p-5">
+            <div className="magic-home-side">
+              <section className="magic-mini-panel p-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black">Trending</h2>
                   <Link href="/explore" className="text-sm font-bold text-violet-700">Explore</Link>
@@ -125,7 +111,7 @@ export default async function Home() {
                 </div>
               </section>
 
-              <section className="magic-panel p-5">
+              <section className="magic-mini-panel p-5">
                 <h2 className="text-xl font-black">Market pulse</h2>
                 <div className="mt-5 flex h-28 items-end gap-3">
                   {[30, 54, 78, 46, 72, 90].map((height, index) => (
