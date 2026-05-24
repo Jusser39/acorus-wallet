@@ -750,3 +750,6 @@
 492. Local browser smoke passed for `/settings`: dark theme applied after save, display currency changed to EUR and persisted locally, and the settings page remained usable without an active wallet.
 493. Full local validation passed for the repair: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
 494. Documented the recovery limitation: existing encrypted vault passwords cannot be removed without decrypting; stale/unknown-password vaults must be reset locally and then re-imported from seed with a new user-chosen password.
+495. Deployed the manual-password extension repair to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-extension-manual-password_20260524_213402`.
+496. Recreated the production `api`, `web`, and `nginx` containers; an immediate `/` request briefly returned `502` during Next.js startup, then passed after the web container reported ready.
+497. Production checks passed for `/health`, `/`, `/swap`, `/wallet`, `/settings`, `/extension`, and `/downloads/acorus-wallet-extension.zip`; the downloadable extension package returns `application/zip`.

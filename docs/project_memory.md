@@ -1847,4 +1847,18 @@
   removed without decrypting the vault. Users who do not know the password must
   reset the local web/extension vault state and re-import from their seed using
   a new password they choose.
+- Production deploy completed after the local validation. The release was
+  extracted to `/opt/acorus-wallet-release-current`; server backup:
+  `/root/backups/acorus-extension-manual-password_20260524_213402`.
+- The deployment recreated `api`, `web`, and `nginx` containers. A transient
+  `502` on `/` occurred during Next.js startup immediately after recreating
+  `web`; a follow-up check passed once the app reported ready.
+- Production checks passed:
+  - `https://24wallet.ru/health`
+  - `https://24wallet.ru/`
+  - `https://24wallet.ru/swap`
+  - `https://24wallet.ru/wallet`
+  - `https://24wallet.ru/settings`
+  - `https://24wallet.ru/extension`
+  - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
 
