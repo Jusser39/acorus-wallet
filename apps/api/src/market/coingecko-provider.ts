@@ -1448,7 +1448,7 @@ export class CoinGeckoMarketDataProvider implements MarketDataProvider {
     limit = 20,
   ): Promise<ExploreTokenItem[]> {
     const vsCurrency = coingeckoCurrency(currency);
-    const perPage = Math.min(Math.max(limit, 1), 50);
+    const perPage = Math.min(Math.max(limit, 1), 250);
     const url = `${this.baseUrl}/coins/markets?${new URLSearchParams({
       vs_currency: vsCurrency,
       order: "market_cap_desc",

@@ -1070,7 +1070,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     const limit = Math.min(50, Math.max(6, Number.parseInt(query.limit ?? "20", 10) || 20));
 
     try {
-      const requestedCount = Math.max(limit * page, view === "top" ? limit : 50);
+      const requestedCount = view === "top"
+        ? Math.max(limit * page, limit)
+        : Math.max(250, limit * page * 8);
       const rawItems = marketProvider.getTopMarkets
         ? await marketProvider.getTopMarkets(currency as FiatCurrency, requestedCount)
         : await mockFallback.getTopMarkets!(currency as FiatCurrency, requestedCount);
@@ -1268,19 +1270,98 @@ function createUnavailableCoinChart(
   };
 }
 
-function sortExploreTopItems<T extends { change24h?: number | null; marketCapUsd?: number | null }>(
+const MIN_EXPLORE_MOVER_CHANGE_PERCENT = 0.05;
+
+const STABLE_ASSET_SYMBOLS = new Set([
+  "BUSD",
+  "DAI",
+  "EURI",
+  "EURC",
+  "FDUSD",
+  "FRAX",
+  "GUSD",
+  "LUSD",
+  "PYUSD",
+  "TUSD",
+  "USDB",
+  "USDC",
+  "USDD",
+  "USDE",
+  "USDP",
+  "USDS",
+  "USDT",
+  "USD1",
+  "USYC",
+]);
+
+export function sortExploreTopItems<T extends {
+  change24h?: number | null;
+  marketCapUsd?: number | null;
+  volume24hUsd?: number | null;
+  symbol?: string | null;
+  name?: string | null;
+}>(
   items: T[],
   view: "top" | "gainers" | "losers",
 ): T[] {
   const copy = [...items];
 
   if (view === "gainers") {
-    return copy.sort((a, b) => (b.change24h ?? Number.NEGATIVE_INFINITY) - (a.change24h ?? Number.NEGATIVE_INFINITY));
+    return copy
+      .filter((item) => hasMeaningfulChange(item, "gainers"))
+      .sort((a, b) => {
+        const changeDiff = (b.change24h ?? Number.NEGATIVE_INFINITY) - (a.change24h ?? Number.NEGATIVE_INFINITY);
+        return changeDiff !== 0 ? changeDiff : (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0);
+      });
   }
 
   if (view === "losers") {
-    return copy.sort((a, b) => (a.change24h ?? Number.POSITIVE_INFINITY) - (b.change24h ?? Number.POSITIVE_INFINITY));
+    return copy
+      .filter((item) => hasMeaningfulChange(item, "losers"))
+      .sort((a, b) => {
+        const changeDiff = (a.change24h ?? Number.POSITIVE_INFINITY) - (b.change24h ?? Number.POSITIVE_INFINITY);
+        return changeDiff !== 0 ? changeDiff : (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0);
+      });
   }
 
   return copy.sort((a, b) => (b.marketCapUsd ?? 0) - (a.marketCapUsd ?? 0));
+}
+
+function hasMeaningfulChange(
+  item: {
+    change24h?: number | null;
+    symbol?: string | null;
+    name?: string | null;
+  },
+  view: "gainers" | "losers",
+): boolean {
+  if (!Number.isFinite(item.change24h)) {
+    return false;
+  }
+
+  if (isStableLikeExploreItem(item)) {
+    return false;
+  }
+
+  return view === "gainers"
+    ? item.change24h! > MIN_EXPLORE_MOVER_CHANGE_PERCENT
+    : item.change24h! < -MIN_EXPLORE_MOVER_CHANGE_PERCENT;
+}
+
+function isStableLikeExploreItem(item: { symbol?: string | null; name?: string | null }): boolean {
+  const symbol = item.symbol?.trim().toUpperCase();
+  if (symbol && STABLE_ASSET_SYMBOLS.has(symbol)) {
+    return true;
+  }
+
+  const name = item.name?.trim().toLowerCase() ?? "";
+  if (!name) {
+    return false;
+  }
+
+  return name.includes("stablecoin")
+    || name === "tether"
+    || name.includes("usd coin")
+    || name.includes("us dollar")
+    || name.includes("dai");
 }

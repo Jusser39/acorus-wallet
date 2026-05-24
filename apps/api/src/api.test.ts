@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildApp } from "./app";
+import { buildApp, sortExploreTopItems } from "./app";
 import { readEnv } from "./env";
 import { MemoryStore } from "./memory-store";
 import type { FastifyInstance } from "fastify";
@@ -383,6 +383,83 @@ describe("api", () => {
     });
     expect(chart.statusCode).toBe(200);
     expect(JSON.stringify(chart.json())).not.toContain("fallback_mock");
+  });
+
+  it("filters explore losers to real negative movers and excludes stable assets", () => {
+    const sorted = sortExploreTopItems([
+      {
+        symbol: "USDT",
+        name: "Tether",
+        change24h: -0.4,
+        marketCapUsd: 100_000_000_000,
+        volume24hUsd: 50_000_000_000,
+      },
+      {
+        symbol: "BCH",
+        name: "Bitcoin Cash",
+        change24h: -1.8,
+        marketCapUsd: 7_000_000_000,
+        volume24hUsd: 400_000_000,
+      },
+      {
+        symbol: "CRASH",
+        name: "Crash Token",
+        change24h: -12.5,
+        marketCapUsd: 200_000_000,
+        volume24hUsd: 8_000_000,
+      },
+      {
+        symbol: "FLAT",
+        name: "Flat Token",
+        change24h: -0.01,
+        marketCapUsd: 20_000_000,
+        volume24hUsd: 2_000_000,
+      },
+      {
+        symbol: "PUMP",
+        name: "Pump Token",
+        change24h: 9.4,
+        marketCapUsd: 30_000_000,
+        volume24hUsd: 4_000_000,
+      },
+    ], "losers");
+
+    expect(sorted.map((item) => item.symbol)).toEqual(["CRASH", "BCH"]);
+  });
+
+  it("filters explore gainers to real positive movers and excludes stable assets", () => {
+    const sorted = sortExploreTopItems([
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        change24h: 0.2,
+        marketCapUsd: 30_000_000_000,
+        volume24hUsd: 10_000_000_000,
+      },
+      {
+        symbol: "MOON",
+        name: "Moon Token",
+        change24h: 11.4,
+        marketCapUsd: 40_000_000,
+        volume24hUsd: 5_000_000,
+      },
+      {
+        symbol: "UP",
+        name: "Up Token",
+        change24h: 4.2,
+        marketCapUsd: 20_000_000,
+        volume24hUsd: 12_000_000,
+      },
+      {
+        symbol: "DUST",
+        name: "Dust Token",
+        change24h: 0.01,
+        marketCapUsd: 10_000_000,
+        volume24hUsd: 1_000_000,
+      },
+    ], "gainers");
+
+    expect(sorted.map((item) => item.symbol)).toEqual(["MOON", "UP"]);
   });
 
   it("discover-token returns ok:true with null-or-object", async () => {
