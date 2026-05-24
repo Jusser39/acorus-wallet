@@ -28,6 +28,29 @@ Date: 2026-05-24
 - `pnpm --filter @acorus/extension test`
 - `pnpm --filter @acorus/web test`
 - `pnpm --filter @acorus/web build`
+- `pnpm --filter @acorus/shared build`
+- `pnpm --filter @acorus/wallet-core build`
+- `pnpm --filter @acorus/api test`
+- `pnpm --filter @acorus/api build`
+- `pnpm --filter @acorus/extension lint`
+- `pnpm --filter @acorus/extension build`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+- `pnpm extension:package`
+
+The extension package was rebuilt at
+`apps/web/public/downloads/acorus-wallet-extension.zip`.
+
+## Production Deployment
+
+- Commit pushed to GitHub: `de09d13`
+- Production deploy was attempted but blocked from this workstation: SSH to
+  `85.239.59.199:22` timed out and public `https://24wallet.ru` checks also
+  timed out from the current network path.
+- `Test-NetConnection` reported the active route through `AmneziaVPN`, with
+  `TcpTestSucceeded: False` for port 22.
+- No production files were changed during the blocked deploy attempt.
 
 ## Recovery Note
 
@@ -41,7 +64,7 @@ the vault. The supported recovery path is local reset plus re-import:
 
 ## Remaining Work
 
-- Run the full workspace validation suite after this report.
+- Deploy the pushed commit once VPS network access is available again.
 - Browser-smoke the updated pages and extension popup after deployment.
 - Replace the code-native Guardian fallback with final WebP/AVIF character poses
   when approved visual assets are available.

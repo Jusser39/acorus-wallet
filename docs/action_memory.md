@@ -733,3 +733,7 @@
 475. Reworked `/wallet` empty, repair, locked, and active states onto Magic Glass panels and replaced direct reset buttons with the safer `/unlock?repair=1` reset flow.
 476. Added Acorus Guardian design/lock-fix docs: plan, report, and character bible.
 477. Validation passed so far: wallet-core test, extension test, web test, and web build.
+478. Completed full validation for the Acorus Mage lock/design wave: shared build, wallet-core build/test, API build/test, extension lint/test/build, web test/build, root test/build, `git diff --check`, and `pnpm extension:package` all passed.
+479. Rebuilt the downloadable extension package at `apps/web/public/downloads/acorus-wallet-extension.zip`.
+480. Committed and pushed `de09d13` with message `Fix wallet lock state and add Acorus mage redesign`.
+481. Production deploy was attempted but blocked by network reachability from this workstation: SSH to `85.239.59.199:22` timed out and public HTTPS checks to `24wallet.ru` also timed out through the current `AmneziaVPN` route. No production files were changed.

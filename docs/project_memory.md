@@ -1763,7 +1763,7 @@
 
 ## Acorus Guardian Follow-up (2026-05-24)
 
-- Status: **local implementation in progress**
+- Status: **implemented, validated locally, and pushed**
 - Added `AcorusMagicStage` as a reusable Guardian/mascot stage with floating
   token chips, backed by the existing local SVG/CSS Acorus Mage component.
 - Reworked the home page into a more compact Magic Glass dashboard with
@@ -1775,9 +1775,23 @@
 - Fixed the web swap install-extension CTA so it opens the extension setup route.
 - Aligned web import with wallet-core's relaxed importability check and added
   wallet-core/extension regression coverage for the supplied test seed phrase.
-- Validation passed so far:
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
   - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
   - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
   - `pnpm --filter @acorus/web test`
   - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- GitHub: commit `de09d13` pushed to `origin/main`.
+- Production deploy status: blocked from this workstation because SSH to
+  `85.239.59.199:22` and public HTTPS checks to `24wallet.ru` timed out through
+  the active network route; no production files were changed.
 
