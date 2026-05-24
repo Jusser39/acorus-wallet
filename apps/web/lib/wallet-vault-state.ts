@@ -36,6 +36,7 @@ export function resolveWalletVaultUiState(input: {
   hasLocalProfile?: boolean;
   isUnlocked: boolean;
   passcodeInitialized?: boolean;
+  passcodeSetupConfirmedAt?: string | null;
   walletName?: string | null;
   lastUnlockedAt?: string | null;
   vaultReadError?: string | null;
@@ -89,6 +90,15 @@ export function resolveWalletVaultUiState(input: {
       reason: "passcode_not_initialized",
       message:
         "A local wallet lock was found, but no passcode setup marker exists.",
+    };
+  }
+
+  if (!input.passcodeSetupConfirmedAt) {
+    return {
+      kind: "repair_required",
+      reason: "passcode_not_initialized",
+      message:
+        "A local wallet lock was found, but it was not created through the explicit password setup flow.",
     };
   }
 

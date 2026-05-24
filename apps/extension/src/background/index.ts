@@ -40,6 +40,7 @@ import {
   getExtensionVaultStatus,
   importExtensionWallet,
   lockExtensionWallet,
+  resetExtensionWallet,
   unlockExtensionWallet,
 } from "./extension-wallet";
 import {
@@ -443,6 +444,17 @@ export async function handleRuntimeMessage(
       requestId,
       ok: true,
       result: await lockExtensionWallet(),
+    };
+  }
+
+  if (input.kind === "reset_extension_wallet") {
+    const status = await resetExtensionWallet();
+    await refreshDappShellWalletState();
+
+    return {
+      requestId,
+      ok: true,
+      result: status,
     };
   }
 

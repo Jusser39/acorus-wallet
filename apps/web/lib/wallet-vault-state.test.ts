@@ -46,8 +46,23 @@ describe("resolveWalletVaultUiState", () => {
         profileCount: 1,
         isUnlocked: false,
         passcodeInitialized: true,
+        passcodeSetupConfirmedAt: "2026-05-24T00:00:00.000Z",
       }).kind,
     ).toBe("locked");
+  });
+
+  it("does not show keypad when the explicit passcode setup marker is missing", () => {
+    const state = resolveWalletVaultUiState({
+      hasEncryptedVault: true,
+      hasVaultMeta: true,
+      encryptedVaultVersion: 1,
+      profileCount: 1,
+      isUnlocked: false,
+      passcodeInitialized: true,
+    });
+
+    expect(state.kind).toBe("repair_required");
+    expect(state.reason).toBe("passcode_not_initialized");
   });
 
   it("requires repair when encrypted vault metadata is absent", () => {
@@ -87,6 +102,7 @@ describe("resolveWalletVaultUiState", () => {
         profileCount: 1,
         isUnlocked: true,
         passcodeInitialized: true,
+        passcodeSetupConfirmedAt: "2026-05-24T00:00:00.000Z",
       }).kind,
     ).toBe("unlocked");
   });

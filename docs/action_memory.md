@@ -712,3 +712,15 @@
 454. Committed and pushed the wallet account menu/preferences repair as `a054950` with message `Add wallet account menu and preferences`.
 455. Deployed `a054950` to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-wallet-menu-preferences_20260523_231012`, then rebuilt/recreated the web and nginx containers.
 456. Production checks passed for `/health`, `/wallet`, `/settings`, and `/downloads/acorus-wallet-extension.zip`; production browser smoke confirmed the account menu and nested settings panel work on `https://24wallet.ru/wallet`.
+457. Started an explicit passcode setup repair after the user reported that importing a wallet still led to an unknown auto-created passcode.
+458. Added web vault metadata fields for `passcodeMode` and `passcodeSetupConfirmedAt`, and made `saveEncryptedVault` require a passcode mode.
+459. Added a reusable passcode policy helper and tests for numeric PINs, random passwords, confirmation mismatch, saved-password acknowledgement, and random generation.
+460. Added a web `PasscodeSetupDialog` so create/import asks whether to use a numeric PIN or generated/random password before wallet encryption.
+461. Updated web create/import flows to refuse wallet creation/import until explicit passcode setup is confirmed by the user.
+462. Updated wallet vault UI state resolution so markerless/stale vault metadata enters repair/reset instead of showing the unlock keypad.
+463. Fixed `/unlock` production build by wrapping `useSearchParams` usage in a Suspense boundary and reusing the loading card as the fallback.
+464. Added extension vault metadata markers for explicit passcode setup and made markerless legacy metadata invalid for initialized-lock decisions.
+465. Added `reset_extension_wallet` runtime support and popup reset controls to clear only extension-local encrypted vault state.
+466. Updated extension popup create/import forms with explicit PIN/random password controls, random generation, confirmation validation, and reset messaging.
+467. Added `docs/wallet_explicit_passcode_reset_report.md` explaining the root cause, recovery flow, validation, and limitations.
+468. Validation passed for this repair so far: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension test`, and `pnpm --filter @acorus/extension build`.

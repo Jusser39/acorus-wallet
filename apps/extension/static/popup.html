@@ -408,6 +408,62 @@
         box-shadow: 0 0 0 4px rgba(5, 0, 255, 0.08);
       }
 
+      .passcode-setup-card {
+        display: grid;
+        gap: 10px;
+        border: 1px solid rgba(139, 92, 246, 0.14);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 12px;
+      }
+
+      .passcode-mode-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .passcode-mode-option {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        border: 1px solid #e9d5ff;
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 10px;
+        cursor: pointer;
+      }
+
+      .passcode-mode-option input {
+        margin-top: 3px;
+        accent-color: #8b5cf6;
+      }
+
+      .passcode-mode-option span {
+        display: grid;
+        gap: 2px;
+      }
+
+      .passcode-mode-option small {
+        color: #6b7280;
+        font-size: 11px;
+      }
+
+      .checkbox-row {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 9px;
+        align-items: flex-start;
+        color: #4b5563;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .checkbox-row input {
+        margin: 1px 0 0;
+        accent-color: #8b5cf6;
+      }
+
       .seed-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

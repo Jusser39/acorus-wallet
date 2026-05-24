@@ -29,6 +29,8 @@ export interface VaultMeta {
   version: 1;
   createdAt: string;
   passcodeInitialized: boolean;
+  passcodeMode?: "pin" | "random";
+  passcodeSetupConfirmedAt?: string;
 }
 
 const LEGACY_SESSION_KEYS = [
@@ -64,7 +66,10 @@ export function loadEncryptedVault(): EncryptedVaultV1 | null {
   }
 }
 
-export function saveEncryptedVault(vault: EncryptedVaultV1): void {
+export function saveEncryptedVault(
+  vault: EncryptedVaultV1,
+  options: { passcodeMode: "pin" | "random" },
+): void {
   const storage = getStorage();
   storage?.setItem(ENCRYPTED_VAULT_KEY, JSON.stringify(vault));
   storage?.setItem(
@@ -73,6 +78,8 @@ export function saveEncryptedVault(vault: EncryptedVaultV1): void {
       version: 1,
       createdAt: vault.createdAt,
       passcodeInitialized: true,
+      passcodeMode: options.passcodeMode,
+      passcodeSetupConfirmedAt: new Date().toISOString(),
     } satisfies VaultMeta),
   );
 }
@@ -108,6 +115,14 @@ export function loadVaultMeta(): VaultMeta | null {
     version: 1,
     createdAt: parsed.createdAt,
     passcodeInitialized: parsed.passcodeInitialized,
+    passcodeMode:
+      parsed.passcodeMode === "pin" || parsed.passcodeMode === "random"
+        ? parsed.passcodeMode
+        : undefined,
+    passcodeSetupConfirmedAt:
+      typeof parsed.passcodeSetupConfirmedAt === "string"
+        ? parsed.passcodeSetupConfirmedAt
+        : undefined,
   };
 }
 

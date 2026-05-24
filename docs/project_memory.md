@@ -1731,3 +1731,33 @@
   - Activity history still depends on existing local event sources.
   - Display currency persistence is broader than backend live conversion support.
 
+## Explicit Wallet Passcode Setup (2026-05-24)
+
+- Status: **local implementation validated**
+- Fixed the passcode auto-lock issue by requiring an explicit passcode setup
+  confirmation marker for both web and extension vault metadata.
+- Added a web create/import passcode setup dialog that asks the user to choose
+  either a numeric PIN or a generated/random password before encryption starts.
+- Web vault metadata now stores `passcodeMode` and `passcodeSetupConfirmedAt`;
+  local vaults without that marker are treated as repair/reset cases instead of
+  valid locked wallets.
+- Added passcode policy tests for numeric PINs, random passwords, confirmation
+  mismatch, saved-password acknowledgement, and random generation.
+- Extension vault installs now persist explicit passcode metadata, and old
+  markerless extension vault metadata is no longer treated as a valid initialized
+  wallet.
+- Extension popup create/import now asks for a PIN/random password explicitly and
+  includes a reset action to clear only the extension-local encrypted vault.
+- Added `reset_extension_wallet` background protocol support and a safe popup
+  reset button for stale/unknown extension passcodes.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+- Known limitations:
+  - Already encrypted vault passwords cannot be removed without decrypting the
+    vault; stale local vaults must be cleared and re-imported from the seed.
+  - The new extension popup controls require users to reload/update the unpacked
+    extension build.
+

@@ -61,6 +61,9 @@ type ExtensionVaultMeta = {
   profiles: DappWalletExposure[];
   createdAt: string;
   updatedAt: string;
+  passcodeInitialized: boolean;
+  passcodeMode: "pin" | "random";
+  passcodeSetupConfirmedAt: string;
 };
 
 export async function createExtensionWallet(input: {
@@ -150,6 +153,16 @@ export async function unlockExtensionWallet(input: {
 
 export async function lockExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
+  return getExtensionVaultStatus();
+}
+
+export async function resetExtensionWallet(): Promise<ExtensionVaultStatus> {
+  unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
+  await chrome.storage.local.remove([
+    EXTENSION_VAULT_KEY,
+    EXTENSION_VAULT_META_KEY,
+  ]);
+
   return getExtensionVaultStatus();
 }
 
@@ -264,10 +277,7 @@ async function installExtensionWallet(input: {
   passcode: string;
 }): Promise<ExtensionWalletImportResult> {
   const name = input.name.trim() || "Acorus Wallet";
-
-  if (input.passcode.length < 8) {
-    throw new Error("Passcode must be at least 8 characters.");
-  }
+  const passcodeMode = requireExtensionPasscodeMode(input.passcode);
 
   const evmAddress = getEvmAddressFromMnemonic(input.mnemonic);
   const solanaAddress = getSolanaAddressFromMnemonic(input.mnemonic);
@@ -313,6 +323,9 @@ async function installExtensionWallet(input: {
     profiles,
     createdAt,
     updatedAt: createdAt,
+    passcodeInitialized: true,
+    passcodeMode,
+    passcodeSetupConfirmedAt: new Date().toISOString(),
   };
 
   await chrome.storage.local.set({
@@ -764,6 +777,12 @@ function normalizeVaultMeta(value: unknown): ExtensionVaultMeta | null {
     || !Array.isArray(candidate.profiles)
     || typeof candidate.createdAt !== "string"
     || typeof candidate.updatedAt !== "string"
+    || candidate.passcodeInitialized !== true
+    || (
+      candidate.passcodeMode !== "pin"
+      && candidate.passcodeMode !== "random"
+    )
+    || typeof candidate.passcodeSetupConfirmedAt !== "string"
   ) {
     return null;
   }
@@ -773,7 +792,24 @@ function normalizeVaultMeta(value: unknown): ExtensionVaultMeta | null {
     profiles: candidate.profiles.filter(isDappWalletExposure),
     createdAt: candidate.createdAt,
     updatedAt: candidate.updatedAt,
+    passcodeInitialized: true,
+    passcodeMode: candidate.passcodeMode,
+    passcodeSetupConfirmedAt: candidate.passcodeSetupConfirmedAt,
   };
+}
+
+function requireExtensionPasscodeMode(passcode: string): ExtensionVaultMeta["passcodeMode"] {
+  const normalized = passcode.trim();
+
+  if (/^\d{6,12}$/u.test(normalized)) {
+    return "pin";
+  }
+
+  if (normalized.length >= 12) {
+    return "random";
+  }
+
+  throw new Error("Choose a 6-12 digit PIN or a 12+ character random password.");
 }
 
 function isDappWalletExposure(value: unknown): value is DappWalletExposure {

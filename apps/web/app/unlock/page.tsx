@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { decryptVault } from "@acorus/wallet-core";
 import { useWalletStore } from "@/store/wallet-store";
 import { PinPad } from "@/components/pin-pad";
@@ -10,8 +10,31 @@ import { clearAcorusLocalWalletState } from "@/lib/reset-local-wallet";
 import { loadVaultMeta, type VaultMeta } from "@/lib/storage";
 import { resolveWalletVaultUiState } from "@/lib/wallet-vault-state";
 
+function UnlockLoading() {
+  return (
+    <section className="magic-shell grid min-h-screen place-items-center px-4 py-10">
+      <div className="magic-panel w-full max-w-md p-7 text-center">
+        <div className="magic-orb mx-auto h-16 w-16 text-xl font-black text-white">A</div>
+        <h1 className="mt-5 text-3xl font-black">Loading wallet</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Checking local encrypted vault state on this device.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function UnlockPage() {
+  return (
+    <Suspense fallback={<UnlockLoading />}>
+      <UnlockPageContent />
+    </Suspense>
+  );
+}
+
+function UnlockPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isBootstrapped = useWalletStore((state) => state.isBootstrapped);
   const encryptedVault = useWalletStore((state) => state.encryptedVault);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
@@ -22,21 +45,13 @@ export default function UnlockPage() {
   const [passcode, setPasscode] = useState("");
   const [resetText, setResetText] = useState("");
   const [vaultMeta, setVaultMeta] = useState<VaultMeta | null>(null);
-  const [forceRepair, setForceRepair] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("repair") === "1",
-  );
+  const forceRepair = searchParams.get("repair") === "1";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setVaultMeta(loadVaultMeta());
   }, [encryptedVault]);
-
-  useEffect(() => {
-    setForceRepair(new URLSearchParams(window.location.search).get("repair") === "1");
-  }, []);
 
   const uiState = useMemo(
     () =>
@@ -48,6 +63,7 @@ export default function UnlockPage() {
         hasLocalProfile: profiles.some((profile) => profile.type === "local"),
         isUnlocked: Boolean(unlockedVault),
         passcodeInitialized: vaultMeta?.passcodeInitialized,
+        passcodeSetupConfirmedAt: vaultMeta?.passcodeSetupConfirmedAt,
         vaultReadError: bootstrapError?.includes("vault") ? bootstrapError : null,
       }),
     [bootstrapError, encryptedVault, profiles, unlockedVault, vaultMeta],
@@ -84,17 +100,7 @@ export default function UnlockPage() {
   }
 
   if (!isBootstrapped) {
-    return (
-      <section className="magic-shell grid min-h-screen place-items-center px-4 py-10">
-        <div className="magic-panel w-full max-w-md p-7 text-center">
-          <div className="magic-orb mx-auto h-16 w-16 text-xl font-black text-white">A</div>
-          <h1 className="mt-5 text-3xl font-black">Loading wallet</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Checking local encrypted vault state on this device.
-          </p>
-        </div>
-      </section>
-    );
+    return <UnlockLoading />;
   }
 
   if (uiState.kind === "empty" && !forceRepair) {
@@ -135,10 +141,10 @@ export default function UnlockPage() {
             </div>
           </div>
           <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-950">
-            If you never created a passcode, this is likely stale local wallet
-            state. Resetting removes only local browser wallet data. Blockchain
-            assets are not deleted, but a seed phrase backup is required to restore
-            access.
+            Пароль нельзя снять с уже зашифрованного vault без расшифровки.
+            Если вы его не создавали, это старый локальный state. Reset удалит
+            только локальный encrypted vault в этом браузере. Активы в блокчейне
+            не удаляются, но для восстановления нужна seed phrase.
           </div>
           <label className="mt-6 block space-y-2">
             <span className="text-sm font-bold text-slate-700">Type RESET to confirm</span>

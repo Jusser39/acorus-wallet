@@ -9,7 +9,10 @@ import {
   getSolanaAddressFromMnemonic,
 } from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
+import { PasscodeSetupDialog } from "@/components/passcode-setup-dialog";
 import { createExtensionWallet, getExtensionVaultStatus, hasAcorusExtension, type ExtensionVaultStatus } from "@/lib/extension-bridge";
+import type { WalletPasscodeMode } from "@/lib/passcode-policy";
+import { validateWalletPasscode } from "@/lib/passcode-policy";
 import { saveEncryptedVault } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
 
@@ -25,6 +28,11 @@ export default function CreateWalletPage() {
   const [mnemonic, setMnemonic] = useState("");
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
+  const [passcodeMode, setPasscodeMode] = useState<WalletPasscodeMode>("pin");
+  const [passcodeSetupOpen, setPasscodeSetupOpen] = useState(false);
+  const [passcodeSaved, setPasscodeSaved] = useState(false);
+  const [passcodeConfirmed, setPasscodeConfirmed] = useState(false);
+  const [passcodeDialogError, setPasscodeDialogError] = useState<string | null>(null);
   const [walletName, setWalletName] = useState("Main wallet");
   const [savedSeed, setSavedSeed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,6 +68,32 @@ export default function CreateWalletPage() {
       .then(setExtensionStatus)
       .catch(() => setExtensionStatus(null));
   }, []);
+
+  function ensurePasscodeReady(): boolean {
+    const validation = validateWalletPasscode({
+      mode: passcodeMode,
+      passcode,
+      confirmPasscode,
+      savedConfirmation: passcodeSaved,
+    });
+
+    if (!passcodeConfirmed || !validation.ok) {
+      setPasscodeDialogError(
+        validation.ok
+          ? "Подтвердите выбранный пароль перед созданием wallet vault."
+          : validation.message,
+      );
+      setPasscodeSetupOpen(true);
+      return false;
+    }
+
+    return true;
+  }
+
+  function resetPasscodeConfirmation() {
+    setPasscodeConfirmed(false);
+    setPasscodeSaved(false);
+  }
 
   async function handleCreate() {
     if (!userId) {
@@ -120,7 +154,7 @@ export default function CreateWalletPage() {
         setWalletError("EVM vault created, but Solana profile could not be added automatically yet.");
       }
 
-      saveEncryptedVault(encrypted);
+      saveEncryptedVault(encrypted, { passcodeMode });
       setEncryptedVault(encrypted);
       unlockVault(plaintext);
       if (solanaProfile) {
@@ -131,6 +165,7 @@ export default function CreateWalletPage() {
       setMnemonic("");
       setPasscode("");
       setConfirmPasscode("");
+      resetPasscodeConfirmation();
       router.push("/wallet");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось создать кошелек.");
@@ -140,13 +175,8 @@ export default function CreateWalletPage() {
   }
 
   async function handleCreateInExtension() {
-    if (passcode.length < 8) {
-      setError("Passcode должен быть минимум 8 символов.");
-      return;
-    }
-
-    if (passcode !== confirmPasscode) {
-      setError("Passcode и подтверждение не совпадают.");
+    if (!ensurePasscodeReady()) {
+      setError("Сначала выберите пароль для extension vault.");
       return;
     }
 
@@ -165,6 +195,7 @@ export default function CreateWalletPage() {
       });
       setPasscode("");
       setConfirmPasscode("");
+      resetPasscodeConfirmation();
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -176,7 +207,35 @@ export default function CreateWalletPage() {
     }
   }
 
+  function renderPasscodeSetupCard(scope: "extension" | "local") {
+    return (
+      <div className="rounded-[1.5rem] border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-slate-950">Пароль wallet vault</p>
+            <p className="mt-1 leading-6 text-slate-600">
+              {passcodeConfirmed
+                ? `Выбран ${passcodeMode === "pin" ? "цифровой PIN" : "случайный пароль"}. Acorus не знает и не восстанавливает его.`
+                : `Для ${scope === "extension" ? "extension" : "local browser"} vault пароль не ставится автоматически.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="magic-button-secondary px-5 py-3"
+            onClick={() => {
+              setPasscodeDialogError(null);
+              setPasscodeSetupOpen(true);
+            }}
+          >
+            {passcodeConfirmed ? "Изменить пароль" : "Поставим пароль?"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
+    <>
     <section className="page grid items-start gap-6 lg:grid-cols-[0.95fr_1.05fr]">
       <aside className="panel order-first space-y-5 lg:order-last">
         <div>
@@ -198,28 +257,7 @@ export default function CreateWalletPage() {
           <input className="light-field" value={walletName} onChange={(event) => setWalletName(event.target.value)} />
         </label>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-sm text-slate-600">Passcode</span>
-            <input
-              className="light-field"
-              type="password"
-              autoComplete="new-password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm text-slate-600">Confirm passcode</span>
-            <input
-              className="light-field"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPasscode}
-              onChange={(event) => setConfirmPasscode(event.target.value)}
-            />
-          </label>
-        </div>
+        {renderPasscodeSetupCard("extension")}
 
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
@@ -305,28 +343,7 @@ export default function CreateWalletPage() {
           <span>Я сохранил(а) seed phrase в безопасном оффлайн-месте и понимаю, что ее потеря может привести к потере доступа.</span>
         </label>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="text-sm text-slate-600">Passcode</span>
-            <input
-              className="light-field"
-              type="password"
-              autoComplete="new-password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm text-slate-600">Confirm passcode</span>
-            <input
-              className="light-field"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPasscode}
-              onChange={(event) => setConfirmPasscode(event.target.value)}
-            />
-          </label>
-        </div>
+        {renderPasscodeSetupCard("local")}
 
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
@@ -341,5 +358,41 @@ export default function CreateWalletPage() {
         </div>
       </details>
     </section>
+    <PasscodeSetupDialog
+      open={passcodeSetupOpen}
+      mode={passcodeMode}
+      passcode={passcode}
+      confirmPasscode={confirmPasscode}
+      savedConfirmation={passcodeSaved}
+      error={passcodeDialogError}
+      onModeChange={(mode) => {
+        setPasscodeMode(mode);
+        setPasscodeConfirmed(false);
+        setPasscodeSaved(false);
+      }}
+      onPasscodeChange={(value) => {
+        setPasscode(value);
+        setPasscodeConfirmed(false);
+      }}
+      onConfirmPasscodeChange={(value) => {
+        setConfirmPasscode(value);
+        setPasscodeConfirmed(false);
+      }}
+      onSavedConfirmationChange={(saved) => {
+        setPasscodeSaved(saved);
+        if (!saved) {
+          setPasscodeConfirmed(false);
+        }
+      }}
+      onError={setPasscodeDialogError}
+      onConfirm={() => {
+        setPasscodeConfirmed(true);
+        setPasscodeSetupOpen(false);
+        setPasscodeDialogError(null);
+        setError(null);
+      }}
+      onClose={() => setPasscodeSetupOpen(false)}
+    />
+    </>
   );
 }

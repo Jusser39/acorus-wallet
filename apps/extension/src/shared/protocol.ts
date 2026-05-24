@@ -321,6 +321,11 @@ export type ExtensionRuntimeMessage =
       surface: "popup" | "options";
     }
   | {
+      kind: "reset_extension_wallet";
+      requestId: string;
+      surface: "popup" | "options";
+    }
+  | {
       kind: "queue_walletconnect_pairing";
       requestId: string;
       surface: "options";

@@ -79,6 +79,7 @@ export default function WalletPage() {
         hasLocalProfile: profiles.some((profile) => profile.type === "local"),
         isUnlocked: Boolean(unlockedVault),
         passcodeInitialized: vaultMeta?.passcodeInitialized,
+        passcodeSetupConfirmedAt: vaultMeta?.passcodeSetupConfirmedAt,
         walletName: activeProfile?.name ?? null,
       }),
     [activeProfile?.name, encryptedVault, profiles, unlockedVault, vaultMeta],

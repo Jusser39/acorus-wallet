@@ -18,21 +18,26 @@ describe("storage helpers", () => {
   });
 
   it("stores encrypted vault only as serialized payload", () => {
-    saveEncryptedVault({
-      version: 1,
-      kdf: "pbkdf2-sha256",
-      iterations: 1,
-      saltBase64: "salt",
-      ivBase64: "iv",
-      ciphertextBase64: "cipher",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    });
+    saveEncryptedVault(
+      {
+        version: 1,
+        kdf: "pbkdf2-sha256",
+        iterations: 1,
+        saltBase64: "salt",
+        ivBase64: "iv",
+        ciphertextBase64: "cipher",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      { passcodeMode: "pin" },
+    );
 
     expect(loadEncryptedVault()?.ciphertextBase64).toBe("cipher");
     expect(loadVaultMeta()).toEqual({
       version: 1,
       createdAt: "2026-01-01T00:00:00.000Z",
       passcodeInitialized: true,
+      passcodeMode: "pin",
+      passcodeSetupConfirmedAt: expect.any(String),
     });
     expect(hasVault()).toBe(true);
     expect(window.localStorage.getItem("acorus.encryptedVault")).toContain("cipher");

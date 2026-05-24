@@ -13,9 +13,13 @@ import {
 
 const root = getRoot("Popup root not found.");
 const EXTENSION_SWAP_API_BASES = ["https://24wallet.ru", "http://85.239.59.199:8080"] as const;
+const POPUP_RANDOM_PASSCODE_ALPHABET =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
 let lastCreatedMnemonic: string | null = null;
 let currentPopupState: BackgroundStateSnapshot = createSkeletonState();
 let currentHomeSnapshot: ExtensionPortfolioSnapshot | null = null;
+
+type PopupPasscodeMode = "pin" | "random";
 
 type ExtensionPortfolioSnapshot = {
   updatedAt: string;
@@ -234,6 +238,9 @@ function renderWalletHome(
             : `<form id="unlock-wallet-form" class="form" style="flex:1">
                 <input class="field" name="passcode" placeholder="Passcode" type="password" autocomplete="current-password">
                 <button class="primary-button" type="submit">Unlock</button>
+                <button class="danger-button" type="button" data-action="reset-extension-wallet" data-id="extension-vault">
+                  Reset local wallet
+                </button>
               </form>`
         }
         <button class="ghost-button" type="button" data-open-url="https://24wallet.ru/extension">Open site</button>
@@ -537,6 +544,46 @@ function renderWarnings(warnings: string[]): string {
   `;
 }
 
+function renderExtensionPasscodeFields(formId: string): string {
+  return `
+    <section class="passcode-setup-card">
+      <div class="row">
+        <div>
+          <strong>Set wallet password</strong>
+          <p class="copy" style="margin-top:4px">Acorus will not create or import a wallet until you choose the password yourself.</p>
+        </div>
+      </div>
+      <div class="passcode-mode-grid" role="radiogroup" aria-label="Password mode">
+        <label class="passcode-mode-option">
+          <input type="radio" name="passcodeMode" value="pin" checked>
+          <span>
+            <strong>Numeric PIN</strong>
+            <small>6-12 digits</small>
+          </span>
+        </label>
+        <label class="passcode-mode-option">
+          <input type="radio" name="passcodeMode" value="random">
+          <span>
+            <strong>Random</strong>
+            <small>12+ symbols</small>
+          </span>
+        </label>
+      </div>
+      <div class="form">
+        <input class="field" name="passcode" placeholder="Create password" type="password" autocomplete="new-password">
+        <input class="field" name="confirmPasscode" placeholder="Repeat password" type="password" autocomplete="new-password">
+        <label class="checkbox-row">
+          <input name="passcodeSaved" type="checkbox" value="yes">
+          <span>I saved this password. It cannot be recovered by Acorus.</span>
+        </label>
+        <button class="ghost-button" type="button" data-action="generate-extension-passcode" data-id="${escapeHtml(formId)}">
+          Generate random password
+        </button>
+      </div>
+    </section>
+  `;
+}
+
 function renderOnboarding(): string {
   return `
     <section class="onboarding-card stack">
@@ -547,9 +594,16 @@ function renderOnboarding(): string {
           Sites connect through the injected provider, like a normal wallet.
         </p>
       </div>
+      <section class="notice warning">
+        <strong>No automatic passwords</strong><br>
+        If this extension locked itself before you chose a password, reset the local extension wallet and import again.
+      </section>
+      <button class="danger-button" type="button" data-action="reset-extension-wallet" data-id="extension-vault">
+        Reset local extension wallet
+      </button>
       <form id="create-wallet-form" class="form">
         <input class="field" name="name" placeholder="Wallet name" value="Main wallet">
-        <input class="field" name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password">
+        ${renderExtensionPasscodeFields("create-wallet-form")}
         <button class="primary-button" type="submit">Create wallet</button>
       </form>
       <details>
@@ -557,7 +611,7 @@ function renderOnboarding(): string {
         <form id="import-wallet-form" class="form" style="margin-top:12px">
           <input class="field" name="name" placeholder="Wallet name" value="Imported wallet">
           <textarea class="field" name="mnemonic" placeholder="Seed phrase" rows="3"></textarea>
-          <input class="field" name="passcode" placeholder="Passcode, min 8 chars" type="password" autocomplete="new-password">
+          ${renderExtensionPasscodeFields("import-wallet-form")}
           <button class="ghost-button" type="submit">Import wallet</button>
         </form>
       </details>
@@ -894,6 +948,33 @@ function wirePopupActions(): void {
           requestId: createRequestId("popup"),
           surface: "popup",
         });
+        await loadPopupState();
+        return;
+      }
+
+      if (action === "generate-extension-passcode" && targetId) {
+        const form = root.querySelector<HTMLFormElement>(`#${CSS.escape(targetId)}`);
+        if (form) {
+          fillGeneratedPasscode(form);
+        }
+        return;
+      }
+
+      if (action === "reset-extension-wallet") {
+        const confirmed = window.confirm(
+          "Reset the local extension wallet? This removes the encrypted vault from this browser profile. Your blockchain assets remain on-chain, but you need your seed phrase to restore access.",
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        await chrome.runtime.sendMessage({
+          kind: "reset_extension_wallet",
+          requestId: createRequestId("popup"),
+          surface: "popup",
+        });
+        lastCreatedMnemonic = null;
         await loadPopupState();
         return;
       }
@@ -1252,6 +1333,69 @@ function wireInlineButtons(scope: HTMLElement): void {
   });
 }
 
+function getPopupPasscodeMode(form: HTMLFormElement): PopupPasscodeMode {
+  const value = new FormData(form).get("passcodeMode");
+  return value === "random" ? "random" : "pin";
+}
+
+function validatePopupPasscode(form: HTMLFormElement): string | null {
+  const formData = new FormData(form);
+  const mode = getPopupPasscodeMode(form);
+  const passcode = String(formData.get("passcode") ?? "").trim();
+  const confirmPasscode = String(formData.get("confirmPasscode") ?? "").trim();
+  const saved = formData.get("passcodeSaved") === "yes";
+
+  if (mode === "pin" && !/^\d{6,12}$/u.test(passcode)) {
+    return "Choose a numeric PIN with 6-12 digits.";
+  }
+
+  if (mode === "random" && passcode.length < 12) {
+    return "Choose a random password with at least 12 characters.";
+  }
+
+  if (passcode !== confirmPasscode) {
+    return "Password confirmation does not match.";
+  }
+
+  if (!saved) {
+    return "Confirm that you saved the password. Acorus cannot recover it.";
+  }
+
+  return null;
+}
+
+function fillGeneratedPasscode(form: HTMLFormElement): void {
+  const passcode = generatePopupRandomPasscode();
+  form.querySelector<HTMLInputElement>('input[name="passcodeMode"][value="random"]')?.click();
+
+  const passcodeInput = form.querySelector<HTMLInputElement>('input[name="passcode"]');
+  const confirmInput = form.querySelector<HTMLInputElement>('input[name="confirmPasscode"]');
+  const savedInput = form.querySelector<HTMLInputElement>('input[name="passcodeSaved"]');
+
+  if (passcodeInput) {
+    passcodeInput.type = "text";
+    passcodeInput.value = passcode;
+  }
+
+  if (confirmInput) {
+    confirmInput.type = "text";
+    confirmInput.value = passcode;
+  }
+
+  if (savedInput) {
+    savedInput.checked = false;
+  }
+}
+
+function generatePopupRandomPasscode(length = 18): string {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+
+  return Array.from(bytes, (byte) =>
+    POPUP_RANDOM_PASSCODE_ALPHABET[byte % POPUP_RANDOM_PASSCODE_ALPHABET.length],
+  ).join("");
+}
+
 function wireWalletForms(): void {
   root
     .querySelector<HTMLFormElement>("#unlock-wallet-form")
@@ -1276,13 +1420,20 @@ function wireWalletForms(): void {
     .querySelector<HTMLFormElement>("#create-wallet-form")
     ?.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      const form = event.currentTarget as HTMLFormElement;
+      const passcodeError = validatePopupPasscode(form);
+      if (passcodeError) {
+        window.alert(passcodeError);
+        return;
+      }
+
+      const formData = new FormData(form);
       const response = (await chrome.runtime.sendMessage({
         kind: "create_extension_wallet",
         requestId: createRequestId("popup"),
         surface: "popup",
         name: String(formData.get("name") ?? "Main wallet"),
-        passcode: String(formData.get("passcode") ?? ""),
+        passcode: String(formData.get("passcode") ?? "").trim(),
       })) as ExtensionRuntimeResponse;
 
       if (response.ok && response.result) {
@@ -1300,14 +1451,21 @@ function wireWalletForms(): void {
     .querySelector<HTMLFormElement>("#import-wallet-form")
     ?.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const formData = new FormData(event.currentTarget as HTMLFormElement);
+      const form = event.currentTarget as HTMLFormElement;
+      const passcodeError = validatePopupPasscode(form);
+      if (passcodeError) {
+        window.alert(passcodeError);
+        return;
+      }
+
+      const formData = new FormData(form);
       const response = (await chrome.runtime.sendMessage({
         kind: "import_extension_wallet",
         requestId: createRequestId("popup"),
         surface: "popup",
         name: String(formData.get("name") ?? "Imported wallet"),
         mnemonic: String(formData.get("mnemonic") ?? ""),
-        passcode: String(formData.get("passcode") ?? ""),
+        passcode: String(formData.get("passcode") ?? "").trim(),
       })) as ExtensionRuntimeResponse;
 
       if (!response.ok) {
