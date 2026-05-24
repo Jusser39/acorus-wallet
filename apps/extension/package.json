@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@acorus/shared": "workspace:*",
-    "@acorus/wallet-core": "workspace:*"
+    "@acorus/wallet-core": "workspace:*",
+    "buffer": "^6.0.3"
   }
 }

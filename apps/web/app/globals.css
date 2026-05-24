@@ -2111,3 +2111,63 @@ textarea::placeholder {
     padding: 18px;
   }
 }
+
+html[data-acorus-theme="dark"] body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(124, 247, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 8%, rgba(255, 122, 223, 0.14), transparent 24%),
+    linear-gradient(180deg, #07172c 0%, #111032 100%);
+  color: #eef6ff;
+}
+
+html[data-acorus-theme="dark"] .magic-shell {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(124, 247, 255, 0.14), transparent 22%),
+    radial-gradient(circle at 52% 72%, rgba(139, 92, 246, 0.16), transparent 28%),
+    linear-gradient(180deg, rgba(7,23,44,0.98), rgba(17,16,50,0.96));
+}
+
+html[data-acorus-theme="dark"] .magic-panel,
+html[data-acorus-theme="dark"] .magic-dashboard-card,
+html[data-acorus-theme="dark"] .magic-swap-panel-card,
+html[data-acorus-theme="dark"] .magic-portfolio-panel-card,
+html[data-acorus-theme="dark"] .magic-token-discovery,
+html[data-acorus-theme="dark"] .wallet-settings-row,
+html[data-acorus-theme="dark"] .wallet-account-panel,
+html[data-acorus-theme="dark"] .premium-card,
+html[data-acorus-theme="dark"] .acorus-card {
+  border-color: rgba(124, 247, 255, 0.18);
+  background: linear-gradient(145deg, rgba(14, 29, 55, 0.92), rgba(36, 22, 72, 0.78));
+  color: #eef6ff;
+}
+
+html[data-acorus-theme="dark"] .text-slate-950,
+html[data-acorus-theme="dark"] .text-slate-900,
+html[data-acorus-theme="dark"] .text-slate-800 {
+  color: #eef6ff !important;
+}
+
+html[data-acorus-theme="dark"] .text-slate-700,
+html[data-acorus-theme="dark"] .text-slate-600,
+html[data-acorus-theme="dark"] .text-slate-500,
+html[data-acorus-theme="dark"] .wallet-muted {
+  color: #b8c7d9 !important;
+}
+
+html[data-acorus-theme="dark"] .light-field,
+html[data-acorus-theme="dark"] .wallet-menu-select,
+html[data-acorus-theme="dark"] input,
+html[data-acorus-theme="dark"] select,
+html[data-acorus-theme="dark"] textarea {
+  border-color: rgba(124, 247, 255, 0.18);
+  background: rgba(7, 23, 44, 0.72);
+  color: #eef6ff;
+}
+
+html[data-acorus-theme="dark"] .magic-button-secondary,
+html[data-acorus-theme="dark"] .wallet-outline-action,
+html[data-acorus-theme="dark"] .magic-action-tile {
+  border-color: rgba(124, 247, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #eef6ff;
+}

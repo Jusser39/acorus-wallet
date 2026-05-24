@@ -28,7 +28,7 @@ describe("storage helpers", () => {
         ciphertextBase64: "cipher",
         createdAt: "2026-01-01T00:00:00.000Z",
       },
-      { passcodeMode: "pin" },
+      { passcodeMode: "user" },
     );
 
     expect(loadEncryptedVault()?.ciphertextBase64).toBe("cipher");
@@ -36,7 +36,7 @@ describe("storage helpers", () => {
       version: 1,
       createdAt: "2026-01-01T00:00:00.000Z",
       passcodeInitialized: true,
-      passcodeMode: "pin",
+      passcodeMode: "user",
       passcodeSetupConfirmedAt: expect.any(String),
     });
     expect(hasVault()).toBe(true);

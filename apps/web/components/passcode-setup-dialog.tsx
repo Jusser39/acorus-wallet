@@ -1,7 +1,7 @@
 "use client";
 
 import type { WalletPasscodeMode } from "@/lib/passcode-policy";
-import { generateRandomWalletPasscode, validateWalletPasscode } from "@/lib/passcode-policy";
+import { validateWalletPasscode } from "@/lib/passcode-policy";
 
 type PasscodeSetupDialogProps = {
   open: boolean;
@@ -22,19 +22,6 @@ type PasscodeSetupDialogProps = {
 export function PasscodeSetupDialog(props: PasscodeSetupDialogProps) {
   if (!props.open) {
     return null;
-  }
-
-  function handleGenerate() {
-    try {
-      const generated = generateRandomWalletPasscode();
-      props.onModeChange("random");
-      props.onPasscodeChange(generated);
-      props.onConfirmPasscodeChange(generated);
-      props.onSavedConfirmationChange(false);
-      props.onError("Сохраните этот пароль в безопасном месте и отметьте подтверждение.");
-    } catch (error) {
-      props.onError(error instanceof Error ? error.message : "Не удалось сгенерировать пароль.");
-    }
   }
 
   function handleConfirm() {
@@ -64,8 +51,8 @@ export function PasscodeSetupDialog(props: PasscodeSetupDialogProps) {
             </p>
             <h2 className="mt-2 text-3xl font-black text-slate-950">Поставим пароль?</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Acorus не ставит пароль автоматически. Выберите PIN или сгенерируйте случайный пароль.
-              Он нужен только для локальной расшифровки vault.
+              Acorus не ставит пароль автоматически. Введите любой пароль от 8 символов:
+              цифры, буквы и символы можно смешивать. Он нужен только для локальной расшифровки vault.
             </p>
           </div>
           <button
@@ -77,67 +64,34 @@ export function PasscodeSetupDialog(props: PasscodeSetupDialogProps) {
           </button>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            className={`rounded-3xl border px-4 py-4 text-left ${
-              props.mode === "pin"
-                ? "border-violet-300 bg-violet-50 text-violet-950"
-                : "border-white/70 bg-white/55 text-slate-700"
-            }`}
-            onClick={() => {
-              props.onModeChange("pin");
-              props.onPasscodeChange("");
-              props.onConfirmPasscodeChange("");
-              props.onSavedConfirmationChange(false);
-              props.onError(null);
-            }}
-          >
-            <span className="block text-lg font-black">Цифровой PIN</span>
-            <span className="mt-1 block text-sm">6-12 цифр. Удобно для ежедневного unlock.</span>
-          </button>
-          <button
-            type="button"
-            className={`rounded-3xl border px-4 py-4 text-left ${
-              props.mode === "random"
-                ? "border-violet-300 bg-violet-50 text-violet-950"
-                : "border-white/70 bg-white/55 text-slate-700"
-            }`}
-            onClick={handleGenerate}
-          >
-            <span className="block text-lg font-black">Случайный пароль</span>
-            <span className="mt-1 block text-sm">Acorus сгенерирует сильный пароль, его нужно сохранить.</span>
-          </button>
-        </div>
-
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="space-y-2">
-            <span className="text-sm font-bold text-slate-600">
-              {props.mode === "pin" ? "PIN" : "Password"}
-            </span>
+            <span className="text-sm font-bold text-slate-600">Password</span>
             <input
               className="light-field"
-              type={props.mode === "pin" ? "password" : "text"}
-              inputMode={props.mode === "pin" ? "numeric" : "text"}
+              type="password"
+              inputMode="text"
               autoComplete="new-password"
               value={props.passcode}
               onChange={(event) => {
+                props.onModeChange("user");
                 props.onPasscodeChange(event.target.value);
                 props.onSavedConfirmationChange(false);
                 props.onError(null);
               }}
-              placeholder={props.mode === "pin" ? "123456" : "Generate or type 12+ chars"}
+              placeholder="At least 8 characters"
             />
           </label>
           <label className="space-y-2">
             <span className="text-sm font-bold text-slate-600">Confirm</span>
             <input
               className="light-field"
-              type={props.mode === "pin" ? "password" : "text"}
-              inputMode={props.mode === "pin" ? "numeric" : "text"}
+              type="password"
+              inputMode="text"
               autoComplete="new-password"
               value={props.confirmPasscode}
               onChange={(event) => {
+                props.onModeChange("user");
                 props.onConfirmPasscodeChange(event.target.value);
                 props.onSavedConfirmationChange(false);
                 props.onError(null);
@@ -166,9 +120,6 @@ export function PasscodeSetupDialog(props: PasscodeSetupDialogProps) {
         <div className="mt-6 flex flex-wrap gap-3">
           <button type="button" className="magic-button px-6 py-3" onClick={handleConfirm}>
             Use this password
-          </button>
-          <button type="button" className="magic-button-secondary px-6 py-3" onClick={handleGenerate}>
-            Generate random
           </button>
         </div>
       </section>

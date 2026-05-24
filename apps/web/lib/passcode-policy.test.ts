@@ -6,37 +6,37 @@ describe("wallet passcode policy", () => {
     vi.unstubAllGlobals();
   });
 
-  it("accepts an explicit numeric PIN", () => {
+  it("accepts an explicit user password", () => {
     expect(
       validateWalletPasscode({
-        mode: "pin",
-        passcode: "123456",
-        confirmPasscode: "123456",
+        mode: "user",
+        passcode: "my-safe-password",
+        confirmPasscode: "my-safe-password",
         savedConfirmation: true,
       }),
     ).toEqual({ ok: true });
   });
 
-  it("rejects short or non-numeric PIN values", () => {
+  it("rejects short user passwords", () => {
     expect(
       validateWalletPasscode({
-        mode: "pin",
+        mode: "user",
         passcode: "12345",
         confirmPasscode: "12345",
         savedConfirmation: true,
       }).ok,
     ).toBe(false);
+  });
+
+  it("keeps legacy pin/random modes as manual password aliases", () => {
     expect(
       validateWalletPasscode({
         mode: "pin",
-        passcode: "12345a",
-        confirmPasscode: "12345a",
+        passcode: "12345678",
+        confirmPasscode: "12345678",
         savedConfirmation: true,
-      }).ok,
-    ).toBe(false);
-  });
-
-  it("accepts an explicit random password", () => {
+      }),
+    ).toEqual({ ok: true });
     expect(
       validateWalletPasscode({
         mode: "random",
@@ -47,10 +47,21 @@ describe("wallet passcode policy", () => {
     ).toEqual({ ok: true });
   });
 
+  it("accepts non-numeric manual passwords", () => {
+    expect(
+      validateWalletPasscode({
+        mode: "user",
+        passcode: "letters-and-symbols!",
+        confirmPasscode: "letters-and-symbols!",
+        savedConfirmation: true,
+      }),
+    ).toEqual({ ok: true });
+  });
+
   it("requires matching confirmation and saved acknowledgement", () => {
     expect(
       validateWalletPasscode({
-        mode: "random",
+        mode: "user",
         passcode: "Acorus-Generated-18",
         confirmPasscode: "Acorus-Generated-19",
         savedConfirmation: true,
@@ -58,7 +69,7 @@ describe("wallet passcode policy", () => {
     ).toBe(false);
     expect(
       validateWalletPasscode({
-        mode: "random",
+        mode: "user",
         passcode: "Acorus-Generated-18",
         confirmPasscode: "Acorus-Generated-18",
         savedConfirmation: false,

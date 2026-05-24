@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createAnonymousUser, fetchWalletProfiles } from "@/lib/api";
+import { applyAppPreferencesToDocument } from "@/lib/app-preferences";
 import {
   loadActiveProfileId,
   loadEncryptedVault,
@@ -37,6 +38,9 @@ export function AppBootstrap() {
   const setError = useWalletStore((state) => state.setError);
   const markActivity = useWalletStore((state) => state.markActivity);
   const autoLockMinutes = useWalletStore((state) => state.autoLockMinutes);
+  const theme = useWalletStore((state) => state.theme);
+  const displayCurrency = useWalletStore((state) => state.displayCurrency);
+  const preferredLanguage = useWalletStore((state) => state.preferredLanguage);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const lockWallet = useWalletStore((state) => state.lockWallet);
   const lastHiddenAt = useWalletStore((state) => state.lastHiddenAt);
@@ -139,6 +143,14 @@ export function AppBootstrap() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    applyAppPreferencesToDocument({
+      theme,
+      displayCurrency,
+      preferredLanguage,
+    });
+  }, [displayCurrency, preferredLanguage, theme]);
 
   useEffect(() => {
     if (!unlockedVault) {

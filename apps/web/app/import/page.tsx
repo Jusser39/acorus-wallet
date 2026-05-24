@@ -27,7 +27,7 @@ export default function ImportWalletPage() {
   const [mnemonic, setMnemonic] = useState("");
   const [passcode, setPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
-  const [passcodeMode, setPasscodeMode] = useState<WalletPasscodeMode>("pin");
+  const [passcodeMode, setPasscodeMode] = useState<WalletPasscodeMode>("user");
   const [passcodeSetupOpen, setPasscodeSetupOpen] = useState(false);
   const [passcodeSaved, setPasscodeSaved] = useState(false);
   const [passcodeConfirmed, setPasscodeConfirmed] = useState(false);
@@ -171,8 +171,8 @@ export default function ImportWalletPage() {
               <p className="font-semibold text-slate-950">Пароль wallet vault</p>
               <p className="mt-1 leading-6 text-slate-600">
                 {passcodeConfirmed
-                  ? `Выбран ${passcodeMode === "pin" ? "цифровой PIN" : "случайный пароль"}. Acorus не знает и не восстанавливает его.`
-                  : "Пароль не ставится автоматически. Перед импортом выберите PIN или случайный пароль."}
+                  ? "Пароль выбран вручную. Acorus не знает и не восстанавливает его."
+                  : "Пароль не ставится автоматически. Перед импортом задайте пароль вручную."}
               </p>
             </div>
             <button

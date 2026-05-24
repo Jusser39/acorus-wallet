@@ -1,4 +1,4 @@
-export type WalletPasscodeMode = "pin" | "random";
+export type WalletPasscodeMode = "user" | "pin" | "random";
 
 export type WalletPasscodeValidation =
   | {
@@ -21,17 +21,10 @@ export function validateWalletPasscode(input: {
   const passcode = input.passcode.trim();
   const confirmPasscode = input.confirmPasscode.trim();
 
-  if (input.mode === "pin") {
-    if (!/^\d{6,12}$/u.test(passcode)) {
-      return {
-        ok: false,
-        message: "PIN должен содержать только цифры и быть длиной от 6 до 12 символов.",
-      };
-    }
-  } else if (passcode.length < 12) {
+  if (passcode.length < 8) {
     return {
       ok: false,
-      message: "Случайный пароль должен быть минимум 12 символов.",
+      message: "Пароль должен быть минимум 8 символов. Вы можете использовать цифры, буквы и символы.",
     };
   }
 

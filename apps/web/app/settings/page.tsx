@@ -5,6 +5,8 @@ import Link from "next/link";
 import {
   APP_CURRENCIES,
   APP_LANGUAGES,
+  applyAppPreferencesToDocument,
+  buildGoogleTranslateUrl,
   getCurrencyOption,
   getLanguageOption,
   toMarketDataCurrency,
@@ -77,30 +79,53 @@ export default function SettingsPage() {
     setHiddenBalance(activeProfile?.hiddenBalance ?? false);
   }, [activeProfile]);
 
-  const canSave = useMemo(() => Boolean(activeProfile && userId), [activeProfile, userId]);
+  const canSave = useMemo(() => Boolean(displayCurrency && preferredLanguage && theme), [displayCurrency, preferredLanguage, theme]);
   const currency = getCurrencyOption(displayCurrency);
   const language = getLanguageOption(preferredLanguage);
 
-  async function handleSave() {
-    if (!activeProfile || !userId) {
-      return;
-    }
+  useEffect(() => {
+    applyAppPreferencesToDocument({
+      theme,
+      displayCurrency,
+      preferredLanguage,
+    });
+  }, [displayCurrency, preferredLanguage, theme]);
 
+  async function handleSave() {
     setMessage(null);
     setError(null);
 
     try {
-      const next = await updateWalletProfile(activeProfile.id, {
-        userId,
-        name: walletName,
-        hiddenBalance,
-        preferredCurrency: toMarketDataCurrency(displayCurrency),
-      });
+      if (activeProfile && userId) {
+        const next = await updateWalletProfile(activeProfile.id, {
+          userId,
+          name: walletName,
+          hiddenBalance,
+          preferredCurrency: toMarketDataCurrency(displayCurrency),
+        });
 
-      upsertProfile(next);
-      setMessage("Настройки сохранены.");
+        upsertProfile(next);
+      }
+
+      setMessage(activeProfile ? "Настройки сохранены." : "Настройки сайта сохранены локально.");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Не удалось сохранить настройки.");
+    }
+  }
+
+  function handleLanguageSelect(code: string) {
+    setPreferredLanguage(code);
+    applyAppPreferencesToDocument({
+      theme,
+      displayCurrency,
+      preferredLanguage: code,
+    });
+
+    if (code !== "ru") {
+      window.location.assign(buildGoogleTranslateUrl({
+        targetLanguage: code,
+        pageUrl: window.location.href,
+      }));
     }
   }
 
@@ -196,7 +221,7 @@ export default function SettingsPage() {
                 type="button"
                 className="flex items-center justify-between rounded-[20px] border border-violet-100 bg-white/70 px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md"
                 data-active={preferredLanguage === item.code}
-                onClick={() => setPreferredLanguage(item.code)}
+                onClick={() => handleLanguageSelect(item.code)}
               >
                 <span>
                   <span className="block font-black text-slate-950">{item.nativeName}</span>

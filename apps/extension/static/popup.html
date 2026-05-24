@@ -417,36 +417,27 @@
         padding: 12px;
       }
 
-      .passcode-mode-grid {
+      .onboarding-tabs {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
 
-      .passcode-mode-option {
-        display: flex;
-        gap: 8px;
-        align-items: flex-start;
+      .onboarding-tab {
         border: 1px solid #e9d5ff;
-        border-radius: 14px;
+        border-radius: 999px;
         background: #ffffff;
-        padding: 10px;
-        cursor: pointer;
-      }
-
-      .passcode-mode-option input {
-        margin-top: 3px;
-        accent-color: #8b5cf6;
-      }
-
-      .passcode-mode-option span {
-        display: grid;
-        gap: 2px;
-      }
-
-      .passcode-mode-option small {
         color: #6b7280;
-        font-size: 11px;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .onboarding-tab[data-active="true"] {
+        border-color: rgba(139, 92, 246, 0.52);
+        background: linear-gradient(135deg, rgba(124, 247, 255, 0.36), rgba(255, 122, 223, 0.26));
+        color: #4c1d95;
+        box-shadow: 0 12px 24px rgba(139, 92, 246, 0.12);
       }
 
       .checkbox-row {
@@ -869,7 +860,8 @@
         color: #6b7280;
       }
 
-      .segmented span {
+      .segmented span,
+      .segmented label {
         display: grid;
         min-width: 42px;
         place-items: center;
@@ -877,7 +869,18 @@
         padding: 6px 8px;
       }
 
-      .segmented span:first-child {
+      .segmented label {
+        cursor: pointer;
+      }
+
+      .segmented input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .segmented span:first-child,
+      .segmented label[data-active="true"] {
         background: #f3f4f6;
         color: #111827;
       }
@@ -969,6 +972,74 @@
       .icon-button {
         background: rgba(255, 255, 255, 0.62);
         border: 1px solid rgba(230, 250, 255, 0.72);
+      }
+
+      html[data-acorus-theme="dark"] body {
+        background:
+          radial-gradient(circle at 12% 0%, rgba(124, 247, 255, 0.18), transparent 30%),
+          radial-gradient(circle at 85% 0%, rgba(255, 122, 223, 0.16), transparent 28%),
+          linear-gradient(180deg, #07172c 0%, #111032 100%);
+        color: #eef6ff;
+      }
+
+      html[data-acorus-theme="dark"] .wallet-shell {
+        background:
+          linear-gradient(rgba(124, 247, 255, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(124, 247, 255, 0.06) 1px, transparent 1px),
+          radial-gradient(circle at 52% 0%, rgba(124, 247, 255, 0.18), transparent 30%),
+          linear-gradient(180deg, rgba(7,23,44,0.98) 0%, rgba(17,16,50,0.96) 100%);
+        background-size: 58px 58px, 58px 58px, auto, auto;
+      }
+
+      html[data-acorus-theme="dark"] .account-card,
+      html[data-acorus-theme="dark"] .panel,
+      html[data-acorus-theme="dark"] .onboarding-card,
+      html[data-acorus-theme="dark"] .passcode-setup-card,
+      html[data-acorus-theme="dark"] .receive-box,
+      html[data-acorus-theme="dark"] .activity-row {
+        border-color: rgba(124, 247, 255, 0.18);
+        background: linear-gradient(145deg, rgba(14, 29, 55, 0.92), rgba(36, 22, 72, 0.78));
+        color: #eef6ff;
+      }
+
+      html[data-acorus-theme="dark"] .brand-subtitle,
+      html[data-acorus-theme="dark"] .muted,
+      html[data-acorus-theme="dark"] .copy,
+      html[data-acorus-theme="dark"] .token-meta,
+      html[data-acorus-theme="dark"] .small,
+      html[data-acorus-theme="dark"] .settings-section-label,
+      html[data-acorus-theme="dark"] .settings-value,
+      html[data-acorus-theme="dark"] .checkbox-row {
+        color: #b8c7d9;
+      }
+
+      html[data-acorus-theme="dark"] .field,
+      html[data-acorus-theme="dark"] .mini-select,
+      html[data-acorus-theme="dark"] .ghost-button,
+      html[data-acorus-theme="dark"] .network-card,
+      html[data-acorus-theme="dark"] .onboarding-tab,
+      html[data-acorus-theme="dark"] .segmented {
+        border-color: rgba(124, 247, 255, 0.16);
+        background: rgba(7, 23, 44, 0.72);
+        color: #eef6ff;
+      }
+
+      html[data-acorus-theme="dark"] .network-pill,
+      html[data-acorus-theme="dark"] .address-pill,
+      html[data-acorus-theme="dark"] .icon-button,
+      html[data-acorus-theme="dark"] .quick-action span:first-child {
+        border-color: rgba(124, 247, 255, 0.18);
+        background: rgba(255, 255, 255, 0.10);
+        color: #eef6ff;
+      }
+
+      html[data-acorus-theme="dark"] .settings-sheet,
+      html[data-acorus-theme="dark"] .settings-label,
+      html[data-acorus-theme="dark"] .token-name,
+      html[data-acorus-theme="dark"] .account-name,
+      html[data-acorus-theme="dark"] .balance,
+      html[data-acorus-theme="dark"] .brand-title {
+        color: #eef6ff;
       }
     </style>
   </head>

@@ -1795,3 +1795,56 @@
   `85.239.59.199:22` and public HTTPS checks to `24wallet.ru` timed out through
   the active network route; no production files were changed.
 
+## Extension Manual Password Import Repair (2026-05-24)
+
+- Status: **implemented and validated locally**
+- Removed the extension onboarding warning block about automatic passwords. It
+  was correct as a recovery note, but it looked alarming in the first-run UI and
+  confused users before they had created or imported a wallet.
+- Removed the Numeric PIN / Random password choice from web and extension
+  create/import flows. Users now enter and confirm their own wallet password
+  directly; the minimum is 8 characters.
+- Split extension onboarding into clear `Create your Wallet` and
+  `Import your Wallet` tabs so create and import no longer share one crowded
+  form.
+- Fixed the extension import runtime crash (`Buffer is not defined`) by adding
+  an explicit MV3 background `Buffer` compatibility shim before wallet-core is
+  loaded.
+- Verified through existing extension wallet regression tests that the provided
+  test seed can be imported and derives EVM/Solana profiles. The phrase itself
+  was not written to docs.
+- Wired the extension header controls:
+  - `All networks` opens the network selector even before a vault exists.
+  - `Locked` focuses the unlock form when a vault is locked, locks the wallet
+    when it is unlocked, and moves the user to import/onboarding when no vault
+    exists.
+  - The settings gear opens the extension settings panel.
+- Fixed extension settings persistence for theme, display currency, and
+  language. Theme changes apply immediately inside the popup.
+- Fixed web settings so `Save settings` works without an active wallet profile,
+  persists local preferences, applies theme/currency/language to the document,
+  and opens the safe Google Translate route for non-Russian language choices.
+- Rebuilt and locally verified the downloadable extension package at
+  `/downloads/acorus-wallet-extension.zip`.
+- Validation passed:
+  - `pnpm --filter @acorus/shared build`
+  - `pnpm --filter @acorus/wallet-core build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/api test`
+  - `pnpm --filter @acorus/api build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm test`
+  - `pnpm build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Browser smoke passed locally for `/settings` theme/currency persistence and
+  `/extension` download link returning the rebuilt zip.
+- Recovery limitation: an already encrypted local vault password cannot be
+  removed without decrypting the vault. Users who do not know the password must
+  reset the local web/extension vault state and re-import from their seed using
+  a new password they choose.
+

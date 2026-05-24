@@ -62,7 +62,7 @@ type ExtensionVaultMeta = {
   createdAt: string;
   updatedAt: string;
   passcodeInitialized: boolean;
-  passcodeMode: "pin" | "random";
+  passcodeMode: "user" | "pin" | "random";
   passcodeSetupConfirmedAt: string;
 };
 
@@ -779,7 +779,8 @@ function normalizeVaultMeta(value: unknown): ExtensionVaultMeta | null {
     || typeof candidate.updatedAt !== "string"
     || candidate.passcodeInitialized !== true
     || (
-      candidate.passcodeMode !== "pin"
+      candidate.passcodeMode !== "user"
+      && candidate.passcodeMode !== "pin"
       && candidate.passcodeMode !== "random"
     )
     || typeof candidate.passcodeSetupConfirmedAt !== "string"
@@ -801,15 +802,11 @@ function normalizeVaultMeta(value: unknown): ExtensionVaultMeta | null {
 function requireExtensionPasscodeMode(passcode: string): ExtensionVaultMeta["passcodeMode"] {
   const normalized = passcode.trim();
 
-  if (/^\d{6,12}$/u.test(normalized)) {
-    return "pin";
+  if (normalized.length >= 8) {
+    return "user";
   }
 
-  if (normalized.length >= 12) {
-    return "random";
-  }
-
-  throw new Error("Choose a 6-12 digit PIN or a 12+ character random password.");
+  throw new Error("Choose a wallet password with at least 8 characters.");
 }
 
 function isDappWalletExposure(value: unknown): value is DappWalletExposure {

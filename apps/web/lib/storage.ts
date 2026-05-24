@@ -29,7 +29,7 @@ export interface VaultMeta {
   version: 1;
   createdAt: string;
   passcodeInitialized: boolean;
-  passcodeMode?: "pin" | "random";
+  passcodeMode?: "user" | "pin" | "random";
   passcodeSetupConfirmedAt?: string;
 }
 
@@ -68,7 +68,7 @@ export function loadEncryptedVault(): EncryptedVaultV1 | null {
 
 export function saveEncryptedVault(
   vault: EncryptedVaultV1,
-  options: { passcodeMode: "pin" | "random" },
+  options: { passcodeMode: "user" | "pin" | "random" },
 ): void {
   const storage = getStorage();
   storage?.setItem(ENCRYPTED_VAULT_KEY, JSON.stringify(vault));
@@ -116,7 +116,7 @@ export function loadVaultMeta(): VaultMeta | null {
     createdAt: parsed.createdAt,
     passcodeInitialized: parsed.passcodeInitialized,
     passcodeMode:
-      parsed.passcodeMode === "pin" || parsed.passcodeMode === "random"
+      parsed.passcodeMode === "user" || parsed.passcodeMode === "pin" || parsed.passcodeMode === "random"
         ? parsed.passcodeMode
         : undefined,
     passcodeSetupConfirmedAt:

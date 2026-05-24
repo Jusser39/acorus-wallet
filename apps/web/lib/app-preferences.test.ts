@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyAppPreferencesToDocument,
   buildGoogleTranslateUrl,
   getCurrencyOption,
   getLanguageOption,
@@ -45,5 +46,23 @@ describe("app preferences", () => {
     expect(url).toContain("translate.google.com");
     expect(url).toContain("tl=en");
     expect(url).toContain("24wallet.ru");
+  });
+
+  it("applies theme, currency, and language to the document root", () => {
+    const doc = document.implementation.createHTMLDocument("Acorus");
+
+    applyAppPreferencesToDocument(
+      {
+        theme: "dark",
+        displayCurrency: "eur",
+        preferredLanguage: "en",
+      },
+      doc,
+    );
+
+    expect(doc.documentElement.dataset.acorusTheme).toBe("dark");
+    expect(doc.documentElement.dataset.acorusThemePreference).toBe("dark");
+    expect(doc.documentElement.dataset.acorusCurrency).toBe("EUR");
+    expect(doc.documentElement.lang).toBe("en");
   });
 });

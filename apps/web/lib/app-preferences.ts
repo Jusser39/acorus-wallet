@@ -154,3 +154,22 @@ export function buildGoogleTranslateUrl(input: {
 
   return `https://translate.google.com/translate?${params.toString()}`;
 }
+
+export function resolveDocumentTheme(theme: AppTheme, prefersDark = false): "light" | "dark" {
+  if (theme === "auto") {
+    return prefersDark ? "dark" : "light";
+  }
+
+  return theme;
+}
+
+export function applyAppPreferencesToDocument(
+  preferences: Pick<AppPreferences, "theme" | "displayCurrency" | "preferredLanguage">,
+  doc: Document = document,
+): void {
+  const prefersDark = globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  doc.documentElement.dataset.acorusTheme = resolveDocumentTheme(preferences.theme, prefersDark);
+  doc.documentElement.dataset.acorusThemePreference = preferences.theme;
+  doc.documentElement.dataset.acorusCurrency = preferences.displayCurrency.toUpperCase();
+  doc.documentElement.lang = preferences.preferredLanguage;
+}

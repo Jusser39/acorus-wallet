@@ -737,3 +737,16 @@
 479. Rebuilt the downloadable extension package at `apps/web/public/downloads/acorus-wallet-extension.zip`.
 480. Committed and pushed `de09d13` with message `Fix wallet lock state and add Acorus mage redesign`.
 481. Production deploy was attempted but blocked by network reachability from this workstation: SSH to `85.239.59.199:22` timed out and public HTTPS checks to `24wallet.ru` also timed out through the current `AmneziaVPN` route. No production files were changed.
+482. Started the extension manual-password repair after the user reported that the first-run popup still showed an alarming automatic-password warning, PIN/random password choices, dead header buttons, broken settings save/theme controls, and `Buffer is not defined` during extension seed import.
+483. Added an explicit MV3 background `Buffer` compatibility shim in the extension and loaded it before the wallet-core import path so BIP-39/HD wallet import can run inside the service worker.
+484. Simplified web and extension passcode policy to one user-chosen password flow with direct password + confirmation fields and an 8-character minimum, while keeping legacy `pin`/`random` metadata readable for old vaults.
+485. Removed the extension first-run automatic-password warning block and split onboarding into `Create your Wallet` and `Import your Wallet` tabs.
+486. Rewired the extension header controls: `All networks` now opens the network panel, the lock pill locks/unlocks/focuses the right flow based on vault state, and the settings gear opens the settings panel.
+487. Added extension popup settings persistence for theme, display currency, and language, with immediate light/dark theme application and a working Save settings status.
+488. Updated web create/import copy and passcode setup UI to remove PIN/random choices and require the user to choose their own password before wallet creation/import.
+489. Updated web settings so Save works even without an active wallet profile, local preferences are applied to the document, display currency persists, dark/light theme changes apply, and non-Russian language choices open a Google Translate route.
+490. Verified the supplied test seed path through extension wallet regression tests without writing the phrase to docs; the failure was the runtime `Buffer` global, not the mnemonic words.
+491. Rebuilt the extension zip and locally verified `/downloads/acorus-wallet-extension.zip` from the web app returns a 200 ZIP response.
+492. Local browser smoke passed for `/settings`: dark theme applied after save, display currency changed to EUR and persisted locally, and the settings page remained usable without an active wallet.
+493. Full local validation passed for the repair: shared build, wallet-core build/test, API test/build, extension lint/test/build, web test/build, root `pnpm test`, root `pnpm build`, `git diff --check`, and `pnpm extension:package`.
+494. Documented the recovery limitation: existing encrypted vault passwords cannot be removed without decrypting; stale/unknown-password vaults must be reset locally and then re-imported from seed with a new user-chosen password.

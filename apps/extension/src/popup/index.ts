@@ -13,13 +13,115 @@ import {
 
 const root = getRoot("Popup root not found.");
 const EXTENSION_SWAP_API_BASES = ["https://24wallet.ru", "http://85.239.59.199:8080"] as const;
-const POPUP_RANDOM_PASSCODE_ALPHABET =
-  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+const EXTENSION_POPUP_SETTINGS_KEY = "acorus_extension_popup_settings";
+const POPUP_CURRENCIES = ["USD", "EUR", "RUB", "GBP", "JPY", "CNY", "KRW", "TRY"] as const;
+const POPUP_LANGUAGES = [
+  "English",
+  "Русский",
+  "Deutsch",
+  "Español",
+  "Français",
+  "中文",
+  "日本語",
+  "한국어",
+] as const;
+const FALLBACK_NETWORKS: ExtensionPortfolioSnapshot["networks"] = [
+  {
+    id: "1",
+    family: "evm",
+    chainId: 1,
+    name: "Ethereum",
+    nativeSymbol: "ETH",
+    iconSymbol: "ETH",
+    accent: "#627EEA",
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
+  },
+  {
+    id: "56",
+    family: "evm",
+    chainId: 56,
+    name: "BNB Smart Chain",
+    nativeSymbol: "BNB",
+    iconSymbol: "BNB",
+    accent: "#F3BA2F",
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
+  },
+  {
+    id: "137",
+    family: "evm",
+    chainId: 137,
+    name: "Polygon",
+    nativeSymbol: "POL",
+    iconSymbol: "POL",
+    accent: "#8247E5",
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
+  },
+  {
+    id: "8453",
+    family: "evm",
+    chainId: 8453,
+    name: "Base",
+    nativeSymbol: "ETH",
+    iconSymbol: "BASE",
+    accent: "#0052FF",
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
+  },
+  {
+    id: "101",
+    family: "solana",
+    chainId: 101,
+    name: "Solana",
+    nativeSymbol: "SOL",
+    iconSymbol: "SOL",
+    accent: "#14F195",
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
+  },
+  {
+    id: "tron-mainnet",
+    family: "tron",
+    chainId: "tron-mainnet",
+    name: "Tron",
+    nativeSymbol: "TRX",
+    iconSymbol: "TRX",
+    accent: "#EF0027",
+    capabilities: { receive: true, balance: false, send: false, swap: false, dapp: true },
+  },
+  {
+    id: "bitcoin-mainnet",
+    family: "utxo",
+    chainId: "bitcoin-mainnet",
+    name: "Bitcoin",
+    nativeSymbol: "BTC",
+    iconSymbol: "BTC",
+    accent: "#F7931A",
+    capabilities: { receive: false, balance: false, send: false, swap: false, dapp: false },
+  },
+  {
+    id: "ton-mainnet",
+    family: "ton",
+    chainId: "ton-mainnet",
+    name: "TON",
+    nativeSymbol: "TON",
+    iconSymbol: "TON",
+    accent: "#0098EA",
+    capabilities: { receive: false, balance: false, send: false, swap: false, dapp: false },
+  },
+];
 let lastCreatedMnemonic: string | null = null;
+let onboardingTab: "create" | "import" = "create";
 let currentPopupState: BackgroundStateSnapshot = createSkeletonState();
 let currentHomeSnapshot: ExtensionPortfolioSnapshot | null = null;
+let currentPopupSettings: ExtensionPopupSettings = {
+  theme: "auto",
+  currency: "USD",
+  language: "English",
+};
 
-type PopupPasscodeMode = "pin" | "random";
+type ExtensionPopupSettings = {
+  theme: "auto" | "light" | "dark";
+  currency: string;
+  language: string;
+};
 
 type ExtensionPortfolioSnapshot = {
   updatedAt: string;
@@ -66,7 +168,7 @@ async function loadPopupState(): Promise<void> {
   let home: ExtensionPortfolioSnapshot | null = null;
 
   try {
-    const [stateResponse, homeResponse] = await Promise.all([
+    const [stateResponse, homeResponse, settingsResponse] = await Promise.all([
       chrome.runtime.sendMessage({
         kind: "get_state",
         requestId: createRequestId("popup"),
@@ -74,12 +176,14 @@ async function loadPopupState(): Promise<void> {
         origin: null,
       }) as Promise<ExtensionRuntimeResponse>,
       loadExtensionHome(),
+      loadPopupSettings(),
     ]);
 
     if (stateResponse.ok && stateResponse.result) {
       state = stateResponse.result as BackgroundStateSnapshot;
     }
     home = homeResponse;
+    currentPopupSettings = settingsResponse;
   } catch {
     state = createSkeletonState();
     home = null;
@@ -87,8 +191,41 @@ async function loadPopupState(): Promise<void> {
 
   currentPopupState = state;
   currentHomeSnapshot = home;
+  applyPopupTheme(currentPopupSettings.theme);
   root.innerHTML = renderPopup(state, home);
   wirePopupActions();
+}
+
+async function loadPopupSettings(): Promise<ExtensionPopupSettings> {
+  try {
+    const result = await chrome.storage.local.get(EXTENSION_POPUP_SETTINGS_KEY);
+    return normalizePopupSettings(result[EXTENSION_POPUP_SETTINGS_KEY]);
+  } catch {
+    return normalizePopupSettings(null);
+  }
+}
+
+function normalizePopupSettings(value: unknown): ExtensionPopupSettings {
+  if (typeof value !== "object" || value === null) {
+    return { theme: "auto", currency: "USD", language: "English" };
+  }
+
+  const candidate = value as Partial<ExtensionPopupSettings>;
+  return {
+    theme: candidate.theme === "light" || candidate.theme === "dark" || candidate.theme === "auto"
+      ? candidate.theme
+      : "auto",
+    currency: typeof candidate.currency === "string" && candidate.currency.trim()
+      ? candidate.currency.trim().slice(0, 8)
+      : "USD",
+    language: typeof candidate.language === "string" && candidate.language.trim()
+      ? candidate.language.trim().slice(0, 32)
+      : "English",
+  };
+}
+
+function applyPopupTheme(theme: ExtensionPopupSettings["theme"]): void {
+  document.documentElement.dataset.acorusTheme = theme;
 }
 
 async function loadExtensionHome(): Promise<ExtensionPortfolioSnapshot | null> {
@@ -134,8 +271,15 @@ function renderPopup(
           </div>
         </div>
         <div class="row">
-          <span class="network-pill">${escapeHtml(String(activeChain) === "all" ? "All networks" : activeNetwork?.name ?? chainName(activeChain))}</span>
-          <span class="status-pill ${vault.isUnlocked ? "ok" : "locked"}">${vault.isUnlocked ? "Unlocked" : "Locked"}</span>
+          <button class="network-pill as-button" type="button" data-action="open-network-panel" data-id="network">
+            ${escapeHtml(String(activeChain) === "all" ? "All networks" : activeNetwork?.name ?? chainName(activeChain))} ▾
+          </button>
+          <button class="status-pill as-button ${vault.isUnlocked ? "ok" : "locked"}"
+                  type="button"
+                  data-action="${vault.isUnlocked ? "lock-extension-wallet" : "focus-unlock-wallet"}"
+                  data-id="vault">
+            ${vault.isUnlocked ? "Unlocked" : "Locked"}
+          </button>
           <button class="icon-button" type="button" data-action="open-action-panel" data-id="settings" title="Settings">⚙</button>
         </div>
       </header>
@@ -143,6 +287,7 @@ function renderPopup(
       <div class="main">
         ${pendingCount > 0 ? renderPromptNotice(state) : ""}
         ${lastCreatedMnemonic ? renderSeedReveal(lastCreatedMnemonic) : ""}
+        ${!vault.hasVault ? `${renderNetworkPanel(home)}${renderExtensionActionPanel(state, home)}` : ""}
         ${vault.hasVault ? renderWalletHome(state, selectedProfile, home) : renderOnboarding()}
         ${renderConnectedSites(state)}
         ${renderRecentActivity(state)}
@@ -334,9 +479,8 @@ function renderAssetRow(asset: ExtensionPortfolioSnapshot["assets"][number]): st
 }
 
 function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
-  if (!home) {
-    return "";
-  }
+  const networks = home?.networks.length ? home.networks : FALLBACK_NETWORKS;
+  const activeChainId = home?.activeChainId ?? "all";
 
   return `
     <section class="panel stack" id="network-panel" hidden>
@@ -355,13 +499,13 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
           accent: "#111827",
           capabilities: { receive: true, balance: true, send: false, swap: false, dapp: false },
         },
-      ], home.activeChainId)}
+      ], activeChainId)}
       <div class="network-grid">
         ${["evm", "solana", "tron", "coming"].map((group) =>
           renderNetworkGroup(
             getNetworkGroupLabel(group),
-            getNetworksForGroup(home.networks, group),
-            home.activeChainId,
+            getNetworksForGroup(networks, group),
+            activeChainId,
           ),
         ).join("")}
       </div>
@@ -458,7 +602,7 @@ function renderReceiveComposer(
 ): string {
   const vault = state.extensionVaultStatus;
   const profiles = vault.profiles.length ? vault.profiles : state.walletExposedAccounts;
-  const networks = home?.networks ?? [];
+  const networks = home?.networks.length ? home.networks : FALLBACK_NETWORKS;
   const selectedNetwork = networks.find((network) =>
     String(network.chainId) === String(home?.activeChainId),
   ) ?? networks[0] ?? null;
@@ -544,77 +688,62 @@ function renderWarnings(warnings: string[]): string {
   `;
 }
 
-function renderExtensionPasscodeFields(formId: string): string {
+function renderExtensionPasscodeFields(_formId: string): string {
   return `
     <section class="passcode-setup-card">
       <div class="row">
         <div>
-          <strong>Set wallet password</strong>
-          <p class="copy" style="margin-top:4px">Acorus will not create or import a wallet until you choose the password yourself.</p>
+          <strong>Choose your password</strong>
+          <p class="copy" style="margin-top:4px">Use any password you want. Acorus never creates one automatically and cannot recover it.</p>
         </div>
       </div>
-      <div class="passcode-mode-grid" role="radiogroup" aria-label="Password mode">
-        <label class="passcode-mode-option">
-          <input type="radio" name="passcodeMode" value="pin" checked>
-          <span>
-            <strong>Numeric PIN</strong>
-            <small>6-12 digits</small>
-          </span>
-        </label>
-        <label class="passcode-mode-option">
-          <input type="radio" name="passcodeMode" value="random">
-          <span>
-            <strong>Random</strong>
-            <small>12+ symbols</small>
-          </span>
-        </label>
-      </div>
       <div class="form">
-        <input class="field" name="passcode" placeholder="Create password" type="password" autocomplete="new-password">
+        <input class="field" name="passcode" placeholder="Password, min 8 chars" type="password" autocomplete="new-password">
         <input class="field" name="confirmPasscode" placeholder="Repeat password" type="password" autocomplete="new-password">
         <label class="checkbox-row">
           <input name="passcodeSaved" type="checkbox" value="yes">
           <span>I saved this password. It cannot be recovered by Acorus.</span>
         </label>
-        <button class="ghost-button" type="button" data-action="generate-extension-passcode" data-id="${escapeHtml(formId)}">
-          Generate random password
-        </button>
       </div>
     </section>
   `;
 }
 
 function renderOnboarding(): string {
+  const activeIsCreate = onboardingTab === "create";
+
   return `
     <section class="onboarding-card stack">
       <div>
-        <h1 style="margin:0;font-size:24px;letter-spacing:-0.03em">Create your wallet</h1>
+        <h1 style="margin:0;font-size:24px;letter-spacing:-0.03em">
+          ${activeIsCreate ? "Create your Wallet" : "Import your Wallet"}
+        </h1>
         <p class="copy" style="margin-top:8px">
-          Seed phrase and encrypted vault stay inside this Chrome extension.
-          Sites connect through the injected provider, like a normal wallet.
+          Seed phrase and encrypted vault stay inside this Chrome extension. Choose your own password before the wallet is saved.
         </p>
       </div>
-      <section class="notice warning">
-        <strong>No automatic passwords</strong><br>
-        If this extension locked itself before you chose a password, reset the local extension wallet and import again.
-      </section>
-      <button class="danger-button" type="button" data-action="reset-extension-wallet" data-id="extension-vault">
-        Reset local extension wallet
-      </button>
-      <form id="create-wallet-form" class="form">
-        <input class="field" name="name" placeholder="Wallet name" value="Main wallet">
-        ${renderExtensionPasscodeFields("create-wallet-form")}
-        <button class="primary-button" type="submit">Create wallet</button>
-      </form>
-      <details>
-        <summary style="cursor:pointer;font-weight:700">Import existing seed phrase</summary>
-        <form id="import-wallet-form" class="form" style="margin-top:12px">
+      <div class="onboarding-tabs" role="tablist" aria-label="Wallet setup">
+        <button class="onboarding-tab" type="button" data-active="${activeIsCreate}" data-action="set-onboarding-tab" data-id="create">
+          Create your Wallet
+        </button>
+        <button class="onboarding-tab" type="button" data-active="${!activeIsCreate}" data-action="set-onboarding-tab" data-id="import">
+          Import your Wallet
+        </button>
+      </div>
+      ${
+        activeIsCreate
+          ? `<form id="create-wallet-form" class="form">
+              <input class="field" name="name" placeholder="Wallet name" value="Main wallet">
+              ${renderExtensionPasscodeFields("create-wallet-form")}
+              <button class="primary-button" type="submit">Create wallet</button>
+            </form>`
+          : `<form id="import-wallet-form" class="form">
           <input class="field" name="name" placeholder="Wallet name" value="Imported wallet">
           <textarea class="field" name="mnemonic" placeholder="Seed phrase" rows="3"></textarea>
           ${renderExtensionPasscodeFields("import-wallet-form")}
           <button class="ghost-button" type="submit">Import wallet</button>
-        </form>
-      </details>
+        </form>`
+      }
     </section>
   `;
 }
@@ -876,6 +1005,7 @@ function openActionPanel(targetId: string): void {
   wireReceiveNetworkSelector(content);
   wireSendForm(content);
   wireEvmSwapForm(content);
+  wireExtensionSettingsForm(content);
 }
 
 function wirePopupActions(): void {
@@ -909,6 +1039,27 @@ function wirePopupActions(): void {
 
       if (action === "open-account-panel") {
         root.querySelector<HTMLElement>("#account-panel")?.toggleAttribute("hidden");
+        return;
+      }
+
+      if (action === "set-onboarding-tab" && (targetId === "create" || targetId === "import")) {
+        onboardingTab = targetId;
+        root.innerHTML = renderPopup(currentPopupState, currentHomeSnapshot);
+        wirePopupActions();
+        return;
+      }
+
+      if (action === "focus-unlock-wallet") {
+        const passcodeInput = root.querySelector<HTMLInputElement>('#unlock-wallet-form input[name="passcode"]');
+        if (passcodeInput) {
+          passcodeInput.focus();
+          passcodeInput.scrollIntoView({ block: "center" });
+          return;
+        }
+
+        onboardingTab = "import";
+        root.innerHTML = renderPopup(currentPopupState, currentHomeSnapshot);
+        wirePopupActions();
         return;
       }
 
@@ -949,14 +1100,6 @@ function wirePopupActions(): void {
           surface: "popup",
         });
         await loadPopupState();
-        return;
-      }
-
-      if (action === "generate-extension-passcode" && targetId) {
-        const form = root.querySelector<HTMLFormElement>(`#${CSS.escape(targetId)}`);
-        if (form) {
-          fillGeneratedPasscode(form);
-        }
         return;
       }
 
@@ -1001,6 +1144,54 @@ function wireNetworkSearch(scope: ParentNode = root): void {
       const query = (event.currentTarget as HTMLInputElement).value.trim().toLowerCase();
       filterNetworkCards(scope, query);
     });
+}
+
+function wireExtensionSettingsForm(scope: ParentNode = root): void {
+  const form = scope.querySelector<HTMLFormElement>("#extension-settings-form");
+  if (!form) {
+    return;
+  }
+
+  form
+    .querySelectorAll<HTMLInputElement>('input[name="theme"]')
+    .forEach((input) => {
+      input.addEventListener("change", () => {
+        if (!input.checked) {
+          return;
+        }
+
+        const nextTheme = normalizePopupSettings({
+          ...currentPopupSettings,
+          theme: input.value,
+        }).theme;
+        applyPopupTheme(nextTheme);
+
+        form.querySelectorAll<HTMLElement>(".theme-segment label").forEach((label) => {
+          const radio = label.querySelector<HTMLInputElement>('input[name="theme"]');
+          label.dataset.active = String(radio?.checked ?? false);
+        });
+      });
+    });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    const next = normalizePopupSettings({
+      theme: String(formData.get("theme") ?? currentPopupSettings.theme),
+      currency: String(formData.get("currency") ?? currentPopupSettings.currency),
+      language: String(formData.get("language") ?? currentPopupSettings.language),
+    });
+
+    await chrome.storage.local.set({ [EXTENSION_POPUP_SETTINGS_KEY]: next });
+    currentPopupSettings = next;
+    applyPopupTheme(next.theme);
+
+    const status = form.querySelector<HTMLElement>("#extension-settings-status");
+    if (status) {
+      status.textContent = "Settings saved.";
+    }
+  });
 }
 
 function filterNetworkCards(scope: ParentNode, query: string): void {
@@ -1333,24 +1524,14 @@ function wireInlineButtons(scope: HTMLElement): void {
   });
 }
 
-function getPopupPasscodeMode(form: HTMLFormElement): PopupPasscodeMode {
-  const value = new FormData(form).get("passcodeMode");
-  return value === "random" ? "random" : "pin";
-}
-
 function validatePopupPasscode(form: HTMLFormElement): string | null {
   const formData = new FormData(form);
-  const mode = getPopupPasscodeMode(form);
   const passcode = String(formData.get("passcode") ?? "").trim();
   const confirmPasscode = String(formData.get("confirmPasscode") ?? "").trim();
   const saved = formData.get("passcodeSaved") === "yes";
 
-  if (mode === "pin" && !/^\d{6,12}$/u.test(passcode)) {
-    return "Choose a numeric PIN with 6-12 digits.";
-  }
-
-  if (mode === "random" && passcode.length < 12) {
-    return "Choose a random password with at least 12 characters.";
+  if (passcode.length < 8) {
+    return "Choose a wallet password with at least 8 characters.";
   }
 
   if (passcode !== confirmPasscode) {
@@ -1362,38 +1543,6 @@ function validatePopupPasscode(form: HTMLFormElement): string | null {
   }
 
   return null;
-}
-
-function fillGeneratedPasscode(form: HTMLFormElement): void {
-  const passcode = generatePopupRandomPasscode();
-  form.querySelector<HTMLInputElement>('input[name="passcodeMode"][value="random"]')?.click();
-
-  const passcodeInput = form.querySelector<HTMLInputElement>('input[name="passcode"]');
-  const confirmInput = form.querySelector<HTMLInputElement>('input[name="confirmPasscode"]');
-  const savedInput = form.querySelector<HTMLInputElement>('input[name="passcodeSaved"]');
-
-  if (passcodeInput) {
-    passcodeInput.type = "text";
-    passcodeInput.value = passcode;
-  }
-
-  if (confirmInput) {
-    confirmInput.type = "text";
-    confirmInput.value = passcode;
-  }
-
-  if (savedInput) {
-    savedInput.checked = false;
-  }
-}
-
-function generatePopupRandomPasscode(length = 18): string {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-
-  return Array.from(bytes, (byte) =>
-    POPUP_RANDOM_PASSCODE_ALPHABET[byte % POPUP_RANDOM_PASSCODE_ALPHABET.length],
-  ).join("");
 }
 
 function wireWalletForms(): void {
@@ -1660,21 +1809,62 @@ function activityIcon(kind: string): string {
 }
 
 function renderSettingsComposer(): string {
+  const settings = currentPopupSettings;
+
   return `
-    <div class="settings-sheet">
+    <form class="settings-sheet" id="extension-settings-form">
       <button class="settings-back as-button" type="button" data-action="close-action-panel" data-id="settings">← Settings</button>
       <div class="settings-section-label">Preferences</div>
-      ${renderSettingsRow("◐", "Theme", `<span class="segmented"><span>Auto</span><span>☼</span><span>☾</span></span>`)}
-      ${renderSettingsRow("◉", "Display currency", `<select class="mini-select"><option>USD</option><option>EUR</option><option>RUB</option><option>GBP</option><option>JPY</option></select>`)}
-      ${renderSettingsRow("文", "Language", `<select class="mini-select"><option>English</option><option>Русский</option><option>Deutsch</option><option>Español</option><option>中文</option></select>`)}
+      ${renderSettingsRow("◐", "Theme", renderThemeSegment(settings.theme))}
+      ${renderSettingsRow("◉", "Display currency", renderSettingsSelect(
+        "currency",
+        settings.currency,
+        POPUP_CURRENCIES.map((currency) => ({ label: currency, value: currency })),
+      ))}
+      ${renderSettingsRow("文", "Language", renderSettingsSelect(
+        "language",
+        settings.language,
+        POPUP_LANGUAGES.map((language) => ({ label: language, value: language })),
+      ))}
       ${renderSettingsRow("▮", "Balances and activity", `<button class="settings-link" type="button" data-action="open-action-panel" data-id="activity">Open ›</button>`)}
       <div class="settings-section-label">Security and privacy</div>
       ${renderSettingsRow("⌁", "Allow analytics", `<span class="toggle on"><span></span></span>`)}
       <div class="settings-section-label">Developer tools</div>
       ${renderSettingsRow("▤", "App data", `<span>›</span>`)}
       ${renderSettingsRow("⚒", "Testnet mode", `<span class="toggle"><span></span></span>`)}
+      <p class="copy" id="extension-settings-status">Theme, currency, and language are stored only in this browser profile.</p>
+      <button class="primary-button" type="submit">Save settings</button>
       <button class="ghost-button" type="button" data-open-url="options.html">Open provider diagnostics</button>
-    </div>
+    </form>
+  `;
+}
+
+function renderThemeSegment(theme: ExtensionPopupSettings["theme"]): string {
+  return `
+    <span class="segmented theme-segment">
+      ${(["auto", "light", "dark"] as const).map((value) => `
+        <label data-active="${theme === value}">
+          <input type="radio" name="theme" value="${value}" ${theme === value ? "checked" : ""}>
+          <span>${value === "auto" ? "Auto" : value === "light" ? "☼" : "☾"}</span>
+        </label>
+      `).join("")}
+    </span>
+  `;
+}
+
+function renderSettingsSelect(
+  name: keyof Pick<ExtensionPopupSettings, "currency" | "language">,
+  selectedValue: string,
+  options: Array<{ label: string; value: string }>,
+): string {
+  return `
+    <select class="mini-select" name="${escapeHtml(name)}">
+      ${options.map((option) => `
+        <option value="${escapeHtml(option.value)}" ${option.value === selectedValue ? "selected" : ""}>
+          ${escapeHtml(option.label)}
+        </option>
+      `).join("")}
+    </select>
   `;
 }
 
