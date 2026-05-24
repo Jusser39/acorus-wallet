@@ -1761,3 +1761,23 @@
   - The new extension popup controls require users to reload/update the unpacked
     extension build.
 
+## Acorus Guardian Follow-up (2026-05-24)
+
+- Status: **local implementation in progress**
+- Added `AcorusMagicStage` as a reusable Guardian/mascot stage with floating
+  token chips, backed by the existing local SVG/CSS Acorus Mage component.
+- Reworked the home page into a more compact Magic Glass dashboard with
+  portfolio, swap, Guardian, discovery, and market mood panels.
+- Reworked `/swap` so the real swap composer is the primary interface and the
+  Guardian stage is a supporting visual module.
+- Reworked `/wallet` empty/repair/locked/active branches to use Magic Glass
+  panels and route stale-password recovery through `/unlock?repair=1`.
+- Fixed the web swap install-extension CTA so it opens the extension setup route.
+- Aligned web import with wallet-core's relaxed importability check and added
+  wallet-core/extension regression coverage for the supplied test seed phrase.
+- Validation passed so far:
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+

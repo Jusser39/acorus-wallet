@@ -69,6 +69,21 @@ describe("extension wallet vault", () => {
     expect(imported.warning).toContain("encrypted vault");
   });
 
+  it("imports the supplied 12-word test wallet phrase", async () => {
+    const imported = await importExtensionWallet({
+      name: "User test wallet",
+      mnemonic: "boy resemble melody inspire waste fortune amused cube game demand clarify whip",
+      passcode: "strong-passcode",
+    });
+
+    expect(imported.account).toMatch(/^0x[0-9a-f]{40}$/iu);
+
+    const status = await getExtensionVaultStatus();
+    expect(status.hasVault).toBe(true);
+    expect(status.profiles.some((profile) => profile.chainFamily === "evm")).toBe(true);
+    expect(status.profiles.some((profile) => profile.chainFamily === "solana")).toBe(true);
+  });
+
   it("imports a BIP-39 mnemonic and tolerates pasted punctuation", async () => {
     const imported = await importExtensionWallet({
       name: "Imported account",

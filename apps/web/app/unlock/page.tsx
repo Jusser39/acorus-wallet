@@ -215,7 +215,7 @@ function UnlockPageContent() {
           disabled={loading || !encryptedVault}
         />
         <Link href="/unlock?repair=1" className="text-sm font-bold text-violet-700">
-          Forgot passcode or never created one?
+          Я не создавал пароль / сбросить локальный vault
         </Link>
       </div>
     </section>

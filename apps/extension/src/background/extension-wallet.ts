@@ -158,10 +158,10 @@ export async function lockExtensionWallet(): Promise<ExtensionVaultStatus> {
 
 export async function resetExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
-  await chrome.storage.local.remove([
-    EXTENSION_VAULT_KEY,
-    EXTENSION_VAULT_META_KEY,
-  ]);
+  await chrome.storage.local.set({
+    [EXTENSION_VAULT_KEY]: null,
+    [EXTENSION_VAULT_META_KEY]: null,
+  });
 
   return getExtensionVaultStatus();
 }

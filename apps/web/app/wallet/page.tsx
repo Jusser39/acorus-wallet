@@ -31,11 +31,11 @@ import { PortfolioSummaryCard } from "@/components/portfolio-summary-card";
 import { AssetList } from "@/components/asset-list";
 import { WalletActionGrid } from "@/components/wallet-action-grid";
 import { WalletHealthCard } from "@/components/wallet-health-card";
+import { AcorusMagicStage } from "@/components/acorus-magic-stage";
 import { formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { getSendAvailability } from "@/lib/send-policy";
 import { buildWalletHealthSummary } from "@/lib/wallet-health";
-import { clearAcorusLocalWalletState } from "@/lib/reset-local-wallet";
 import { loadVaultMeta, type VaultMeta } from "@/lib/storage";
 import { resolveWalletVaultUiState } from "@/lib/wallet-vault-state";
 
@@ -50,7 +50,6 @@ export default function WalletPage() {
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const setWalletError = useWalletStore((state) => state.setError);
   const lockWallet = useWalletStore((state) => state.lockWallet);
-  const clearWalletState = useWalletStore((state) => state.clearWalletState);
   const encryptedVault = useWalletStore((state) => state.encryptedVault);
 
   const [portfolio, setPortfolio] = useState<PortfolioSummaryView | null>(null);
@@ -353,12 +352,6 @@ export default function WalletPage() {
     }
   }
 
-  function handleResetLocalWallet() {
-    clearAcorusLocalWalletState();
-    clearWalletState();
-    window.location.assign("/");
-  }
-
   if (!activeProfile) {
     return (
       <section className="magic-shell px-4 py-10">
@@ -400,13 +393,9 @@ export default function WalletPage() {
               blockchain assets, but you need your seed phrase backup to restore access.
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                className="rounded-full bg-rose-500 px-5 py-3 font-black text-white"
-                onClick={handleResetLocalWallet}
-              >
-                Reset stale local state
-              </button>
+              <Link href="/unlock?repair=1" className="magic-reset-link">
+                Reset through repair flow
+              </Link>
               <Link href="/import" className="magic-button-secondary px-5 py-3">Import wallet</Link>
               <Link href="/create" className="magic-button-secondary px-5 py-3">Create wallet</Link>
             </div>
@@ -423,16 +412,17 @@ export default function WalletPage() {
   const nativeBalance = portfolio?.assets.find((asset) => asset.type === "native")?.balanceFormatted ?? "0";
 
   return (
-    <section className="page magic-wallet-page grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+    <section className="magic-shell px-4 py-8">
+      <div className="magic-container grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
       <div className="space-y-6">
-        <div className="app-surface space-y-5 rounded-[2rem] p-5 sm:p-6">
+        <div className="magic-panel space-y-5 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <span className="section-kicker">
                 {activeProfile.type.replace("_", " ")} · {activeProfile.chainFamily}
               </span>
               <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{activeProfile.name}</h1>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-slate-600">
                 {formatAddress(activeProfile.publicAddress)}
               </p>
             </div>
@@ -454,19 +444,19 @@ export default function WalletPage() {
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="data-card rounded-2xl p-4">
+            <div className="rounded-2xl border border-white/60 bg-white/50 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Mode</p>
-              <p className="mt-2 text-sm font-semibold text-white">
+              <p className="mt-2 text-sm font-semibold text-slate-950">
                 {isViewOnly ? "View only" : activeProfile.type === "practice" ? "Practice" : "Self-custody"}
               </p>
             </div>
-            <div className="data-card rounded-2xl p-4">
+            <div className="rounded-2xl border border-white/60 bg-white/50 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Primary chain</p>
-              <p className="mt-2 text-sm font-semibold text-white">{chain?.name ?? "Unknown chain"}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">{chain?.name ?? "Unknown chain"}</p>
             </div>
-            <div className="data-card rounded-2xl p-4">
+            <div className="rounded-2xl border border-white/60 bg-white/50 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Send status</p>
-              <p className="mt-2 text-sm font-semibold text-white">{sendAvailability.ctaLabel}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-950">{sendAvailability.ctaLabel}</p>
             </div>
           </div>
 
@@ -474,17 +464,17 @@ export default function WalletPage() {
             <div className="warning-box text-sm">View-only: sending disabled, no private key.</div>
           )}
           {activeProfile.type === "practice" && (
-            <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-sm text-sky-100">
+            <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 text-sm text-sky-950">
               Practice mode — no real funds used.
             </div>
           )}
             {isSolana && (
-              <div className="rounded-2xl border border-violet-400/30 bg-violet-500/10 p-4 text-sm text-violet-100">
+              <div className="rounded-2xl border border-violet-200 bg-violet-50/80 p-4 text-sm text-violet-950">
                 Solana skeleton active: receive, portfolio, SPL balances and read-only history are enabled. Use <strong>Send draft</strong> to preview a send — real broadcast coming in the next wave.
               </div>
             )}
             {isSkeletonFamily && (
-              <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
                 {activeProfile.chainFamily} adapter is skeleton-only in this wave. Use <strong>Send draft</strong> to preview — real broadcast not implemented yet.
               </div>
             )}
@@ -520,10 +510,10 @@ export default function WalletPage() {
           <div className="space-y-4">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Launchpad</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">
                 Actions
               </h2>
-              <p className="mt-1 text-sm text-slate-300">
+              <p className="mt-1 text-sm text-slate-600">
                 One wallet for sending, receiving, swapping, exploring and
                 connecting later.
               </p>
@@ -533,12 +523,12 @@ export default function WalletPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_220px]">
-            <div className="premium-card p-5">
+            <div className="magic-panel p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="text-sm text-slate-400">Native balance · {chain?.name ?? `Chain ${selectedChainId}`}</p>
                 <button
                   type="button"
-                  className="text-sm text-fuchsia-200"
+                  className="text-sm font-bold text-violet-700"
                   disabled={hiddenSaving}
                   onClick={() => void handleHiddenBalanceToggle()}
                 >
@@ -548,11 +538,11 @@ export default function WalletPage() {
               <p className="metric-emphasis mt-4 text-4xl font-semibold">
                 {hiddenBalance ? "••••" : `${parseFloat(nativeBalance).toFixed(4)} ${chain?.nativeSymbol ?? ""}`}
               </p>
-              <p className="mt-3 text-sm text-slate-400">Currency: {currency}</p>
+              <p className="mt-3 text-sm text-slate-600">Currency: {currency}</p>
             </div>
-            <div className="premium-card flex flex-col items-center justify-center gap-3 p-5">
+            <div className="magic-panel flex flex-col items-center justify-center gap-3 p-5">
               <QRCodeSVG value={walletAddress} size={148} bgColor="transparent" fgColor="#111827" />
-              <p className="text-center text-xs text-slate-300">
+              <p className="text-center text-xs text-slate-600">
                 {isSolana ? "Receive only on Solana-compatible routes." : "Only send assets on the selected network."}
               </p>
             </div>
@@ -560,7 +550,7 @@ export default function WalletPage() {
 
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-[220px] flex-1 space-y-2">
-              <span className="text-sm text-slate-300">Chain</span>
+              <span className="text-sm text-slate-600">Chain</span>
               <select
                 value={selectedChainId}
                 onChange={(event) => setSelectedChainId(parseChainId(event.target.value))}
@@ -580,16 +570,16 @@ export default function WalletPage() {
             </button>
           </div>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p className="text-sm font-semibold text-rose-600">{error}</p> : null}
         </div>
 
-        <div className="premium-card space-y-4 p-5">
+        <div className="magic-panel space-y-4 p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Assets</h2>
             <div className="flex items-center gap-3">
-              {!isSolana ? <Link href="/tokens/add" className="text-sm text-fuchsia-200">+ Add token</Link> : null}
-              <Link href="/tokens/manage" className="text-sm text-fuchsia-200">Manage</Link>
-              <Link href="/history" className="text-sm text-fuchsia-200">History</Link>
+              {!isSolana ? <Link href="/tokens/add" className="text-sm font-bold text-violet-700">+ Add token</Link> : null}
+              <Link href="/tokens/manage" className="text-sm font-bold text-violet-700">Manage</Link>
+              <Link href="/history" className="text-sm font-bold text-violet-700">History</Link>
             </div>
           </div>
           {selectedAsset ? (
@@ -600,13 +590,13 @@ export default function WalletPage() {
                     {selectedAsset.symbol.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                    <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
                       Selected asset
                     </p>
-                    <h3 className="mt-2 truncate text-xl font-semibold text-white">
+                    <h3 className="mt-2 truncate text-xl font-semibold text-slate-950">
                       {selectedAsset.name}
                     </h3>
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-slate-600">
                       {selectedAsset.symbol} · {selectedAsset.balanceFormatted}
                     </p>
                   </div>
@@ -665,12 +655,16 @@ export default function WalletPage() {
       </div>
 
       <aside className="space-y-6">
+        <div className="magic-panel p-4">
+          <AcorusMagicStage pose="security" compact />
+        </div>
+
         {healthSummary ? <WalletHealthCard summary={healthSummary} /> : null}
 
         {capabilityProfile && capabilitySummary ? (
-          <div className="premium-card space-y-4 p-5">
+          <div className="magic-panel space-y-4 p-5">
             <div>
-              <p className="text-sm text-slate-400">Multichain capabilities</p>
+              <p className="text-sm text-slate-600">Multichain capabilities</p>
               <h2 className="text-xl font-semibold">{capabilityProfile.name}</h2>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -682,7 +676,7 @@ export default function WalletPage() {
           </div>
         ) : null}
 
-        <div className="premium-card space-y-4 p-5">
+        <div className="magic-panel space-y-4 p-5">
           <h2 className="text-xl font-semibold">Quick actions</h2>
           <div className="grid gap-3">
             <Link href="/receive" className="button-secondary text-center">Receive assets</Link>
@@ -705,18 +699,19 @@ export default function WalletPage() {
           </div>
         </div>
 
-        <div className="panel space-y-4">
+        <div className="magic-panel space-y-4 p-5">
           <h2 className="text-xl font-semibold">Practice lessons</h2>
-          <div className="space-y-3 text-sm text-slate-300">
+          <div className="space-y-3 text-sm text-slate-600">
             {PRACTICE_LESSONS.slice(0, 3).map((lesson) => (
-              <div key={lesson.id} className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
-                <p className="font-medium text-white">{lesson.title}</p>
+              <div key={lesson.id} className="rounded-2xl border border-white/60 bg-white/55 p-4">
+                <p className="font-medium text-slate-950">{lesson.title}</p>
                 <p className="mt-2">{lesson.description}</p>
               </div>
             ))}
           </div>
         </div>
       </aside>
+      </div>
     </section>
   );
 }
@@ -728,7 +723,7 @@ function parseChainId(value: string): ChainId {
 
 function CapabilityMetric(props: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+    <div className="rounded-2xl border border-white/60 bg-white/50 p-3">
       <p className="text-xs text-slate-500">{props.label}</p>
       <p className={`mt-1 text-lg font-semibold ${props.tone}`}>{props.value}</p>
     </div>

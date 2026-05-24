@@ -6,7 +6,7 @@ import {
   encryptVault,
   getEvmAddressFromMnemonic,
   getSolanaAddressFromMnemonic,
-  validateWalletMnemonic,
+  getWalletMnemonicValidation,
 } from "@acorus/wallet-core";
 import { PasscodeSetupDialog } from "@/components/passcode-setup-dialog";
 import { createWalletProfile } from "@/lib/api";
@@ -63,14 +63,15 @@ export default function ImportWalletPage() {
 
   async function handleImport() {
     const normalized = mnemonic.trim().toLowerCase().replace(/\s+/g, " ");
+    const validation = getWalletMnemonicValidation(normalized);
 
     if (!userId) {
       setError("Контекст пользователя ещё загружается.");
       return;
     }
 
-    if (!validateWalletMnemonic(normalized)) {
-      setError("Некорректная seed phrase.");
+    if (!validation.importable) {
+      setError("Seed phrase должна содержать 12/18/24 BIP-39 слова через пробел.");
       return;
     }
 
@@ -83,10 +84,11 @@ export default function ImportWalletPage() {
     setError(null);
 
     try {
-      const evmAddress = getEvmAddressFromMnemonic(normalized);
-      const solanaAddress = getSolanaAddressFromMnemonic(normalized);
+      const mnemonicForImport = validation.normalized;
+      const evmAddress = getEvmAddressFromMnemonic(mnemonicForImport);
+      const solanaAddress = getSolanaAddressFromMnemonic(mnemonicForImport);
       const plaintext = {
-        mnemonic: normalized,
+        mnemonic: mnemonicForImport,
         evmAddress,
         createdAt: new Date().toISOString(),
       };

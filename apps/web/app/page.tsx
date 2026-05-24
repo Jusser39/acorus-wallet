@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { AcorusMage } from "@/components/acorus-mage";
+import { AcorusMagicStage } from "@/components/acorus-magic-stage";
 import { SwapComposer } from "@/components/swap-composer";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildFearGreedPulse } from "@/lib/market-pulse";
@@ -15,6 +15,13 @@ function formatUsd(value: number | null | undefined): string {
   if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
   return `$${value.toFixed(value < 1 ? 4 : 2)}`;
 }
+
+const ACTION_LINKS = [
+  { label: "Send", href: "/send", icon: "↗" },
+  { label: "Receive", href: "/receive", icon: "↙" },
+  { label: "Security", href: "/security", icon: "◇" },
+  { label: "Explore", href: "/explore", icon: "◎" },
+] as const;
 
 function MagicMarketRow({ token }: { token: ExploreTokenItem }) {
   return (
@@ -65,123 +72,119 @@ export default async function Home() {
   return (
     <main className="magic-shell">
       <section className="magic-container py-8">
-        <div className="magic-home-stage">
-          <div className="magic-home-grid">
-            <div className="magic-home-side">
-              <section className="magic-mini-panel p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black">Portfolio</h2>
-                  <span className="rounded-full bg-white/50 px-3 py-1 text-xs font-bold">local</span>
-                </div>
-                <div className="mt-4 text-4xl font-black tracking-tight">$—</div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Connect the extension or unlock a local vault to calculate live balances.
-                </p>
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  <Link href="/create" className="magic-button px-4 py-3 text-center text-sm">Create</Link>
-                  <Link href="/import" className="magic-button-secondary px-4 py-3 text-center text-sm">Import</Link>
-                </div>
-              </section>
-
-              <section className="magic-mini-panel magic-compact-swap p-4">
-                <SwapComposer
-                  compact
-                  portfolioAssets={[]}
-                  title="Swap"
-                  description="0x EVM live quotes. Jupiter and Rango routes stay behind review until adapters are ready."
-                />
-              </section>
+        <div className="magic-dashboard-grid">
+          <section className="magic-dashboard-card magic-guardian-card">
+            <div className="flex items-center justify-between gap-3">
+              <span className="magic-token-chip px-4 py-2 text-sm font-black">Acorus Guardian</span>
+              <Link href="/wallet" className="magic-button-secondary px-4 py-2 text-sm">Open wallet</Link>
             </div>
+            <AcorusMagicStage pose="home" />
+            <div className="mt-auto">
+              <h1 className="text-4xl font-black tracking-tight text-slate-950">
+                Your Multichain <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">Magic Wallet</span>
+              </h1>
+              <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
+                EVM, Solana, Bitcoin and future chains in one guardian shell. Keys stay local; routes and approvals stay explicit.
+              </p>
+            </div>
+          </section>
 
-            <div className="magic-stage-center">
-              <AcorusMage />
-              <div className="absolute left-1/2 top-10 -translate-x-1/2 rounded-full border border-white/70 bg-white/54 px-5 py-3 text-sm font-black uppercase tracking-[0.28em] text-violet-800 shadow-[0_18px_44px_rgba(85,166,255,0.18)] backdrop-blur-xl">
-                Acorus guardian
+          <section className="magic-dashboard-card magic-swap-panel-card">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">0x · Jupiter · Rango</p>
+                <h2 className="mt-2 text-3xl font-black">Swap</h2>
               </div>
+              <span className="rounded-full bg-cyan-100 px-4 py-2 text-sm font-black text-cyan-700">0x live</span>
             </div>
+            <SwapComposer
+              compact
+              portfolioAssets={[]}
+              title="Swap"
+              description="Pick a route network and popular token. EVM quotes are live through 0x; non-EVM execution stays review-gated."
+            />
+          </section>
 
-            <div className="magic-home-side">
-              <section className="magic-mini-panel p-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-black">Trending</h2>
-                  <Link href="/explore" className="text-sm font-bold text-violet-700">Explore</Link>
-                </div>
-                <div className="mt-4 grid gap-3">
-                  {trending.length ? (
-                    trending.slice(0, 3).map((token) => <MagicMarketRow key={token.id} token={token} />)
-                  ) : (
-                    <p className="text-sm text-slate-600">Market feed is temporarily unavailable.</p>
-                  )}
-                </div>
-              </section>
+          <aside className="grid content-start gap-4">
+            <section className="magic-dashboard-card magic-portfolio-panel-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Portfolio</p>
+                <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-black text-violet-700">USD</span>
+              </div>
+              <div className="mt-4 text-5xl font-black tracking-tight">$—</div>
+              <p className="mt-2 text-sm font-semibold text-emerald-600">Connect extension to calculate live balances.</p>
+              <div className="mt-5 h-28 rounded-3xl border border-white/60 bg-[linear-gradient(180deg,rgba(139,92,246,0.22),rgba(124,247,255,0.02))]" />
+              <div className="mt-4 rounded-full border border-white/70 bg-white/55 px-4 py-3 text-sm font-black text-slate-700">
+                0x4f2b...8a91
+              </div>
+            </section>
 
-              <section className="magic-mini-panel p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-black">Fear & Greed</h2>
-                    <p className="mt-1 text-sm text-slate-600">How many tracked markets are rising or falling today.</p>
-                  </div>
-                  <div
-                    className="fear-greed-meter"
-                    style={{ "--fear-score": `${pulse.score}%`, "--fear-color": pulseColor } as CSSProperties}
-                  >
-                    <span>{pulse.score}</span>
-                  </div>
-                </div>
-                <div className="mt-5 grid gap-2">
-                  <div className="rounded-2xl border border-white/50 bg-white/45 p-3">
-                    <div className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Status</div>
-                    <div className="mt-1 text-2xl font-black text-slate-950">{pulse.label}</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
-                      <div className="text-xs font-bold text-slate-500">Rising 24h</div>
-                      <div className="mt-1 font-black text-emerald-600">{pulse.positiveCount}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
-                      <div className="text-xs font-bold text-slate-500">Falling 24h</div>
-                      <div className="mt-1 font-black text-rose-600">{pulse.negativeCount}</div>
-                    </div>
-                  </div>
-                </div>
-              </section>
+            <div className="grid grid-cols-2 gap-3">
+              {ACTION_LINKS.map(({ label, href, icon }) => (
+                <Link key={label} href={href} className="magic-action-tile">
+                  <span>{icon}</span>
+                  <strong>{label}</strong>
+                </Link>
+              ))}
             </div>
-          </div>
+          </aside>
         </div>
 
-        <section className="mt-10 grid gap-4 md:grid-cols-4">
-          {[
-            ["0x swaps", "Backend-proxied EVM routes with extension approval."],
-            ["Solana send", "SOL and SPL transfers behind local vault confirmation."],
-            ["Explore", "Token discovery, charts, metrics and market pages."],
-            ["Security", "Seed, passcode and signing stay client-side."],
-          ].map(([title, copy]) => (
-            <div key={title} className="magic-panel p-5">
-              <h3 className="text-lg font-black">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{copy}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className="mt-10 grid gap-4 lg:grid-cols-2">
-          <div className="magic-panel p-5">
+        <section className="magic-token-discovery mt-8">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Live discovery</p>
-                <h2 className="mt-2 text-2xl font-black">Top tokens</h2>
+                <h2 className="mt-2 text-2xl font-black">Token Discovery</h2>
               </div>
-              <Link href="/explore" className="magic-button-secondary px-4 py-2 text-sm">See all</Link>
             </div>
-            <div className="mt-4 grid gap-2">
-              {top.length ? (
-                top.map((token) => <MagicMarketRow key={token.id} token={token} />)
-              ) : (
-                <p className="text-sm text-slate-600">Top token data is temporarily unavailable.</p>
-              )}
-            </div>
+            <Link href="/explore" className="magic-button-secondary px-5 py-3 text-sm">Explore all</Link>
           </div>
+          <div className="magic-market-table">
+            {(top.length ? top : trending).slice(0, 6).map((token) => (
+              <MagicMarketRow key={token.id} token={token} />
+            ))}
+            {!top.length && !trending.length ? (
+              <p className="p-5 text-sm text-slate-600">Market feed is temporarily unavailable.</p>
+            ) : null}
+          </div>
+        </section>
 
-          <div className="magic-panel p-5">
+        <section className="mt-8 grid gap-4 lg:grid-cols-[0.85fr_1fr]">
+          <section className="magic-panel p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black">Fear & Greed</h2>
+                <p className="mt-1 text-sm text-slate-600">Market mood from tracked 24h token breadth.</p>
+              </div>
+              <div
+                className="fear-greed-meter"
+                style={{ "--fear-score": `${pulse.score}%`, "--fear-color": pulseColor } as CSSProperties}
+              >
+                <span>{pulse.score}</span>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/50 bg-white/45 p-3 sm:col-span-3">
+                <div className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Market mood</div>
+                <div className="mt-1 text-2xl font-black text-slate-950">{pulse.label}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Rising 24h</div>
+                <div className="mt-1 font-black text-emerald-600">{pulse.positiveCount}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Falling 24h</div>
+                <div className="mt-1 font-black text-rose-600">{pulse.negativeCount}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Tracked</div>
+                <div className="mt-1 font-black text-slate-950">{pulse.sampleSize}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="magic-panel p-5">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Safety model</p>
             <h2 className="mt-2 text-2xl font-black">Local keys, explicit approvals</h2>
             <div className="mt-5 grid gap-3 text-sm leading-6 text-slate-600">
@@ -189,7 +192,7 @@ export default async function Home() {
               <p>Backend swap providers receive only public quote metadata and never receive key material.</p>
               <p>Each send, approval, and swap execution is reviewed before broadcast.</p>
             </div>
-          </div>
+          </section>
         </section>
       </section>
     </main>

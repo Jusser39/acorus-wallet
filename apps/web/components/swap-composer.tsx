@@ -715,10 +715,9 @@ export function SwapComposer(props: {
         {!extensionDetected ? (
           <a
             className="button-primary block w-full text-center"
-            href="/downloads/acorus-wallet-extension.zip"
-            download
+            href="/extension"
           >
-            Install Acorus Extension
+            Open extension setup
           </a>
         ) : (
           <button

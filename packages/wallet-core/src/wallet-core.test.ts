@@ -74,6 +74,19 @@ describe("wallet-core", () => {
     expect(() => deriveSolanaAddressFromMnemonic({ mnemonic: relaxedChecksum })).not.toThrow();
   });
 
+  it("treats the supplied test wallet phrase as an importable BIP-39 wallet", () => {
+    const phrase =
+      "boy resemble melody inspire waste fortune amused cube game demand clarify whip";
+    const validation = getWalletMnemonicValidation(phrase);
+
+    expect(validation.importable).toBe(true);
+    expect(validation.validWordCount).toBe(true);
+    expect(validation.allWordsKnown).toBe(true);
+    expect(isImportableWalletMnemonic(phrase)).toBe(true);
+    expect(() => deriveEvmAccountFromMnemonic(phrase)).not.toThrow();
+    expect(() => deriveSolanaAddressFromMnemonic({ mnemonic: phrase })).not.toThrow();
+  });
+
   it("fails on wrong passcode", async () => {
     const plaintext: WalletVaultPlaintext = {
       mnemonic: "test test test test test test test test test test test junk",

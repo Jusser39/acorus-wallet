@@ -15,6 +15,9 @@ Acorus Wallet is a **non-custodial universal multichain wallet + dapp shell** bu
 - Practice wallet mode with fake balances and fake transactions
 - View-only wallet flow
 - Contacts, history, settings, receive QR, send review flow, autolock, safety mode
+- Explicit wallet passcode setup for web and extension create/import: users must
+  choose a numeric PIN or generated/random password before a local encrypted
+  vault is created.
 
 ## Security model
 

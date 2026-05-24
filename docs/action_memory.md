@@ -724,3 +724,12 @@
 466. Updated extension popup create/import forms with explicit PIN/random password controls, random generation, confirmation validation, and reset messaging.
 467. Added `docs/wallet_explicit_passcode_reset_report.md` explaining the root cause, recovery flow, validation, and limitations.
 468. Validation passed for this repair so far: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension test`, and `pnpm --filter @acorus/extension build`.
+469. Continued the passcode/design wave by aligning web import validation with wallet-core importability checks so valid test phrases can be imported without false rejection.
+470. Added wallet-core and extension regression tests for the supplied 12-word test seed phrase, including EVM/Solana derivation and extension vault import.
+471. Fixed the web swap install-extension CTA so it opens `/extension` instead of behaving like a dead button.
+472. Added `AcorusMagicStage` as a reusable Guardian stage with floating token chips and connected it to the existing CSS/SVG Acorus Mage component.
+473. Reworked the home page into a compact Magic Glass dashboard with portfolio, swap, Guardian, token discovery, and Fear & Greed panels.
+474. Reworked `/swap` so the real swap composer is the primary module and the Guardian stage/extension card are supporting modules.
+475. Reworked `/wallet` empty, repair, locked, and active states onto Magic Glass panels and replaced direct reset buttons with the safer `/unlock?repair=1` reset flow.
+476. Added Acorus Guardian design/lock-fix docs: plan, report, and character bible.
+477. Validation passed so far: wallet-core test, extension test, web test, and web build.

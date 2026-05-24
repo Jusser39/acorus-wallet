@@ -111,13 +111,8 @@ export default function CreateWalletPage() {
       return;
     }
 
-    if (passcode.length < 8) {
-      setError("Passcode должен быть минимум 8 символов.");
-      return;
-    }
-
-    if (passcode !== confirmPasscode) {
-      setError("Passcode и подтверждение не совпадают.");
+    if (!ensurePasscodeReady()) {
+      setError("Сначала вручную выберите PIN или случайный пароль для local browser vault.");
       return;
     }
 
