@@ -1888,3 +1888,39 @@
 - Local Playwright smoke reached `/` and `/swap`; the dev server showed only
   expected local 404s for backend API routes that require the Fastify API.
 
+## UI Freeze and Extension Onboarding Stabilization (2026-05-25)
+
+- Status: **implemented and validated locally**
+- Fixed the likely Chrome freeze source by removing high-frequency `mousemove`
+  wallet activity tracking, throttling activity writes, and persisting only a
+  small settings/profile snapshot from the web wallet store.
+- Disabled stale service-worker behavior by unregistering existing web service
+  workers and clearing browser caches; the replacement `sw.js` deletes caches,
+  unregisters itself, and claims clients.
+- Added pointer-event guards to decorative Magic Glass pseudo-elements and
+  animated mascot layers so visual effects cannot steal clicks from wallet,
+  swap, settings, or extension controls.
+- Added a 12 second frontend API timeout so unavailable backend routes fail
+  cleanly instead of leaving the UI waiting indefinitely.
+- Changed the web lock button to show a disabled `Locked` state when no vault is
+  unlocked, instead of presenting a non-working lock action.
+- Loaded the extension MV3 `node-globals` shim before wallet/asset background
+  modules so wallet-core BIP-39 and HD derivation paths have `Buffer`.
+- Replaced extension popup browser `alert`/`confirm` dialogs with inline
+  wallet-native feedback notices and a two-step reset confirmation.
+- Rebuilt the downloadable Chrome extension ZIP at
+  `/downloads/acorus-wallet-extension.zip`.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm --filter @acorus/wallet-core test`
+  - `pnpm extension:package`
+  - `git diff --check`
+- Local dev server returned `200` for `/wallet` on `127.0.0.1:3100`.
+- Browser plugin validation was attempted, but the in-app Browser runtime was
+  blocked by its current `data:` error-page navigation policy before it could
+  open the local URL. No production deploy was performed in this pass.
+

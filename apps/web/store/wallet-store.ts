@@ -12,6 +12,8 @@ import { DEFAULT_APP_PREFERENCES, type AppTheme } from "../lib/app-preferences";
 import { clearAcorusLocalWalletState } from "../lib/reset-local-wallet";
 import { clearSessionDecryptedState } from "../lib/storage";
 
+const ACTIVITY_WRITE_THROTTLE_MS = 15_000;
+
 function resolveChainIdForProfile(
   profile: WalletProfileRecord | null | undefined,
   currentChainId: ChainId,
@@ -201,7 +203,14 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       return;
     }
 
-    set({ lastActivityAt: Date.now() });
+    const now = Date.now();
+    const lastActivityAt = get().lastActivityAt;
+
+    if (lastActivityAt && now - lastActivityAt < ACTIVITY_WRITE_THROTTLE_MS) {
+      return;
+    }
+
+    set({ lastActivityAt: now });
   },
   setError(message) {
     set({ error: message });

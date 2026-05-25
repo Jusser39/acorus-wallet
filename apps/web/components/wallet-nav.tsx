@@ -23,10 +23,12 @@ export function WalletNav() {
   const pathname = usePathname();
   const activeProfile = useActiveProfile();
   const profiles = useWalletStore((state) => state.profiles);
+  const unlockedVault = useWalletStore((state) => state.unlockedVault);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const lockWallet = useWalletStore((state) => state.lockWallet);
   const error = useWalletStore((state) => state.error);
   const setError = useWalletStore((state) => state.setError);
+  const isUnlocked = Boolean(unlockedVault);
 
   return (
     <header className="magic-topbar relative z-40">
@@ -64,10 +66,11 @@ export function WalletNav() {
             ) : null}
             <button
               type="button"
-              className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5"
+              className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!isUnlocked}
               onClick={() => lockWallet()}
             >
-              Lock
+              {isUnlocked ? "Lock" : "Locked"}
             </button>
           </div>
         </div>

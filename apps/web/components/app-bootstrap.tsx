@@ -18,6 +18,23 @@ import { ServiceWorkerRegister } from "./service-worker-register";
 
 const NON_WALLET_PATHS = ["/", "/unlock", "/create", "/import"];
 
+function buildPersistedWalletSettingsSnapshot() {
+  const state = useWalletStore.getState();
+
+  return JSON.stringify({
+    activeProfileId: state.activeProfileId,
+    autoLockMinutes: state.autoLockMinutes,
+    safetyMode: state.safetyMode,
+    theme: state.theme,
+    displayCurrency: state.displayCurrency,
+    preferredLanguage: state.preferredLanguage,
+    analyticsEnabled: state.analyticsEnabled,
+    hideSmallBalances: state.hideSmallBalances,
+    hideUnknownTokens: state.hideUnknownTokens,
+    hideFlaggedActivity: state.hideFlaggedActivity,
+  });
+}
+
 export function AppBootstrap() {
   const router = useRouter();
   const pathname = usePathname();
@@ -126,7 +143,17 @@ export function AppBootstrap() {
   ]);
 
   useEffect(() => {
+    let lastPersistedSnapshot = buildPersistedWalletSettingsSnapshot();
+
     const unsubscribe = useWalletStore.subscribe((state) => {
+      const nextSnapshot = buildPersistedWalletSettingsSnapshot();
+
+      if (nextSnapshot === lastPersistedSnapshot) {
+        return;
+      }
+
+      lastPersistedSnapshot = nextSnapshot;
+
       saveLocalSettings({
         autoLockMinutes: state.autoLockMinutes,
         safetyMode: state.safetyMode,
@@ -160,7 +187,6 @@ export function AppBootstrap() {
     const activityEvents: Array<keyof WindowEventMap> = [
       "click",
       "keydown",
-      "mousemove",
       "pointerdown",
       "touchstart",
     ];

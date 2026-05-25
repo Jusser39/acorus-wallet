@@ -3,5 +3,12 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const cacheKeys = await self.caches.keys();
+      await Promise.all(cacheKeys.map((key) => self.caches.delete(key)));
+      await self.registration.unregister();
+      await self.clients.claim();
+    })(),
+  );
 });

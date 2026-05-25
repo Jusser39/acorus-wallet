@@ -111,6 +111,7 @@ let lastCreatedMnemonic: string | null = null;
 let onboardingTab: "create" | "import" = "create";
 let currentPopupState: BackgroundStateSnapshot = createSkeletonState();
 let currentHomeSnapshot: ExtensionPortfolioSnapshot | null = null;
+let popupFeedback: { message: string; tone: "error" | "success" | "warning" } | null = null;
 let currentPopupSettings: ExtensionPopupSettings = {
   theme: "auto",
   currency: "USD",
@@ -228,6 +229,37 @@ function applyPopupTheme(theme: ExtensionPopupSettings["theme"]): void {
   document.documentElement.dataset.acorusTheme = theme;
 }
 
+function renderPopupFeedback(): string {
+  if (!popupFeedback) {
+    return "";
+  }
+
+  return `
+    <section id="popup-feedback" class="notice ${escapeHtml(popupFeedback.tone)}">
+      ${escapeHtml(popupFeedback.message)}
+    </section>
+  `;
+}
+
+function setPopupFeedback(
+  message: string,
+  tone: "error" | "success" | "warning" = "error",
+): void {
+  popupFeedback = { message, tone };
+  const feedback = root.querySelector<HTMLElement>("#popup-feedback");
+
+  if (feedback) {
+    feedback.outerHTML = renderPopupFeedback();
+    return;
+  }
+
+  root.querySelector<HTMLElement>(".main")?.insertAdjacentHTML("afterbegin", renderPopupFeedback());
+}
+
+function clearPopupFeedback(): void {
+  popupFeedback = null;
+}
+
 async function loadExtensionHome(): Promise<ExtensionPortfolioSnapshot | null> {
   try {
     const response = (await chrome.runtime.sendMessage({
@@ -302,6 +334,7 @@ function renderPopup(
 
       <div class="main">
         ${pendingCount > 0 ? renderPromptNotice(state) : ""}
+        ${renderPopupFeedback()}
         ${lastCreatedMnemonic ? renderSeedReveal(lastCreatedMnemonic) : ""}
         ${!vault.hasVault ? `${renderNetworkPanel(home)}${renderExtensionActionPanel(state, home)}` : ""}
         ${vault.hasVault ? renderWalletHome(state, selectedProfile, home) : renderOnboarding()}
@@ -1067,6 +1100,7 @@ function wirePopupActions(): void {
 
       if (action === "set-onboarding-tab" && (targetId === "create" || targetId === "import")) {
         onboardingTab = targetId;
+        clearPopupFeedback();
         root.innerHTML = renderPopup(currentPopupState, currentHomeSnapshot);
         wirePopupActions();
         return;
@@ -1127,11 +1161,17 @@ function wirePopupActions(): void {
       }
 
       if (action === "reset-extension-wallet") {
-        const confirmed = window.confirm(
-          "Reset the local extension wallet? This removes the encrypted vault from this browser profile. Your blockchain assets remain on-chain, but you need your seed phrase to restore access.",
-        );
-
-        if (!confirmed) {
+        if (button.dataset.confirmed !== "true") {
+          button.dataset.confirmed = "true";
+          button.textContent = "Click again to reset";
+          setPopupFeedback(
+            "Reset removes only this browser profile's encrypted extension vault. Your assets remain on-chain, but you need your seed phrase to restore access.",
+            "warning",
+          );
+          window.setTimeout(() => {
+            button.dataset.confirmed = "false";
+            button.textContent = "Reset local extension wallet";
+          }, 6000);
           return;
         }
 
@@ -1141,6 +1181,7 @@ function wirePopupActions(): void {
           surface: "popup",
         });
         lastCreatedMnemonic = null;
+        clearPopupFeedback();
         await loadPopupState();
         return;
       }
@@ -1297,10 +1338,11 @@ function wireSendForm(scope: ParentNode = root): void {
     }) as ExtensionRuntimeResponse;
 
     if (!response.ok) {
-      window.alert(response.error?.message ?? "Unable to queue Solana send.");
+      setPopupFeedback(response.error?.message ?? "Unable to queue Solana send.");
       return;
     }
 
+    clearPopupFeedback();
     await loadPopupState();
   });
 }
@@ -1491,8 +1533,9 @@ function wireEvmSwapQuoteButtons(
     }) as ExtensionRuntimeResponse;
 
     if (!response.ok) {
-      window.alert(response.error?.message ?? "Unable to queue token approval.");
+      setPopupFeedback(response.error?.message ?? "Unable to queue token approval.");
     } else {
+      clearPopupFeedback();
       await loadPopupState();
     }
   });
@@ -1507,8 +1550,9 @@ function wireEvmSwapQuoteButtons(
     }) as ExtensionRuntimeResponse;
 
     if (!response.ok) {
-      window.alert(response.error?.message ?? "Unable to queue swap.");
+      setPopupFeedback(response.error?.message ?? "Unable to queue swap.");
     } else {
+      clearPopupFeedback();
       await loadPopupState();
     }
   });
@@ -1577,9 +1621,11 @@ function wireWalletForms(): void {
       })) as ExtensionRuntimeResponse;
 
       if (!response.ok) {
-        window.alert(response.error?.message ?? "Unable to unlock wallet.");
+        setPopupFeedback(response.error?.message ?? "Unable to unlock wallet.");
+        return;
       }
 
+      clearPopupFeedback();
       await loadPopupState();
     });
 
@@ -1590,7 +1636,7 @@ function wireWalletForms(): void {
       const form = event.currentTarget as HTMLFormElement;
       const passcodeError = validatePopupPasscode(form);
       if (passcodeError) {
-        window.alert(passcodeError);
+        setPopupFeedback(passcodeError);
         return;
       }
 
@@ -1606,9 +1652,11 @@ function wireWalletForms(): void {
       if (response.ok && response.result) {
         const result = response.result as { mnemonic?: string };
         lastCreatedMnemonic = result.mnemonic ?? null;
+        clearPopupFeedback();
       } else {
         lastCreatedMnemonic = null;
-        window.alert(response.error?.message ?? "Unable to create wallet.");
+        setPopupFeedback(response.error?.message ?? "Unable to create wallet.");
+        return;
       }
 
       await loadPopupState();
@@ -1621,7 +1669,7 @@ function wireWalletForms(): void {
       const form = event.currentTarget as HTMLFormElement;
       const passcodeError = validatePopupPasscode(form);
       if (passcodeError) {
-        window.alert(passcodeError);
+        setPopupFeedback(passcodeError);
         return;
       }
 
@@ -1636,9 +1684,11 @@ function wireWalletForms(): void {
       })) as ExtensionRuntimeResponse;
 
       if (!response.ok) {
-        window.alert(response.error?.message ?? "Unable to import wallet.");
+        setPopupFeedback(response.error?.message ?? "Unable to import wallet.");
+        return;
       }
 
+      clearPopupFeedback();
       await loadPopupState();
     });
 }

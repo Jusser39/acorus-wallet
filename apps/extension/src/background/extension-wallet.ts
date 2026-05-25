@@ -1,3 +1,4 @@
+import "./node-globals";
 import {
   DEFAULT_TRON_CHAIN_ID,
   getEvmChainConfig,

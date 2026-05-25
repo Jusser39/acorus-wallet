@@ -8,7 +8,4 @@ export default defineConfig({
       "@acorus/wallet-core": resolve(__dirname, "../../packages/wallet-core/src/index.ts"),
     },
   },
-  test: {
-    testTimeout: 20_000,
-  },
 });

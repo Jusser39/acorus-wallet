@@ -760,3 +760,14 @@
 502. Rebuilt the extension package with the MV3 `Buffer` compatibility shim included in `dist/background/index.js`; the rebuilt popup no longer contains the old `No automatic passwords`, `Numeric PIN`, or `Random` onboarding strings.
 503. Validation passed for the follow-up: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/web build`, `pnpm build`, `pnpm test`, `git diff --check`, and `pnpm extension:package`.
 504. Local Playwright smoke reached `/` and `/swap` on the dev server. The page rendered, but dev-mode console showed expected local 404s for backend-only API routes because the Fastify API was not running in that smoke.
+505. Started a focused stabilization pass after the user reported dead controls and Chrome freezing when the site opened.
+506. Removed high-frequency `mousemove` activity tracking, throttled wallet activity writes to 15 seconds, and changed the broad wallet-store subscription to persist only a compact settings/profile snapshot.
+507. Disabled stale web service worker behavior by unregistering existing registrations, clearing Cache API entries, and making `sw.js` delete caches and unregister itself on activation.
+508. Added pointer-event guards to Magic Glass decorative layers and animated Acorus Guardian elements so they cannot intercept clicks.
+509. Added a frontend API fetch timeout of 12 seconds for cleaner unavailable-backend failures.
+510. Updated the wallet nav lock button to display a disabled `Locked` state unless a vault is actually unlocked.
+511. Loaded the extension `node-globals` compatibility shim before background wallet/assets modules to keep BIP-39/HD import paths from failing on `Buffer`.
+512. Replaced extension popup `window.alert` and `window.confirm` usage with inline success/warning/error feedback and a two-click reset confirmation.
+513. Rebuilt the extension package and verified the built popup no longer contains the old automatic-password/PIN/random onboarding copy.
+514. Validation passed for this stabilization pass: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension build`, `pnpm --filter @acorus/wallet-core test`, `pnpm extension:package`, and `git diff --check`.
+515. Local dev server returned `200` for `/wallet` on `127.0.0.1:3100`; Browser plugin validation was attempted but blocked by the in-app browser's current `data:` error-page navigation policy.
