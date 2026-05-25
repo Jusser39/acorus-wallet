@@ -1971,7 +1971,7 @@ textarea::placeholder {
 
 .magic-dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(360px, 1.18fr) minmax(360px, 0.98fr) minmax(290px, 0.78fr);
+  grid-template-columns: minmax(330px, 0.9fr) minmax(430px, 1.18fr) minmax(290px, 0.78fr);
   gap: 24px;
   align-items: stretch;
 }

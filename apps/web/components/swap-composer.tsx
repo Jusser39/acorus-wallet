@@ -24,6 +24,8 @@ import {
 import {
   getExtensionChainId,
   hasAcorusExtension,
+  requestAcorusExtension,
+  requestAcorusProviderDiscovery,
   requestExtensionEvmSendTransaction,
   requestExtensionSwap,
   requestExtensionUniversalSwap,
@@ -71,6 +73,8 @@ export function SwapComposer(props: {
   const [extensionChainId, setExtensionChainId] = useState<number | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState(0);
   const [history, setHistory] = useState<WebSwapActivityEntry[]>([]);
+  const [extensionDetected, setExtensionDetected] = useState(false);
+  const [connectedAddress, setConnectedAddress] = useState<string | null>(props.userAddress ?? null);
   const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
   const [tokenSearch, setTokenSearch] = useState("");
   const [jupiterInputMint, setJupiterInputMint] = useState("So11111111111111111111111111111111111111112");
@@ -83,7 +87,7 @@ export function SwapComposer(props: {
   const [rangoAmount, setRangoAmount] = useState("0.01");
   const [rangoResult, setRangoResult] = useState<string | null>(null);
   const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
-  const extensionDetected = typeof window !== "undefined" && hasAcorusExtension();
+  const activeUserAddress = props.userAddress ?? connectedAddress;
 
   const tokens = useMemo(
     () => getPopularSwapTokens({
@@ -112,6 +116,8 @@ export function SwapComposer(props: {
 
   useEffect(() => {
     setHistory(loadSwapHistory());
+    requestAcorusProviderDiscovery();
+    setExtensionDetected(hasAcorusExtension());
     void getEvmSwapStatus()
       .then(setStatus)
       .catch(() => setStatus({
@@ -125,6 +131,36 @@ export function SwapComposer(props: {
         version: "v2",
       }));
     void getUniversalSwapStatus().then(setUniversalStatus).catch(() => setUniversalStatus(null));
+  }, []);
+
+  useEffect(() => {
+    if (props.userAddress) {
+      setConnectedAddress(props.userAddress);
+    }
+  }, [props.userAddress]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshExtensionDetection = () => {
+      requestAcorusProviderDiscovery();
+      if (mounted) {
+        setExtensionDetected(hasAcorusExtension());
+      }
+    };
+
+    refreshExtensionDetection();
+    const timers = [
+      window.setTimeout(refreshExtensionDetection, 250),
+      window.setTimeout(refreshExtensionDetection, 1_000),
+    ];
+    window.addEventListener("eip6963:announceProvider", refreshExtensionDetection);
+
+    return () => {
+      mounted = false;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("eip6963:announceProvider", refreshExtensionDetection);
+    };
   }, []);
 
   useEffect(() => {
@@ -196,7 +232,13 @@ export function SwapComposer(props: {
     setExtensionResult(null);
 
     try {
-      if (!props.userAddress) {
+      let takerAddress = activeUserAddress;
+
+      if (!takerAddress) {
+        takerAddress = await handleConnectWallet();
+      }
+
+      if (!takerAddress) {
         throw new Error("Connect Acorus extension before requesting a firm quote.");
       }
 
@@ -213,7 +255,7 @@ export function SwapComposer(props: {
         sellToken,
         buyToken,
         sellAmount: normalizeEvmTokenAmount(sellAmount, selectedSellToken.decimals),
-        taker: props.userAddress,
+        taker: takerAddress,
         slippageBps,
       });
 
@@ -226,7 +268,7 @@ export function SwapComposer(props: {
   }
 
   async function handleApprove() {
-    if (!quote?.approval || !props.userAddress) {
+    if (!quote?.approval || !activeUserAddress) {
       return;
     }
 
@@ -234,7 +276,7 @@ export function SwapComposer(props: {
       const tx = buildErc20ApproveTransaction({
         chainId: quote.chainId,
         tokenAddress: quote.approval.tokenAddress,
-        owner: props.userAddress,
+        owner: activeUserAddress,
         spender: quote.approval.spender,
         amountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
         approvalMode,
@@ -243,7 +285,7 @@ export function SwapComposer(props: {
       await requestExtensionEvmSendTransaction({
         approvalKind: "token_approval",
         chainId: quote.chainId,
-        from: props.userAddress,
+        from: activeUserAddress,
         to: tx.to,
         data: tx.data,
         value: tx.value,
@@ -272,7 +314,7 @@ export function SwapComposer(props: {
         kind: "approval_requested",
         provider: "0x",
         chainId: quote.chainId,
-        account: props.userAddress,
+        account: activeUserAddress,
         tokenSymbol: quote.sellToken.symbol,
         amountFormatted: approvalMode === "infinite"
           ? "Unlimited"
@@ -293,7 +335,7 @@ export function SwapComposer(props: {
         kind: "approval_failed",
         provider: "0x",
         chainId: quote.chainId,
-        account: props.userAddress,
+        account: activeUserAddress,
         tokenSymbol: quote.sellToken.symbol,
         amountFormatted: shortenFormattedEvmTokenAmount(
           quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
@@ -347,13 +389,13 @@ export function SwapComposer(props: {
       });
 
       setExtensionResult("Swap request queued in Acorus extension. Open the popup to approve or reject.");
-      if (props.userAddress) {
+      if (activeUserAddress) {
         setHistory(appendSwapHistoryEntry({
           id: `swap_${quote.requestId}_${Date.now()}`,
           kind: "swap_requested",
           provider: "0x",
           chainId: quote.chainId,
-          account: props.userAddress,
+          account: activeUserAddress,
           sellTokenSymbol: quote.sellToken.symbol,
           buyTokenSymbol: quote.buyToken.symbol,
           amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
@@ -366,13 +408,13 @@ export function SwapComposer(props: {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extension swap request failed.";
       setExtensionResult(message);
-      if (props.userAddress) {
+      if (activeUserAddress) {
         setHistory(appendSwapHistoryEntry({
           id: `swap_failed_${quote.requestId}_${Date.now()}`,
           kind: "swap_failed",
           provider: "0x",
           chainId: quote.chainId,
-          account: props.userAddress,
+          account: activeUserAddress,
           sellTokenSymbol: quote.sellToken.symbol,
           buyTokenSymbol: quote.buyToken.symbol,
           amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
@@ -390,6 +432,29 @@ export function SwapComposer(props: {
   async function handleSwitchChain() {
     await switchExtensionChain(chainId);
     setExtensionChainId(parseChainId(await getExtensionChainId()));
+  }
+
+  async function handleConnectWallet(): Promise<string | null> {
+    setError(null);
+    setExtensionResult(null);
+    requestAcorusProviderDiscovery();
+
+    try {
+      const accounts = await requestAcorusExtension<string[]>("eth_requestAccounts");
+      const account = Array.isArray(accounts) ? accounts[0] ?? null : null;
+
+      if (!account) {
+        throw new Error("Acorus extension did not return an account.");
+      }
+
+      setConnectedAddress(account);
+      setExtensionDetected(true);
+      return account;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to connect Acorus extension.";
+      setError(message);
+      return null;
+    }
   }
 
   async function handleJupiterQuote() {
@@ -453,8 +518,8 @@ export function SwapComposer(props: {
       return;
     }
 
-    if (!props.userAddress) {
-      setError("Connect Acorus extension before requesting or executing a swap.");
+    if (!activeUserAddress) {
+      await handleConnectWallet();
       return;
     }
 
@@ -588,7 +653,7 @@ export function SwapComposer(props: {
   const ctaLabel = isEvmSwap
     ? getSwapCtaLabel({
         extensionDetected,
-        connected: Boolean(props.userAddress),
+        connected: Boolean(activeUserAddress),
         quoteLoading: loading,
         quoteReady: Boolean(quote),
         approvalRequired: Boolean(quote?.approvalRequired),

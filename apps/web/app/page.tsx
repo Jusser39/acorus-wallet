@@ -73,22 +73,6 @@ export default async function Home() {
     <main className="magic-shell">
       <section className="magic-container py-8">
         <div className="magic-dashboard-grid">
-          <section className="magic-dashboard-card magic-guardian-card">
-            <div className="flex items-center justify-between gap-3">
-              <span className="magic-token-chip px-4 py-2 text-sm font-black">Acorus Guardian</span>
-              <Link href="/wallet" className="magic-button-secondary px-4 py-2 text-sm">Open wallet</Link>
-            </div>
-            <AcorusMagicStage pose="home" />
-            <div className="mt-auto">
-              <h1 className="text-4xl font-black tracking-tight text-slate-950">
-                Your Multichain <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">Magic Wallet</span>
-              </h1>
-              <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
-                EVM, Solana, Bitcoin and future chains in one guardian shell. Keys stay local; routes and approvals stay explicit.
-              </p>
-            </div>
-          </section>
-
           <section className="magic-dashboard-card magic-swap-panel-card">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -103,6 +87,22 @@ export default async function Home() {
               title="Swap"
               description="Pick a route network and popular token. EVM quotes are live through 0x; non-EVM execution stays review-gated."
             />
+          </section>
+
+          <section className="magic-dashboard-card magic-guardian-card">
+            <div className="flex items-center justify-between gap-3">
+              <span className="magic-token-chip px-4 py-2 text-sm font-black">Acorus Guardian</span>
+              <Link href="/wallet" className="magic-button-secondary px-4 py-2 text-sm">Open wallet</Link>
+            </div>
+            <AcorusMagicStage pose="home" />
+            <div className="mt-auto">
+              <h1 className="text-4xl font-black tracking-tight text-slate-950">
+                Your Multichain <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">Magic Wallet</span>
+              </h1>
+              <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
+                EVM, Solana, Bitcoin and future chains in one guardian shell. Keys stay local; routes and approvals stay explicit.
+              </p>
+            </div>
           </section>
 
           <aside className="grid content-start gap-4">

@@ -9,12 +9,26 @@ type AcorusRequestInput = {
 
 type AcorusProvider = {
   isAcorus?: boolean;
+  on?(event: string, listener: (...args: unknown[]) => void): void;
   request(input: AcorusRequestInput): Promise<unknown>;
+  removeListener?(event: string, listener: (...args: unknown[]) => void): void;
 };
+
+type Eip6963ProviderDetail = {
+  info?: {
+    name?: string;
+    rdns?: string;
+  };
+  provider?: AcorusProvider;
+};
+
+let discoveredProvider: AcorusProvider | null = null;
+let discoveryListenerRegistered = false;
 
 declare global {
   interface Window {
     acorus?: AcorusProvider;
+    acorusEthereum?: AcorusProvider;
   }
 }
 
@@ -52,19 +66,93 @@ export type ExtensionReceiveAddressResult = {
   chainIds: ChainId[];
 } | null;
 
+function isAcorusProvider(provider: unknown): provider is AcorusProvider {
+  return (
+    typeof provider === "object"
+    && provider !== null
+    && "request" in provider
+    && typeof (provider as AcorusProvider).request === "function"
+  );
+}
+
+function isAcorusAnnouncement(detail: unknown): detail is Eip6963ProviderDetail {
+  if (typeof detail !== "object" || detail === null) {
+    return false;
+  }
+
+  const candidate = detail as Eip6963ProviderDetail;
+  const name = candidate.info?.name?.toLowerCase() ?? "";
+  const rdns = candidate.info?.rdns?.toLowerCase() ?? "";
+
+  return (
+    isAcorusProvider(candidate.provider)
+    && (
+      candidate.provider.isAcorus === true
+      || name.includes("acorus")
+      || rdns.includes("acorus")
+      || rdns.includes("24wallet")
+    )
+  );
+}
+
+function rememberAcorusProvider(event: Event): void {
+  const detail = "detail" in event ? (event as CustomEvent<unknown>).detail : null;
+  if (isAcorusAnnouncement(detail) && detail.provider) {
+    discoveredProvider = detail.provider;
+  }
+}
+
+function getAcorusProvider(): AcorusProvider | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const ethereum = (window as Window & { ethereum?: unknown }).ethereum;
+
+  if (isAcorusProvider(window.acorus)) {
+    return window.acorus;
+  }
+
+  if (isAcorusProvider(window.acorusEthereum)) {
+    return window.acorusEthereum;
+  }
+
+  if (isAcorusProvider(ethereum) && ethereum.isAcorus === true) {
+    return ethereum;
+  }
+
+  return discoveredProvider;
+}
+
+export function requestAcorusProviderDiscovery(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!discoveryListenerRegistered) {
+    window.addEventListener("eip6963:announceProvider", rememberAcorusProvider);
+    discoveryListenerRegistered = true;
+  }
+
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+
 export function hasAcorusExtension(): boolean {
-  return typeof window !== "undefined" && Boolean(window.acorus?.request);
+  requestAcorusProviderDiscovery();
+  return Boolean(getAcorusProvider());
 }
 
 export async function requestAcorusExtension<T>(
   method: string,
   params?: unknown[],
 ): Promise<T> {
-  if (!window.acorus?.request) {
+  const provider = getAcorusProvider();
+
+  if (!provider) {
     throw new Error("Acorus extension is not installed or not enabled in this browser profile.");
   }
 
-  return window.acorus.request({ method, params }) as Promise<T>;
+  return provider.request({ method, params }) as Promise<T>;
 }
 
 export function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {

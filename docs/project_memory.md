@@ -1862,3 +1862,29 @@
   - `https://24wallet.ru/extension`
   - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
 
+## Extension Connect and Guardian Layout Follow-Up (2026-05-25)
+
+- Status: **implemented and validated locally**
+- The web extension bridge now detects Acorus through direct globals and
+  EIP-6963 provider announcements before showing an extension-missing state.
+- The swap composer now requests provider discovery, listens for late Acorus
+  announcements, connects with `eth_requestAccounts`, and uses the connected
+  address for quote/review flows.
+- The Magic Glass home dashboard now matches the requested composition more
+  closely: Swap on the left, Acorus Guardian centered, and portfolio/actions on
+  the right.
+- The rebuilt extension package includes the MV3 `Buffer` shim and the first-run
+  popup no longer contains the old automatic-password warning or PIN/random
+  choice copy.
+- Validation passed:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/extension lint`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm build`
+  - `pnpm test`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Local Playwright smoke reached `/` and `/swap`; the dev server showed only
+  expected local 404s for backend API routes that require the Fastify API.
+

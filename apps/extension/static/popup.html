@@ -363,6 +363,11 @@
         color: #991b1b;
       }
 
+      .status-pill.setup {
+        background: #e0f2fe;
+        color: #075985;
+      }
+
       .primary-button,
       .ghost-button,
       .danger-button {
@@ -438,6 +443,48 @@
         background: linear-gradient(135deg, rgba(124, 247, 255, 0.36), rgba(255, 122, 223, 0.26));
         color: #4c1d95;
         box-shadow: 0 12px 24px rgba(139, 92, 246, 0.12);
+      }
+
+      .extension-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .setup-action {
+        display: grid;
+        min-height: 78px;
+        align-content: center;
+        gap: 8px;
+        border: 1px solid rgba(230, 250, 255, 0.72);
+        border-radius: 22px;
+        background: linear-gradient(135deg, rgba(124, 247, 255, 0.30), rgba(255, 122, 223, 0.24));
+        color: #111827;
+        cursor: pointer;
+        padding: 12px;
+        text-align: left;
+        box-shadow: 0 12px 28px rgba(32, 92, 155, 0.10);
+      }
+
+      .setup-action span {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #7cf7ff, #8b5cf6 58%, #ff7adf);
+        color: white;
+        font-weight: 900;
+      }
+
+      .setup-action strong {
+        font-size: 14px;
+      }
+
+      .compact-copy {
+        margin: 0;
+        font-size: 11px;
+        line-height: 1.35;
       }
 
       .checkbox-row {
@@ -1018,6 +1065,7 @@
       html[data-acorus-theme="dark"] .ghost-button,
       html[data-acorus-theme="dark"] .network-card,
       html[data-acorus-theme="dark"] .onboarding-tab,
+      html[data-acorus-theme="dark"] .setup-action,
       html[data-acorus-theme="dark"] .segmented {
         border-color: rgba(124, 247, 255, 0.16);
         background: rgba(7, 23, 44, 0.72);

@@ -259,6 +259,22 @@ function renderPopup(
   const activeNetwork = home?.networks.find((network) => String(network.chainId) === String(activeChain));
   const pendingCount =
     state.proposals.length + state.pendingRequests.length + state.signerUnlockQueue.length;
+  const statusLabel = !vault.hasVault
+    ? "Setup"
+    : vault.isUnlocked
+      ? "Unlocked"
+      : "Locked";
+  const statusClass = !vault.hasVault
+    ? "setup"
+    : vault.isUnlocked
+      ? "ok"
+      : "locked";
+  const statusAction = !vault.hasVault
+    ? "set-onboarding-tab"
+    : vault.isUnlocked
+      ? "lock-extension-wallet"
+      : "focus-unlock-wallet";
+  const statusId = !vault.hasVault ? onboardingTab : "vault";
 
   return `
     <main class="wallet-shell">
@@ -274,11 +290,11 @@ function renderPopup(
           <button class="network-pill as-button" type="button" data-action="open-network-panel" data-id="network">
             ${escapeHtml(String(activeChain) === "all" ? "All networks" : activeNetwork?.name ?? chainName(activeChain))} ▾
           </button>
-          <button class="status-pill as-button ${vault.isUnlocked ? "ok" : "locked"}"
+          <button class="status-pill as-button ${statusClass}"
                   type="button"
-                  data-action="${vault.isUnlocked ? "lock-extension-wallet" : "focus-unlock-wallet"}"
-                  data-id="vault">
-            ${vault.isUnlocked ? "Unlocked" : "Locked"}
+                  data-action="${statusAction}"
+                  data-id="${escapeHtml(statusId)}">
+            ${statusLabel}
           </button>
           <button class="icon-button" type="button" data-action="open-action-panel" data-id="settings" title="Settings">⚙</button>
         </div>
@@ -700,10 +716,7 @@ function renderExtensionPasscodeFields(_formId: string): string {
       <div class="form">
         <input class="field" name="passcode" placeholder="Password, min 8 chars" type="password" autocomplete="new-password">
         <input class="field" name="confirmPasscode" placeholder="Repeat password" type="password" autocomplete="new-password">
-        <label class="checkbox-row">
-          <input name="passcodeSaved" type="checkbox" value="yes">
-          <span>I saved this password. It cannot be recovered by Acorus.</span>
-        </label>
+        <p class="copy compact-copy">Acorus never creates a password automatically. This password is only used to encrypt and unlock this extension vault.</p>
       </div>
     </section>
   `;
@@ -719,7 +732,7 @@ function renderOnboarding(): string {
           ${activeIsCreate ? "Create your Wallet" : "Import your Wallet"}
         </h1>
         <p class="copy" style="margin-top:8px">
-          Seed phrase and encrypted vault stay inside this Chrome extension. Choose your own password before the wallet is saved.
+          Your seed phrase and encrypted vault stay inside this Chrome extension. Set your own password, then create or import.
         </p>
       </div>
       <div class="onboarding-tabs" role="tablist" aria-label="Wallet setup">
@@ -728,6 +741,16 @@ function renderOnboarding(): string {
         </button>
         <button class="onboarding-tab" type="button" data-active="${!activeIsCreate}" data-action="set-onboarding-tab" data-id="import">
           Import your Wallet
+        </button>
+      </div>
+      <div class="extension-quick-actions" aria-label="Quick wallet actions">
+        <button class="setup-action" type="button" data-action="open-action-panel" data-id="send">
+          <span>↗</span>
+          <strong>Send</strong>
+        </button>
+        <button class="setup-action" type="button" data-action="open-action-panel" data-id="receive">
+          <span>↙</span>
+          <strong>Receive</strong>
         </button>
       </div>
       ${
@@ -741,7 +764,7 @@ function renderOnboarding(): string {
           <input class="field" name="name" placeholder="Wallet name" value="Imported wallet">
           <textarea class="field" name="mnemonic" placeholder="Seed phrase" rows="3"></textarea>
           ${renderExtensionPasscodeFields("import-wallet-form")}
-          <button class="ghost-button" type="submit">Import wallet</button>
+          <button class="primary-button" type="submit">Import wallet</button>
         </form>`
       }
     </section>
@@ -1528,7 +1551,6 @@ function validatePopupPasscode(form: HTMLFormElement): string | null {
   const formData = new FormData(form);
   const passcode = String(formData.get("passcode") ?? "").trim();
   const confirmPasscode = String(formData.get("confirmPasscode") ?? "").trim();
-  const saved = formData.get("passcodeSaved") === "yes";
 
   if (passcode.length < 8) {
     return "Choose a wallet password with at least 8 characters.";
@@ -1536,10 +1558,6 @@ function validatePopupPasscode(form: HTMLFormElement): string | null {
 
   if (passcode !== confirmPasscode) {
     return "Password confirmation does not match.";
-  }
-
-  if (!saved) {
-    return "Confirm that you saved the password. Acorus cannot recover it.";
   }
 
   return null;

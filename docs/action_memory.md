@@ -753,3 +753,10 @@
 495. Deployed the manual-password extension repair to `/opt/acorus-wallet-release-current`, preserving server backup `/root/backups/acorus-extension-manual-password_20260524_213402`.
 496. Recreated the production `api`, `web`, and `nginx` containers; an immediate `/` request briefly returned `502` during Next.js startup, then passed after the web container reported ready.
 497. Production checks passed for `/health`, `/`, `/swap`, `/wallet`, `/settings`, `/extension`, and `/downloads/acorus-wallet-extension.zip`; the downloadable extension package returns `application/zip`.
+498. Started a follow-up extension connection/onboarding polish pass after the user reported that a freshly installed Chrome extension still did not connect from the web app and that the Figma-style dashboard needed Swap left and Acorus Guardian centered.
+499. Hardened the web extension bridge so it detects `window.acorus`, `window.acorusEthereum`, Acorus-tagged `window.ethereum`, and EIP-6963 announced providers before declaring the extension missing.
+500. Updated the web swap composer to actively request Acorus provider discovery, listen for EIP-6963 provider announcements, connect through `eth_requestAccounts`, and reuse the connected address for 0x quote/review flows.
+501. Reordered the Magic Glass home dashboard so the Swap module is on the left, Acorus Guardian is centered, and portfolio/quick actions remain on the right.
+502. Rebuilt the extension package with the MV3 `Buffer` compatibility shim included in `dist/background/index.js`; the rebuilt popup no longer contains the old `No automatic passwords`, `Numeric PIN`, or `Random` onboarding strings.
+503. Validation passed for the follow-up: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/web build`, `pnpm build`, `pnpm test`, `git diff --check`, and `pnpm extension:package`.
+504. Local Playwright smoke reached `/` and `/swap` on the dev server. The page rendered, but dev-mode console showed expected local 404s for backend-only API routes because the Fastify API was not running in that smoke.
