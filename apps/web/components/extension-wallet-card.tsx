@@ -5,6 +5,7 @@ import type { ChainFamily, ChainId } from "@acorus/shared";
 import {
   getExtensionVaultStatus,
   hasAcorusExtension,
+  requestAcorusProviderDiscovery,
   type ExtensionVaultStatus,
 } from "@/lib/extension-bridge";
 import { formatAddress } from "@/lib/utils";
@@ -29,12 +30,33 @@ export function ExtensionWalletCard(props: {
   }
 
   useEffect(() => {
-    if (!hasAcorusExtension()) {
-      setError("Install and enable Acorus Wallet Extension to use website-controlled wallet actions.");
-      return;
+    let mounted = true;
+    let detectionTimer: number | null = null;
+
+    function detectAndRefresh() {
+      requestAcorusProviderDiscovery();
+      detectionTimer = window.setTimeout(() => {
+        if (!mounted) {
+          return;
+        }
+
+        if (!hasAcorusExtension()) {
+          setError("Install and enable Acorus Wallet Extension to use website-controlled wallet actions.");
+          return;
+        }
+
+        void refresh();
+      }, 100);
     }
 
-    void refresh();
+    detectAndRefresh();
+
+    return () => {
+      mounted = false;
+      if (detectionTimer !== null) {
+        window.clearTimeout(detectionTimer);
+      }
+    };
   }, []);
 
   const profiles = status?.profiles.filter((profile) =>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import {
   EVM_CHAINS,
   normalizeEvmTokenAmount,
@@ -142,11 +143,15 @@ export function SwapComposer(props: {
   useEffect(() => {
     let mounted = true;
 
-    const refreshExtensionDetection = () => {
-      requestAcorusProviderDiscovery();
+    const updateExtensionDetection = () => {
       if (mounted) {
         setExtensionDetected(hasAcorusExtension());
       }
+    };
+
+    const refreshExtensionDetection = () => {
+      requestAcorusProviderDiscovery();
+      updateExtensionDetection();
     };
 
     refreshExtensionDetection();
@@ -154,12 +159,12 @@ export function SwapComposer(props: {
       window.setTimeout(refreshExtensionDetection, 250),
       window.setTimeout(refreshExtensionDetection, 1_000),
     ];
-    window.addEventListener("eip6963:announceProvider", refreshExtensionDetection);
+    window.addEventListener("eip6963:announceProvider", updateExtensionDetection);
 
     return () => {
       mounted = false;
       timers.forEach((timer) => window.clearTimeout(timer));
-      window.removeEventListener("eip6963:announceProvider", refreshExtensionDetection);
+      window.removeEventListener("eip6963:announceProvider", updateExtensionDetection);
     };
   }, []);
 
@@ -195,6 +200,35 @@ export function SwapComposer(props: {
     if (tokenPickerSide) {
       setTokenSearch("");
     }
+  }, [tokenPickerSide]);
+
+  useEffect(() => {
+    if (!tokenPickerSide) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setTokenPickerSide(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [tokenPickerSide]);
 
   useEffect(() => {
@@ -1002,9 +1036,19 @@ export function SwapComposer(props: {
       </aside>
       ) : null}
 
-      {tokenPickerSide ? (
-        <div className="token-picker-overlay" role="dialog" aria-modal="true" aria-label="Choose token">
-          <div className="token-picker-card">
+      {tokenPickerSide && typeof document !== "undefined" ? createPortal(
+        <div
+          className="token-picker-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose token"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setTokenPickerSide(null);
+            }
+          }}
+        >
+          <div className="token-picker-card" onMouseDown={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-2xl font-black text-slate-950">Choose token</h2>
               <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
@@ -1062,7 +1106,8 @@ export function SwapComposer(props: {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

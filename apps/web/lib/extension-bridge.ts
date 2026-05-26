@@ -24,6 +24,9 @@ type Eip6963ProviderDetail = {
 
 let discoveredProvider: AcorusProvider | null = null;
 let discoveryListenerRegistered = false;
+let lastDiscoveryRequestedAt = 0;
+
+const DISCOVERY_THROTTLE_MS = 1_000;
 
 declare global {
   interface Window {
@@ -134,11 +137,16 @@ export function requestAcorusProviderDiscovery(): void {
     discoveryListenerRegistered = true;
   }
 
+  const now = Date.now();
+  if (now - lastDiscoveryRequestedAt < DISCOVERY_THROTTLE_MS) {
+    return;
+  }
+
+  lastDiscoveryRequestedAt = now;
   window.dispatchEvent(new Event("eip6963:requestProvider"));
 }
 
 export function hasAcorusExtension(): boolean {
-  requestAcorusProviderDiscovery();
   return Boolean(getAcorusProvider());
 }
 

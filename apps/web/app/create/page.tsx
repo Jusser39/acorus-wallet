@@ -10,7 +10,13 @@ import {
 } from "@acorus/wallet-core";
 import { createWalletProfile } from "@/lib/api";
 import { PasscodeSetupDialog } from "@/components/passcode-setup-dialog";
-import { createExtensionWallet, getExtensionVaultStatus, hasAcorusExtension, type ExtensionVaultStatus } from "@/lib/extension-bridge";
+import {
+  createExtensionWallet,
+  getExtensionVaultStatus,
+  hasAcorusExtension,
+  requestAcorusProviderDiscovery,
+  type ExtensionVaultStatus,
+} from "@/lib/extension-bridge";
 import type { WalletPasscodeMode } from "@/lib/passcode-policy";
 import { validateWalletPasscode } from "@/lib/passcode-policy";
 import { saveEncryptedVault } from "@/lib/storage";
@@ -57,16 +63,45 @@ export default function CreateWalletPage() {
   }, []);
 
   useEffect(() => {
-    const detected = hasAcorusExtension();
-    setExtensionDetected(detected);
+    let mounted = true;
+    let detectionTimer: number | null = null;
 
-    if (!detected) {
-      return;
-    }
+    const detectExtension = () => {
+      requestAcorusProviderDiscovery();
+      detectionTimer = window.setTimeout(() => {
+        if (!mounted) {
+          return;
+        }
 
-    void getExtensionVaultStatus()
-      .then(setExtensionStatus)
-      .catch(() => setExtensionStatus(null));
+        const detected = hasAcorusExtension();
+        setExtensionDetected(detected);
+
+        if (!detected) {
+          return;
+        }
+
+        void getExtensionVaultStatus()
+          .then((status) => {
+            if (mounted) {
+              setExtensionStatus(status);
+            }
+          })
+          .catch(() => {
+            if (mounted) {
+              setExtensionStatus(null);
+            }
+          });
+      }, 100);
+    };
+
+    detectExtension();
+
+    return () => {
+      mounted = false;
+      if (detectionTimer !== null) {
+        window.clearTimeout(detectionTimer);
+      }
+    };
   }, []);
 
   function ensurePasscodeReady(): boolean {

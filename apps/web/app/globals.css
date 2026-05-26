@@ -1507,12 +1507,15 @@ main.flex-1,
 .token-picker-overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 2147483000;
   display: grid;
   place-items: center;
   background: rgba(7, 23, 44, 0.34);
   padding: 20px;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .token-picker-card {
@@ -1555,6 +1558,8 @@ main.flex-1,
 }
 
 .token-picker-search input {
+  min-width: 0;
+  flex: 1 1 auto;
   border: 0;
   background: transparent;
   padding: 0.65rem 0;
@@ -1577,6 +1582,11 @@ main.flex-1,
   margin-top: 14px;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.token-picker-quick::-webkit-scrollbar {
+  display: none;
 }
 
 .token-picker-section-label {
@@ -1608,10 +1618,11 @@ main.flex-1,
 .token-picker-list {
   display: grid;
   gap: 8px;
-  max-height: 430px;
+  max-height: min(430px, calc(100vh - 300px));
   margin-top: 14px;
   overflow-y: auto;
   padding-right: 4px;
+  overscroll-behavior: contain;
 }
 
 .token-picker-row {
