@@ -21,13 +21,11 @@ import {
   type ChainFamily,
   type DappShellSnapshot,
 } from "@acorus/shared";
-import { buildErc20ApproveTransaction, buildSplTransferDraft } from "@acorus/wallet-core";
+import { buildSplTransferDraft, buildSwapApprovalTransaction } from "@acorus/wallet-core";
 import {
   type AcorusProviderMethod,
-  createRequestId,
   createSkeletonState,
   isAcorusProviderMethod,
-  type ExtensionRuntimeMessage,
   type ExtensionRuntimeResponse,
   type SignerUnlockIntent,
 } from "../shared/protocol";
@@ -78,6 +76,7 @@ import {
   syncWalletProfiles,
   touchOriginSession,
 } from "./permission-store";
+import { validateRuntimeMessage } from "./messaging";
 
 const pendingProviderApprovals = new Map<
   string,
@@ -117,21 +116,21 @@ export async function handleRuntimeMessage(
   message: unknown,
   sender: chrome.MessageSender,
 ): Promise<ExtensionRuntimeResponse> {
-  const fallbackId = createRequestId("background");
+  const validation = validateRuntimeMessage(message, sender, chrome.runtime.id ?? "");
 
-  if (typeof message !== "object" || message === null || !("kind" in message)) {
+  if (!validation.ok) {
     return {
-      requestId: fallbackId,
+      requestId: validation.requestId,
       ok: false,
       error: {
-        code: "bad_request",
-        message: "Unknown extension message.",
+        code: validation.code,
+        message: validation.message,
       },
     };
   }
 
-  const input = message as ExtensionRuntimeMessage;
-  const requestId = input.requestId ?? fallbackId;
+  const input = validation.message;
+  const requestId = input.requestId;
 
   if (input.kind === "ping") {
     return {
@@ -1857,13 +1856,12 @@ async function queueInternalEvmApproveTokenRequest(input: {
     throw new Error("Token approvals are available only for configured EVM networks.");
   }
 
-  const tx = buildErc20ApproveTransaction({
+  const tx = buildSwapApprovalTransaction({
     chainId: input.chainId,
     tokenAddress: input.tokenAddress,
     owner: profile.account,
     spender: input.spender,
-    amountRaw: input.amountRaw,
-    approvalMode: input.approvalMode,
+    requiredAmountRaw: input.amountRaw,
   });
   const origin = "chrome-extension://acorus-popup";
   const state = await getDappShellState();
@@ -1880,7 +1878,7 @@ async function queueInternalEvmApproveTokenRequest(input: {
     tokenSymbol: input.tokenSymbol,
     spender: input.spender,
     amountRaw: tx.amountRaw,
-    approvalMode: input.approvalMode,
+    approvalMode: "exact",
   }];
   const queued = queueDappRequest(stateWithSession, {
     id: input.requestId,
@@ -1898,7 +1896,10 @@ async function queueInternalEvmApproveTokenRequest(input: {
       tokenAddress: input.tokenAddress,
       spender: input.spender,
       amountRaw: tx.amountRaw,
-      amountFormatted: input.amountFormatted ?? formatApprovalAmount(input, tx.amountRaw),
+      amountFormatted: input.amountFormatted ?? formatApprovalAmount(
+        { ...input, approvalMode: "exact" },
+        tx.amountRaw,
+      ),
       currentAllowanceRaw: input.currentAllowanceRaw ?? null,
       requiredAllowanceRaw: input.requiredAllowanceRaw ?? input.amountRaw,
       currentAllowanceFormatted: formatOptionalAllowance(
@@ -1909,7 +1910,7 @@ async function queueInternalEvmApproveTokenRequest(input: {
         input.requiredAllowanceRaw ?? input.amountRaw,
         input.tokenDecimals,
       ),
-      approvalMode: input.approvalMode,
+      approvalMode: "exact",
       riskLabels: tx.riskLabels,
     },
   });
@@ -1922,8 +1923,11 @@ async function queueInternalEvmApproveTokenRequest(input: {
     chainId: input.chainId,
     account: profile.account,
     tokenSymbol: input.tokenSymbol,
-    amountFormatted: input.amountFormatted ?? formatApprovalAmount(input, tx.amountRaw),
-    approvalMode: input.approvalMode,
+    amountFormatted: input.amountFormatted ?? formatApprovalAmount(
+      { ...input, approvalMode: "exact" },
+      tx.amountRaw,
+    ),
+    approvalMode: "exact",
     status: "queued",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -2825,10 +2829,10 @@ function buildRequestReviewDetails(
         requiredAllowanceFormatted: typeof payload.requiredAllowanceFormatted === "string"
           ? payload.requiredAllowanceFormatted
           : null,
-        approvalMode: payload.approvalMode === "infinite" ? "infinite" : "exact",
+        approvalMode: "exact",
         riskLabels: [
           "Token approval required",
-          ...(payload.approvalMode === "infinite" ? ["Infinite approval"] : []),
+          "Exact allowance",
           "Custom spender",
         ],
       };

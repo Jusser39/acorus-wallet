@@ -1,88 +1,24 @@
 import { encryptedVaultSchema, walletVaultPlaintextSchema } from "./schemas";
+import { asArrayBuffer, decodeUtf8, encodeUtf8 } from "./encoding";
 import {
-  asArrayBuffer,
-  base64ToBytes,
-  bytesToBase64,
-  decodeUtf8,
-  encodeUtf8,
-} from "./encoding";
+  decryptVaultPayload,
+  encryptVaultPayload,
+  wipeBytes,
+} from "./crypto/vault";
 import type { EncryptedVaultV1, WalletVaultPlaintext } from "./types";
-
-const PBKDF2_ITERATIONS = 310_000;
-
-function getVaultCrypto(): Crypto {
-  const vaultCrypto = globalThis.crypto;
-
-  if (!vaultCrypto?.subtle || !vaultCrypto.getRandomValues) {
-    throw new Error(
-      "Secure browser crypto is unavailable. Open Acorus Wallet over HTTPS before creating, importing, or unlocking a wallet.",
-    );
-  }
-
-  return vaultCrypto;
-}
-
-async function importPasscodeKey(passcode: string): Promise<CryptoKey> {
-  return getVaultCrypto().subtle.importKey(
-    "raw",
-    asArrayBuffer(encodeUtf8(passcode)),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-}
-
-async function deriveAesKey(
-  passcode: string,
-  salt: Uint8Array,
-  iterations: number,
-): Promise<CryptoKey> {
-  const baseKey = await importPasscodeKey(passcode);
-
-  return getVaultCrypto().subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      iterations,
-      salt: asArrayBuffer(salt),
-    },
-    baseKey,
-    {
-      name: "AES-GCM",
-      length: 256,
-    },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
 
 export async function encryptVault(
   plaintext: WalletVaultPlaintext,
   passcode: string,
 ): Promise<EncryptedVaultV1> {
   const parsed = walletVaultPlaintextSchema.parse(plaintext);
-  const vaultCrypto = getVaultCrypto();
-  const salt = vaultCrypto.getRandomValues(new Uint8Array(16));
-  const iv = vaultCrypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveAesKey(passcode, salt, PBKDF2_ITERATIONS);
-  const ciphertext = await vaultCrypto.subtle.encrypt(
-    {
-      name: "AES-GCM",
-      iv,
-    },
-    key,
-    asArrayBuffer(encodeUtf8(JSON.stringify(parsed))),
-  );
+  const plaintextBytes = encodeUtf8(JSON.stringify(parsed));
 
-  return {
-    version: 1,
-    kdf: "pbkdf2-sha256",
-    iterations: PBKDF2_ITERATIONS,
-    saltBase64: bytesToBase64(salt),
-    ivBase64: bytesToBase64(iv),
-    ciphertextBase64: bytesToBase64(new Uint8Array(ciphertext)),
-    createdAt: new Date().toISOString(),
-  };
+  try {
+    return await encryptVaultPayload(plaintextBytes, passcode);
+  } finally {
+    wipeBytes(plaintextBytes);
+  }
 }
 
 export function parseEncryptedVault(vault: unknown): EncryptedVaultV1 {
@@ -103,24 +39,16 @@ export async function decryptVault(
   passcode: string,
 ): Promise<WalletVaultPlaintext> {
   const parsed = parseEncryptedVault(vault);
-  const salt = base64ToBytes(parsed.saltBase64);
-  const iv = base64ToBytes(parsed.ivBase64);
-  const ciphertext = base64ToBytes(parsed.ciphertextBase64);
-  const key = await deriveAesKey(passcode, salt, parsed.iterations);
+  let plaintext: Uint8Array | null = null;
 
   try {
-    const plaintext = await getVaultCrypto().subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: asArrayBuffer(iv),
-      },
-      key,
-      asArrayBuffer(ciphertext),
-    );
+    plaintext = await decryptVaultPayload(parsed, passcode);
 
-    return walletVaultPlaintextSchema.parse(JSON.parse(decodeUtf8(plaintext)));
+    return walletVaultPlaintextSchema.parse(JSON.parse(decodeUtf8(asArrayBuffer(plaintext))));
   } catch {
     throw new Error("Unable to unlock wallet with the provided passcode.");
+  } finally {
+    wipeBytes(plaintext);
   }
 }
 

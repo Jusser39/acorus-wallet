@@ -11,7 +11,7 @@ import {
   type RangoSwapQuoteResponse,
   type SolanaSwapQuoteResponse,
 } from "@acorus/shared";
-import { buildErc20ApproveTransaction } from "@acorus/wallet-core";
+import { buildSwapApprovalTransaction } from "@acorus/wallet-core";
 import {
   getEvmSwapQuote,
   getEvmSwapStatus,
@@ -64,7 +64,6 @@ export function SwapComposer(props: {
   const [buyToken, setBuyToken] = useState(props.initialBuyToken ?? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   const [sellAmount, setSellAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(50);
-  const [approvalMode, setApprovalMode] = useState<"exact" | "infinite">("exact");
   const [quote, setQuote] = useState<EvmSwapQuoteResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -309,13 +308,13 @@ export function SwapComposer(props: {
     }
 
     try {
-      const tx = buildErc20ApproveTransaction({
+      const tx = buildSwapApprovalTransaction({
         chainId: quote.chainId,
         tokenAddress: quote.approval.tokenAddress,
         owner: activeUserAddress,
         spender: quote.approval.spender,
-        amountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
-        approvalMode,
+        requiredAmountRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
+        currentAllowanceRaw: quote.approval.currentAllowanceRaw ?? null,
       });
 
       await requestExtensionEvmSendTransaction({
@@ -329,9 +328,7 @@ export function SwapComposer(props: {
         tokenSymbol: quote.sellToken.symbol,
         spender: quote.approval.spender,
         amountRaw: tx.amountRaw,
-        amountFormatted: approvalMode === "infinite"
-          ? "Unlimited"
-          : shortenFormattedEvmTokenAmount(tx.amountRaw, quote.sellToken.decimals),
+        amountFormatted: shortenFormattedEvmTokenAmount(tx.amountRaw, quote.sellToken.decimals),
         currentAllowanceRaw: quote.approval.currentAllowanceRaw ?? null,
         requiredAllowanceRaw: quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
         currentAllowanceFormatted: quote.approval.currentAllowanceRaw
@@ -341,7 +338,7 @@ export function SwapComposer(props: {
           quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
           quote.sellToken.decimals,
         ),
-        approvalMode,
+        approvalMode: "exact",
       });
 
       setExtensionResult("Approval request queued in Acorus extension. Open the popup to confirm or reject it.");
@@ -352,13 +349,11 @@ export function SwapComposer(props: {
         chainId: quote.chainId,
         account: activeUserAddress,
         tokenSymbol: quote.sellToken.symbol,
-        amountFormatted: approvalMode === "infinite"
-          ? "Unlimited"
-          : shortenFormattedEvmTokenAmount(
-              quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
-              quote.sellToken.decimals,
-            ),
-        approvalMode,
+        amountFormatted: shortenFormattedEvmTokenAmount(
+          tx.amountRaw,
+          quote.sellToken.decimals,
+        ),
+        approvalMode: "exact",
         status: "queued",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -377,7 +372,7 @@ export function SwapComposer(props: {
           quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
           quote.sellToken.decimals,
         ),
-        approvalMode,
+        approvalMode: "exact",
         status: "failed",
         errorCode: "approval_request_failed",
         errorMessage: message,
@@ -1018,26 +1013,16 @@ export function SwapComposer(props: {
                 <div className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-base font-semibold text-slate-950">Approve {quote.sellToken.symbol}</h3>
-                    <span className="text-xs text-slate-400">{approvalMode === "exact" ? "Exact" : "Infinite"} approval</span>
+                    <span className="text-xs text-slate-400">Exact approval</span>
                   </div>
                   <div className="mt-3 grid gap-2 text-xs text-slate-300">
                     <div className="flex justify-between gap-3"><span>Spender</span><span className="font-mono">{quote.approval.spender}</span></div>
                     <div className="flex justify-between gap-3"><span>Current allowance</span><span>{quote.approval.currentAllowanceRaw ? shortenFormattedEvmTokenAmount(quote.approval.currentAllowanceRaw, quote.sellToken.decimals) : "0"} {quote.sellToken.symbol}</span></div>
                     <div className="flex justify-between gap-3"><span>Required allowance</span><span>{shortenFormattedEvmTokenAmount(quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</span></div>
                   </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <button type="button" className={approvalMode === "exact" ? "button-primary" : "button-secondary"} onClick={() => setApprovalMode("exact")}>
-                      Exact approval
-                    </button>
-                    <button type="button" className={approvalMode === "infinite" ? "button-primary" : "button-secondary"} onClick={() => setApprovalMode("infinite")}>
-                      Infinite approval
-                    </button>
-                  </div>
-                  {approvalMode === "infinite" ? (
-                    <p className="mt-3 text-xs text-amber-700">
-                      Infinite approval is optional and higher risk. Exact approval stays the safe default.
-                    </p>
-                  ) : null}
+                  <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                    Acorus queues only the exact allowance required for this quote. Refresh the quote if the amount changes.
+                  </p>
                   <button type="button" className="button-secondary mt-4 w-full" onClick={() => void handleApprove()}>
                     Queue approval in extension
                   </button>

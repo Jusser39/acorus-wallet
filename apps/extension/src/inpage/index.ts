@@ -123,8 +123,6 @@ type AcorusMultichainProviders = {
   ton: AcorusSimpleChainProvider;
 };
 
-window.acorusEthereumInjected = true;
-
 const pendingRequests = new Map<
   string,
   {
@@ -383,20 +381,12 @@ class AcorusEthereumProviderRuntime implements AcorusEthereumProvider {
   }
 }
 
-const ethereumProvider = new AcorusEthereumProviderRuntime();
-window.ethereum = ethereumProvider;
-window.acorusEthereum = ethereumProvider;
-const solanaProvider = createSolanaProvider();
-const tronProvider = createTronProvider();
-const bitcoinProvider = createSimpleChainProvider("utxo", "bitcoin-mainnet");
-const tonProvider = createSimpleChainProvider("ton", "ton-mainnet");
-window.solana = solanaProvider;
-window.acorusSolana = solanaProvider;
-window.tronLink = tronProvider;
-window.acorusTron = tronProvider;
-window.acorusBitcoin = bitcoinProvider;
-window.acorusTon = tonProvider;
-window.acorus = {
+const ethereumProvider = deepFreeze(new AcorusEthereumProviderRuntime());
+const solanaProvider = deepFreeze(createSolanaProvider());
+const tronProvider = deepFreeze(createTronProvider());
+const bitcoinProvider = deepFreeze(createSimpleChainProvider("utxo", "bitcoin-mainnet"));
+const tonProvider = deepFreeze(createSimpleChainProvider("ton", "ton-mainnet"));
+const acorusProvider: NonNullable<Window["acorus"]> = deepFreeze({
   isAcorus: true,
   providers: {
     evm: ethereumProvider,
@@ -408,20 +398,76 @@ window.acorus = {
   isConnected() {
     return bridgeState.status === "connected";
   },
-  async request(input) {
+  async request(input: { method: string; params?: unknown[] }) {
     if (!isAcorusProviderMethod(input.method)) {
       throw new Error("Unsupported Acorus provider method.");
     }
 
     return requestBridgeMethod(input.method, input.params ?? []);
   },
-};
+});
+
+Object.freeze(AcorusEthereumProviderRuntime.prototype);
+defineImmutableWindowProperty("acorusEthereumInjected", true);
+defineImmutableWindowProperty("ethereum", ethereumProvider);
+defineImmutableWindowProperty("acorusEthereum", ethereumProvider);
+defineImmutableWindowProperty("solana", solanaProvider);
+defineImmutableWindowProperty("acorusSolana", solanaProvider);
+defineImmutableWindowProperty("tronLink", tronProvider);
+defineImmutableWindowProperty("acorusTron", tronProvider);
+defineImmutableWindowProperty("acorusBitcoin", bitcoinProvider);
+defineImmutableWindowProperty("acorusTon", tonProvider);
+defineImmutableWindowProperty("acorus", acorusProvider);
 window.dispatchEvent(new Event("acorus#initialized"));
 window.dispatchEvent(new Event("ethereum#initialized"));
 window.dispatchEvent(new Event("solana#initialized"));
 window.dispatchEvent(new Event("tronLink#initialized"));
 announceEip6963Provider();
 window.addEventListener("eip6963:requestProvider", announceEip6963Provider);
+
+function defineImmutableWindowProperty<K extends keyof Window>(
+  property: K,
+  value: Window[K],
+): void {
+  const descriptor = Object.getOwnPropertyDescriptor(window, property);
+
+  if (descriptor && descriptor.configurable === false) {
+    return;
+  }
+
+  Object.defineProperty(window, property, {
+    value,
+    enumerable: true,
+    configurable: false,
+    writable: false,
+  });
+}
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if ((typeof value !== "object" && typeof value !== "function") || value === null) {
+    return value;
+  }
+
+  const objectValue = value as object;
+
+  if (seen.has(objectValue)) {
+    return value;
+  }
+
+  seen.add(objectValue);
+
+  for (const key of Reflect.ownKeys(objectValue)) {
+    const descriptor = Object.getOwnPropertyDescriptor(objectValue, key);
+
+    if (!descriptor || !("value" in descriptor)) {
+      continue;
+    }
+
+    deepFreeze(descriptor.value, seen);
+  }
+
+  return Object.freeze(value);
+}
 
 async function handleEvmCompatibilityRequest(
   method: EvmCompatibilityMethod,

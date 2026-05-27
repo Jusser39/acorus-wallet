@@ -3,6 +3,7 @@ import {
   createDefaultAdapterRegistry,
   createDefaultSwapQuoteEngine,
   createCustomViemChain,
+  deriveBitcoinAccount,
   createEvmPublicClient,
   deriveEvmAccountFromMnemonic,
   deriveSolanaAddressFromMnemonic,
@@ -36,6 +37,12 @@ import {
   shouldRequestErc20Allowance,
 } from "./index";
 import type { WalletVaultPlaintext } from "./types";
+import { base64ToBytes } from "./encoding";
+import {
+  VAULT_AES_GCM_IV_BYTES,
+  VAULT_PBKDF2_ITERATIONS,
+  VAULT_SALT_BYTES,
+} from "./crypto/vault";
 
 describe("wallet-core", () => {
   it("generates a valid mnemonic", () => {
@@ -55,6 +62,23 @@ describe("wallet-core", () => {
     const decrypted = await decryptVault(encrypted, "123456");
 
     expect(decrypted).toEqual(plaintext);
+  });
+
+  it("uses hardened vault KDF and nonce sizes", async () => {
+    const plaintext: WalletVaultPlaintext = {
+      mnemonic: "test test test test test test test test test test test junk",
+      evmAddress: "0xf39Fd6e51aad88F6F4ce6ab8827279cffFb92266",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    const first = await encryptVault(plaintext, "123456");
+    const second = await encryptVault(plaintext, "123456");
+
+    expect(first.iterations).toBe(VAULT_PBKDF2_ITERATIONS);
+    expect(base64ToBytes(first.saltBase64)).toHaveLength(VAULT_SALT_BYTES);
+    expect(base64ToBytes(first.ivBase64)).toHaveLength(VAULT_AES_GCM_IV_BYTES);
+    expect(first.saltBase64).not.toBe(second.saltBase64);
+    expect(first.ivBase64).not.toBe(second.ivBase64);
   });
 
   it("rejects invalid mnemonic phrases", () => {
@@ -191,11 +215,16 @@ describe("wallet-core", () => {
     expect(registry.require({ family: "solana", chainId: 101 }).name).toBe("Solana");
   });
 
-  it("default adapter registry includes Tron and Bitcoin skeleton adapters", () => {
+  it("default adapter registry includes Tron and Bitcoin live foundation adapters", () => {
     const registry = createDefaultAdapterRegistry();
 
-    expect(registry.require({ family: "tron", chainId: "tron-mainnet" }).capabilities.nativeBalance).toBe(false);
-    expect(registry.require({ family: "utxo", chainId: "bitcoin-mainnet" }).capabilities.nativeBalance).toBe(false);
+    const tron = registry.require({ family: "tron", chainId: "tron-mainnet" });
+    const bitcoin = registry.require({ family: "utxo", chainId: "bitcoin-mainnet" });
+
+    expect(tron.capabilities.nativeBalance).toBe(true);
+    expect(tron.capabilities.broadcast).toBe(true);
+    expect(bitcoin.capabilities.nativeBalance).toBe(true);
+    expect(bitcoin.capabilities.broadcast).toBe(true);
   });
 
   it("Solana adapter receive info is safe", () => {
@@ -600,7 +629,7 @@ describe("wallet-core", () => {
     expect(draft.canBroadcast).toBe(true);
   });
 
-  it("returns skeleton draft for Tron", async () => {
+  it("returns supported draft for Tron", async () => {
     const registry = createDefaultAdapterRegistry();
     const engine = new SendDraftEngine(registry);
 
@@ -622,19 +651,22 @@ describe("wallet-core", () => {
       amountFormatted: "1",
     });
 
-    expect(draft.supportStatus).toBe("skeleton");
-    expect(draft.canBroadcast).toBe(false);
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canBroadcast).toBe(true);
   });
 
-  it("returns skeleton draft for Bitcoin", async () => {
+  it("returns supported draft for Bitcoin", async () => {
     const registry = createDefaultAdapterRegistry();
     const engine = new SendDraftEngine(registry);
+    const address = deriveBitcoinAccount(
+      "test test test test test test test test test test test junk",
+    ).publicAddress;
 
     const draft = await engine.createDraft({
       family: "utxo",
       chainId: "bitcoin-mainnet",
-      fromAddress: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
-      toAddress: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080",
+      fromAddress: address,
+      toAddress: address,
       asset: {
         family: "utxo",
         chainId: "bitcoin-mainnet",
@@ -648,8 +680,8 @@ describe("wallet-core", () => {
       amountFormatted: "1",
     });
 
-    expect(draft.supportStatus).toBe("skeleton");
-    expect(draft.canBroadcast).toBe(false);
+    expect(draft.supportStatus).toBe("supported");
+    expect(draft.canBroadcast).toBe(true);
   });
 });
 

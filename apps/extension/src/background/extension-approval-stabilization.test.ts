@@ -13,6 +13,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.stubGlobal("chrome", {
     runtime: {
+      id: "acorus",
       onInstalled: { addListener: vi.fn() },
       onMessage: { addListener: vi.fn() },
       getURL: (path: string) => `chrome-extension://acorus/${path}`,
@@ -48,7 +49,7 @@ describe("extension approval stabilization", () => {
   it("queues wallet_addEthereumChain and does not persist before approval", async () => {
     const { handleRuntimeMessage } = await import("./index");
 
-    void handleRuntimeMessage(providerMessage("acorus_addChain", [customChainPayload()]), {});
+    void handleRuntimeMessage(providerMessage("acorus_addChain", [customChainPayload()]), providerSender());
     await waitForPendingRequest("add_chain");
 
     const networks = await listExtensionNetworks();
@@ -60,7 +61,7 @@ describe("extension approval stabilization", () => {
 
     const providerPromise = handleRuntimeMessage(
       providerMessage("acorus_addChain", [customChainPayload()]),
-      {},
+      providerSender(),
     );
     const request = await waitForPendingRequest("add_chain");
     await handleRuntimeMessage({
@@ -87,7 +88,7 @@ describe("extension approval stabilization", () => {
 
     const providerPromise = handleRuntimeMessage(
       providerMessage("acorus_addChain", [customChainPayload()]),
-      {},
+      providerSender(),
     );
     const request = await waitForPendingRequest("add_chain");
     await handleRuntimeMessage({
@@ -104,7 +105,7 @@ describe("extension approval stabilization", () => {
   it("queues wallet_watchAsset and does not persist before approval", async () => {
     const { handleRuntimeMessage } = await import("./index");
 
-    void handleRuntimeMessage(providerMessage("acorus_watchAsset", [watchAssetPayload()]), {});
+    void handleRuntimeMessage(providerMessage("acorus_watchAsset", [watchAssetPayload()]), providerSender());
     await waitForPendingRequest("watch_asset");
 
     expect(await listWatchedAssets()).toEqual([]);
@@ -145,6 +146,14 @@ function providerMessage(method: "acorus_addChain" | "acorus_watchAsset", params
     method,
     params,
   } as const;
+}
+
+function providerSender() {
+  return {
+    id: "acorus",
+    url: `${origin}/swap`,
+    origin,
+  };
 }
 
 function customChainPayload() {

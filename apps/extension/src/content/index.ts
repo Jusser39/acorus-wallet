@@ -12,6 +12,7 @@ import {
   isDappWalletSyncEnvelope,
   type DappWalletSyncEnvelope,
 } from "@acorus/shared";
+import { createSanitizedProviderRequest } from "../content";
 
 const TRUSTED_WALLET_SYNC_ORIGINS = new Set([
   "http://85.239.59.199:8080",
@@ -38,16 +39,25 @@ function handleWindowMessage(event: MessageEvent<unknown>): void {
 
   if (isInpageRequestEnvelope(event.data)) {
     const request = event.data;
+    const sanitized = createSanitizedProviderRequest(request, window.location.origin);
+
+    if (!sanitized.ok) {
+      const response: InpageResponseEnvelope = {
+        type: ACORUS_INPAGE_RESPONSE,
+        requestId: sanitized.requestId,
+        ok: false,
+        error: {
+          code: sanitized.code,
+          message: sanitized.message,
+        },
+      };
+
+      window.postMessage(response, window.location.origin);
+      return;
+    }
 
     void chrome.runtime
-      .sendMessage({
-        kind: "provider_request",
-        requestId: request.requestId,
-        surface: "content",
-        origin: window.location.origin,
-        method: request.method,
-        params: request.params ?? [],
-      })
+      .sendMessage(sanitized.message)
       .then((response) => {
         postInpageResponse(request.requestId, response as ExtensionRuntimeResponse);
         return syncOriginState();

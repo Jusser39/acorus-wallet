@@ -13,6 +13,8 @@ export const process = nodeProcess;
 const globalWithNodeCompat = globalThis as typeof globalThis & {
   Buffer?: typeof NodeBuffer;
   global?: typeof globalThis;
+};
+const processTarget = globalThis as unknown as {
   process?: typeof nodeProcess;
 };
 
@@ -24,6 +26,6 @@ if (!globalWithNodeCompat.global) {
   globalWithNodeCompat.global = globalThis;
 }
 
-if (!globalWithNodeCompat.process) {
-  globalWithNodeCompat.process = nodeProcess;
+if (!processTarget.process) {
+  processTarget.process = nodeProcess;
 }
