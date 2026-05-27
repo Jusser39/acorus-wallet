@@ -1958,7 +1958,7 @@
 
 ## Swap UI Production Sync Follow-up (2026-05-27)
 
-- Status: **implemented and awaiting production deploy**
+- Status: **implemented, deployed, and production-smoked**
 - Rechecked production before deployment and confirmed `https://24wallet.ru/swap`
   was still serving the old bundle with public provider implementation labels.
 - Added a stronger home Token Discovery fallback so the landing page still shows
@@ -1974,4 +1974,21 @@
 - Runtime source search confirms the web/extension bundles no longer contain the
   old public route labels `EVM via 0x`, `Solana via Jupiter`, or
   `Cross-chain via Rango`.
+- Committed and pushed `751b707e445a1fe0b313e03c1db07ccfa64791b8` with message
+  `Fix swap picker UI and production shell`.
+- Deployed the release to `/opt/acorus-wallet-release-current`, preserving
+  production backup `/root/backups/acorus-swap-picker-ui_20260527_024513`.
+- Production checks passed for:
+  - `https://24wallet.ru`
+  - `https://24wallet.ru/swap`
+  - `https://24wallet.ru/tokens/coingecko/bonk?source=coingecko&symbol=BONK&name=Bonk`
+  - `https://24wallet.ru/api/swap/evm/status`
+  - `https://24wallet.ru/downloads/acorus-wallet-extension.zip`
+- Production browser QA confirmed the swap network selector is now a flat custom
+  list, the token picker opens inline inside the swap card, Solana shows an
+  expanded popular-token list, BONK renders a swap card instead of `Route coming
+  next`, and Wallet/Explore navigation is clickable.
+- A follow-up manifest icon polish changed the PWA manifest icon from the
+  missing `/icon.png` to `/icon.svg` to remove the remaining browser manifest
+  warning observed during production QA.
 
