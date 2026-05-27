@@ -22,22 +22,46 @@ export type SwapTokenOption = {
 
 const TOKEN_LOGOS: Record<string, string> = {
   ARB: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
+  AAVE: "https://assets.coingecko.com/coins/images/12645/small/AAVE.png",
+  AERO: "https://assets.coingecko.com/coins/images/31745/small/token.png",
   AVAX: "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png",
   BNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
   BONK: "https://assets.coingecko.com/coins/images/28600/small/bonk.jpg",
+  BOME: "https://assets.coingecko.com/coins/images/36071/small/bome.png",
+  BRETT: "https://assets.coingecko.com/coins/images/35529/small/1000050750.png",
   BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
   CAKE: "https://assets.coingecko.com/coins/images/12632/small/pancakeswap-cake-logo_%281%29.png",
+  CBBTC: "https://assets.coingecko.com/coins/images/40143/small/cbbtc.webp",
+  CRV: "https://assets.coingecko.com/coins/images/12124/small/Curve.png",
   DAI: "https://assets.coingecko.com/coins/images/9956/small/Badge_Dai.png",
+  DEGEN: "https://assets.coingecko.com/coins/images/34515/small/android-chrome-512x512.png",
+  DOGE: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+  ENA: "https://assets.coingecko.com/coins/images/36530/small/ethena.png",
   ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  FARTCOIN: "https://assets.coingecko.com/coins/images/50891/small/fart.jpg",
   JUP: "https://assets.coingecko.com/coins/images/34188/small/jup.png",
+  JTO: "https://assets.coingecko.com/coins/images/33228/small/jto.png",
+  KMNO: "https://assets.coingecko.com/coins/images/38370/small/kamino.png",
   LINK: "https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png",
+  LDO: "https://assets.coingecko.com/coins/images/13573/small/Lido_DAO.png",
+  MEW: "https://assets.coingecko.com/coins/images/36440/small/MEW.png",
   MATIC: "https://assets.coingecko.com/coins/images/4713/small/polygon.png",
+  ONDO: "https://assets.coingecko.com/coins/images/26580/small/ONDO.png",
+  ORCA: "https://assets.coingecko.com/coins/images/17547/small/Orca_Logo.png",
   OP: "https://assets.coingecko.com/coins/images/25244/small/Optimism.png",
+  PENDLE: "https://assets.coingecko.com/coins/images/15069/small/Pendle_Logo_Normal-03.png",
+  PENGU: "https://assets.coingecko.com/coins/images/52622/small/PUDGY_PENGUINS_PENGU_PFP.png",
   PEPE: "https://assets.coingecko.com/coins/images/29850/small/pepe-token.jpeg",
+  PNUT: "https://assets.coingecko.com/coins/images/51301/small/pnut.png",
   POL: "https://assets.coingecko.com/coins/images/32440/small/polygon.png",
+  POPCAT: "https://assets.coingecko.com/coins/images/33760/small/image.jpg",
   PYTH: "https://assets.coingecko.com/coins/images/31924/small/pyth.png",
   RAY: "https://assets.coingecko.com/coins/images/13928/small/PSigc4ie_400x400.jpg",
+  SHIB: "https://assets.coingecko.com/coins/images/11939/small/shiba.png",
   SOL: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+  TON: "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png",
+  TRUMP: "https://assets.coingecko.com/coins/images/53746/small/trump.png",
+  TRX: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png",
   UNI: "https://assets.coingecko.com/coins/images/12504/small/uniswap-logo.png",
   USDC: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",
   USDT: "https://assets.coingecko.com/coins/images/325/small/Tether.png",
@@ -46,6 +70,7 @@ const TOKEN_LOGOS: Record<string, string> = {
   WBTC: "https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png",
   WETH: "https://assets.coingecko.com/coins/images/2518/small/weth.png",
   WIF: "https://assets.coingecko.com/coins/images/33566/small/dogwifhat.jpg",
+  ZEC: "https://assets.coingecko.com/coins/images/486/small/circle-zcash-color.png",
 };
 
 const FEATURED_EVM_TOKENS: Array<Omit<SwapTokenOption, "source">> = [
@@ -57,6 +82,13 @@ const FEATURED_EVM_TOKENS: Array<Omit<SwapTokenOption, "source">> = [
   token(1, "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "WBTC", "Wrapped Bitcoin", 8),
   token(1, "0x514910771AF9Ca656af840dff83E8264EcF986CA", "LINK", "Chainlink", 18),
   token(1, "0x6982508145454Ce325dDbE47a25d4ec3d2311933", "PEPE", "Pepe", 18),
+  token(1, "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", "AAVE", "Aave", 18),
+  token(1, "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", "LDO", "Lido DAO", 18),
+  token(1, "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", "SHIB", "Shiba Inu", 18),
+  token(1, "0x57e114B691Db790C35207b2e685D4A43181e6061", "ENA", "Ethena", 18),
+  token(1, "0xD533a949740bb3306d119CC777fa900bA034cd52", "CRV", "Curve DAO", 18),
+  token(1, "0x808507121B80c02388fAd14726482e061B8da827", "PENDLE", "Pendle", 18),
+  token(1, "0xfAbA6f8e4a5E8Ab82F62fe7C39859FA577269BE3", "ONDO", "Ondo", 18),
   token(56, "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c", "WBNB", "Wrapped BNB", 18),
   token(56, "0x55d398326f99059fF775485246999027B3197955", "USDT", "Tether USD", 18),
   token(56, "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "USDC", "USD Coin", 18),
@@ -76,6 +108,10 @@ const FEATURED_EVM_TOKENS: Array<Omit<SwapTokenOption, "source">> = [
   token(8453, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "USDC", "USD Coin", 6),
   token(8453, "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", "USDT", "Tether USD", 6),
   token(8453, "0xacFe6019Ed1A7Dc6f7B508C02d1b04ec88cC21bf", "VVV", "Venice Token", 18),
+  token(8453, "0x940181a94A35A4569E4529A3CDfB74e38FD98631", "AERO", "Aerodrome", 18),
+  token(8453, "0x4ed4E862860beD7a9570b96d89aF5E1B0Efefed3", "DEGEN", "Degen", 18),
+  token(8453, "0x532f27101965dd16442E59d40670FaF5eBB142E4", "BRETT", "Brett", 18),
+  token(8453, "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf", "cbBTC", "Coinbase Wrapped BTC", 8, TOKEN_LOGOS.CBBTC),
   token(43114, "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", "WAVAX", "Wrapped AVAX", 18),
   token(43114, "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "USDC", "USD Coin", 6),
   token(43114, "0x9702230A8Ea53601f5cD2dc00fDBC13d4dF4A8c7", "USDT", "Tether USD", 6),
@@ -94,6 +130,15 @@ const SOLANA_VOLUME_TOKENS: SwapTokenOption[] = [
   solanaToken("HZ1JovNiVvGrGNiiYvEozEVgX3fgYy3XXqHwwFqB3X8", "PYTH", "Pyth Network", 6),
   solanaToken("7vfCXTUXxJ7vP63wCze8qMEt9UYc6tEpnHhV8qgC2Cr4", "WETH", "Wrapped Ether (Wormhole)", 8),
   solanaToken("3NZ9JMVBmGaKQCy9wKkaqf2c3pUYJRqkD7fWJmW5xVd", "WBTC", "Wrapped BTC (Wormhole)", 8),
+  solanaToken("6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", "TRUMP", "Official Trump", 6),
+  solanaToken("2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv", "PENGU", "Pudgy Penguins", 6),
+  solanaToken("7GCihgDB8fe29giZ2xTR8hypQVniJhux9mxUF6jjJ1h5", "POPCAT", "Popcat", 9),
+  solanaToken("ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82", "BOME", "Book of Meme", 6),
+  solanaToken("2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump", "PNUT", "Peanut the Squirrel", 6),
+  solanaToken("JTOjtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", "JTO", "Jito", 9),
+  solanaToken("orcaEKTdK7LKz57vaAYafShVWfydmmu7vpg6LaUuLk", "ORCA", "Orca", 6),
+  solanaToken("KMNo3nJm4ZVLwvsvWNqfJmhhVPf3ZGBmuuQdshW3pE9", "KMNO", "Kamino", 6),
+  solanaToken("9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump", "FARTCOIN", "Fartcoin", 6),
 ];
 
 const CROSS_CHAIN_TOKENS: SwapTokenOption[] = [
@@ -105,7 +150,14 @@ const CROSS_CHAIN_TOKENS: SwapTokenOption[] = [
   crosschainToken("AVAX_CCHAIN.AVAX", "AVAX", "Avalanche", 18),
   crosschainToken("SOL.SOL", "SOL", "Solana", 9),
   crosschainToken("BTC.BTC", "BTC", "Bitcoin", 8),
+  crosschainToken("DOGE.DOGE", "DOGE", "Dogecoin", 8),
+  crosschainToken("TRON.TRX", "TRX", "TRON", 6),
+  crosschainToken("TON.TON", "TON", "Toncoin", 9),
+  crosschainToken("ZEC.ZEC", "ZEC", "Zcash", 8),
   crosschainToken("ETH.USDC", "USDC", "USDC on Ethereum", 6),
+  crosschainToken("BSC.USDT", "USDT", "USDT on BNB Chain", 18),
+  crosschainToken("BASE.USDC", "USDC", "USDC on Base", 6),
+  crosschainToken("ARBITRUM.USDC", "USDC", "USDC on Arbitrum", 6),
   crosschainToken("SOL.USDC", "USDC", "USDC on Solana", 6),
 ];
 
@@ -195,7 +247,7 @@ export function getSwapNetworkLabel(chainId: number): string {
   }
 
   if (chainId === CROSS_CHAIN_SWAP_ID) {
-    return "Cross-chain";
+    return "Any network";
   }
 
   return EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM";
@@ -203,14 +255,14 @@ export function getSwapNetworkLabel(chainId: number): string {
 
 export function getSwapProviderLabel(chainId: number): string {
   if (chainId === SOLANA_SWAP_CHAIN_ID) {
-    return "Jupiter";
+    return "Solana";
   }
 
   if (chainId === CROSS_CHAIN_SWAP_ID) {
-    return "Rango";
+    return "Universal";
   }
 
-  return "0x";
+  return "EVM";
 }
 
 export function filterSwapTokens(tokens: SwapTokenOption[], query: string): SwapTokenOption[] {

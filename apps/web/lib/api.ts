@@ -113,7 +113,7 @@ function getApiErrorMessage(status: number, payload: ApiErrorPayload | null): st
     case "swap_bad_request":
       return "The swap quote request is invalid.";
     case "liquidity_unavailable":
-      return "No 0x liquidity is available for this route.";
+      return "No liquidity is available for this route.";
     case "swap_provider_timeout":
       return "Swap provider timed out.";
     case "swap_provider_error":

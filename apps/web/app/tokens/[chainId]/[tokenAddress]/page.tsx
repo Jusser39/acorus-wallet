@@ -19,6 +19,12 @@ import {
 } from "@/lib/api";
 import { getChainFamilyLabel, isSkeletonFamily } from "@/lib/universal-assets";
 import { getUniversalTokenExplorerUrl } from "@/lib/universal-explorer";
+import {
+  CROSS_CHAIN_SWAP_ID,
+  SOLANA_SWAP_CHAIN_ID,
+  getPopularSwapTokens,
+  type SwapTokenOption,
+} from "@/lib/swap-token-catalog";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import {
   EVM_CHAINS,
@@ -444,6 +450,32 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const defaultSellToken = isNativeToken && !isCoinGeckoRoute
     ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
     : "native";
+  const fallbackSwap = useMemo(() => {
+    const symbol = resolvedSymbol.toLowerCase();
+    const address = tokenAddress.toLowerCase();
+    const solanaTokens = getPopularSwapTokens({ chainId: SOLANA_SWAP_CHAIN_ID });
+    const crossChainTokens = getPopularSwapTokens({ chainId: CROSS_CHAIN_SWAP_ID });
+    const solanaTarget = solanaTokens.find((token) => isMatchingSwapToken(token, symbol, address)) ?? null;
+    const crossChainTarget = crossChainTokens.find((token) => isMatchingSwapToken(token, symbol, address)) ?? null;
+
+    if (solanaTarget) {
+      return {
+        chainId: SOLANA_SWAP_CHAIN_ID,
+        sellToken: solanaTarget.symbol.toUpperCase() === "SOL"
+          ? "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+          : "So11111111111111111111111111111111111111112",
+        buyToken: solanaTarget.value,
+        decimals: solanaTarget.decimals,
+      };
+    }
+
+    return {
+      chainId: CROSS_CHAIN_SWAP_ID,
+      sellToken: crossChainTarget?.symbol.toUpperCase() === "ETH" ? "SOL.SOL" : "ETH.ETH",
+      buyToken: crossChainTarget?.value,
+      decimals: crossChainTarget?.decimals ?? 18,
+    };
+  }, [resolvedSymbol, tokenAddress]);
   const displayPrice = tokenDetail?.price ?? price?.price ?? null;
   const displayMarketCap = tokenDetail?.marketCapUsd ?? price?.marketCap ?? null;
   const displayVolume24h = tokenDetail?.volume24hUsd ?? price?.volume24h ?? null;
@@ -704,72 +736,37 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-          {canEvmSwap ? (
-            <SwapComposer
-              compact
-              initialChainId={tradeChainId}
-              initialSellToken={defaultSellToken}
-              initialBuyToken={targetSwapToken}
-              initialBuyTokenMeta={{
-                symbol: resolvedSymbol,
-                name: resolvedName,
-                decimals: tradePlatform?.decimals ?? 18,
-              }}
-              portfolioAssets={[]}
-              userAddress={activeEvmAddress}
-              title={`Swap ${resolvedSymbol}`}
-              description="Get a backend 0x quote and review the final transaction inside Acorus extension."
-            />
-          ) : (
-            <UnsupportedSwapPanel symbol={resolvedSymbol} name={resolvedName} />
-          )}
+          <SwapComposer
+            compact
+            initialChainId={canEvmSwap ? tradeChainId : fallbackSwap.chainId}
+            initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
+            initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
+            initialBuyTokenMeta={{
+              symbol: resolvedSymbol,
+              name: resolvedName,
+              decimals: canEvmSwap ? tradePlatform?.decimals ?? 18 : fallbackSwap.decimals,
+            }}
+            portfolioAssets={[]}
+            userAddress={canEvmSwap ? activeEvmAddress : null}
+            title={`Swap ${resolvedSymbol}`}
+            description="Choose a network and tokens. Acorus will fetch the best available route and ask the extension to review before signing."
+          />
         </aside>
       </div>
     </section>
   );
 }
 
-function UnsupportedSwapPanel({ symbol, name }: { symbol: string; name: string }) {
-  return (
-    <div className="light-card space-y-5 rounded-[2rem] p-4 sm:p-5">
-      <div className="px-3 pt-3">
-        <span className="section-kicker !border-slate-900/10 !bg-white/75 !text-slate-700">
-          Swap
-        </span>
-        <h2 className="mt-3 text-3xl font-semibold text-slate-950">Swap {symbol}</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {name} is visible in the swap shell. Execution for this route is gated until the matching adapter is reviewed.
-        </p>
-      </div>
+function isMatchingSwapToken(token: SwapTokenOption, symbol: string, address: string): boolean {
+  const normalizedSymbol = symbol.trim().toLowerCase();
+  const normalizedAddress = address.trim().toLowerCase();
+  const tokenSymbol = token.symbol.trim().toLowerCase();
+  const tokenValue = token.value.trim().toLowerCase();
+  const tokenAddress = token.tokenAddress?.trim().toLowerCase() ?? "";
 
-      <div className="grid gap-2 rounded-[1.6rem] bg-white/60 p-2">
-        <label className="space-y-2">
-          <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
-          <div className="light-field flex items-center justify-between">
-            <span>Choose token</span>
-            <span className="text-slate-400">0</span>
-          </div>
-        </label>
-        <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-fuchsia-100 bg-white text-slate-500">
-          ↓
-        </div>
-        <label className="space-y-2">
-          <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
-          <div className="light-field flex items-center justify-between">
-            <span>{symbol} · {name}</span>
-            <span>0</span>
-          </div>
-        </label>
-      </div>
-
-      <button type="button" className="button-primary w-full opacity-70" disabled>
-        Route coming next
-      </button>
-      <Link href="/swap" className="button-secondary inline-flex w-full justify-center">
-        Open EVM swap
-      </Link>
-    </div>
-  );
+  return tokenSymbol === normalizedSymbol
+    || tokenValue === normalizedAddress
+    || tokenAddress === normalizedAddress;
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {

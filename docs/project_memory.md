@@ -1924,3 +1924,54 @@
   blocked by its current `data:` error-page navigation policy before it could
   open the local URL. No production deploy was performed in this pass.
 
+## Swap Inline Picker and Extension Import QA (2026-05-26)
+
+- Status: **implemented and validated locally**
+- The web swap card no longer exposes implementation-provider labels such as
+  `EVM via 0x`, `Solana via Jupiter`, or `Cross-chain via Rango`; users now see
+  a flat network selector and generic route review copy.
+- Token selection now opens inline inside the swap card instead of mounting a
+  portal/modal overlay. This prevents the old off-screen picker layout and
+  avoids locking the page body while the picker is open.
+- The extension build now injects a small Node compatibility shim before bundled
+  wallet-core code runs, covering `Buffer`, `global`, and a minimal `process`
+  object for MV3/BIP-39 import paths.
+- The extension popup home load has a short timeout around portfolio/home data
+  so unavailable RPC/price calls cannot leave the popup blank after create or
+  import.
+- Local extension UI smoke confirmed that the user-provided test mnemonic can be
+  imported with a user-chosen password, a fresh wallet can be created, popup
+  settings open, action buttons render, and a web page can complete
+  `eth_requestAccounts` after the popup approval.
+- Real mainnet swap/send execution was not performed in this pass because it
+  requires funded assets and explicit manual approval. Route/search/UI and
+  extension connection paths were tested instead.
+- Validation passed:
+  - extension Vitest: `10` files / `48` tests
+  - web Vitest: `30` files / `113` tests
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension build`
+  - `git diff --check`
+  - `pnpm extension:package`
+- Browser QA used Playwright fallback because the in-app Browser plugin was not
+  available for this session.
+
+## Swap UI Production Sync Follow-up (2026-05-27)
+
+- Status: **implemented and awaiting production deploy**
+- Rechecked production before deployment and confirmed `https://24wallet.ru/swap`
+  was still serving the old bundle with public provider implementation labels.
+- Added a stronger home Token Discovery fallback so the landing page still shows
+  ETH, BTC, SOL, USDC, BONK, LINK, PEPE, and ARB rows with Swap actions when the
+  market API is unavailable during local/dev smoke.
+- Re-ran local validation after the fallback patch:
+  - `pnpm --filter @acorus/web test`
+  - `pnpm --filter @acorus/web build`
+  - `pnpm --filter @acorus/extension test`
+  - `pnpm --filter @acorus/extension build`
+  - `pnpm extension:package`
+  - `git diff --check`
+- Runtime source search confirms the web/extension bundles no longer contain the
+  old public route labels `EVM via 0x`, `Solana via Jupiter`, or
+  `Cross-chain via Rango`.
+

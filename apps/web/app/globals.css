@@ -1114,6 +1114,8 @@ body {
 
 .magic-floating {
   animation: magic-float 5s ease-in-out infinite;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 @keyframes magic-float {
@@ -1477,6 +1479,93 @@ main.flex-1,
   background: rgba(255, 255, 255, 0.98);
 }
 
+.swap-token-field {
+  position: relative;
+  min-width: 0;
+}
+
+.swap-network-field {
+  position: relative;
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.swap-network-select {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(157, 121, 255, 0.18);
+  border-radius: 1.45rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.82rem 0.95rem;
+  color: var(--magic-text);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.swap-network-select:hover,
+.swap-network-select[aria-expanded="true"] {
+  border-color: rgba(217, 70, 239, 0.36);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.swap-network-dot {
+  height: 12px;
+  width: 12px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--magic-gradient);
+  box-shadow: 0 0 18px rgba(139, 92, 246, 0.28);
+}
+
+.swap-network-menu {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 35;
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(360px, 52vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(230, 250, 255, 0.72);
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(124, 247, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 92% 8%, rgba(255, 122, 223, 0.14), transparent 26%),
+    rgba(255, 255, 255, 0.96);
+  padding: 0.55rem;
+  box-shadow: 0 22px 60px rgba(20, 42, 90, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.swap-network-option {
+  display: grid;
+  gap: 0.12rem;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  background: transparent;
+  padding: 0.68rem 0.85rem;
+  color: var(--magic-text);
+  text-align: left;
+}
+
+.swap-network-option:hover,
+.swap-network-option[data-active="true"] {
+  border-color: rgba(217, 70, 239, 0.24);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.swap-network-caption {
+  color: rgba(71, 85, 105, 0.78);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .swap-token-icon {
   position: relative;
   display: grid;
@@ -1504,33 +1593,55 @@ main.flex-1,
   object-fit: cover;
 }
 
-.token-picker-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  display: grid;
-  place-items: center;
-  background: rgba(7, 23, 44, 0.34);
-  padding: 20px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  overflow: hidden;
-  overscroll-behavior: contain;
-}
-
-.token-picker-card {
-  width: min(560px, calc(100vw - 28px));
-  max-height: min(720px, calc(100vh - 36px));
+.token-inline-picker {
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: 430px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 30px;
+  border-radius: 24px;
   background:
-    radial-gradient(circle at 10% 0%, rgba(124, 247, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 92% 8%, rgba(255, 122, 223, 0.18), transparent 26%),
+    radial-gradient(circle at 10% 0%, rgba(124, 247, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 92% 8%, rgba(255, 122, 223, 0.14), transparent 26%),
     rgba(255, 255, 255, 0.94);
-  padding: 22px;
+  padding: 12px;
   color: var(--magic-text);
-  box-shadow: 0 34px 100px rgba(20, 42, 90, 0.26);
+  box-shadow: 0 18px 50px rgba(20, 42, 90, 0.18);
+  contain: layout paint;
+}
+
+.token-inline-picker .token-picker-search {
+  margin-top: 10px;
+  border-radius: 18px;
+  padding: 0.45rem 0.7rem;
+}
+
+.token-inline-picker .token-picker-list {
+  max-height: min(320px, 48vh);
+  overflow-x: hidden;
+}
+
+.token-inline-picker .token-picker-row {
+  border-radius: 16px;
+  padding: 0.62rem;
+}
+
+.token-inline-picker .token-picker-row .swap-token-icon {
+  height: 32px;
+  width: 32px;
+}
+
+@media (max-width: 767px) {
+  .token-inline-picker {
+    max-height: 460px;
+  }
+
+  .token-inline-picker .token-picker-list {
+    max-height: 240px;
+  }
 }
 
 .token-picker-close {

@@ -15,13 +15,13 @@ export function HomeSwapPanel() {
           Swap from the wallet home screen
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-          EVM routes use the Acorus backend 0x proxy, then the extension asks for explicit approval before any approval or swap transaction is broadcast.
+          Choose a network, pick tokens, and let Acorus request the route. The extension asks for explicit approval before any approval or swap transaction is broadcast.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {[
-            ["Backend quote", "0x API key stays server-side."],
+            ["Backend quote", "Provider keys stay server-side."],
             ["Wallet approval", "Token approval and swap review are separate."],
-            ["Multichain routes", "Jupiter and Rango route reviews are visible in the extension before execution is enabled."],
+            ["Multichain routes", "Routes are reviewed in the extension before execution is enabled."],
           ].map(([title, copy]) => (
             <div key={title} className="data-card rounded-2xl p-4">
               <p className="text-sm font-semibold text-slate-950">{title}</p>
@@ -36,7 +36,7 @@ export function HomeSwapPanel() {
         portfolioAssets={[]}
         userAddress={evmAddress}
         title="Swap"
-        description="Choose an EVM network, token pair and amount. Acorus fetches a real 0x quote and queues the final transaction in the extension."
+        description="Choose a network, token pair and amount. Acorus fetches a real route and queues the final transaction in the extension."
       />
     </section>
   );

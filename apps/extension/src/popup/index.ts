@@ -14,6 +14,7 @@ import {
 const root = getRoot("Popup root not found.");
 const EXTENSION_SWAP_API_BASES = ["https://24wallet.ru", "http://85.239.59.199:8080"] as const;
 const EXTENSION_POPUP_SETTINGS_KEY = "acorus_extension_popup_settings";
+const POPUP_HOME_TIMEOUT_MS = 2500;
 const POPUP_CURRENCIES = ["USD", "EUR", "RUB", "GBP", "JPY", "CNY", "KRW", "TRY"] as const;
 const POPUP_LANGUAGES = [
   "English",
@@ -176,7 +177,7 @@ async function loadPopupState(): Promise<void> {
         surface: "popup",
         origin: null,
       }) as Promise<ExtensionRuntimeResponse>,
-      loadExtensionHome(),
+      withTimeout(loadExtensionHome(), POPUP_HOME_TIMEOUT_MS, null),
       loadPopupSettings(),
     ]);
 
@@ -195,6 +196,40 @@ async function loadPopupState(): Promise<void> {
   applyPopupTheme(currentPopupSettings.theme);
   root.innerHTML = renderPopup(state, home);
   wirePopupActions();
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
 }
 
 async function loadPopupSettings(): Promise<ExtensionPopupSettings> {

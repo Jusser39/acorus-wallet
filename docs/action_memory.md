@@ -771,3 +771,16 @@
 513. Rebuilt the extension package and verified the built popup no longer contains the old automatic-password/PIN/random onboarding copy.
 514. Validation passed for this stabilization pass: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension lint`, `pnpm --filter @acorus/extension build`, `pnpm --filter @acorus/wallet-core test`, `pnpm extension:package`, and `git diff --check`.
 515. Local dev server returned `200` for `/wallet` on `127.0.0.1:3100`; Browser plugin validation was attempted but blocked by the in-app browser's current `data:` error-page navigation policy.
+516. Removed public swap-provider labels from the web swap UI (`EVM via 0x`, `Solana via Jupiter`, and `Cross-chain via Rango`) and replaced the route selector with a flat network list.
+517. Replaced the swap token picker portal/modal with an inline picker that opens inside the swap card, keeps body scrolling available, and filters tokens within the active network.
+518. Added an extension build-time Node compatibility inject file so `Buffer`, `global`, and a minimal `process` object are available before wallet-core/BIP-39 code runs in MV3 bundles.
+519. Added a popup home-state timeout so slow portfolio/RPC/price loading cannot leave the extension popup blank after create/import.
+520. Verified the user-supplied test mnemonic through the extension UI import path without writing the phrase to docs; import, create wallet, popup actions, settings opening, and dApp `eth_requestAccounts` approval all worked locally.
+521. Local Playwright smoke passed for `/swap`: provider labels are gone, no `<optgroup>` route sections remain, token selection opens inline, no overlay is mounted, and the picker does not lock the page.
+522. Local Playwright smoke typed token/address search terms without freezing and captured screenshots under `C:\Users\NZXT\AppData\Local\Temp\acorus-qa`.
+523. Validation passed for this focused swap/extension QA pass: extension Vitest (`10` files, `48` tests), web Vitest (`30` files, `113` tests), web build, extension build, `git diff --check`, and `pnpm extension:package`.
+524. Rechecked production before deployment and confirmed `https://24wallet.ru/swap` was still serving the old provider-labeled bundle, so the VPS release needs to be refreshed.
+525. Added a home Token Discovery fallback list with ETH, BTC, SOL, USDC, BONK, LINK, PEPE, and ARB plus Swap actions so the landing page remains useful even when local/dev API routes are unavailable.
+526. Re-ran focused validation after the home fallback patch: `pnpm --filter @acorus/web test`, `pnpm --filter @acorus/web build`, `pnpm --filter @acorus/extension test`, `pnpm --filter @acorus/extension build`, `pnpm extension:package`, and `git diff --check` passed.
+527. Runtime source search across `apps/web` and `apps/extension` no longer finds the public stale strings `EVM via 0x`, `Solana via Jupiter`, `Cross-chain via Rango`, `Open extension setup`, `Route coming next`, or `0x live`.
+528. Release validation also passed at workspace root: `pnpm test` and `pnpm build` completed successfully before commit/deploy.

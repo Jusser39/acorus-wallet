@@ -17,10 +17,10 @@ export default function SwapPage() {
           <div className="magic-panel p-5 sm:p-7">
             <div className="mb-6">
               <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">
-                0x · Jupiter · Rango
+                Acorus swap
               </p>
               <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-                Swap across every route we can safely review
+                Swap tokens with local wallet review
               </h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
                 Choose a network, pick popular tokens for that chain, then request a routed quote.
@@ -30,8 +30,8 @@ export default function SwapPage() {
             <SwapComposer
               portfolioAssets={[]}
               userAddress={evmAddress}
-              title="Universal swap"
-              description="EVM routes use backend-proxied 0x quotes. Jupiter and Rango route discovery are prepared for review-gated execution."
+              title="Swap"
+              description="Choose a network and tokens. Acorus will fetch the best available route and ask the extension to review before anything is signed."
             />
           </div>
 

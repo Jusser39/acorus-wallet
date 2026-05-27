@@ -24,6 +24,10 @@ export default defineConfig({
   splitting: false,
   target: "es2022",
   esbuildOptions(options) {
+    options.inject = [
+      ...(options.inject ?? []),
+      path.resolve(__dirname, "src/shared/node-compat-inject.ts"),
+    ];
     options.alias = {
       ...(options.alias ?? {}),
       "@acorus/shared": path.resolve(

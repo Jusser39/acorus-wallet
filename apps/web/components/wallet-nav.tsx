@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GlobalMarketSearch } from "@/components/global-market-search";
 import { WalletAccountMenu } from "@/components/wallet-account-menu";
@@ -34,7 +33,7 @@ export function WalletNav() {
     <header className="magic-topbar relative z-40">
       <div className="magic-container flex flex-col gap-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
+          <a
             href="/"
             className="inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/62 px-3 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(85,166,255,0.15)]"
           >
@@ -47,7 +46,7 @@ export function WalletNav() {
                 wallet
               </span>
             </span>
-          </Link>
+          </a>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
             <WalletAccountMenu />
             {profiles.length > 0 ? (
@@ -81,7 +80,7 @@ export function WalletNav() {
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
                 className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
@@ -91,7 +90,7 @@ export function WalletNav() {
                 }`}
               >
                 {item.label}
-              </Link>
+              </a>
             );
           })}
         </nav>

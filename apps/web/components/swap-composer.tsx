@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
 import {
   EVM_CHAINS,
   normalizeEvmTokenAmount,
@@ -39,7 +38,6 @@ import {
   CROSS_CHAIN_SWAP_ID,
   SOLANA_SWAP_CHAIN_ID,
   getSwapNetworkLabel,
-  getSwapProviderLabel,
   getPopularSwapTokens,
   type SwapTokenOption,
 } from "@/lib/swap-token-catalog";
@@ -77,6 +75,7 @@ export function SwapComposer(props: {
   const [extensionDetected, setExtensionDetected] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(props.userAddress ?? null);
   const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
+  const [networkPickerOpen, setNetworkPickerOpen] = useState(false);
   const [tokenSearch, setTokenSearch] = useState("");
   const [jupiterInputMint, setJupiterInputMint] = useState("So11111111111111111111111111111111111111112");
   const [jupiterOutputMint, setJupiterOutputMint] = useState("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -102,18 +101,31 @@ export function SwapComposer(props: {
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
   const selectedBuyToken = tokens.find((token) => token.value === buyToken) ?? tokens[1] ?? selectedSellToken;
   const pickerTokens = useMemo(() => filterSwapTokens(tokens, tokenSearch), [tokenSearch, tokens]);
+  const routeNetworkOptions = useMemo(
+    () => [
+      ...EVM_CHAINS.map((chain) => ({
+        chainId: chain.chainId,
+        label: chain.name,
+        caption: `${chain.nativeSymbol} network`,
+      })),
+      {
+        chainId: SOLANA_SWAP_CHAIN_ID,
+        label: "Solana",
+        caption: "Popular Solana tokens",
+      },
+      {
+        chainId: CROSS_CHAIN_SWAP_ID,
+        label: "Any network",
+        caption: "Route across supported networks",
+      },
+    ],
+    [],
+  );
+  const selectedNetwork = routeNetworkOptions.find((option) => option.chainId === chainId) ?? routeNetworkOptions[0]!;
   const isSolanaSwap = chainId === SOLANA_SWAP_CHAIN_ID;
   const isCrossChainSwap = chainId === CROSS_CHAIN_SWAP_ID;
   const isEvmSwap = !isSolanaSwap && !isCrossChainSwap;
-  const swapProvider = getSwapProviderLabel(chainId);
   const universalRoute = isSolanaSwap ? jupiterRoute : isCrossChainSwap ? rangoRoute : null;
-  const universalProviderReady = Boolean(
-    universalStatus?.providers.some((provider) =>
-      provider.provider === (isSolanaSwap ? "jupiter" : "rango")
-      && provider.configured
-      && provider.enabled,
-    ),
-  );
 
   useEffect(() => {
     setHistory(loadSwapHistory());
@@ -203,33 +215,23 @@ export function SwapComposer(props: {
   }, [tokenPickerSide]);
 
   useEffect(() => {
-    if (!tokenPickerSide) {
+    if (!tokenPickerSide && !networkPickerOpen) {
       return;
-    }
-
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.overflow = "hidden";
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setTokenPickerSide(null);
+        setNetworkPickerOpen(false);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [tokenPickerSide]);
+  }, [tokenPickerSide, networkPickerOpen]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -295,7 +297,7 @@ export function SwapComposer(props: {
 
       setQuote(nextQuote);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to fetch 0x quote.");
+      setError(err instanceof Error ? err.message : "Unable to fetch a route.");
     } finally {
       setLoading(false);
     }
@@ -492,7 +494,7 @@ export function SwapComposer(props: {
   }
 
   async function handleJupiterQuote() {
-    setJupiterResult("Fetching Jupiter route...");
+    setJupiterResult("Finding route...");
     setJupiterRoute(null);
     setError(null);
     try {
@@ -520,12 +522,12 @@ export function SwapComposer(props: {
       });
       setJupiterRoute(route);
       setJupiterResult(
-        `Jupiter: ${route.inAmountRaw} -> ${route.outAmountRaw}. Route: ${
-          route.routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+        `Route found: ${route.inAmountRaw} -> ${route.outAmountRaw}. Path: ${
+          route.routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Best available route"
         }`,
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to fetch Jupiter route.";
+      const message = err instanceof Error ? err.message : "Unable to find a route.";
       setJupiterResult(message);
       setError(message);
     }
@@ -604,10 +606,88 @@ export function SwapComposer(props: {
     setRangoResult(null);
     setError(null);
     setTokenPickerSide(null);
+    setNetworkPickerOpen(false);
+  }
+
+  function handleNetworkPick(nextChainId: number) {
+    setChainId(nextChainId);
+    setTokenPickerSide(null);
+    setNetworkPickerOpen(false);
+    setTokenSearch("");
+    setQuote(null);
+    setJupiterRoute(null);
+    setJupiterResult(null);
+    setRangoRoute(null);
+    setRangoResult(null);
+    setError(null);
+    setExtensionResult(null);
+  }
+
+  function renderInlineTokenPicker(side: "sell" | "buy") {
+    return (
+      <div className="token-inline-picker" role="dialog" aria-label="Choose token">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+          <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
+            ×
+          </button>
+        </div>
+        <div className="token-picker-search">
+          <span className="text-xl text-violet-500">⌕</span>
+          <input
+            value={tokenSearch}
+            onChange={(event) => setTokenSearch(event.target.value)}
+            placeholder="Search by token, symbol, or address"
+            aria-label="Search token"
+          />
+          <span className="token-picker-chain">{getSwapNetworkLabel(chainId)}</span>
+        </div>
+        <div className="token-picker-quick">
+          {tokens.slice(0, 5).map((token) => (
+            <button
+              key={`quick-${side}-${token.value}`}
+              type="button"
+              className="token-picker-chip"
+              onClick={() => handleTokenPick(side, token.value)}
+            >
+              <TokenIcon token={token} />
+              {token.symbol}
+            </button>
+          ))}
+        </div>
+        <p className="token-picker-section-label">{getTokenPickerSectionLabel(chainId)}</p>
+        <div className="token-picker-list">
+          {pickerTokens.length ? pickerTokens.map((token) => (
+            <button
+              key={`picker-${side}-${token.value}`}
+              type="button"
+              className="token-picker-row"
+              onClick={() => handleTokenPick(side, token.value)}
+            >
+              <TokenIcon token={token} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
+                <span className="block truncate text-sm text-slate-500">
+                  {token.symbol}
+                  {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
+                </span>
+              </span>
+              {token.balanceFormatted ? (
+                <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
+              ) : null}
+            </button>
+          )) : (
+            <p className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-600">
+              No tokens found for this network.
+            </p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   async function handleRangoQuote() {
-    setRangoResult("Fetching Rango route...");
+    setRangoResult("Finding route...");
     setRangoRoute(null);
     setError(null);
     try {
@@ -616,7 +696,7 @@ export function SwapComposer(props: {
       const amount = isCrossChainSwap ? sellAmount : rangoAmount;
 
       if (from.toLowerCase() === to.toLowerCase()) {
-        throw new Error("Choose different cross-chain assets.");
+        throw new Error("Choose different assets.");
       }
 
       if (!validateFormattedAmount(amount)) {
@@ -631,10 +711,10 @@ export function SwapComposer(props: {
       });
       setRangoRoute(route);
       setRangoResult(
-        `Rango: ${route.amountRaw} -> ${route.outputAmountFormatted ?? route.outputAmountRaw ?? "unknown"}. Route: ${route.routeLabel}`,
+        `Route found: ${route.amountRaw} -> ${route.outputAmountFormatted ?? route.outputAmountRaw ?? "unknown"}. Path: ${route.routeLabel}`,
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to fetch Rango route.";
+      const message = err instanceof Error ? err.message : "Unable to find a route.";
       setRangoResult(message);
       setError(message);
     }
@@ -647,7 +727,7 @@ export function SwapComposer(props: {
       const route = provider === "jupiter" ? jupiterRoute : rangoRoute;
 
       if (!route) {
-        throw new Error(`Request a ${provider} route before opening extension review.`);
+        throw new Error("Request a route before opening extension review.");
       }
 
       await requestExtensionUniversalSwap({
@@ -661,14 +741,14 @@ export function SwapComposer(props: {
         buyAmountFormatted: provider === "rango" ? (route as RangoSwapQuoteResponse).outputAmountFormatted ?? null : null,
         minBuyAmountRaw: provider === "jupiter" ? (route as SolanaSwapQuoteResponse).otherAmountThresholdRaw ?? null : null,
         routeLabel: provider === "jupiter"
-          ? (route as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+          ? (route as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Best available route"
           : (route as RangoSwapQuoteResponse).routeLabel,
         slippageBps,
         expiresAt: route.expiresAt,
         executionStatus: "review_only",
       });
 
-      setExtensionResult(`${provider} route review queued in Acorus extension. Execution remains gated until the adapter is audited.`);
+      setExtensionResult("Route review queued in Acorus extension. Execution remains gated until this route is fully supported.");
     } catch (err) {
       setExtensionResult(err instanceof Error ? err.message : "Unable to queue universal swap review.");
     }
@@ -676,7 +756,7 @@ export function SwapComposer(props: {
 
   const providerReady = isEvmSwap
     ? Boolean(status?.configured && status.enabled)
-    : universalProviderReady;
+    : true;
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
     : false;
@@ -695,7 +775,6 @@ export function SwapComposer(props: {
         quoteExpired,
       })
     : getUniversalSwapCtaLabel({
-        provider: swapProvider,
         loading,
         routeReady: Boolean(universalRoute),
       });
@@ -705,13 +784,13 @@ export function SwapComposer(props: {
       <div className="acorus-card space-y-5 p-4 sm:p-5">
         <div className="px-3 pt-3">
           <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
-            0x · Jupiter · Rango
+            Swap
           </span>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-            {props.title ?? "Swap with Acorus"}
+            {props.title ?? "Swap"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            {props.description ?? "0x handles EVM execution, while Jupiter and Rango routes can be inspected in the extension before adapter execution is enabled."}
+            {props.description ?? "Choose a network and tokens, then request the best available route. Every swap requires extension review before anything is signed."}
           </p>
         </div>
 
@@ -730,7 +809,7 @@ export function SwapComposer(props: {
 
         {!props.compact && !providerReady ? (
           <div className="mx-1 rounded-[1.5rem] border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-900">
-            {swapProvider} is not configured on the backend yet. Add the provider key on the API server to enable live routes.
+            Live routes are not configured for this network yet. Try another network or check backend status.
           </div>
         ) : null}
 
@@ -741,27 +820,57 @@ export function SwapComposer(props: {
         ) : null}
 
         <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/72 p-3 shadow-sm">
-          <label className="space-y-2">
-            <span className="px-2 text-sm font-medium text-slate-600">Route network</span>
-            <select className="light-field" value={chainId} onChange={(event) => setChainId(Number(event.target.value))}>
-              <optgroup label="EVM via 0x">
-                {EVM_CHAINS.map((chain) => (
-                  <option key={chain.chainId} value={chain.chainId}>{chain.name}</option>
+          <div className="swap-network-field">
+            <span className="px-2 text-sm font-medium text-slate-600">Network</span>
+            <button
+              type="button"
+              className="swap-network-select"
+              aria-expanded={networkPickerOpen}
+              aria-label="Choose swap network"
+              onClick={() => {
+                setTokenPickerSide(null);
+                setNetworkPickerOpen((open) => !open);
+              }}
+            >
+              <span className="swap-network-dot" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-base font-black text-slate-950">{selectedNetwork.label}</span>
+                <span className="block truncate text-xs text-slate-500">{selectedNetwork.caption}</span>
+              </span>
+              <span className="text-lg" aria-hidden="true">⌄</span>
+            </button>
+            {networkPickerOpen ? (
+              <div className="swap-network-menu" role="listbox" aria-label="Choose network">
+                {routeNetworkOptions.map((option) => (
+                  <button
+                    key={option.chainId}
+                    type="button"
+                    className="swap-network-option"
+                    data-active={option.chainId === chainId}
+                    role="option"
+                    aria-selected={option.chainId === chainId}
+                    onClick={() => handleNetworkPick(option.chainId)}
+                  >
+                    <span className="font-black text-slate-950">{option.label}</span>
+                    <span className="swap-network-caption">{option.caption}</span>
+                  </button>
                 ))}
-              </optgroup>
-              <optgroup label="Solana via Jupiter">
-                <option value={SOLANA_SWAP_CHAIN_ID}>Solana</option>
-              </optgroup>
-              <optgroup label="Cross-chain via Rango">
-                <option value={CROSS_CHAIN_SWAP_ID}>Any network</option>
-              </optgroup>
-            </select>
-          </label>
+              </div>
+            ) : null}
+          </div>
 
           <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-2"}>
-            <label className="space-y-2">
+            <div className="swap-token-field space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
-              <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("sell")}>
+              <button
+                type="button"
+                className="swap-token-select"
+                aria-expanded={tokenPickerSide === "sell"}
+                onClick={() => {
+                  setNetworkPickerOpen(false);
+                  setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
+                }}
+              >
                 <TokenIcon token={selectedSellToken} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-black">{selectedSellToken.symbol}</span>
@@ -769,10 +878,18 @@ export function SwapComposer(props: {
                 </span>
                 <span className="text-lg">⌄</span>
               </button>
-            </label>
-            <label className="space-y-2">
+            </div>
+            <div className="swap-token-field space-y-2">
               <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
-              <button type="button" className="swap-token-select" onClick={() => setTokenPickerSide("buy")}>
+              <button
+                type="button"
+                className="swap-token-select"
+                aria-expanded={tokenPickerSide === "buy"}
+                onClick={() => {
+                  setNetworkPickerOpen(false);
+                  setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
+                }}
+              >
                 <TokenIcon token={selectedBuyToken} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
@@ -780,8 +897,10 @@ export function SwapComposer(props: {
                 </span>
                 <span className="text-lg">⌄</span>
               </button>
-            </label>
+            </div>
           </div>
+
+          {tokenPickerSide ? renderInlineTokenPicker(tokenPickerSide) : null}
 
           <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-[1fr_180px]"}>
             <label className="space-y-2">
@@ -816,7 +935,7 @@ export function SwapComposer(props: {
             className="button-primary block w-full text-center"
             href="/extension"
           >
-            Open extension setup
+            Connect Acorus wallet
           </a>
         ) : (
           <button
@@ -833,14 +952,14 @@ export function SwapComposer(props: {
           <>
             <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Solana route via Jupiter</h2>
-                <p className="text-xs text-slate-500">Fetch a live Solana route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
+                <h2 className="text-base font-semibold text-slate-950">Network route</h2>
+                <p className="text-xs text-slate-500">Fetch a live route and queue an extension review. Execution remains gated until transaction decoding is audited.</p>
               </div>
               <input className="light-field" value={jupiterInputMint} onChange={(event) => setJupiterInputMint(event.target.value)} placeholder="Input mint" />
               <input className="light-field" value={jupiterOutputMint} onChange={(event) => setJupiterOutputMint(event.target.value)} placeholder="Output mint" />
               <input className="light-field" value={jupiterAmount} onChange={(event) => setJupiterAmount(event.target.value)} placeholder="Raw amount" />
               <button type="button" className="button-secondary" onClick={() => void handleJupiterQuote()}>
-                Get Jupiter route
+                Get route
               </button>
               {jupiterResult ? <p className="text-sm text-slate-600">{jupiterResult}</p> : null}
               {jupiterRoute ? (
@@ -850,21 +969,21 @@ export function SwapComposer(props: {
                   disabled={!extensionDetected}
                   onClick={() => void handleUniversalSwapReview("jupiter")}
                 >
-                  Review Jupiter route in extension
+                  Review route in extension
                 </button>
               ) : null}
             </div>
 
             <div className="grid gap-3 rounded-[1.6rem] border border-fuchsia-100 bg-white/62 p-3">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Universal route via Rango</h2>
-                <p className="text-xs text-slate-500">Cross-chain route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>
+                <h2 className="text-base font-semibold text-slate-950">Multi-network route</h2>
+                <p className="text-xs text-slate-500">Route discovery is backend-proxied; extension review is live, execution remains adapter-gated.</p>
               </div>
               <input className="light-field" value={rangoFrom} onChange={(event) => setRangoFrom(event.target.value)} placeholder="From asset, e.g. ETH.ETH" />
               <input className="light-field" value={rangoTo} onChange={(event) => setRangoTo(event.target.value)} placeholder="To asset, e.g. SOL.SOL" />
               <input className="light-field" value={rangoAmount} onChange={(event) => setRangoAmount(event.target.value)} placeholder="Amount" />
               <button type="button" className="button-secondary" onClick={() => void handleRangoQuote()}>
-                Get Rango route
+                Get route
               </button>
               {rangoResult ? <p className="text-sm text-slate-600">{rangoResult}</p> : null}
               {rangoRoute ? (
@@ -874,7 +993,7 @@ export function SwapComposer(props: {
                   disabled={!extensionDetected}
                   onClick={() => void handleUniversalSwapReview("rango")}
                 >
-                  Review Rango route in extension
+                  Review route in extension
                 </button>
               ) : null}
             </div>
@@ -961,8 +1080,8 @@ export function SwapComposer(props: {
           ) : universalRoute ? (
             <div className="space-y-3 text-sm text-slate-600">
               <div className="flex justify-between gap-3">
-                <span>Provider</span>
-                <strong>{swapProvider}</strong>
+                <span>Route type</span>
+                <strong>{getSwapNetworkLabel(chainId)}</strong>
               </div>
               <div className="flex justify-between gap-3">
                 <span>You pay</span>
@@ -984,12 +1103,12 @@ export function SwapComposer(props: {
                 <span>Route</span>
                 <strong>
                   {isSolanaSwap
-                    ? (universalRoute as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter best route"
+                    ? (universalRoute as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Best available route"
                     : (universalRoute as RangoSwapQuoteResponse).routeLabel}
                 </strong>
               </div>
               <div className="rounded-2xl border border-sky-400/30 bg-sky-400/10 p-3 text-sky-900">
-                This route is ready for extension review. Execution remains gated until the {swapProvider} transaction adapter is audited.
+                This route is ready for extension review. Execution remains gated until the selected route adapter is audited.
               </div>
               <button
                 type="button"
@@ -997,12 +1116,12 @@ export function SwapComposer(props: {
                 disabled={!extensionDetected}
                 onClick={() => void handleUniversalSwapReview(isSolanaSwap ? "jupiter" : "rango")}
               >
-                Review {swapProvider} route in extension
+                Review route in extension
               </button>
             </div>
           ) : (
             <p className="text-sm text-slate-600">
-              Select a route and request a quote. 0x EVM can execute after extension approval; Jupiter and Rango routes queue review-only approval cards.
+              Select a network and tokens, then request a quote. Available routes can execute only after extension approval.
             </p>
           )}
         </div>
@@ -1036,79 +1155,6 @@ export function SwapComposer(props: {
       </aside>
       ) : null}
 
-      {tokenPickerSide && typeof document !== "undefined" ? createPortal(
-        <div
-          className="token-picker-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Choose token"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setTokenPickerSide(null);
-            }
-          }}
-        >
-          <div className="token-picker-card" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-2xl font-black text-slate-950">Choose token</h2>
-              <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
-                ×
-              </button>
-            </div>
-            <div className="token-picker-search">
-              <span className="text-xl text-violet-500">⌕</span>
-              <input
-                value={tokenSearch}
-                onChange={(event) => setTokenSearch(event.target.value)}
-                placeholder="Search by token, symbol, or address"
-                aria-label="Search token"
-              />
-              <span className="token-picker-chain">{getSwapNetworkLabel(chainId)}</span>
-            </div>
-            <div className="token-picker-quick">
-              {tokens.slice(0, 5).map((token) => (
-                <button
-                  key={`quick-${token.value}`}
-                  type="button"
-                  className="token-picker-chip"
-                  onClick={() => handleTokenPick(tokenPickerSide, token.value)}
-                >
-                  <TokenIcon token={token} />
-                  {token.symbol}
-                </button>
-              ))}
-            </div>
-            <p className="token-picker-section-label">{getTokenPickerSectionLabel(chainId)}</p>
-            <div className="token-picker-list">
-              {pickerTokens.length ? pickerTokens.map((token) => (
-                <button
-                  key={`picker-${token.value}`}
-                  type="button"
-                  className="token-picker-row"
-                  onClick={() => handleTokenPick(tokenPickerSide, token.value)}
-                >
-                  <TokenIcon token={token} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
-                    <span className="block truncate text-sm text-slate-500">
-                      {token.symbol}
-                      {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
-                    </span>
-                  </span>
-                  {token.balanceFormatted ? (
-                    <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
-                  ) : null}
-                </button>
-              )) : (
-                <p className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-600">
-                  No tokens found for this network.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body,
-      ) : null}
     </div>
   );
 }
@@ -1176,26 +1222,25 @@ function getTokenPickerSectionLabel(chainId: number): string {
   }
 
   if (chainId === CROSS_CHAIN_SWAP_ID) {
-    return "Cross-chain assets available through Rango";
+    return "Popular assets across networks";
   }
 
   return "Popular tokens on this network";
 }
 
 function getUniversalSwapCtaLabel(input: {
-  provider: string;
   loading: boolean;
   routeReady: boolean;
 }): string {
   if (input.loading) {
-    return `Finding ${input.provider} route...`;
+    return "Finding route...";
   }
 
   if (!input.routeReady) {
-    return `Get ${input.provider} route`;
+    return "Get route";
   }
 
-  return `Review ${input.provider} route`;
+  return "Review route";
 }
 
 function shortTokenAddress(value: string): string {
