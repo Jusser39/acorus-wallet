@@ -7,7 +7,7 @@ const chart: MarketChart = {
   chainId: 1,
   symbol: "ETH",
   currency: "USD",
-  range: "1d",
+  range: "1D",
   points: [
     { timestamp: "2026-05-23T10:00:00.000Z", price: 10 },
     { timestamp: "2026-05-23T12:30:00.000Z", price: 11 },

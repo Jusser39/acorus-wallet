@@ -1,6 +1,6 @@
 import type { ChainFamily, ChainId, TransactionStatus } from "./multichain";
 
-export type WalletProfileType = "local" | "view_only" | "practice";
+export type WalletProfileType = "local" | "view_only" | "practice" | "injected";
 
 export type PreferredCurrency = "USD" | "EUR" | "RUB";
 

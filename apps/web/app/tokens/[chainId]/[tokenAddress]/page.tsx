@@ -140,44 +140,6 @@ function resolveFamily(
     ?? "evm";
 }
 
-function familyLabelFromTokenDetail(
-  detail: TokenDetail | null,
-  fallback: string,
-): string {
-  const nativeSymbolLabels: Record<string, string> = {
-    BTC: "Bitcoin",
-    ETH: "Ethereum",
-    SOL: "Solana",
-    TON: "TON",
-    ZEC: "Zcash",
-    HYPE: "Hyperliquid",
-  };
-  const symbolLabel = detail?.symbol ? nativeSymbolLabels[detail.symbol.toUpperCase()] : null;
-  if (symbolLabel) {
-    return symbolLabel;
-  }
-
-  const firstPlatform = detail?.platforms?.[0];
-  if (!firstPlatform) {
-    return fallback;
-  }
-
-  const labels: Record<string, string> = {
-    bitcoin: "Bitcoin",
-    solana: "Solana",
-    ton: "TON",
-    zcash: "Zcash",
-    hyperliquid: "Hyperliquid",
-    ethereum: "Ethereum",
-    base: "Base",
-    arbitrum: "Arbitrum",
-    optimism: "Optimism",
-    polygon: "Polygon",
-    bsc: "BNB Chain",
-  };
-
-  return labels[firstPlatform.chainKey] ?? labels[String(firstPlatform.chainId)] ?? firstPlatform.chainKey;
-}
 
 function normalizeLinkUrl(value: string): string {
   try {
@@ -423,12 +385,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
 
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
-  const displayFamilyLabel = isCoinGeckoRoute
-    ? familyLabelFromTokenDetail(tokenDetail, "Crypto Asset")
-    : familyLabel;
-  const displayChainName = isCoinGeckoRoute
-    ? null
-    : chain?.name ?? `Chain ${String(chainId)}`;
   const tradePlatform = useMemo(
     () => tokenDetail?.platforms.find((platform) =>
       typeof platform.chainId === "number"
@@ -615,7 +571,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                         Copy address
                       </button>
                     ) : null}
-                    <Link href={`/swap?chainId=${canEvmSwap ? tradeChainId : fallbackSwap.chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : fallbackSwap.buyToken)}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
+                    <Link href={`/swap?chainId=${canEvmSwap ? tradeChainId : fallbackSwap.chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
                       Trade this token
                     </Link>
                     <Link href="/receive" className="button-secondary text-sm">

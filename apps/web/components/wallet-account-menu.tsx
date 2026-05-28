@@ -12,7 +12,7 @@ import {
   type AppTheme,
 } from "@/lib/app-preferences";
 import { formatAddress } from "@/lib/utils";
-import { useActiveProfile, useWalletStore, type WalletProfile } from "@/store/wallet-store";
+import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
 type WalletAccountMenuView = "home" | "settings" | "activity";
 
@@ -90,7 +90,7 @@ export function WalletAccountMenu() {
   const [extensionDetected, setExtensionDetected] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const lockWallet = useWalletStore((state) => state.lockWallet);
-  const addProfile = useWalletStore((state) => state.addProfile);
+  const upsertProfile = useWalletStore((state) => state.upsertProfile);
   const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const theme = useWalletStore((state) => state.theme);
   const setTheme = useWalletStore((state) => state.setTheme);
@@ -166,12 +166,17 @@ export function WalletAccountMenu() {
         const id = `ext_${address}`;
         const existing = useWalletStore.getState().profiles.find((p) => p.id === id);
         if (!existing) {
-          addProfile({
+          upsertProfile({
             id,
             name: "Extension Wallet",
             type: "injected",
             chainFamily: "evm",
             publicAddress: address,
+            userId: "local",
+            hiddenBalance: false,
+            preferredCurrency: "USD",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           });
         }
         setActiveProfileId(id);

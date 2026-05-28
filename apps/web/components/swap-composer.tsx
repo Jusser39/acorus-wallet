@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   EVM_CHAINS,
   normalizeEvmTokenAmount,
@@ -87,7 +87,7 @@ export function SwapComposer(props: {
   const [rangoResult, setRangoResult] = useState<string | null>(null);
   const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
   const [panelSide, setPanelSide] = useState<"left" | "right">("right");
-  const composerRef = React.useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const activeUserAddress = props.userAddress ?? connectedAddress;
 
   const tokens = useMemo(

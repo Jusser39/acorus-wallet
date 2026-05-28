@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { usePathname } from "next/navigation";
 import { GlobalMarketSearch } from "@/components/global-market-search";
 import { WalletAccountMenu } from "@/components/wallet-account-menu";
@@ -46,12 +48,17 @@ export function WalletNav() {
         const id = `ext_${address}`;
         const existing = useWalletStore.getState().profiles.find((p) => p.id === id);
         if (!existing) {
-          useWalletStore.getState().addProfile({
+          useWalletStore.getState().upsertProfile({
             id,
             name: "Extension Wallet",
             type: "injected",
             chainFamily: "evm",
             publicAddress: address,
+            userId: "local",
+            hiddenBalance: false,
+            preferredCurrency: "USD",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           });
         }
         setActiveProfileId(id);
