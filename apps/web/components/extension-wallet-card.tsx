@@ -8,7 +8,7 @@ import {
   requestAcorusProviderDiscovery,
   type ExtensionVaultStatus,
 } from "@/lib/extension-bridge";
-import { formatAddress } from "@/lib/utils";
+
 
 export function ExtensionWalletCard(props: {
   title?: string;
