@@ -52,6 +52,13 @@ const SYMBOL_TO_ID: Record<string, string> = {
   DAI: "dai",
   AVAX: "avalanche-2",
   XRP: "ripple",
+  NEAR: "near",
+  DOT: "polkadot",
+  SHIB: "shiba-inu",
+  DOGE: "dogecoin",
+  ADA: "cardano",
+  LINK: "chainlink",
+  LTC: "litecoin",
 };
 
 const COINGECKO_PLATFORM_TO_ROUTE: Record<string, { chainId: number | string; chainKey: string }> = {
@@ -96,6 +103,10 @@ const COINGECKO_ID_TO_BINANCE_SYMBOL: Record<string, string> = {
   "usd-coin": "USDCUSDT",
   zcash: "ZECUSDT",
   hyperliquid: "HYPEUSDT",
+  near: "NEARUSDT",
+  polkadot: "DOTUSDT",
+  "shiba-inu": "SHIBUSDT",
+  litecoin: "LTCUSDT",
 };
 
 const RANGE_TO_BINANCE_KLINES: Record<"1H" | "1D" | "1W" | "1M" | "1Y" | "ALL", { interval: string; limit: number }> = {
@@ -258,6 +269,10 @@ const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {
   zcash: "ZEC",
   "venice-token": "VVV",
   hyperliquid: "HYPE",
+  near: "NEAR",
+  polkadot: "DOT",
+  "shiba-inu": "SHIB",
+  litecoin: "LTC",
 };
 
 const ETH_NATIVE_PLATFORMS: TokenDetailPayload["platforms"] = [
@@ -372,6 +387,18 @@ const COINGECKO_TO_COINPAPRIKA_ID: Record<string, string> = {
   "the-open-network": "toncoin-the-open-network",
   zcash: "zec-zcash",
   hyperliquid: "hype-hyperliquid",
+  near: "near-near-protocol",
+  polkadot: "dot-polkadot",
+  dogecoin: "doge-dogecoin",
+  cardano: "ada-cardano",
+  chainlink: "link-chainlink",
+  "shiba-inu": "shib-shiba-inu",
+  litecoin: "ltc-litecoin",
+  ripple: "xrp-xrp",
+  binancecoin: "bnb-binance-coin",
+  "matic-network": "matic-polygon",
+  "polygon-ecosystem-token": "pol-polygon-ecosystem-token",
+  "avalanche-2": "avax-avalanche",
 };
 
 function firstUrl(values?: Array<string | null> | null): string | null {

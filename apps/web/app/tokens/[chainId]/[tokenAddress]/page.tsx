@@ -424,10 +424,10 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
 
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
   const displayFamilyLabel = isCoinGeckoRoute
-    ? familyLabelFromTokenDetail(tokenDetail, tokenDetail?.platforms?.length ? "Market" : "CoinGecko")
+    ? familyLabelFromTokenDetail(tokenDetail, "Crypto Asset")
     : familyLabel;
   const displayChainName = isCoinGeckoRoute
-    ? displayFamilyLabel
+    ? null
     : chain?.name ?? `Chain ${String(chainId)}`;
   const tradePlatform = useMemo(
     () => tokenDetail?.platforms.find((platform) =>
@@ -532,25 +532,11 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     setShareState("idle");
 
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `${resolvedName} on Acorus Wallet`,
-          text: `View ${resolvedSymbol} market data and swap routes on Acorus Wallet.`,
-          url: shareUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-      }
+      await navigator.clipboard.writeText(shareUrl);
       setShareState("copied");
       window.setTimeout(() => setShareState("idle"), 1600);
     } catch {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareState("copied");
-        window.setTimeout(() => setShareState("idle"), 1600);
-      } catch {
-        setShareState("failed");
-      }
+      setShareState("failed");
     }
   }
 
@@ -592,7 +578,9 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       {displayFamilyLabel}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">{displayChainName}</p>
+                  {displayChainName ? (
+                    <p className="mt-2 text-sm text-slate-600">{displayChainName}</p>
+                  ) : null}
                   {!isNativeToken ? (
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
                   ) : null}

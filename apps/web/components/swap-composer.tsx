@@ -622,13 +622,13 @@ export function SwapComposer(props: {
     return (
       <div className="token-inline-picker" role="dialog" aria-label="Choose token">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+          <h2 className="text-xl font-black text-white">Choose token</h2>
           <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
             ×
           </button>
         </div>
         <div className="token-picker-search">
-          <span className="text-xl text-violet-500">⌕</span>
+          <span className="text-xl text-fuchsia-400">⌕</span>
           <input
             value={tokenSearch}
             onChange={(event) => setTokenSearch(event.target.value)}
@@ -660,19 +660,19 @@ export function SwapComposer(props: {
               onClick={() => handleTokenPick(side, token.value)}
             >
               <TokenIcon token={token} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
-                <span className="block truncate text-sm text-slate-500">
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block truncate text-lg font-black text-white">{token.name}</span>
+                <span className="block truncate text-sm text-slate-400">
                   {token.symbol}
                   {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
                 </span>
               </span>
               {token.balanceFormatted ? (
-                <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
+                <span className="text-right text-sm font-bold text-slate-300">{token.balanceFormatted}</span>
               ) : null}
             </button>
           )) : (
-            <p className="rounded-3xl border border-fuchsia-100 bg-white/70 p-4 text-sm text-slate-600">
+            <p className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
               No tokens found for this network.
             </p>
           )}
@@ -757,7 +757,7 @@ export function SwapComposer(props: {
     : false;
   const wrongChain = Boolean(isEvmSwap && quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
-  const showSidePanel = !props.compact || Boolean(quote || universalRoute || extensionResult || history.length > 0);
+  const showSidePanel = !props.compact || Boolean(quote || universalRoute || extensionResult || history.length > 0 || tokenPickerSide);
   const showUniversalRouteForms = false;
   const ctaLabel = isEvmSwap
     ? getSwapCtaLabel({
@@ -941,7 +941,6 @@ export function SwapComposer(props: {
                 <option value={100}>1%</option>
               </select>
             </div>
-            {tokenPickerSide ? renderInlineTokenPicker(tokenPickerSide) : null}
           </div>
         </div>
 
@@ -1024,8 +1023,12 @@ export function SwapComposer(props: {
 
       {showSidePanel ? (
       <aside className="space-y-6">
-        <div className="premium-card space-y-3 p-5">
-          <h2 className="text-xl font-semibold text-slate-950">{quote || universalRoute ? "Route review" : "Swap status"}</h2>
+        {tokenPickerSide ? (
+          renderInlineTokenPicker(tokenPickerSide)
+        ) : (
+          <>
+            <div className="premium-card space-y-3 p-5">
+              <h2 className="text-xl font-semibold text-slate-950">{quote || universalRoute ? "Route review" : "Swap status"}</h2>
           {quote ? (
             <div className="space-y-3 text-sm text-slate-600">
               <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
@@ -1159,10 +1162,12 @@ export function SwapComposer(props: {
                 </div>
               </div>
             )) : (
-              <p className="text-sm text-slate-400">No swap or approval events queued from the web shell yet.</p>
-            )}
+                <p className="text-sm text-slate-400">No swap or approval events queued from the web shell yet.</p>
+              )}
+            </div>
           </div>
-        </div>
+          </>
+        )}
       </aside>
       ) : null}
 
