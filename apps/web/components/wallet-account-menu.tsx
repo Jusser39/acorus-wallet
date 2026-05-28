@@ -12,7 +12,7 @@ import {
   type AppTheme,
 } from "@/lib/app-preferences";
 import { formatAddress } from "@/lib/utils";
-import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
+import { useActiveProfile, useWalletStore, type WalletProfile } from "@/store/wallet-store";
 
 type WalletAccountMenuView = "home" | "settings" | "activity";
 
@@ -87,8 +87,11 @@ export function WalletAccountMenu() {
   const [view, setView] = useState<WalletAccountMenuView>("home");
   const [copied, setCopied] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("https://24wallet.ru");
+  const [extensionDetected, setExtensionDetected] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const lockWallet = useWalletStore((state) => state.lockWallet);
+  const addProfile = useWalletStore((state) => state.addProfile);
+  const setActiveProfileId = useWalletStore((state) => state.setActiveProfileId);
   const theme = useWalletStore((state) => state.theme);
   const setTheme = useWalletStore((state) => state.setTheme);
   const displayCurrency = useWalletStore((state) => state.displayCurrency);
@@ -114,6 +117,9 @@ export function WalletAccountMenu() {
 
   useEffect(() => {
     setCurrentUrl(window.location.href);
+    if (typeof window !== "undefined" && window.ethereum?.isAcorus) {
+      setExtensionDetected(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -149,6 +155,31 @@ export function WalletAccountMenu() {
     await navigator.clipboard.writeText(address);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  async function connectExtension() {
+    if (!window.ethereum?.isAcorus) return;
+    try {
+      const accounts = await window.ethereum.request<string[]>({ method: "eth_requestAccounts" });
+      const address = accounts[0];
+      if (address) {
+        const id = `ext_${address}`;
+        const existing = useWalletStore.getState().profiles.find((p) => p.id === id);
+        if (!existing) {
+          addProfile({
+            id,
+            name: "Extension Wallet",
+            type: "injected",
+            chainFamily: "evm",
+            publicAddress: address,
+          });
+        }
+        setActiveProfileId(id);
+        setOpen(false);
+      }
+    } catch (e) {
+      console.error("Failed to connect extension", e);
+    }
   }
 
   function closeAfterNavigate() {
@@ -193,6 +224,15 @@ export function WalletAccountMenu() {
                         ? `${activeProfile.name} · ${activeProfile.chainFamily.toUpperCase()}`
                         : "Создайте, импортируйте или подключите расширение"}
                     </p>
+                    {!activeProfile && extensionDetected && (
+                      <button
+                        type="button"
+                        onClick={connectExtension}
+                        className="mt-2 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700"
+                      >
+                        Подключить расширение
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">

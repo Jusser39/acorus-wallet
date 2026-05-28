@@ -86,6 +86,8 @@ export function SwapComposer(props: {
   const [rangoAmount, setRangoAmount] = useState("0.01");
   const [rangoResult, setRangoResult] = useState<string | null>(null);
   const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
+  const [panelSide, setPanelSide] = useState<"left" | "right">("right");
+  const composerRef = React.useRef<HTMLDivElement>(null);
   const activeUserAddress = props.userAddress ?? connectedAddress;
 
   const tokens = useMemo(
@@ -231,6 +233,22 @@ export function SwapComposer(props: {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [tokenPickerSide, networkPickerOpen]);
+
+  useEffect(() => {
+    if (tokenPickerSide && composerRef.current) {
+      const rect = composerRef.current.getBoundingClientRect();
+      const rightSpace = window.innerWidth - rect.right;
+      const leftSpace = rect.left;
+      
+      if (rightSpace < 340 && leftSpace > 340) {
+        setPanelSide("left");
+      } else {
+        setPanelSide("right");
+      }
+    } else if (!tokenPickerSide) {
+      setPanelSide("right");
+    }
+  }, [tokenPickerSide]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -620,16 +638,17 @@ export function SwapComposer(props: {
 
   function renderInlineTokenPicker(side: "sell" | "buy") {
     return (
-      <div className="token-inline-picker" role="dialog" aria-label="Choose token">
+      <div className="token-inline-picker premium-card flex flex-col" role="dialog" aria-label="Choose token">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-white">Choose token</h2>
-          <button type="button" className="token-picker-close" onClick={() => setTokenPickerSide(null)}>
+          <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+          <button type="button" className="token-picker-close !text-slate-500 !bg-slate-100 !border-slate-200" onClick={() => setTokenPickerSide(null)}>
             ×
           </button>
         </div>
         <div className="token-picker-search">
           <span className="text-xl text-fuchsia-400">⌕</span>
           <input
+            className="!bg-transparent"
             value={tokenSearch}
             onChange={(event) => setTokenSearch(event.target.value)}
             placeholder="Search by token, symbol, or address"
@@ -661,18 +680,18 @@ export function SwapComposer(props: {
             >
               <TokenIcon token={token} />
               <span className="min-w-0 flex-1 text-left">
-                <span className="block truncate text-lg font-black text-white">{token.name}</span>
-                <span className="block truncate text-sm text-slate-400">
+                <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
+                <span className="block truncate text-sm text-slate-500">
                   {token.symbol}
                   {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
                 </span>
               </span>
               {token.balanceFormatted ? (
-                <span className="text-right text-sm font-bold text-slate-300">{token.balanceFormatted}</span>
+                <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
               ) : null}
             </button>
           )) : (
-            <p className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+            <p className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
               No tokens found for this network.
             </p>
           )}
@@ -775,8 +794,17 @@ export function SwapComposer(props: {
       });
 
   return (
-    <div className={props.compact ? "grid gap-5" : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"}>
-      <div className="acorus-card space-y-5 p-4 sm:p-5">
+    <div 
+      ref={composerRef}
+      className={
+        props.compact 
+          ? "grid gap-5 relative" 
+          : panelSide === "left"
+            ? "grid gap-6 xl:grid-cols-[minmax(320px,1fr)_minmax(0,640px)] xl:justify-center"
+            : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"
+      }
+    >
+      <div className={`acorus-card space-y-5 p-4 sm:p-5 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
         <div className="px-3 pt-3">
           <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
             Swap
@@ -961,7 +989,7 @@ export function SwapComposer(props: {
           <button
             type="button"
             className="button-primary w-full"
-            disabled={!providerReady || (!sellAmount && !quote && !universalRoute) || loading}
+            disabled={activeUserAddress ? (!providerReady || (!sellAmount && !quote && !universalRoute) || loading) : false}
             onClick={() => void handlePrimaryAction()}
           >
             {ctaLabel}
@@ -1022,7 +1050,11 @@ export function SwapComposer(props: {
       </div>
 
       {showSidePanel ? (
-      <aside className="space-y-6">
+      <aside className={
+        props.compact
+          ? `space-y-6 xl:absolute xl:top-0 xl:z-50 xl:w-[360px] ${panelSide === "left" ? "xl:right-full xl:mr-6" : "xl:left-full xl:ml-6"}`
+          : `space-y-6 ${panelSide === "left" ? "order-first" : ""}`
+      }>
         {tokenPickerSide ? (
           renderInlineTokenPicker(tokenPickerSide)
         ) : (

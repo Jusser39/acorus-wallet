@@ -574,13 +574,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <span className="rounded-full border border-fuchsia-100 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700">
                       {resolvedSymbol}
                     </span>
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
-                      {displayFamilyLabel}
-                    </span>
                   </div>
-                  {displayChainName ? (
-                    <p className="mt-2 text-sm text-slate-600">{displayChainName}</p>
-                  ) : null}
                   {!isNativeToken ? (
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>
                   ) : null}
@@ -621,7 +615,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                         Copy address
                       </button>
                     ) : null}
-                    <Link href="/swap" className="button-primary inline-flex text-sm">
+                    <Link href={`/swap?chainId=${canEvmSwap ? tradeChainId : fallbackSwap.chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : fallbackSwap.buyToken)}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
                       Trade this token
                     </Link>
                     <Link href="/receive" className="button-secondary text-sm">

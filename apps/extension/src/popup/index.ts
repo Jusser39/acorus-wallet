@@ -85,7 +85,7 @@ const FALLBACK_NETWORKS: ExtensionPortfolioSnapshot["networks"] = [
     nativeSymbol: "TRX",
     iconSymbol: "TRX",
     accent: "#EF0027",
-    capabilities: { receive: true, balance: false, send: false, swap: false, dapp: true },
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
   },
   {
     id: "bitcoin-mainnet",
@@ -95,7 +95,7 @@ const FALLBACK_NETWORKS: ExtensionPortfolioSnapshot["networks"] = [
     nativeSymbol: "BTC",
     iconSymbol: "BTC",
     accent: "#F7931A",
-    capabilities: { receive: false, balance: false, send: false, swap: false, dapp: false },
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
   },
   {
     id: "ton-mainnet",
@@ -105,7 +105,7 @@ const FALLBACK_NETWORKS: ExtensionPortfolioSnapshot["networks"] = [
     nativeSymbol: "TON",
     iconSymbol: "TON",
     accent: "#0098EA",
-    capabilities: { receive: false, balance: false, send: false, swap: false, dapp: false },
+    capabilities: { receive: true, balance: true, send: true, swap: true, dapp: true },
   },
 ];
 let lastCreatedMnemonic: string | null = null;
@@ -585,7 +585,7 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
         },
       ], activeChainId)}
       <div class="network-grid">
-        ${["evm", "solana", "tron", "coming"].map((group) =>
+        ${["evm", "solana", "tron", "utxo", "ton"].map((group) =>
           renderNetworkGroup(
             getNetworkGroupLabel(group),
             getNetworksForGroup(networks, group),
@@ -618,9 +618,6 @@ function renderNetworkCard(
   network: ExtensionPortfolioSnapshot["networks"][number] & { family: string },
   activeChainId: string | number,
 ): string {
-  const capabilityBadges = Object.entries(network.capabilities)
-    .map(([name, enabled]) => `<span class="capability-badge ${enabled ? "on" : "off"}">${escapeHtml(name)}</span>`)
-    .join("");
   const chainId = String(network.chainId);
 
   return `
@@ -633,7 +630,6 @@ function renderNetworkCard(
       <span>
         <strong>${escapeHtml(network.name)}</strong>
         <small>${escapeHtml(network.family.toUpperCase())}</small>
-        <span class="capability-row">${capabilityBadges}</span>
       </span>
     </button>
   `;
@@ -643,10 +639,6 @@ function getNetworksForGroup(
   networks: ExtensionPortfolioSnapshot["networks"],
   group: string,
 ): ExtensionPortfolioSnapshot["networks"] {
-  if (group === "coming") {
-    return networks.filter((network) => network.family === "utxo" || network.family === "ton");
-  }
-
   return networks.filter((network) => network.family === group);
 }
 
@@ -658,8 +650,12 @@ function getNetworkGroupLabel(group: string): string {
       return "Solana";
     case "tron":
       return "Tron";
+    case "utxo":
+      return "Bitcoin";
+    case "ton":
+      return "TON";
     default:
-      return "Coming soon";
+      return "Other";
   }
 }
 

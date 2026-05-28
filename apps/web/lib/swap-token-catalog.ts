@@ -171,12 +171,34 @@ export function getPopularSwapTokens(input: {
     decimals: number;
   };
 }): SwapTokenOption[] {
+  const initial = input.initialBuyToken && input.initialBuyToken !== "native" && input.initialBuyTokenMeta
+    ? [{
+        value: input.initialBuyToken,
+        tokenAddress: input.initialBuyToken,
+        symbol: input.initialBuyTokenMeta.symbol,
+        name: input.initialBuyTokenMeta.name,
+        decimals: input.initialBuyTokenMeta.decimals,
+        chainId: input.chainId,
+        logoUrl: TOKEN_LOGOS[input.initialBuyTokenMeta.symbol.toUpperCase()] ?? null,
+        verified: false,
+        source: "featured" as const,
+      }]
+    : [];
+
   if (input.chainId === SOLANA_SWAP_CHAIN_ID) {
-    return SOLANA_VOLUME_TOKENS;
+    const byValue = new Map<string, SwapTokenOption>();
+    for (const item of [...SOLANA_VOLUME_TOKENS, ...initial]) {
+      byValue.set(item.value.toLowerCase(), item);
+    }
+    return Array.from(byValue.values());
   }
 
   if (input.chainId === CROSS_CHAIN_SWAP_ID) {
-    return CROSS_CHAIN_TOKENS;
+    const byValue = new Map<string, SwapTokenOption>();
+    for (const item of [...CROSS_CHAIN_TOKENS, ...initial]) {
+      byValue.set(item.value.toLowerCase(), item);
+    }
+    return Array.from(byValue.values());
   }
 
   const chain = EVM_CHAINS.find((item) => item.chainId === input.chainId) ?? EVM_CHAINS[0]!;
@@ -219,19 +241,6 @@ export function getPopularSwapTokens(input: {
   const featured = FEATURED_EVM_TOKENS
     .filter((item) => item.chainId === input.chainId)
     .map((item): SwapTokenOption => ({ ...item, source: "featured" }));
-  const initial = input.initialBuyToken && input.initialBuyToken !== "native" && input.initialBuyTokenMeta
-    ? [{
-        value: input.initialBuyToken,
-        tokenAddress: input.initialBuyToken,
-        symbol: input.initialBuyTokenMeta.symbol,
-        name: input.initialBuyTokenMeta.name,
-        decimals: input.initialBuyTokenMeta.decimals,
-        chainId: input.chainId,
-        logoUrl: TOKEN_LOGOS[input.initialBuyTokenMeta.symbol.toUpperCase()] ?? null,
-        verified: false,
-        source: "featured" as const,
-      }]
-    : [];
   const byValue = new Map<string, SwapTokenOption>();
 
   for (const item of [native, ...portfolio, ...curated, ...featured, ...initial]) {

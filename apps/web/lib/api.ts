@@ -831,8 +831,18 @@ export async function searchMarket(query: string): Promise<MarketSearchResult[]>
 
 // ---- Explore Feed ----
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    return withRetry(fn, retries - 1, delay * 1.5);
+  }
+}
+
 export async function fetchExploreTrending(): Promise<ExploreFeedResponse> {
-  return apiFetch<ExploreFeedResponse>("/api/explore/trending");
+  return withRetry(() => apiFetch<ExploreFeedResponse>("/api/explore/trending"));
 }
 
 export type ExploreFeedKind = "top" | "gainers" | "losers";
@@ -855,9 +865,9 @@ export async function fetchExploreTop(input?: {
   }
 
   const qs = params.toString() ? `?${params.toString()}` : "";
-  return apiFetch<ExploreFeedResponse>(`/api/explore/top${qs}`);
+  return withRetry(() => apiFetch<ExploreFeedResponse>(`/api/explore/top${qs}`));
 }
 
 export async function fetchExploreMemes(): Promise<ExploreFeedResponse> {
-  return apiFetch<ExploreFeedResponse>("/api/explore/memes");
+  return withRetry(() => apiFetch<ExploreFeedResponse>("/api/explore/memes"));
 }

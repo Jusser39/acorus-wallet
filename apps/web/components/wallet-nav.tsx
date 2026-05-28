@@ -29,6 +29,38 @@ export function WalletNav() {
   const setError = useWalletStore((state) => state.setError);
   const isUnlocked = Boolean(unlockedVault);
 
+  const [extensionDetected, setExtensionDetected] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.ethereum?.isAcorus) {
+      setExtensionDetected(true);
+    }
+  }, []);
+
+  async function connectExtension() {
+    if (!window.ethereum?.isAcorus) return;
+    try {
+      const accounts = await window.ethereum.request<string[]>({ method: "eth_requestAccounts" });
+      const address = accounts[0];
+      if (address) {
+        const id = `ext_${address}`;
+        const existing = useWalletStore.getState().profiles.find((p) => p.id === id);
+        if (!existing) {
+          useWalletStore.getState().addProfile({
+            id,
+            name: "Extension Wallet",
+            type: "injected",
+            chainFamily: "evm",
+            publicAddress: address,
+          });
+        }
+        setActiveProfileId(id);
+      }
+    } catch (e) {
+      console.error("Failed to connect extension", e);
+    }
+  }
+
   return (
     <header className="magic-topbar relative z-40">
       <div className="magic-container flex flex-col gap-3 py-3">
@@ -48,6 +80,15 @@ export function WalletNav() {
             </span>
           </a>
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
+            {!activeProfile && extensionDetected && (
+              <button
+                type="button"
+                onClick={connectExtension}
+                className="magic-button-primary px-4 py-2 text-xs transition hover:-translate-y-0.5"
+              >
+                Connect Wallet
+              </button>
+            )}
             <WalletAccountMenu />
             {profiles.length > 0 ? (
               <select
