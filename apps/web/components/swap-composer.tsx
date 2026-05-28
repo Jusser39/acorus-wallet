@@ -854,68 +854,94 @@ export function SwapComposer(props: {
             ) : null}
           </div>
 
-          <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-2"}>
-            <div className="swap-token-field space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">Sell</span>
-              <button
-                type="button"
-                className="swap-token-select"
-                aria-expanded={tokenPickerSide === "sell"}
-                onClick={() => {
-                  setNetworkPickerOpen(false);
-                  setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
-                }}
-              >
-                <TokenIcon token={selectedSellToken} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-black">{selectedSellToken.symbol}</span>
-                  <span className="block truncate text-xs text-slate-500">{selectedSellToken.name}</span>
-                </span>
-                <span className="text-lg">⌄</span>
-              </button>
+          <div className="grid gap-2 relative">
+            <div className="swap-panel-inner relative">
+              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">You pay</span>
+              <div className="flex items-center gap-3">
+                <input
+                  className="swap-input-huge flex-1"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={sellAmount}
+                  onChange={(event) => setSellAmount(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="swap-token-select flex-shrink-0"
+                  aria-expanded={tokenPickerSide === "sell"}
+                  onClick={() => {
+                    setNetworkPickerOpen(false);
+                    setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
+                  }}
+                >
+                  <TokenIcon token={selectedSellToken} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-black">{selectedSellToken.symbol}</span>
+                  </span>
+                  <span className="text-lg">⌄</span>
+                </button>
+              </div>
             </div>
-            <div className="swap-token-field space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">Buy</span>
-              <button
-                type="button"
-                className="swap-token-select"
-                aria-expanded={tokenPickerSide === "buy"}
-                onClick={() => {
-                  setNetworkPickerOpen(false);
-                  setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
-                }}
-              >
-                <TokenIcon token={selectedBuyToken} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
-                  <span className="block truncate text-xs text-slate-500">{selectedBuyToken.name}</span>
-                </span>
-                <span className="text-lg">⌄</span>
-              </button>
+
+            <button 
+              type="button" 
+              className="swap-direction-btn"
+              onClick={() => {
+                const temp = sellToken;
+                setSellToken(buyToken);
+                setBuyToken(temp);
+                setQuote(null);
+                setJupiterRoute(null);
+                setJupiterResult(null);
+                setRangoRoute(null);
+                setRangoResult(null);
+              }}
+            >
+              ↓
+            </button>
+
+            <div className="swap-panel-inner relative">
+              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">You receive</span>
+              <div className="flex items-center gap-3">
+                <input
+                  className="swap-input-huge flex-1"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={
+                    quote ? shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals) : 
+                    isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals) :
+                    isCrossChainSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
+                    ""
+                  }
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="swap-token-select flex-shrink-0"
+                  aria-expanded={tokenPickerSide === "buy"}
+                  onClick={() => {
+                    setNetworkPickerOpen(false);
+                    setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
+                  }}
+                >
+                  <TokenIcon token={selectedBuyToken} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
+                  </span>
+                  <span className="text-lg">⌄</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {tokenPickerSide ? renderInlineTokenPicker(tokenPickerSide) : null}
-
-          <div className={props.compact ? "grid gap-2" : "grid gap-2 md:grid-cols-[1fr_180px]"}>
-            <label className="space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">You pay</span>
-              <input
-                className="light-field"
-                inputMode="decimal"
-                placeholder={`0.00 ${selectedSellToken.symbol}`}
-                value={sellAmount}
-                onChange={(event) => setSellAmount(event.target.value)}
-              />
-            </label>
-            <label className="space-y-2">
-              <span className="px-2 text-sm font-medium text-slate-600">Slippage</span>
-              <select className="light-field" value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))}>
+            <div className="mt-2 flex justify-between items-center px-2">
+              <span className="text-sm font-medium text-slate-500">Slippage Tolerance</span>
+              <select className="bg-transparent text-sm font-medium text-slate-700 outline-none" value={slippageBps} onChange={(event) => setSlippageBps(Number(event.target.value))}>
                 <option value={30}>0.3%</option>
                 <option value={50}>0.5%</option>
                 <option value={100}>1%</option>
               </select>
-            </label>
+            </div>
+            {tokenPickerSide ? renderInlineTokenPicker(tokenPickerSide) : null}
           </div>
         </div>
 
