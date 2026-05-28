@@ -201,9 +201,6 @@ export default async function Home() {
               <div className="mt-4 text-5xl font-black tracking-tight">$—</div>
               <p className="mt-2 text-sm font-semibold text-emerald-600">Connect extension to calculate live balances.</p>
               <div className="mt-5 h-28 rounded-3xl border border-white/60 bg-[linear-gradient(180deg,rgba(139,92,246,0.22),rgba(124,247,255,0.02))]" />
-              <div className="mt-4 rounded-full border border-white/70 bg-white/55 px-4 py-3 text-sm font-black text-slate-700">
-                0x4f2b...8a91
-              </div>
             </section>
 
             <div className="grid grid-cols-2 gap-3">

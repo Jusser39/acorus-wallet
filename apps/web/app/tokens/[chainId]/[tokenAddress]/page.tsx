@@ -428,7 +428,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return {
       chainId: CROSS_CHAIN_SWAP_ID,
       sellToken: crossChainTarget?.symbol.toUpperCase() === "ETH" ? "SOL.SOL" : "ETH.ETH",
-      buyToken: crossChainTarget?.value,
+      buyToken: crossChainTarget?.value ?? `${resolvedSymbol.toUpperCase()}.${resolvedSymbol.toUpperCase()}`,
       decimals: crossChainTarget?.decimals ?? 18,
     };
   }, [resolvedSymbol, tokenAddress]);
@@ -439,6 +439,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const displayFdv = tokenDetail?.fdvUsd ?? null;
   const displayHigh24h = tokenDetail?.high24hUsd ?? null;
   const displayLow24h = tokenDetail?.low24hUsd ?? null;
+  const calcCirculatingSupply = displayMarketCap && displayPrice ? displayMarketCap / displayPrice : null;
+  const displayCirculatingSupply = tokenDetail?.circulatingSupply ?? calcCirculatingSupply;
   const externalLinks = dedupeLinks((tokenDetail?.links ?? []).filter((link) => link.kind !== "explorer"));
   const logoUrl = tokenDetail?.logoUrl ?? null;
   const explorerOptions = useMemo(() => {
@@ -654,7 +656,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           <div className="grid gap-3 md:grid-cols-3">
             <MetricCard label="Launch date" value={formatDate(tokenDetail?.launchedAt)} />
             <MetricCard label="Rank" value={tokenDetail?.rank ? `#${tokenDetail.rank}` : "—"} />
-            <MetricCard label="Circulating supply" value={formatNumber(tokenDetail?.circulatingSupply)} />
+            <MetricCard label="Circulating supply" value={formatNumber(displayCirculatingSupply)} />
             <MetricCard label="Total supply" value={formatNumber(tokenDetail?.totalSupply)} />
             <MetricCard label="Max supply" value={formatNumber(tokenDetail?.maxSupply)} />
             <MetricCard

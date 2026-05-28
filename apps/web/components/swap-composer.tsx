@@ -240,7 +240,7 @@ export function SwapComposer(props: {
       const rightSpace = window.innerWidth - rect.right;
       const leftSpace = rect.left;
       
-      if (rightSpace < 340 && leftSpace > 340) {
+      if (leftSpace > rightSpace) {
         setPanelSide("left");
       } else {
         setPanelSide("right");
@@ -489,7 +489,7 @@ export function SwapComposer(props: {
     requestAcorusProviderDiscovery();
 
     try {
-      const accounts = await requestAcorusExtension<string[]>("eth_requestAccounts");
+      const accounts = await requestAcorusExtension<string[]>("acorus_requestAccounts", [{ family: "evm" }]);
       const account = Array.isArray(accounts) ? accounts[0] ?? null : null;
 
       if (!account) {
@@ -1178,26 +1178,6 @@ export function SwapComposer(props: {
           </div>
         ) : null}
 
-        <div className="premium-card p-5 text-sm text-slate-600">
-          <h2 className="text-xl font-semibold text-slate-950">Recent swap activity</h2>
-          <div className="mt-4 grid gap-3">
-            {history.length ? history.slice(0, 4).map((item) => (
-              <div key={item.id} className="rounded-2xl border border-fuchsia-100 bg-white/70 p-3">
-                <div className="flex justify-between gap-3">
-                  <span className="font-medium text-slate-950">{item.kind.replace(/_/gu, " ")}</span>
-                  <span className={item.status === "failed" ? "text-rose-300" : "text-emerald-300"}>{item.status}</span>
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {item.tokenSymbol
-                    ? `${item.amountFormatted ?? ""} ${item.tokenSymbol}`.trim()
-                    : `${item.amountFormatted ?? ""} ${item.sellTokenSymbol ?? ""} -> ${item.buyAmountFormatted ?? ""} ${item.buyTokenSymbol ?? ""}`.trim()}
-                </div>
-              </div>
-            )) : (
-                <p className="text-sm text-slate-400">No swap or approval events queued from the web shell yet.</p>
-              )}
-            </div>
-          </div>
           </>
         )}
       </aside>

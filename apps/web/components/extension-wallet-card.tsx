@@ -74,9 +74,7 @@ export function ExtensionWalletCard(props: {
           <h2 className="text-xl font-semibold text-white">
             {props.title ?? "Acorus Extension"}
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Сайт управляет действиями, а ключи и approval живут в расширении.
-          </p>
+
         </div>
         <button type="button" className="button-secondary" onClick={() => void refresh()}>
           Refresh
@@ -99,21 +97,9 @@ export function ExtensionWalletCard(props: {
           </div>
 
           {profiles.length > 0 ? (
-            profiles.map((profile) => (
-              <div
-                key={profile.profileId}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium text-white">{profile.name}</p>
-                  <span className="rounded-full border border-teal-300/20 bg-teal-300/10 px-2 py-1 text-xs text-teal-100">
-                    {profile.chainFamily}
-                  </span>
-                </div>
-                <p className="mt-2 break-all text-slate-300">{profile.account}</p>
-                <p className="mt-1 text-slate-500">{formatAddress(profile.account)}</p>
-              </div>
-            ))
+            <p className="text-sm text-slate-400">
+              {profiles.length} profile{profiles.length !== 1 ? "s" : ""} available in vault.
+            </p>
           ) : (
             <p className="text-sm text-slate-400">
               No matching extension profile for this network yet.
