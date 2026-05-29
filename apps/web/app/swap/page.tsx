@@ -13,11 +13,13 @@ function SwapClient() {
   const evmAddress = activeProfile?.chainFamily === "evm" ? activeProfile.publicAddress : null;
 
   const chainIdParam = searchParams?.get("chainId");
+  const sellTokenParam = searchParams?.get("sellToken");
   const buyTokenParam = searchParams?.get("buyToken");
   const buySymbolParam = searchParams?.get("buySymbol");
   const buyNameParam = searchParams?.get("buyName");
 
   const initialChainId = chainIdParam ? Number(chainIdParam) : undefined;
+  const initialSellToken = sellTokenParam || undefined;
   const initialBuyToken = buyTokenParam || undefined;
   const initialBuyTokenMeta = initialBuyToken && buySymbolParam ? {
     symbol: buySymbolParam,
@@ -43,6 +45,7 @@ function SwapClient() {
         <SwapComposer
           compact
           initialChainId={initialChainId}
+          initialSellToken={initialSellToken}
           initialBuyToken={initialBuyToken}
           initialBuyTokenMeta={initialBuyTokenMeta}
           portfolioAssets={[]}
