@@ -572,8 +572,8 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
         <h2 class="section-title">Networks</h2>
         <input class="field compact" id="network-search" placeholder="Search">
       </div>
-      ${renderNetworkGroup("All", [
-        {
+      <div class="network-grid">
+        ${renderNetworkCard({
           id: "all",
           family: "all",
           chainId: "all",
@@ -582,16 +582,8 @@ function renderNetworkPanel(home: ExtensionPortfolioSnapshot | null): string {
           iconSymbol: "ALL",
           accent: "#111827",
           capabilities: { receive: true, balance: true, send: false, swap: false, dapp: false },
-        },
-      ], activeChainId)}
-      <div class="network-grid">
-        ${["evm", "solana", "tron", "utxo", "ton"].map((group) =>
-          renderNetworkGroup(
-            getNetworkGroupLabel(group),
-            getNetworksForGroup(networks, group),
-            activeChainId,
-          ),
-        ).join("")}
+        } as any, activeChainId)}
+        ${networks.map((network) => renderNetworkCard(network, activeChainId)).join("")}
       </div>
     </section>
   `;
@@ -602,16 +594,8 @@ function renderNetworkGroup(
   networks: Array<ExtensionPortfolioSnapshot["networks"][number] & { family: string }>,
   activeChainId: string | number,
 ): string {
-  if (!networks.length) {
-    return "";
-  }
-
-  return `
-    <div class="network-group" data-network-group="${escapeHtml(label.toLowerCase())}">
-      <div class="network-group-label">${escapeHtml(label)}</div>
-      ${networks.map((network) => renderNetworkCard(network, activeChainId)).join("")}
-    </div>
-  `;
+  // Deprecated, using flat list
+  return networks.map((network) => renderNetworkCard(network, activeChainId)).join("");
 }
 
 function renderNetworkCard(
@@ -735,12 +719,15 @@ function renderReceiveAddressRows(
   }
 
   return matching.map((profile) => `
-    <div class="site-row" data-receive-family="${escapeHtml(profile.chainFamily)}">
-      <div>
-        <div class="token-name">${escapeHtml(profile.name)}</div>
-        <div class="token-meta">${escapeHtml(profile.chainFamily)} · ${shortAddress(profile.account)}</div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:16px; padding: 16px 0;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(profile.account)}" alt="QR Code" style="width:200px; height:200px; border-radius:12px; background:white; padding:8px;" />
+      <div class="site-row" data-receive-family="${escapeHtml(profile.chainFamily)}" style="width:100%">
+        <div>
+          <div class="token-name">${escapeHtml(profile.name)}</div>
+          <div class="token-meta">${escapeHtml(profile.chainFamily)} · ${shortAddress(profile.account)}</div>
+        </div>
+        <button class="ghost-button" type="button" data-copy="${escapeHtml(profile.account)}">Copy</button>
       </div>
-      <button class="ghost-button" type="button" data-copy="${escapeHtml(profile.account)}">Copy</button>
     </div>
   `).join("");
 }

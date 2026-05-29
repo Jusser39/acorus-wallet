@@ -32,7 +32,7 @@ import {
   switchExtensionChain,
 } from "@/lib/extension-bridge";
 import { getSwapCtaLabel } from "@/lib/swap-cta";
-import { appendSwapHistoryEntry, loadSwapHistory, type WebSwapActivityEntry } from "@/lib/swap-history";
+
 import {
   filterSwapTokens,
   CROSS_CHAIN_SWAP_ID,
@@ -70,7 +70,6 @@ export function SwapComposer(props: {
   const [extensionResult, setExtensionResult] = useState<string | null>(null);
   const [extensionChainId, setExtensionChainId] = useState<number | null>(null);
   const [quoteCountdown, setQuoteCountdown] = useState(0);
-  const [history, setHistory] = useState<WebSwapActivityEntry[]>([]);
   const [extensionDetected, setExtensionDetected] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(props.userAddress ?? null);
   const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
@@ -129,7 +128,6 @@ export function SwapComposer(props: {
   const universalRoute = isSolanaSwap ? jupiterRoute : isCrossChainSwap ? rangoRoute : null;
 
   useEffect(() => {
-    setHistory(loadSwapHistory());
     requestAcorusProviderDiscovery();
     setExtensionDetected(hasAcorusExtension());
     void getEvmSwapStatus()
@@ -360,43 +358,9 @@ export function SwapComposer(props: {
       });
 
       setExtensionResult("Approval request queued in Acorus extension. Open the popup to confirm or reject it.");
-      setHistory(appendSwapHistoryEntry({
-        id: `approval_${quote.requestId}_${Date.now()}`,
-        kind: "approval_requested",
-        provider: "0x",
-        chainId: quote.chainId,
-        account: activeUserAddress,
-        tokenSymbol: quote.sellToken.symbol,
-        amountFormatted: shortenFormattedEvmTokenAmount(
-          tx.amountRaw,
-          quote.sellToken.decimals,
-        ),
-        approvalMode: "exact",
-        status: "queued",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extension approval request failed.";
       setExtensionResult(message);
-      setHistory(appendSwapHistoryEntry({
-        id: `approval_failed_${quote.requestId}_${Date.now()}`,
-        kind: "approval_failed",
-        provider: "0x",
-        chainId: quote.chainId,
-        account: activeUserAddress,
-        tokenSymbol: quote.sellToken.symbol,
-        amountFormatted: shortenFormattedEvmTokenAmount(
-          quote.approval.requiredAllowanceRaw ?? quote.sellAmountRaw,
-          quote.sellToken.decimals,
-        ),
-        approvalMode: "exact",
-        status: "failed",
-        errorCode: "approval_request_failed",
-        errorMessage: message,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
     }
   }
 
@@ -438,43 +402,9 @@ export function SwapComposer(props: {
       });
 
       setExtensionResult("Swap request queued in Acorus extension. Open the popup to approve or reject.");
-      if (activeUserAddress) {
-        setHistory(appendSwapHistoryEntry({
-          id: `swap_${quote.requestId}_${Date.now()}`,
-          kind: "swap_requested",
-          provider: "0x",
-          chainId: quote.chainId,
-          account: activeUserAddress,
-          sellTokenSymbol: quote.sellToken.symbol,
-          buyTokenSymbol: quote.buyToken.symbol,
-          amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
-          buyAmountFormatted: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
-          status: "queued",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extension swap request failed.";
       setExtensionResult(message);
-      if (activeUserAddress) {
-        setHistory(appendSwapHistoryEntry({
-          id: `swap_failed_${quote.requestId}_${Date.now()}`,
-          kind: "swap_failed",
-          provider: "0x",
-          chainId: quote.chainId,
-          account: activeUserAddress,
-          sellTokenSymbol: quote.sellToken.symbol,
-          buyTokenSymbol: quote.buyToken.symbol,
-          amountFormatted: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
-          buyAmountFormatted: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
-          status: "failed",
-          errorCode: "swap_request_failed",
-          errorMessage: message,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-      }
     }
   }
 
@@ -776,7 +706,8 @@ export function SwapComposer(props: {
     : false;
   const wrongChain = Boolean(isEvmSwap && quote && extensionChainId !== null && extensionChainId !== quote.chainId);
   const quoteExpired = Boolean(quote && quoteCountdown <= 0);
-  const showSidePanel = !props.compact || Boolean(quote || universalRoute || extensionResult || history.length > 0 || tokenPickerSide);
+  const hasAmount = Boolean(Number(sellAmount) > 0);
+  const showSidePanel = Boolean(quote || universalRoute || extensionResult || tokenPickerSide);
   const showUniversalRouteForms = false;
   const ctaLabel = isEvmSwap
     ? getSwapCtaLabel({
@@ -787,10 +718,12 @@ export function SwapComposer(props: {
         approvalRequired: Boolean(quote?.approvalRequired),
         wrongChain,
         quoteExpired,
+        hasAmount,
       })
     : getUniversalSwapCtaLabel({
         loading,
         routeReady: Boolean(universalRoute),
+        hasAmount,
       });
 
   return (
@@ -989,7 +922,7 @@ export function SwapComposer(props: {
           <button
             type="button"
             className="button-primary w-full"
-            disabled={activeUserAddress ? (!providerReady || (!sellAmount && !quote && !universalRoute) || loading) : false}
+            disabled={activeUserAddress ? (!providerReady || (!hasAmount && !quote && !universalRoute) || loading) : false}
             onClick={() => void handlePrimaryAction()}
           >
             {ctaLabel}
@@ -1165,11 +1098,7 @@ export function SwapComposer(props: {
                 Review route in extension
               </button>
             </div>
-          ) : (
-            <p className="text-sm text-slate-600">
-              Select a network and tokens, then request a quote. Available routes can execute only after extension approval.
-            </p>
-          )}
+          ) : null}
         </div>
 
         {extensionResult ? (
@@ -1259,9 +1188,14 @@ function getTokenPickerSectionLabel(chainId: number): string {
 function getUniversalSwapCtaLabel(input: {
   loading: boolean;
   routeReady: boolean;
+  hasAmount: boolean;
 }): string {
   if (input.loading) {
     return "Finding route...";
+  }
+
+  if (!input.hasAmount) {
+    return "Enter an amount";
   }
 
   if (!input.routeReady) {
