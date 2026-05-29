@@ -153,7 +153,7 @@ export const TRON_MAINNET_CHAIN: UniversalChainConfig = {
   nativeSymbol: "TRX",
   rpcUrlEnv: "NEXT_PUBLIC_TRON_RPC_URL",
   blockExplorerUrl: "https://tronscan.org/#",
-  isEnabled: false,
+  isEnabled: true,
   isSkeleton: true,
 };
 
@@ -175,7 +175,7 @@ export const TON_MAINNET_CHAIN: UniversalChainConfig = {
   nativeSymbol: "TON",
   rpcUrlEnv: "NEXT_PUBLIC_TON_RPC_URL",
   blockExplorerUrl: "https://tonscan.org",
-  isEnabled: false,
+  isEnabled: true,
   isSkeleton: true,
 };
 

@@ -233,18 +233,10 @@ export function SwapComposer(props: {
   }, [tokenPickerSide, networkPickerOpen]);
 
   useEffect(() => {
-    if (tokenPickerSide && composerRef.current) {
-      const rect = composerRef.current.getBoundingClientRect();
-      const rightSpace = window.innerWidth - rect.right;
-      const leftSpace = rect.left;
-      
-      if (leftSpace > rightSpace) {
-        setPanelSide("left");
-      } else {
-        setPanelSide("right");
-      }
+    if (tokenPickerSide) {
+      setPanelSide("left");
     } else if (!tokenPickerSide) {
-      setPanelSide("right");
+      setPanelSide("left");
     }
   }, [tokenPickerSide]);
 
