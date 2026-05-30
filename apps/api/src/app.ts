@@ -22,6 +22,7 @@ import {
 import { createMarketDataProvider, MockMarketDataProvider } from "./market/index.js";
 import { createJupiterSwapService } from "./services/jupiter";
 import { createRangoSwapService } from "./services/rango";
+import { createLiFiSwapService, LiFiSwapError } from "./services/lifi";
 import { SwapProviderError } from "./services/swap-errors";
 import { createZeroXSwapService, ZeroXSwapError } from "./services/zero-x";
 import { z } from "zod";
@@ -366,6 +367,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const zeroXSwapService = createZeroXSwapService(env);
   const jupiterSwapService = createJupiterSwapService(env);
   const rangoSwapService = createRangoSwapService(env);
+  const lifiSwapService = createLiFiSwapService(env);
 
   app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
@@ -1116,6 +1118,15 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         supportedChains: rangoSwapService.getStatus().supportedChains,
         apiBase: rangoSwapService.getStatus().apiBase,
       },
+      {
+        provider: "lifi",
+        configured: lifiSwapService.getStatus().configured,
+        enabled: lifiSwapService.getStatus().enabled,
+        execution: "crosschain_transaction_draft",
+        supportedFamilies: ["evm"],
+        supportedChains: lifiSwapService.getStatus().supportedChains,
+        apiBase: lifiSwapService.getStatus().apiBase,
+      },
     ],
   }));
 
@@ -1183,6 +1194,45 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         });
       }
 
+      throw error;
+    }
+  });
+
+
+  app.get("/api/swap/lifi/status", async () => lifiSwapService.getStatus());
+
+  app.get("/api/swap/lifi/quote", async (request, reply) => {
+    try {
+      const q = request.query as Record<string, string>;
+      const fromChain = parseInt(q.fromChain ?? "", 10);
+      const toChain = parseInt(q.toChain ?? "", 10);
+      const slippage = q.slippage !== undefined ? parseFloat(q.slippage) : undefined;
+      return await lifiSwapService.getQuote(
+        { fromChain, toChain, fromToken: q.fromToken ?? "", toToken: q.toToken ?? "",
+          fromAmount: q.fromAmount ?? "", fromAddress: q.fromAddress ?? "",
+          toAddress: q.toAddress, slippage },
+        request.ip,
+      );
+    } catch (error) {
+      if (error instanceof LiFiSwapError) {
+        return reply.code(error.statusCode).send({ error: error.code, message: error.message });
+      }
+      throw error;
+    }
+  });
+
+  app.get("/api/swap/lifi/tx-status", async (request, reply) => {
+    try {
+      const q = request.query as Record<string, string>;
+      const fromChain = q.fromChain !== undefined ? parseInt(q.fromChain, 10) : undefined;
+      const toChain = q.toChain !== undefined ? parseInt(q.toChain, 10) : undefined;
+      return await lifiSwapService.getTxStatus(
+        { txHash: q.txHash ?? "", bridge: q.bridge, fromChain, toChain },
+      );
+    } catch (error) {
+      if (error instanceof LiFiSwapError) {
+        return reply.code(error.statusCode).send({ error: error.code, message: error.message });
+      }
       throw error;
     }
   });

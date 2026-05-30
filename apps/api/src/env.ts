@@ -102,6 +102,15 @@ const envSchema = z.object({
   RANGO_API_BASE: z.string().url().default("https://api.rango.exchange"),
   RANGO_ENABLED: boolFromEnv.default(true),
   RANGO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(30),
+  LIFI_API_KEY: optionalStringFromEnv,
+  LIFI_API_BASE: z.string().url().default("https://li.quest/v1"),
+  LIFI_ENABLED: boolFromEnv.default(true),
+  LIFI_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
+  LIFI_AFFILIATE_ADDRESS: optionalStringFromEnv,
+  LIFI_REFERRER_FEE_BPS: z.preprocess(
+    emptyStringToUndefined,
+    z.coerce.number().int().min(0).max(10000).optional(),
+  ),
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;
