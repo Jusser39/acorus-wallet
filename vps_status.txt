@@ -1,0 +1,117 @@
+Filesystem      Size  Used Avail Use% Mounted on
+tmpfs           392M  1.3M  391M   1% /run
+/dev/sda1        48G   38G  9.7G  80% /
+tmpfs           2.0G  1.1M  2.0G   1% /dev/shm
+tmpfs           5.0M     0  5.0M   0% /run/lock
+/dev/sda16      881M  117M  703M  15% /boot
+/dev/sda15      105M  6.2M   99M   6% /boot/efi
+tmpfs           392M  8.0K  392M   1% /run/user/0
+overlay          48G   38G  9.7G  80% /var/lib/docker/rootfs/overlayfs/ce58e27e35fbbf92259ee7ce60aea69eae8f01d8916c3ec8f5112c38b6aac2cf
+overlay          48G   38G  9.7G  80% /var/lib/docker/rootfs/overlayfs/ecf835c243735f8e81160bb49755b48db4873d9fa83cb7deec8360ee0a023c11
+overlay          48G   38G  9.7G  80% /var/lib/docker/rootfs/overlayfs/a615d551f82fedea261bc48f6da118691a63ccddbd78ebc3798ff035609e5405
+overlay          48G   38G  9.7G  80% /var/lib/docker/rootfs/overlayfs/c85993116a3713f5da82c2460bae935fef3b28b36d23723840c64dbca929faad
+overlay          48G   38G  9.7G  80% /var/lib/docker/rootfs/overlayfs/47dc18e18a054f1eb9935cadf6c6444394c1c0c6350a77049d1c22cbd90ec3e9
+===
+               total        used        free      shared  buff/cache   available
+Mem:            3915        1159         153           7        2901        2756
+Swap:           2047         802        1245
+===
+NAME              IMAGE                                                                     COMMAND                  SERVICE    CREATED        STATUS                  PORTS
+acorus-api        sha256:0d1098bb2dc0e664290acaad3880e43983e083d7e5049fc80caa75afde3992fa   "api-entrypoint.sh p…"   api        2 hours ago    Up 2 hours (healthy)    4000/tcp
+acorus-nginx      nginx:1.29-alpine                                                         "/docker-entrypoint.…"   nginx      2 days ago     Up 2 days               0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+acorus-postgres   postgres:16-alpine                                                        "docker-entrypoint.s…"   postgres   21 hours ago   Up 21 hours (healthy)   5432/tcp
+acorus-redis      redis:7-alpine                                                            "docker-entrypoint.s…"   redis      2 days ago     Up 2 days (healthy)     6379/tcp
+acorus-web        sha256:27fe8556872ade1c79f317dddc2422be120f834ee3679bbce5c54e5d6fce0b4d   "docker-entrypoint.s…"   web        2 hours ago    Up 2 hours              3000/tcp
+===
+acorus-redis  | 1:C 28 May 2026 22:41:20.894 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+acorus-redis  | 1:C 28 May 2026 22:41:20.895 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+acorus-redis  | 1:C 28 May 2026 22:41:20.895 * Redis version=7.4.9, bits=64, commit=00000000, modified=0, pid=1, just started
+acorus-redis  | 1:C 28 May 2026 22:41:20.895 * Configuration loaded
+acorus-redis  | 1:M 28 May 2026 22:41:20.895 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+acorus-redis  | 1:M 28 May 2026 22:41:20.895 * monotonic clock: POSIX clock_gettime
+acorus-redis  | 1:M 28 May 2026 22:41:20.897 * Running mode=standalone, port=6379.
+acorus-redis  | 1:M 28 May 2026 22:41:20.897 * Server initialized
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * Reading RDB base file on AOF loading...
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * Loading RDB produced by version 7.4.9
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * RDB age 1209197 seconds
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * RDB memory usage when created 0.90 Mb
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * RDB is base AOF
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * Done loading RDB, keys loaded: 0, keys expired: 0.
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * DB loaded from base file appendonly.aof.1.base.rdb: 0.001 seconds
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * DB loaded from append only file: 0.001 seconds
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+acorus-redis  | 1:M 28 May 2026 22:41:20.898 * Ready to accept connections tcp
+acorus-api    | {"level":30,"time":1780259785648,"pid":123,"hostname":"c85993116a37","reqId":"req-e7","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":59408},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259785661,"pid":123,"hostname":"c85993116a37","reqId":"req-e7","res":{"statusCode":200},"responseTime":11.067747831344604,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259800802,"pid":123,"hostname":"c85993116a37","reqId":"req-e8","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":50276},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259800809,"pid":123,"hostname":"c85993116a37","reqId":"req-e8","res":{"statusCode":200},"responseTime":4.497209787368774,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259816046,"pid":123,"hostname":"c85993116a37","reqId":"req-e9","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":46886},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259816055,"pid":123,"hostname":"c85993116a37","reqId":"req-e9","res":{"statusCode":200},"responseTime":6.091577053070068,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259831243,"pid":123,"hostname":"c85993116a37","reqId":"req-ea","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":40030},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259831252,"pid":123,"hostname":"c85993116a37","reqId":"req-ea","res":{"statusCode":200},"responseTime":5.36273980140686,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259846434,"pid":123,"hostname":"c85993116a37","reqId":"req-eb","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":35800},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259846437,"pid":123,"hostname":"c85993116a37","reqId":"req-eb","res":{"statusCode":200},"responseTime":1.1697139739990234,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259861725,"pid":123,"hostname":"c85993116a37","reqId":"req-ec","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":45338},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259861729,"pid":123,"hostname":"c85993116a37","reqId":"req-ec","res":{"statusCode":200},"responseTime":1.011559009552002,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259876935,"pid":123,"hostname":"c85993116a37","reqId":"req-ed","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":60120},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259876948,"pid":123,"hostname":"c85993116a37","reqId":"req-ed","res":{"statusCode":200},"responseTime":5.378718852996826,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259892103,"pid":123,"hostname":"c85993116a37","reqId":"req-ee","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":44166},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259892106,"pid":123,"hostname":"c85993116a37","reqId":"req-ee","res":{"statusCode":200},"responseTime":0.9526240825653076,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259907233,"pid":123,"hostname":"c85993116a37","reqId":"req-ef","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":49836},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259907235,"pid":123,"hostname":"c85993116a37","reqId":"req-ef","res":{"statusCode":200},"responseTime":0.9455289840698242,"msg":"request completed"}
+acorus-api    | {"level":30,"time":1780259922403,"pid":123,"hostname":"c85993116a37","reqId":"req-eg","req":{"method":"GET","url":"/health","host":"127.0.0.1:4000","remoteAddress":"127.0.0.1","remotePort":45534},"msg":"incoming request"}
+acorus-api    | {"level":30,"time":1780259922411,"pid":123,"hostname":"c85993116a37","reqId":"req-eg","res":{"statusCode":200},"responseTime":4.377002954483032,"msg":"request completed"}
+acorus-postgres  | 2026-05-30 23:13:47.617 UTC [1] LOG:  starting PostgreSQL 16.13 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+acorus-postgres  | 2026-05-30 23:13:47.617 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+acorus-postgres  | 2026-05-30 23:13:47.617 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+acorus-postgres  | 2026-05-30 23:13:47.628 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+acorus-postgres  | 2026-05-30 23:13:47.668 UTC [28] LOG:  database system was shut down at 2026-05-30 23:13:27 UTC
+acorus-postgres  | 2026-05-30 23:13:47.765 UTC [1] LOG:  database system is ready to accept connections
+acorus-postgres  | 2026-05-30 23:18:47.764 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-30 23:18:47.785 UTC [26] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.001 s, total=0.022 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/1BB9558, redo lsn=0/1BB9520
+acorus-postgres  | 2026-05-31 06:23:55.661 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 06:23:57.042 UTC [26] LOG:  checkpoint complete: wrote 14 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=1.341 s, sync=0.016 s, total=1.382 s; sync files=9, longest=0.016 s, average=0.002 s; distance=40 kB, estimate=40 kB; lsn=0/1BC35A0, redo lsn=0/1BC3568
+acorus-postgres  | 2026-05-31 17:24:07.252 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 17:24:09.667 UTC [26] LOG:  checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.363 s, sync=0.039 s, total=2.420 s; sync files=24, longest=0.039 s, average=0.002 s; distance=38 kB, estimate=39 kB; lsn=0/1BCCF58, redo lsn=0/1BCCF20
+acorus-postgres  | 2026-05-31 17:44:08.067 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 17:44:10.311 UTC [26] LOG:  checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.214 s, sync=0.002 s, total=2.245 s; sync files=23, longest=0.001 s, average=0.001 s; distance=40 kB, estimate=40 kB; lsn=0/1BD6FB0, redo lsn=0/1BD6F78
+acorus-postgres  | 2026-05-31 18:39:09.426 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 18:39:11.700 UTC [26] LOG:  checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=2.261 s, sync=0.004 s, total=2.278 s; sync files=23, longest=0.002 s, average=0.001 s; distance=41 kB, estimate=41 kB; lsn=0/1BE16F8, redo lsn=0/1BE16C0
+acorus-postgres  | 2026-05-31 19:14:10.336 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 19:14:10.551 UTC [26] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.204 s, sync=0.002 s, total=0.216 s; sync files=3, longest=0.002 s, average=0.001 s; distance=12 kB, estimate=38 kB; lsn=0/1BE4AF0, redo lsn=0/1BE4AB8
+acorus-postgres  | 2026-05-31 19:19:10.651 UTC [26] LOG:  checkpoint starting: time
+acorus-postgres  | 2026-05-31 19:19:10.902 UTC [26] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.242 s, sync=0.003 s, total=0.252 s; sync files=3, longest=0.002 s, average=0.001 s; distance=13 kB, estimate=36 kB; lsn=0/1BE7F10, redo lsn=0/1BE7ED8
+acorus-web       | 
+acorus-web       | > @acorus/web@0.1.0 start /app/apps/web
+acorus-web       | > next start
+acorus-web       | 
+acorus-web       | ▲ Next.js 16.2.6
+acorus-web       | - Local:         http://localhost:3000
+acorus-web       | - Network:       http://172.18.0.5:3000
+acorus-web       | ✓ Ready in 582ms
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /api/wallet-profiles?userId=cmpjn6ls50002qh3fwfkssf3q HTTP/1.1" 200 306 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /practice?_rsc=7h4NYy5eoyMcNlUN HTTP/1.1" 200 633 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /extension?_rsc=5CB68i4pnAekjehf HTTP/1.1" 200 222 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /icon.png HTTP/1.1" 404 3256 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /practice?_rsc=3F1ryW0eOC-lVife HTTP/1.1" 200 342 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /practice?_rsc=42hizbEYB1tzfHyT HTTP/1.1" 200 518 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /view-only?_rsc=7h4NYy5eoyMcNlUN HTTP/1.1" 200 633 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /practice?_rsc=yIp22O3xgPPxC28X HTTP/1.1" 200 1103 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /view-only?_rsc=alDw_xnxg4i58msB HTTP/1.1" 200 342 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /view-only?_rsc=22eu9hRFii43IDeV HTTP/1.1" 200 518 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /import?_rsc=7h4NYy5eoyMcNlUN HTTP/1.1" 200 633 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /import?_rsc=CZNpVZpJtyZFgcpV HTTP/1.1" 200 342 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /import?_rsc=Z1vw5e0vmCq4ODBz HTTP/1.1" 200 517 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /create?_rsc=7h4NYy5eoyMcNlUN HTTP/1.1" 200 633 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /create?_rsc=0a8N7u4PlpQT0kE_ HTTP/1.1" 200 342 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /create?_rsc=0b5j5V_QrWHqwpaA HTTP/1.1" 200 516 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /extension?_rsc=7h4NYy5eoyMcNlUN HTTP/1.1" 200 633 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /extension?_rsc=q3FfoMNb42WRv8iI HTTP/1.1" 200 342 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:23:24 +0000] "GET /extension?_rsc=0MXw3vt989S3Sdve HTTP/1.1" 200 2818 "https://24wallet.ru/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36" "185.113.210.243"
+acorus-nginx     | 172.18.0.1 - - [31/May/2026:20:28:21 +0000] "GET / HTTP/1.1" 200 6354 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" "104.199.40.115"
+
+STDERR:
+time="2026-05-31T20:38:54Z" level=warning msg="The \"POSTGRES_PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-05-31T20:38:54Z" level=warning msg="The \"DATABASE_URL\" variable is not set. Defaulting to a blank string."
+time="2026-05-31T20:38:54Z" level=warning msg="The \"POSTGRES_PASSWORD\" variable is not set. Defaulting to a blank string."
+time="2026-05-31T20:38:54Z" level=warning msg="The \"DATABASE_URL\" variable is not set. Defaulting to a blank string."

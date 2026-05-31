@@ -45,7 +45,7 @@ import {
 export function SwapComposer(props: {
   portfolioAssets?: AssetBalance[];
   userAddress?: string | null;
-  initialChainId?: number;
+  initialChainId?: number | string;
   initialSellToken?: string;
   initialBuyToken?: string;
   initialBuyTokenMeta?: {
@@ -59,7 +59,7 @@ export function SwapComposer(props: {
 }) {
   const [status, setStatus] = useState<EvmSwapStatus | null>(null);
   const [universalStatus, setUniversalStatus] = useState<UniversalSwapStatus | null>(null);
-  const [chainId, setChainId] = useState(props.initialChainId ?? 1);
+  const [chainId, setChainId] = useState<number | string>(props.initialChainId ?? 1);
   const [sellToken, setSellToken] = useState(props.initialSellToken ?? "native");
   const [buyToken, setBuyToken] = useState(props.initialBuyToken ?? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
   const [sellAmount, setSellAmount] = useState("");
@@ -104,7 +104,7 @@ export function SwapComposer(props: {
   const routeNetworkOptions = useMemo(
     () => [
       ...EVM_CHAINS.map((chain) => ({
-        chainId: chain.chainId,
+        chainId: chain.chainId as number | string,
         label: chain.name,
         caption: `${chain.nativeSymbol} network`,
       })),
@@ -112,6 +112,16 @@ export function SwapComposer(props: {
         chainId: SOLANA_SWAP_CHAIN_ID,
         label: "Solana",
         caption: "Popular Solana tokens",
+      },
+      {
+        chainId: "ton-mainnet",
+        label: "TON",
+        caption: "The Open Network",
+      },
+      {
+        chainId: "bitcoin-mainnet",
+        label: "Bitcoin",
+        caption: "BTC network",
       },
       {
         chainId: CROSS_CHAIN_SWAP_ID,
@@ -124,7 +134,9 @@ export function SwapComposer(props: {
   const selectedNetwork = routeNetworkOptions.find((option) => option.chainId === chainId) ?? routeNetworkOptions[0]!;
   const isSolanaSwap = chainId === SOLANA_SWAP_CHAIN_ID;
   const isCrossChainSwap = chainId === CROSS_CHAIN_SWAP_ID;
-  const isEvmSwap = !isSolanaSwap && !isCrossChainSwap;
+  const isTonSwap = chainId === "ton-mainnet";
+  const isBitcoinSwap = chainId === "bitcoin-mainnet";
+  const isEvmSwap = !isSolanaSwap && !isCrossChainSwap && !isTonSwap && !isBitcoinSwap;
   const universalRoute = isSolanaSwap ? jupiterRoute : isCrossChainSwap ? rangoRoute : null;
 
   useEffect(() => {
@@ -294,7 +306,7 @@ export function SwapComposer(props: {
       }
 
       const nextQuote = await getEvmSwapQuote({
-        chainId,
+        chainId: chainId as number,
         sellToken,
         buyToken,
         sellAmount: normalizeEvmTokenAmount(sellAmount, selectedSellToken.decimals),
@@ -544,7 +556,7 @@ export function SwapComposer(props: {
     setNetworkPickerOpen(false);
   }
 
-  function handleNetworkPick(nextChainId: number) {
+  function handleNetworkPick(nextChainId: number | string) {
     setChainId(nextChainId);
     setTokenPickerSide(null);
     setNetworkPickerOpen(false);
@@ -829,7 +841,7 @@ export function SwapComposer(props: {
                 >
                   <TokenIcon token={selectedSellToken} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-black">{selectedSellToken.symbol}</span>
+                    <span className="block font-black">{selectedSellToken.symbol}</span>
                   </span>
                   <span className="text-lg">⌄</span>
                 </button>
@@ -879,12 +891,21 @@ export function SwapComposer(props: {
                 >
                   <TokenIcon token={selectedBuyToken} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-black">{selectedBuyToken.symbol}</span>
+                    <span className="block font-black">{selectedBuyToken.symbol}</span>
                   </span>
                   <span className="text-lg">⌄</span>
                 </button>
               </div>
             </div>
+
+            {quote || universalRoute ? (
+              <div className="mt-2 flex justify-between items-center px-2 text-sm text-slate-500 font-medium">
+                <span>Exchange Rate</span>
+                <span>
+                  {quote ? `1 ${quote.sellToken.symbol} = ${((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals)).toFixed(4)} ${quote.buyToken.symbol}` : "Route estimate"}
+                </span>
+              </div>
+            ) : null}
 
             <div className="mt-2 flex justify-between items-center px-2">
               <span className="text-sm font-medium text-slate-500">Slippage Tolerance</span>
@@ -1165,7 +1186,7 @@ function tokenIconStyle(symbol: string): CSSProperties {
   } as CSSProperties;
 }
 
-function getTokenPickerSectionLabel(chainId: number): string {
+function getTokenPickerSectionLabel(chainId: number | string): string {
   if (chainId === SOLANA_SWAP_CHAIN_ID) {
     return "Popular Solana tokens by 24h volume";
   }

@@ -164,7 +164,7 @@ export const BITCOIN_MAINNET_CHAIN: UniversalChainConfig = {
   nativeSymbol: "BTC",
   rpcUrlEnv: "NEXT_PUBLIC_BITCOIN_RPC_URL",
   blockExplorerUrl: "https://mempool.space",
-  isEnabled: false,
+  isEnabled: true,
   isSkeleton: true,
 };
 

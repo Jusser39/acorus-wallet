@@ -12,7 +12,7 @@ export type SwapTokenOption = {
   symbol: string;
   name: string;
   decimals: number;
-  chainId: number;
+  chainId: number | string;
   tokenAddress?: string | null;
   logoUrl?: string | null;
   verified?: boolean;
@@ -162,7 +162,7 @@ const CROSS_CHAIN_TOKENS: SwapTokenOption[] = [
 ];
 
 export function getPopularSwapTokens(input: {
-  chainId: number;
+  chainId: number | string;
   portfolioAssets?: AssetBalance[];
   initialBuyToken?: string;
   initialBuyTokenMeta?: {
@@ -201,6 +201,36 @@ export function getPopularSwapTokens(input: {
     return Array.from(byValue.values());
   }
 
+  if (input.chainId === "ton-mainnet") {
+    const tonToken: SwapTokenOption = {
+      value: "native",
+      symbol: "TON",
+      name: "Toncoin",
+      decimals: 9,
+      chainId: "ton-mainnet",
+      tokenAddress: null,
+      logoUrl: TOKEN_LOGOS.TON,
+      verified: true,
+      source: "native",
+    };
+    return [tonToken];
+  }
+
+  if (input.chainId === "bitcoin-mainnet") {
+    const btcToken: SwapTokenOption = {
+      value: "native",
+      symbol: "BTC",
+      name: "Bitcoin",
+      decimals: 8,
+      chainId: "bitcoin-mainnet",
+      tokenAddress: null,
+      logoUrl: TOKEN_LOGOS.BTC,
+      verified: true,
+      source: "native",
+    };
+    return [btcToken];
+  }
+
   const chain = EVM_CHAINS.find((item) => item.chainId === input.chainId) ?? EVM_CHAINS[0]!;
   const native: SwapTokenOption = {
     value: "native",
@@ -227,7 +257,7 @@ export function getPopularSwapTokens(input: {
       source: "portfolio",
       balanceFormatted: asset.balanceFormatted,
     }));
-  const curated = getCuratedTokens(input.chainId).map((item): SwapTokenOption => ({
+  const curated = getCuratedTokens(input.chainId as number).map((item): SwapTokenOption => ({
     value: item.address,
     tokenAddress: item.address,
     symbol: item.symbol,
@@ -250,7 +280,7 @@ export function getPopularSwapTokens(input: {
   return Array.from(byValue.values());
 }
 
-export function getSwapNetworkLabel(chainId: number): string {
+export function getSwapNetworkLabel(chainId: number | string): string {
   if (chainId === SOLANA_SWAP_CHAIN_ID) {
     return "Solana";
   }
@@ -262,7 +292,7 @@ export function getSwapNetworkLabel(chainId: number): string {
   return EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM";
 }
 
-export function getSwapProviderLabel(chainId: number): string {
+export function getSwapProviderLabel(chainId: number | string): string {
   if (chainId === SOLANA_SWAP_CHAIN_ID) {
     return "Solana";
   }
@@ -290,7 +320,7 @@ export function filterSwapTokens(tokens: SwapTokenOption[], query: string): Swap
 }
 
 function token(
-  chainId: number,
+  chainId: number | string,
   address: string,
   symbol: string,
   name: string,
