@@ -126,9 +126,24 @@ export class ZeroXSwapService {
     query: NormalizedZeroXQuery,
   ): Promise<Record<string, unknown>> {
     if (!this.env.ZEROX_API_KEY) {
+      const sellPriceUsd = await getMockTokenPriceUsd(query.sellToken.symbol);
+      const buyPriceUsd = await getMockTokenPriceUsd(query.buyToken.symbol);
+
+      let sellAmountRaw = query.sellAmount;
+      let buyAmountRaw = query.buyAmount;
+
+      if (sellAmountRaw) {
+        buyAmountRaw = calculateMockAmount(sellAmountRaw, query.sellToken.decimals, query.buyToken.decimals, sellPriceUsd, buyPriceUsd);
+      } else if (buyAmountRaw) {
+        sellAmountRaw = calculateMockAmount(buyAmountRaw, query.buyToken.decimals, query.sellToken.decimals, buyPriceUsd, sellPriceUsd);
+      } else {
+        sellAmountRaw = (10n ** BigInt(query.sellToken.decimals)).toString();
+        buyAmountRaw = calculateMockAmount(sellAmountRaw, query.sellToken.decimals, query.buyToken.decimals, sellPriceUsd, buyPriceUsd);
+      }
+
       return {
-        price: "1.02",
-        guaranteedPrice: "1.01",
+        price: (sellPriceUsd / buyPriceUsd).toFixed(6),
+        guaranteedPrice: (sellPriceUsd / buyPriceUsd * 0.99).toFixed(6),
         estimatedPriceImpact: "0.1",
         to: "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
         data: "0x",
@@ -140,8 +155,8 @@ export class ZeroXSwapService {
         minimumProtocolFee: "0",
         buyTokenAddress: query.buyTokenForApi,
         sellTokenAddress: query.sellTokenForApi,
-        buyAmount: query.buyAmount || String(Number(query.sellAmount) * 1.02) || "1000000000000000000",
-        sellAmount: query.sellAmount || String(Number(query.buyAmount) * 0.98) || "1000000000000000000",
+        buyAmount: buyAmountRaw,
+        sellAmount: sellAmountRaw,
         sources: [],
         allowanceTarget: "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
         sellTokenToEthRate: "1",
@@ -151,7 +166,7 @@ export class ZeroXSwapService {
           allowance: {
             spender: "0xDef1C0ded9bec7F1a1670819833240f027b25EfF",
             actual: "0",
-            expected: query.sellAmount || "1000000000000000000",
+            expected: sellAmountRaw,
           }
         },
         route: {
@@ -610,4 +625,50 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null
     ? value as Record<string, unknown>
     : {};
+}
+
+async function getMockTokenPriceUsd(symbol: string): Promise<number> {
+  const norm = symbol.toUpperCase();
+  if (norm === "USDT" || norm === "USDC" || norm === "DAI") return 1;
+  try {
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${norm}USDT`);
+    if (res.ok) {
+      const data = await res.json() as { price: string };
+      return Number(data.price);
+    }
+  } catch (err) {}
+  
+  // fallback hardcoded prices
+  if (norm === "ETH" || norm === "WETH") return 3800;
+  if (norm === "BNB" || norm === "WBNB") return 600;
+  if (norm === "MATIC" || norm === "POL") return 0.7;
+  if (norm === "SOL") return 160;
+  if (norm === "AVAX") return 35;
+  if (norm === "PEPE") return 0.00001;
+  if (norm === "TURBO") return 0.005;
+  if (norm === "NEIRO") return 0.002;
+  if (norm === "FLOKI") return 0.0001;
+  return 1; // default to 1:1 if unknown
+}
+
+function calculateMockAmount(
+  inputRaw: string,
+  inputDecimals: number,
+  outputDecimals: number,
+  inputPriceUsd: number,
+  outputPriceUsd: number
+): string {
+  const rate = inputPriceUsd / outputPriceUsd;
+  const rateInt = BigInt(Math.floor(rate * 1e6));
+  const inputBig = BigInt(inputRaw);
+  
+  let outputBig = (inputBig * rateInt) / BigInt(1e6);
+  
+  if (outputDecimals > inputDecimals) {
+    outputBig = outputBig * (10n ** BigInt(outputDecimals - inputDecimals));
+  } else if (inputDecimals > outputDecimals) {
+    outputBig = outputBig / (10n ** BigInt(inputDecimals - outputDecimals));
+  }
+  
+  return outputBig.toString();
 }
