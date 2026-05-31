@@ -1,4 +1,5 @@
 import { parseEncryptedVault, type EncryptedVaultV1 } from "@acorus/wallet-core";
+import type { WalletProfileRecord } from "@acorus/shared";
 import {
   ACTIVE_PROFILE_ID_KEY,
   DEFAULT_AUTOLOCK_MINUTES,
@@ -188,4 +189,19 @@ export function clearSessionDecryptedState(): void {
   for (const key of LEGACY_SESSION_KEYS) {
     storage?.removeItem(key);
   }
+}
+
+export function loadPersistedProfiles(): WalletProfileRecord[] {
+  const storage = getStorage();
+  const raw = storage?.getItem("acorus.persisted_profiles");
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as WalletProfileRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export function savePersistedProfiles(profiles: WalletProfileRecord[]): void {
+  getStorage()?.setItem("acorus.persisted_profiles", JSON.stringify(profiles));
 }

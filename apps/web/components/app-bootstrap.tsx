@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createAnonymousUser, fetchWalletProfiles } from "@/lib/api";
+import { createAnonymousUser, createWalletProfile, fetchWalletProfiles } from "@/lib/api";
 import { applyAppPreferencesToDocument } from "@/lib/app-preferences";
 import {
   loadActiveProfileId,
@@ -12,6 +12,8 @@ import {
   saveActiveProfileId,
   saveLocalSettings,
   saveUserId,
+  loadPersistedProfiles,
+  savePersistedProfiles,
 } from "@/lib/storage";
 import { useWalletStore } from "@/store/wallet-store";
 import { ServiceWorkerRegister } from "./service-worker-register";
@@ -106,7 +108,34 @@ export function AppBootstrap() {
       setHideFlaggedActivity(storedSettings.hideFlaggedActivity);
       setActiveProfileId(storedActiveProfileId);
 
-      const profiles = await fetchWalletProfiles(userId).catch(() => []);
+      let profiles = await fetchWalletProfiles(userId).catch(() => []);
+
+      const localProfiles = loadPersistedProfiles();
+      if (localProfiles.length > 0) {
+        const backendProfileIds = new Set(profiles.map((p) => p.id));
+        const missingProfiles = localProfiles.filter((p) => !backendProfileIds.has(p.id));
+        if (missingProfiles.length > 0) {
+          const restoredProfiles = [];
+          for (const profile of missingProfiles) {
+            try {
+              const restored = await createWalletProfile({
+                userId,
+                name: profile.name,
+                type: profile.type,
+                publicAddress: profile.publicAddress,
+                chainFamily: profile.chainFamily,
+                hiddenBalance: profile.hiddenBalance,
+                preferredCurrency: profile.preferredCurrency,
+              });
+              restoredProfiles.push(restored);
+            } catch (err) {
+              console.error("Failed to restore profile on backend:", err);
+              restoredProfiles.push(profile);
+            }
+          }
+          profiles = [...profiles, ...restoredProfiles];
+        }
+      }
 
       if (!active) {
         return;
@@ -168,6 +197,13 @@ export function AppBootstrap() {
       saveActiveProfileId(state.activeProfileId);
     });
 
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = useWalletStore.subscribe((state) => {
+      savePersistedProfiles(state.profiles);
+    });
     return () => unsubscribe();
   }, []);
 

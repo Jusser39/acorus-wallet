@@ -96,7 +96,7 @@ run(
 
 run(client, f"cd {REMOTE_PATH} && BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh", timeout=180)
 run(client, f"cd {REMOTE_PATH} && docker compose --env-file .env -f infra/docker-compose.yml restart api")
-time.sleep(10)
+time.sleep(30)
 run(client, f"cd {REMOTE_PATH} && CHECK_MODE=verify BASE_URL=http://127.0.0.1:8080 bash scripts/check-persistence.sh", timeout=180)
 
 run(client, "curl -fsS http://85.239.59.199:8080/health")
