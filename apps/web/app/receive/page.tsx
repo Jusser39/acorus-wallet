@@ -162,7 +162,7 @@ export default function ReceivePage() {
       </div>
 
       <aside className="panel flex flex-col items-center justify-center gap-4">
-        <QRCodeSVG value={address} size={220} bgColor="transparent" fgColor="#111827" />
+        <QRCodeSVG key={address} value={address} size={220} bgColor="transparent" fgColor="#111827" />
         <p className="text-center text-sm text-slate-300">
           Receive on {chain?.name ?? "selected chain"} · {activeProfile.type.replace("_", " ")}
         </p>

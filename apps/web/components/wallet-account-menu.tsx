@@ -330,6 +330,17 @@ export function WalletAccountMenu() {
                   onClick={closeAfterNavigate}
                 />
                 <MenuAction href="/history" icon="H" label="История действий" onClick={closeAfterNavigate} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    useWalletStore.getState().clearWalletState();
+                    setOpen(false);
+                    window.location.href = "/";
+                  }}
+                  className="wallet-outline-action !text-rose-500 !border-rose-200"
+                >
+                  Отключить кошелек <span>⏻</span>
+                </button>
               </div>
             </>
           ) : null}
@@ -420,6 +431,8 @@ export function WalletAccountMenu() {
                 >
                   Перевести через Google Translate <span>↗</span>
                 </a>
+
+
 
                 <div className="wallet-settings-row">
                   <span>

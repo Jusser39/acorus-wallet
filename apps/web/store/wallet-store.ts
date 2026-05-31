@@ -132,10 +132,20 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
   setProfiles(profiles) {
     const activeId = get().activeProfileId;
-    const nextActiveId =
-      activeId && profiles.some((item) => item.id === activeId)
-        ? activeId
-        : profiles[0]?.id ?? null;
+    let nextActiveId = activeId && profiles.some((item) => item.id === activeId) ? activeId : null;
+    
+    if (nextActiveId && !get().isBootstrapped) {
+      const activeProfile = profiles.find((item) => item.id === nextActiveId);
+      if (activeProfile?.type === "practice") {
+        nextActiveId = null;
+      }
+    }
+    
+    if (!nextActiveId) {
+      const nonPractice = profiles.find((item) => item.type !== "practice");
+      nextActiveId = nonPractice ? nonPractice.id : null;
+    }
+    
     const activeProfile =
       profiles.find((item) => item.id === nextActiveId) ?? null;
 

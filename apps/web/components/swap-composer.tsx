@@ -86,7 +86,7 @@ export function SwapComposer(props: {
   const [rangoAmount, setRangoAmount] = useState("0.01");
   const [rangoResult, setRangoResult] = useState<string | null>(null);
   const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
-  const [panelSide, setPanelSide] = useState<"left" | "right">("right");
+  const [panelSide, setPanelSide] = useState<"left" | "right">("left");
   const composerRef = useRef<HTMLDivElement>(null);
   const activeUserAddress = props.userAddress ?? connectedAddress;
 
@@ -246,12 +246,31 @@ export function SwapComposer(props: {
   }, [tokenPickerSide, networkPickerOpen]);
 
   useEffect(() => {
-    if (tokenPickerSide) {
-      setPanelSide("left");
-    } else if (!tokenPickerSide) {
-      setPanelSide("left");
-    }
+    setPanelSide("left");
   }, [tokenPickerSide]);
+
+  useEffect(() => {
+    if (!sellAmount || Number.parseFloat(sellAmount) <= 0) {
+      setQuote(null);
+      setJupiterRoute(null);
+      setRangoRoute(null);
+      setError(null);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (isSolanaSwap) {
+        void handleJupiterQuote();
+      } else if (isCrossChainSwap) {
+        void handleRangoQuote();
+      } else if (isEvmSwap) {
+        void handleQuote();
+      }
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellAmount, sellToken, buyToken, chainId, slippageBps, activeUserAddress]);
 
   useEffect(() => {
     if (!extensionDetected) {
@@ -259,9 +278,25 @@ export function SwapComposer(props: {
       return;
     }
 
-    void getExtensionChainId()
-      .then((value) => setExtensionChainId(parseChainId(value)))
-      .catch(() => setExtensionChainId(null));
+    const updateChainId = async () => {
+      try {
+        const value = await getExtensionChainId();
+        setExtensionChainId(parseChainId(value));
+      } catch {
+        setExtensionChainId(null);
+      }
+    };
+
+    void updateChainId();
+
+    if (window.ethereum && typeof (window.ethereum as any).on === "function") {
+      (window.ethereum as any).on("chainChanged", updateChainId);
+      return () => {
+        if (typeof (window.ethereum as any)?.removeListener === "function") {
+          (window.ethereum as any).removeListener("chainChanged", updateChainId);
+        }
+      };
+    }
   }, [extensionDetected, quote?.requestId]);
 
   useEffect(() => {
@@ -288,15 +323,7 @@ export function SwapComposer(props: {
     setExtensionResult(null);
 
     try {
-      let takerAddress = activeUserAddress;
-
-      if (!takerAddress) {
-        takerAddress = await handleConnectWallet();
-      }
-
-      if (!takerAddress) {
-        throw new Error("Connect Acorus extension before requesting a firm quote.");
-      }
+      let takerAddress = activeUserAddress || "0x0000000000000000000000000000000000000000";
 
       if (sellToken.toLowerCase() === buyToken.toLowerCase()) {
         throw new Error("Choose different sell and buy tokens.");
@@ -829,7 +856,7 @@ export function SwapComposer(props: {
 
           <div className="grid gap-2 relative">
             <div className="swap-panel-inner relative">
-              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">You pay</span>
+              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">Из (From)</span>
               <div className="flex items-center gap-3">
                 <input
                   className="swap-input-huge flex-1"
@@ -874,7 +901,7 @@ export function SwapComposer(props: {
             </button>
 
             <div className="swap-panel-inner relative">
-              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">You receive</span>
+              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">В (To)</span>
               <div className="flex items-center gap-3">
                 <input
                   className="swap-input-huge flex-1"
@@ -908,9 +935,9 @@ export function SwapComposer(props: {
 
             {quote || universalRoute ? (
               <div className="mt-2 flex justify-between items-center px-2 text-sm text-slate-500 font-medium">
-                <span>Exchange Rate</span>
+                <span>Обменный курс</span>
                 <span>
-                  {quote ? `1 ${quote.sellToken.symbol} = ${((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals)).toFixed(4)} ${quote.buyToken.symbol}` : "Route estimate"}
+                  {quote ? `1 ${quote.sellToken.symbol} ≈ ${((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals)).toFixed(6)} ${quote.buyToken.symbol}` : "Route estimate"}
                 </span>
               </div>
             ) : null}
@@ -1020,6 +1047,7 @@ export function SwapComposer(props: {
               <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>You receive</span><strong>{shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals)} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals) : "n/a"} {quote.buyToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>Курс (Rate)</span><strong>1 {quote.sellToken.symbol} = {((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals)).toFixed(4)} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Route</span><strong>{quote.routeSummary.label}</strong></div>
               <div className="flex justify-between gap-3"><span>Allowance</span><strong>{quote.approvalRequired ? "required" : "not needed"}</strong></div>
               <div className="flex justify-between gap-3"><span>Quote timer</span><strong>{quoteCountdown}s</strong></div>

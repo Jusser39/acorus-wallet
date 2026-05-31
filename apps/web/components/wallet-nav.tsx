@@ -9,10 +9,12 @@ import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
 const navItems = [
   { href: "/wallet", label: "Wallet" },
+  { href: "/buy", label: "Buy" },
   { href: "/swap", label: "Swap" },
   { href: "/send", label: "Send" },
   { href: "/receive", label: "Receive" },
   { href: "/explore", label: "Explore" },
+  { href: "/stake", label: "Stake" },
   { href: "/nft", label: "NFTs" },
   { href: "/quests", label: "Quests" },
   { href: "/dapps", label: "dApps" },
@@ -94,6 +96,18 @@ export function WalletNav() {
                 className="magic-button-primary px-4 py-2 text-xs transition hover:-translate-y-0.5"
               >
                 Connect Wallet
+              </button>
+            )}
+            {activeProfile?.type === "injected" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const remaining = profiles.filter((p) => p.id !== activeProfile.id);
+                  useWalletStore.getState().setProfiles(remaining);
+                }}
+                className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5"
+              >
+                Disconnect
               </button>
             )}
             <WalletAccountMenu />

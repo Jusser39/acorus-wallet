@@ -24,6 +24,7 @@ import { loadWalletAssetSnapshot } from "@/lib/assets";
 import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
 import { SendComposer } from "@/components/send-composer";
 import { ExtensionWalletCard } from "@/components/extension-wallet-card";
+import { GlassCard } from "@/components/glass-card";
 import { formatAddress, formatAmount } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
@@ -497,27 +498,46 @@ export default function SendPage() {
 
   if (isSolanaProfile || isNonEvmFamily) {
     return (
-      <section className="page space-y-6">
-        <ExtensionWalletCard
-          title="Extension send account"
-          family={activeProfile.chainFamily}
-          chainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
-        />
-        <SendComposer
-          profile={activeProfile}
-          portfolio={null}
-          initialFamily={activeProfile.chainFamily}
-          initialChainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
-          mnemonic={unlockedVault?.mnemonic ?? null}
-        />
-      </section>
+      <main className="magic-shell relative overflow-hidden px-4 py-8 min-h-screen">
+        <div className="bg-blobs">
+          <div className="blob blob-pink opacity-80" style={{ left: "5%", top: "10%", width: "500px", height: "500px" }}></div>
+          <div className="blob blob-blue opacity-60" style={{ right: "5%", bottom: "10%", width: "600px", height: "600px" }}></div>
+        </div>
+        
+        <section className="magic-container relative z-10 space-y-6 max-w-5xl mx-auto">
+          <GlassCard glow className="p-6">
+            <ExtensionWalletCard
+              title="Extension send account"
+              family={activeProfile.chainFamily}
+              chainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
+            />
+            <div className="mt-6">
+              <SendComposer
+                profile={activeProfile}
+                portfolio={null}
+                initialFamily={activeProfile.chainFamily}
+                initialChainId={getDefaultChainIdForFamily(activeProfile.chainFamily)}
+                mnemonic={unlockedVault?.mnemonic ?? null}
+              />
+            </div>
+          </GlassCard>
+        </section>
+      </main>
     );
   }
 
   return (
-    <section className="page space-y-8">
-      {/* Universal Send Composer — Wave 5 execution layer */}
-      <ExtensionWalletCard title="Extension send account" family="evm" chainId={evmSelectedChainId} />
+    <main className="magic-shell relative overflow-hidden px-4 py-8 min-h-screen">
+      <div className="bg-blobs">
+        <div className="blob blob-pink opacity-80" style={{ left: "5%", top: "10%", width: "500px", height: "500px" }}></div>
+        <div className="blob blob-blue opacity-60" style={{ right: "5%", bottom: "10%", width: "600px", height: "600px" }}></div>
+      </div>
+      
+      <section className="magic-container relative z-10 space-y-8 max-w-5xl mx-auto">
+        <GlassCard glow className="p-6">
+          {/* Universal Send Composer — Wave 5 execution layer */}
+          <ExtensionWalletCard title="Extension send account" family="evm" chainId={evmSelectedChainId} />
+          <div className="mt-6">
       <SendComposer
         profile={activeProfile}
         portfolio={null}
@@ -548,11 +568,13 @@ export default function SendPage() {
           }
         }}
       />
+          </div>
+        </GlassCard>
 
-      {/* EVM Send Form — real transaction broadcast */}
-      <div id="evm-send-form" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-      <div className="panel space-y-5">
-        <div>
+        {/* EVM Send Form — real transaction broadcast */}
+        <div id="evm-send-form" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <GlassCard className="p-6 space-y-5">
+          <div>
           <p className="text-sm uppercase tracking-[0.22em] text-emerald-600">EVM send · real transaction</p>
           <h2 className="mt-2 text-2xl font-semibold">Send assets</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -692,11 +714,11 @@ export default function SendPage() {
           <button type="button" className="button-secondary" onClick={() => router.push("/wallet")}>
             Cancel
           </button>
-        </div>
-      </div>
+          </div>
+        </GlassCard>
 
-      <aside className="panel space-y-5">
-        <h2 className="text-xl font-semibold">Review</h2>
+        <GlassCard className="p-6 space-y-5">
+          <h2 className="text-xl font-semibold">Review</h2>
         <div className="grid gap-3 text-sm text-slate-700">
           <div className="send-review-box">
             <p className="text-slate-500">Stage</p>
@@ -812,8 +834,9 @@ export default function SendPage() {
             <p className="mt-3 break-words">{errorDetails}</p>
           </details>
         ) : null}
-      </aside>
+        </GlassCard>
       </div>
     </section>
+  </main>
   );
 }
