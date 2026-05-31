@@ -157,8 +157,15 @@ export default async function Home() {
   const pulseColor = pulse.score <= 42 ? "#f43f5e" : pulse.score <= 58 ? "#f59e0b" : "#22c55e";
 
   return (
-    <main className="magic-shell">
-      <section className="magic-container py-8">
+    <main className="magic-shell relative overflow-hidden">
+      {/* Coinkeep Design Integration: Background Blobs */}
+      <div className="bg-blobs">
+        <div className="blob blob-yellow"></div>
+        <div className="blob blob-blue"></div>
+        <div className="blob blob-pink"></div>
+        <div className="blob blob-green"></div>
+      </div>
+      <section className="magic-container py-8 relative z-10">
         <div className="magic-dashboard-grid">
           <section className="magic-dashboard-card magic-swap-panel-card">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -183,8 +190,8 @@ export default async function Home() {
             </div>
             <AcorusMagicStage pose="home" />
             <div className="mt-auto">
-              <h1 className="text-4xl font-black tracking-tight text-slate-950">
-                Your Multichain <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 bg-clip-text text-transparent">Magic Wallet</span>
+              <h1 className="text-5xl font-black tracking-tight glow-text-content pb-2">
+                Your Multichain Magic Wallet
               </h1>
               <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
                 EVM, Solana, Bitcoin and future chains in one guardian shell. Keys stay local; routes and approvals stay explicit.
@@ -275,6 +282,36 @@ export default async function Home() {
             </div>
           </section>
         </section>
+
+        {/* Coinkeep Design Integration: Horizontal Scroll Cards */}
+        <section className="mt-12 mb-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-black glow-text-content pb-2">Core Features</h2>
+          </div>
+          <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 mb-4 flex items-center justify-center text-white text-xl">🚀</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Blazing Fast Swaps</h3>
+              <p className="text-slate-600 text-sm">Experience split-second cross-chain swaps optimized by universal routing algorithms.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-600 mb-4 flex items-center justify-center text-white text-xl">🛡️</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Guardian Security</h3>
+              <p className="text-slate-600 text-sm">Your keys never leave your device. All transactions require explicit confirmation.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 mb-4 flex items-center justify-center text-white text-xl">🌐</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Multichain Ready</h3>
+              <p className="text-slate-600 text-sm">Seamlessly bridge across EVM, Solana, and Bitcoin without switching wallets.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 mb-4 flex items-center justify-center text-white text-xl">📈</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Market Pulse</h3>
+              <p className="text-slate-600 text-sm">Built-in fear & greed indices alongside live token discovery.</p>
+            </div>
+          </div>
+        </section>
+
       </section>
     </main>
   );

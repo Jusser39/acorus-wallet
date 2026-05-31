@@ -32,6 +32,7 @@ import {
   switchExtensionChain,
 } from "@/lib/extension-bridge";
 import { getSwapCtaLabel } from "@/lib/swap-cta";
+import { GlassCard } from "./glass-card";
 
 import {
   filterSwapTokens,
@@ -741,12 +742,12 @@ export function SwapComposer(props: {
             : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"
       }
     >
-      <div className={`acorus-card space-y-5 p-4 sm:p-5 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
+      <GlassCard glow className={`space-y-5 p-4 sm:p-5 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
         <div className="px-3 pt-3">
           <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
             Swap
           </span>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+          <h1 className="mt-3 text-3xl font-semibold text-slate-950 glow-text-content">
             {props.title ?? "Swap"}
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -776,6 +777,13 @@ export function SwapComposer(props: {
         {!props.compact && !extensionDetected ? (
           <div className="mx-1 rounded-[1.5rem] border border-sky-400/30 bg-sky-400/10 p-4 text-sm text-sky-900">
             Acorus extension was not detected. Install or reload the extension to execute swaps.
+          </div>
+        ) : null}
+
+        {universalStatus && showUniversalRouteForms && !isSolanaSwap && !isCrossChainSwap ? (
+          <div className="rounded-[1.6rem] border border-fuchsia-100 bg-white/72 p-4 shadow-sm text-sm text-slate-600">
+            <h2 className="font-semibold mb-2">Universal routing providers</h2>
+            <p>Select Solana or Any network above to activate universal routes.</p>
           </div>
         ) : null}
 
@@ -993,7 +1001,7 @@ export function SwapComposer(props: {
             </div>
           </>
         ) : null}
-      </div>
+      </GlassCard>
 
       {showSidePanel ? (
       <aside className={

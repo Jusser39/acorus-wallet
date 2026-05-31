@@ -1,5 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
-
 :root {
   --background: #fbf7ff;
   --foreground: #15111f;
@@ -2372,4 +2372,61 @@ html[data-acorus-theme="dark"] .magic-action-tile {
   border-color: rgba(124, 247, 255, 0.18);
   background: rgba(255, 255, 255, 0.1);
   color: #eef6ff;
+}
+
+/* Coinkeep Design Integration: Background Blobs */
+.bg-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(175px);
+  opacity: 0.5;
+  border-radius: 50%;
+}
+
+.blob-yellow {
+  background: #ffe3b9;
+  width: 400px;
+  height: 470px;
+  bottom: 20%;
+  right: 15%;
+}
+
+.blob-blue {
+  background: #c4f4fe;
+  width: 1100px;
+  height: 500px;
+  top: 10%;
+  left: 25%;
+}
+
+.blob-pink {
+  background: #ffe5f4;
+  width: 550px;
+  height: 700px;
+  top: 5%;
+  right: 10%;
+}
+
+.blob-green {
+  background: #ecffc3;
+  width: 360px;
+  height: 900px;
+  top: -10%;
+  left: 5%;
+}
+
+.glow-text-content {
+  background-clip: text;
+  -webkit-background-clip: text;
+  display: inline-block;
+  position: relative;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(180deg, #bfe7ff, rgba(191, 231, 255, 0.2));
 }
