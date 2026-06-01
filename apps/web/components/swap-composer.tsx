@@ -624,54 +624,56 @@ export function SwapComposer(props: {
       <div className="token-inline-picker premium-card flex flex-col" role="dialog" aria-label="Choose token">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-black text-slate-950">Choose token</h2>
-          <button type="button" className="token-picker-close !text-slate-500 !bg-slate-100 !border-slate-200" onClick={() => setTokenPickerSide(null)}>
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button 
+                type="button" 
+                className="token-picker-chain flex items-center gap-1.5"
+                onClick={() => setTokenPickerNetworkOpen(!tokenPickerNetworkOpen)}
+              >
+                {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "Все сети" : getSwapNetworkLabel(tokenPickerChainId)}
+                <span className="text-xs">⌄</span>
+              </button>
+              {tokenPickerNetworkOpen ? (
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto">
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
+                    onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); }}
+                  >
+                    <span className="text-xl flex gap-0.5">
+                      <span className="h-2 w-2 rounded-full bg-slate-200" />
+                      <span className="h-2 w-2 rounded-full bg-slate-300" />
+                    </span>
+                    Все сети
+                  </button>
+                  {routeNetworkOptions.filter((o) => o.chainId !== CROSS_CHAIN_SWAP_ID).map((option) => (
+                    <button
+                      key={option.chainId}
+                      type="button"
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === option.chainId ? "bg-slate-50 font-semibold" : ""}`}
+                      onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <button type="button" className="token-picker-close !text-slate-500 !bg-slate-100 !border-slate-200" onClick={() => setTokenPickerSide(null)}>
+              ×
+            </button>
+          </div>
         </div>
         <div className="token-picker-search relative">
           <span className="text-xl text-fuchsia-400">⌕</span>
           <input
-            className="!bg-transparent pr-[120px]"
+            className="!bg-transparent"
             value={tokenSearch}
             onChange={(event) => setTokenSearch(event.target.value)}
             placeholder="Search by token, symbol, or address"
             aria-label="Search token"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <button 
-              type="button" 
-              className="token-picker-chain flex items-center gap-1.5"
-              onClick={() => setTokenPickerNetworkOpen(!tokenPickerNetworkOpen)}
-            >
-              {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "Все сети" : getSwapNetworkLabel(tokenPickerChainId)}
-              <span className="text-xs">⌄</span>
-            </button>
-            {tokenPickerNetworkOpen ? (
-              <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto">
-                <button
-                  type="button"
-                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
-                  onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); }}
-                >
-                  <span className="text-xl flex gap-0.5">
-                    <span className="h-2 w-2 rounded-full bg-slate-200" />
-                    <span className="h-2 w-2 rounded-full bg-slate-300" />
-                  </span>
-                  Все сети
-                </button>
-                {routeNetworkOptions.filter((o) => o.chainId !== CROSS_CHAIN_SWAP_ID).map((option) => (
-                  <button
-                    key={option.chainId}
-                    type="button"
-                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === option.chainId ? "bg-slate-50 font-semibold" : ""}`}
-                    onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
         </div>
         <div className="token-picker-quick">
           {tokens.slice(0, 5).map((token) => (
@@ -1258,18 +1260,20 @@ function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl
   const badgeUrl = getNetworkBadgeUrl(token.chainId);
 
   return (
-    <span className="swap-token-icon relative" style={tokenIconStyle(token.symbol)}>
-      <span>{tokenAvatarLabel(token)}</span>
-      {token.logoUrl ? (
-        <img
-          src={token.logoUrl}
-          alt=""
-          loading="lazy"
-          onError={(event) => {
-            event.currentTarget.style.display = "none";
-          }}
-        />
-      ) : null}
+    <div className="relative inline-flex flex-shrink-0">
+      <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
+        <span>{tokenAvatarLabel(token)}</span>
+        {token.logoUrl ? (
+          <img
+            src={token.logoUrl}
+            alt=""
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+      </span>
       {badgeUrl ? (
         <img 
           src={badgeUrl} 
@@ -1277,7 +1281,7 @@ function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl
           className="absolute -bottom-1 -right-1 w-[14px] h-[14px] rounded-full border border-white bg-white z-10" 
         />
       ) : null}
-    </span>
+    </div>
   );
 }
 
