@@ -9,6 +9,7 @@ const base: SwapCtaState = {
   approvalRequired: false,
   wrongChain: false,
   quoteExpired: false,
+  hasAmount: true,
 };
 
 describe("swap CTA labels", () => {

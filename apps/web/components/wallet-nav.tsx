@@ -71,31 +71,28 @@ export function WalletNav() {
   }
 
   return (
-    <header className="magic-topbar relative z-40">
-      <div className="magic-container flex flex-col gap-3 py-3">
+    <header className="relative z-40 border-b border-[var(--border-light)] bg-[var(--surface-base)]">
+      <div className="mx-auto w-full max-w-[1200px] flex flex-col gap-3 py-3 px-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <a
             href="/"
-            className="inline-flex items-center gap-3 rounded-full border border-white/60 bg-white/62 px-3 py-2 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(85,166,255,0.15)]"
+            className="inline-flex items-center gap-2"
           >
-            <span className="magic-orb size-8 text-sm font-black text-white">
+            <span className="flex items-center justify-center h-8 w-8 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-lg">
               A
             </span>
-            <span className="flex flex-col leading-none">
-              <span>Acorus</span>
-              <span className="mt-1 text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                wallet
-              </span>
+            <span className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+              Acorus
             </span>
           </a>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 text-sm text-slate-600">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 text-sm text-[var(--text-primary)]">
             {!activeProfile && extensionDetected && (
               <button
                 type="button"
                 onClick={connectExtension}
-                className="magic-button-primary px-4 py-2 text-xs transition hover:-translate-y-0.5"
+                className="uni-btn-token"
               >
-                Connect Wallet
+                Connect
               </button>
             )}
             {activeProfile?.type === "injected" && (
@@ -105,7 +102,7 @@ export function WalletNav() {
                   const remaining = profiles.filter((p) => p.id !== activeProfile.id);
                   useWalletStore.getState().setProfiles(remaining);
                 }}
-                className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5"
+                className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
               >
                 Disconnect
               </button>
@@ -116,7 +113,7 @@ export function WalletNav() {
                 value={activeProfile?.id ?? ""}
                 onChange={(event) => setActiveProfileId(event.target.value || null)}
                 aria-label="Select wallet profile"
-                className="light-field w-auto min-w-44 rounded-full px-3 py-2 text-xs"
+                className="bg-[var(--surface-hover)] text-[var(--text-primary)] border-none outline-none w-auto min-w-44 rounded-full px-3 py-2 text-xs"
               >
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
@@ -127,7 +124,7 @@ export function WalletNav() {
             ) : null}
             <button
               type="button"
-              className="magic-button-secondary px-4 py-2 text-xs transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition disabled:cursor-not-allowed disabled:opacity-60"
               disabled={!isUnlocked}
               onClick={() => lockWallet()}
             >
@@ -138,18 +135,15 @@ export function WalletNav() {
         <div className="flex justify-center">
           <GlobalMarketSearch />
         </div>
-        <nav className="magic-nav overflow-x-auto p-1.5">
+        <nav className="flex items-center gap-2 overflow-x-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <a
                 key={item.href}
                 href={item.href}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${
-                  isActive
-                    ? "bg-[linear-gradient(135deg,rgba(124,247,255,0.95),rgba(139,92,246,0.95),rgba(255,122,223,0.95))] text-white shadow-[0_16px_38px_rgba(139,92,246,0.28)]"
-                    : "text-slate-700 hover:bg-slate-900/5 hover:text-slate-950"
-                }`}
+                className={`uni-nav-pill ${isActive ? 'bg-[var(--surface-hover)]' : ''}`}
+                data-active={isActive}
               >
                 {item.label}
               </a>

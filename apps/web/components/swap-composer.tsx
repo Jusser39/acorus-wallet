@@ -32,7 +32,6 @@ import {
   switchExtensionChain,
 } from "@/lib/extension-bridge";
 import { getSwapCtaLabel } from "@/lib/swap-cta";
-import { GlassCard } from "./glass-card";
 
 import {
   filterSwapTokens,
@@ -621,37 +620,33 @@ export function SwapComposer(props: {
 
   function renderInlineTokenPicker(side: "sell" | "buy") {
     return (
-      <div className="token-inline-picker premium-card flex flex-col" role="dialog" aria-label="Choose token">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+      <div className="uni-modal flex flex-col h-[600px] max-h-[80vh]" role="dialog" aria-label="Choose token">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Select a token</h2>
           <div className="flex items-center gap-2">
             <div className="relative">
               <button 
                 type="button" 
-                className="token-picker-chain flex items-center gap-1.5"
+                className="uni-btn-token"
                 onClick={() => setTokenPickerNetworkOpen(!tokenPickerNetworkOpen)}
               >
-                {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "Все сети" : getSwapNetworkLabel(tokenPickerChainId)}
+                {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "All networks" : getSwapNetworkLabel(tokenPickerChainId)}
                 <span className="text-xs">⌄</span>
               </button>
               {tokenPickerNetworkOpen ? (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto">
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-[var(--surface-base)] p-2 shadow-modal border border-[var(--border-light)] z-50 text-sm max-h-[300px] overflow-y-auto">
                   <button
                     type="button"
-                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-[var(--surface-hover)] ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-[var(--surface-hover)] font-medium" : ""}`}
                     onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); }}
                   >
-                    <span className="text-xl flex gap-0.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-200" />
-                      <span className="h-2 w-2 rounded-full bg-slate-300" />
-                    </span>
-                    Все сети
+                    All networks
                   </button>
                   {routeNetworkOptions.filter((o) => o.chainId !== CROSS_CHAIN_SWAP_ID).map((option) => (
                     <button
                       key={option.chainId}
                       type="button"
-                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === option.chainId ? "bg-slate-50 font-semibold" : ""}`}
+                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-[var(--surface-hover)] ${tokenPickerChainId === option.chainId ? "bg-[var(--surface-hover)] font-medium" : ""}`}
                       onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); }}
                     >
                       {option.label}
@@ -660,27 +655,26 @@ export function SwapComposer(props: {
                 </div>
               ) : null}
             </div>
-            <button type="button" className="token-picker-close !text-slate-500 !bg-slate-100 !border-slate-200" onClick={() => setTokenPickerSide(null)}>
+            <button type="button" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xl leading-none px-2" onClick={() => setTokenPickerSide(null)}>
               ×
             </button>
           </div>
         </div>
-        <div className="token-picker-search relative">
-          <span className="text-xl text-fuchsia-400">⌕</span>
+        <div className="relative mb-4">
           <input
-            className="!bg-transparent"
+            className="uni-search-input"
             value={tokenSearch}
             onChange={(event) => setTokenSearch(event.target.value)}
-            placeholder="Search by token, symbol, or address"
+            placeholder="Search name or paste address"
             aria-label="Search token"
           />
         </div>
-        <div className="token-picker-quick">
+        <div className="flex gap-2 flex-wrap mb-4">
           {tokens.slice(0, 5).map((token) => (
             <button
               key={`quick-${side}-${token.value}`}
               type="button"
-              className="token-picker-chip"
+              className="uni-quick-pick"
               onClick={() => handleTokenPick(side, token.value)}
             >
               <TokenIcon token={token} />
@@ -688,30 +682,29 @@ export function SwapComposer(props: {
             </button>
           ))}
         </div>
-        <p className="token-picker-section-label">{getTokenPickerSectionLabel(chainId)}</p>
-        <div className="token-picker-list">
+        <div className="border-t border-[var(--border-light)] my-2"></div>
+        <div className="flex-1 overflow-y-auto -mx-2 px-2">
           {pickerTokens.length ? pickerTokens.map((token) => (
             <button
               key={`picker-${side}-${token.value}`}
               type="button"
-              className="token-picker-row"
+              className="uni-token-row w-full"
               onClick={() => handleTokenPick(side, token.value)}
             >
               <TokenIcon token={token} />
               <span className="min-w-0 flex-1 text-left">
-                <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
-                <span className="block truncate text-sm text-slate-500">
+                <span className="block text-base font-medium text-[var(--text-primary)]">{token.name}</span>
+                <span className="block text-sm text-[var(--text-secondary)]">
                   {token.symbol}
-                  {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
                 </span>
               </span>
               {token.balanceFormatted ? (
-                <span className="text-right text-sm font-bold text-slate-600">{token.balanceFormatted}</span>
+                <span className="text-right text-sm font-medium text-[var(--text-secondary)]">{token.balanceFormatted}</span>
               ) : null}
             </button>
           )) : (
-            <p className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-              No tokens found for this network.
+            <p className="p-4 text-center text-sm text-[var(--text-tertiary)]">
+              No tokens found.
             </p>
           )}
         </div>
@@ -822,21 +815,18 @@ export function SwapComposer(props: {
         props.compact 
           ? "grid gap-5 relative" 
           : panelSide === "left"
-            ? "grid gap-6 xl:grid-cols-[minmax(320px,1fr)_minmax(0,640px)] xl:justify-center"
-            : "grid gap-6 xl:grid-cols-[minmax(0,640px)_minmax(320px,1fr)] xl:justify-center"
+            ? "grid gap-6 xl:grid-cols-[minmax(320px,1fr)_minmax(0,480px)] xl:justify-center"
+            : "grid gap-6 xl:grid-cols-[minmax(0,480px)_minmax(320px,1fr)] xl:justify-center"
       }
     >
-      <GlassCard glow className={`space-y-5 p-4 sm:p-5 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
-        <div className="px-3 pt-3">
-          <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
-            Swap
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-950 glow-text-content">
+      <div className={`uni-card p-4 sm:p-5 space-y-2 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
+        <div className="flex items-center justify-between px-2 pb-2">
+          <h1 className="text-xl font-medium text-[var(--text-primary)]">
             {props.title ?? "Swap"}
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            {props.description ?? "Choose a network and tokens, then request the best available route. Every swap requires extension review before anything is signed."}
-          </p>
+          <button className="text-[var(--text-secondary)] text-sm hover:text-[var(--text-primary)] transition-colors">
+            Settings
+          </button>
         </div>
 
         {universalStatus && showUniversalRouteForms ? (
@@ -911,84 +901,86 @@ export function SwapComposer(props: {
             ) : null}
           </div>
 
-          <div className="grid gap-2 relative">
-            <div className="swap-panel-inner relative">
-              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">Из (From)</span>
-              <div className="flex items-center gap-3">
-                <input
-                  className="swap-input-huge flex-1"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={sellAmount}
-                  onChange={(event) => setSellAmount(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="swap-token-select flex-shrink-0"
-                  aria-expanded={tokenPickerSide === "sell"}
-                  onClick={() => {
-                    setNetworkPickerOpen(false);
-                    setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
-                  }}
-                >
-                  <TokenIcon token={selectedSellToken} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-black">{selectedSellToken.symbol}</span>
-                  </span>
-                  <span className="text-lg">⌄</span>
-                </button>
-              </div>
+        <div className="relative">
+          <div className="uni-surface-inset p-4 relative">
+            <span className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Sell</span>
+            <div className="flex items-center gap-3">
+              <input
+                className="uni-huge-input flex-1"
+                inputMode="decimal"
+                placeholder="0"
+                value={sellAmount}
+                onChange={(event) => setSellAmount(event.target.value)}
+              />
+              <button
+                type="button"
+                className="uni-btn-token flex-shrink-0"
+                aria-expanded={tokenPickerSide === "sell"}
+                onClick={() => {
+                  setNetworkPickerOpen(false);
+                  setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
+                }}
+              >
+                <TokenIcon token={selectedSellToken} />
+                <span className="text-lg font-semibold">{selectedSellToken.symbol}</span>
+                <span className="text-sm">⌄</span>
+              </button>
             </div>
-
-            <button 
-              type="button" 
-              className="swap-direction-btn"
-              onClick={() => {
-                const temp = sellToken;
-                setSellToken(buyToken);
-                setBuyToken(temp);
-                setQuote(null);
-                setJupiterRoute(null);
-                setJupiterResult(null);
-                setRangoRoute(null);
-                setRangoResult(null);
-              }}
-            >
-              ↓
-            </button>
-
-            <div className="swap-panel-inner relative">
-              <span className="px-1 text-sm font-medium text-slate-500 mb-2 block">В (To)</span>
-              <div className="flex items-center gap-3">
-                <input
-                  className="swap-input-huge flex-1"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={
-                    quote ? shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals) : 
-                    isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals) :
-                    isCrossChainSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
-                    ""
-                  }
-                  readOnly
-                />
-                <button
-                  type="button"
-                  className="swap-token-select flex-shrink-0"
-                  aria-expanded={tokenPickerSide === "buy"}
-                  onClick={() => {
-                    setNetworkPickerOpen(false);
-                    setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
-                  }}
-                >
-                  <TokenIcon token={selectedBuyToken} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-black">{selectedBuyToken.symbol}</span>
-                  </span>
-                  <span className="text-lg">⌄</span>
-                </button>
+            {props.portfolioAssets?.find(a => a.symbol === selectedSellToken.symbol)?.balanceFormatted && (
+              <div className="mt-2 text-sm text-[var(--text-secondary)] flex justify-end">
+                Balance: {props.portfolioAssets.find(a => a.symbol === selectedSellToken.symbol)?.balanceFormatted}
               </div>
+            )}
+          </div>
+
+          <button 
+            type="button" 
+            className="uni-btn-icon absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            onClick={() => {
+              const temp = sellToken;
+              setSellToken(buyToken);
+              setBuyToken(temp);
+              setQuote(null);
+              setJupiterRoute(null);
+              setJupiterResult(null);
+              setRangoRoute(null);
+              setRangoResult(null);
+            }}
+          >
+            ↓
+          </button>
+
+          <div className="uni-surface-inset p-4 mt-1">
+            <span className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Buy</span>
+            <div className="flex items-center gap-3">
+              <input
+                className="uni-huge-input flex-1"
+                inputMode="decimal"
+                placeholder="0"
+                value={
+                  quote ? shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals) : 
+                  isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals) :
+                  isCrossChainSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
+                  ""
+                }
+                readOnly
+              />
+              <button
+                type="button"
+                className="uni-btn-token flex-shrink-0"
+                aria-expanded={tokenPickerSide === "buy"}
+                onClick={() => {
+                  setNetworkPickerOpen(false);
+                  setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
+                }}
+              >
+                <TokenIcon token={selectedBuyToken} />
+                <span className="text-lg font-semibold">{selectedBuyToken.symbol}</span>
+                <span className="text-sm">⌄</span>
+              </button>
             </div>
+          </div>
+        </div>
 
             {quote || universalRoute ? (
               <div className="mt-2 flex justify-between items-center px-2 text-sm text-slate-500 font-medium">
@@ -1008,31 +1000,32 @@ export function SwapComposer(props: {
               </select>
             </div>
           </div>
-        </div>
 
         {error ? (
-          <div className="mx-1 rounded-[1.5rem] border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-700">
+          <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-700">
             {error}
           </div>
         ) : null}
 
-        {!extensionDetected ? (
-          <a
-            className="button-primary block w-full text-center"
-            href="/extension"
-          >
-            Connect Acorus wallet
-          </a>
-        ) : (
-          <button
-            type="button"
-            className="button-primary w-full"
-            disabled={activeUserAddress ? (!providerReady || (!hasAmount && !quote && !universalRoute) || loading) : false}
-            onClick={() => void handlePrimaryAction()}
-          >
-            {ctaLabel}
-          </button>
-        )}
+        <div className="mt-2">
+          {!extensionDetected ? (
+            <a
+              className="uni-btn-primary block text-center"
+              href="/extension"
+            >
+              Connect Wallet
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="uni-btn-primary"
+              disabled={activeUserAddress ? (!providerReady || (!hasAmount && !quote && !universalRoute) || loading) : false}
+              onClick={() => void handlePrimaryAction()}
+            >
+              {ctaLabel}
+            </button>
+          )}
+        </div>
 
         {showUniversalRouteForms ? (
           <>
@@ -1085,7 +1078,7 @@ export function SwapComposer(props: {
             </div>
           </>
         ) : null}
-      </GlassCard>
+      </div>
 
       {showSidePanel ? (
       <aside className={
@@ -1304,10 +1297,6 @@ function tokenIconStyle(symbol: string): CSSProperties {
   } as CSSProperties;
 }
 
-function getTokenPickerSectionLabel(_chainId: number | string): string {
-  return "Токены по объему за 24 ч";
-}
-
 function getUniversalSwapCtaLabel(input: {
   loading: boolean;
   routeReady: boolean;
@@ -1328,13 +1317,6 @@ function getUniversalSwapCtaLabel(input: {
   return "Review route";
 }
 
-function shortTokenAddress(value: string): string {
-  if (value.length <= 12) {
-    return value;
-  }
-
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
 
 function parseChainId(value: string | number | null): number | null {
   if (value === null) {
