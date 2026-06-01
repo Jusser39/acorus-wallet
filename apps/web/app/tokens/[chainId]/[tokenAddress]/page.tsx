@@ -2,7 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SwapComposer } from "@/components/swap-composer";
 import { TokenChart } from "@/components/token-chart";
 import {
@@ -155,12 +155,22 @@ function normalizeLinkUrl(value: string): string {
 
 function dedupeLinks(links: TokenDetail["links"]): TokenDetail["links"] {
   const seen = new Set<string>();
-  return links.filter((link) => {
-    const key = `${link.kind}:${link.kind === "explorer" ? normalizeLinkUrl(link.url) : normalizeLinkHost(link.url)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const deduped: TokenDetail["links"] = [];
+
+  for (let link of links) {
+    if (link.kind === "twitter") {
+      link = { ...link, url: link.url.replace("twitter.com", "x.com") };
+    }
+    const key = link.kind === "twitter" 
+      ? "twitter" 
+      : `${link.kind}:${link.kind === "explorer" ? normalizeLinkUrl(link.url) : normalizeLinkHost(link.url)}`;
+    
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(link);
+    }
+  }
+  return deduped;
 }
 
 function normalizeLinkHost(value: string): string {
@@ -181,6 +191,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const tokenAddress = decodeURIComponent(resolvedParams.tokenAddress);
   const coinId = isCoinGeckoRoute ? tokenAddress : null;
   const searchParams = useSearchParams();
+  const router = useRouter();
   const family = resolveFamily(searchParams?.get("family"), chainId);
   const symbolParam = searchParams?.get("symbol") ?? undefined;
   const nameParam = searchParams?.get("name") ?? undefined;
@@ -205,6 +216,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const [error, setError] = useState<string | null>(null);
   const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
   const [explorerMenuOpen, setExplorerMenuOpen] = useState(false);
+  const [networkMenuOpen, setNetworkMenuOpen] = useState(false);
 
   const explorerTokenUrl = useMemo(
     () =>
@@ -484,6 +496,32 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     });
   }, [chain?.name, explorerTokenUrl, family, tokenDetail?.links, tokenDetail?.platforms]);
 
+  const networkOptions = useMemo(() => {
+    if (!tokenDetail?.platforms?.length) return [];
+    const entries = [];
+    for (const platform of tokenDetail.platforms) {
+      const platformChain = typeof platform.chainId === "number"
+        ? getChainById(platform.chainId) ?? getUniversalChain({ chainId: platform.chainId })
+        : getUniversalChain({ chainId: platform.chainId });
+
+      if (platformChain) {
+        entries.push({
+          chainId: platform.chainId,
+          tokenAddress: platform.tokenAddress ?? "native",
+          label: platformChain.name,
+        });
+      }
+    }
+    
+    const seen = new Set<string>();
+    return entries.filter((entry) => {
+      const key = `${entry.chainId}:${entry.tokenAddress}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [tokenDetail?.platforms]);
+
   async function handleShare() {
     if (typeof window === "undefined") return;
     const shareUrl = window.location.href;
@@ -532,6 +570,38 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <span className="rounded-full border border-fuchsia-100 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700">
                       {resolvedSymbol}
                     </span>
+                    {networkOptions.length > 0 ? (
+                      <div className="relative ml-2">
+                        <button 
+                          type="button" 
+                          onClick={() => setNetworkMenuOpen((v) => !v)} 
+                          className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+                        >
+                          {chain?.name ?? "Network"}
+                          <span className="text-xs text-slate-400">▼</span>
+                        </button>
+                        {networkMenuOpen ? (
+                          <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-48 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
+                            {networkOptions.map((option) => (
+                              <button
+                                key={`${option.chainId}-${option.tokenAddress}`}
+                                type="button"
+                                onClick={() => {
+                                  setNetworkMenuOpen(false);
+                                  router.push(`/tokens/${option.chainId}/${option.tokenAddress}`);
+                                }}
+                                className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left text-sm font-semibold hover:bg-fuchsia-50"
+                              >
+                                <span>{option.label}</span>
+                                {option.chainId === chainId || (hasNumericChain && option.chainId === numericChainId) ? (
+                                  <span className="text-fuchsia-600">✓</span>
+                                ) : null}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   {!isNativeToken ? (
                     <p className="mt-2 break-all text-xs text-slate-500">{tokenAddress}</p>

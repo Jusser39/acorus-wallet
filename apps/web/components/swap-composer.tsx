@@ -61,8 +61,8 @@ export function SwapComposer(props: {
   const [status, setStatus] = useState<EvmSwapStatus | null>(null);
   const [universalStatus, setUniversalStatus] = useState<UniversalSwapStatus | null>(null);
   const [chainId, setChainId] = useState<number | string>(props.initialChainId ?? 1);
-  const [sellToken, setSellToken] = useState(props.initialSellToken ?? "native");
-  const [buyToken, setBuyToken] = useState(props.initialBuyToken ?? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+  const [sellToken, setSellToken] = useState<string | null>(props.initialSellToken ?? null);
+  const [buyToken, setBuyToken] = useState<string | null>(props.initialBuyToken ?? null);
   const [sellAmount, setSellAmount] = useState("");
   const [slippageBps, setSlippageBps] = useState(50);
   const [quote, setQuote] = useState<EvmSwapQuoteResponse | null>(null);
@@ -101,8 +101,8 @@ export function SwapComposer(props: {
     }),
     [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.portfolioAssets],
   );
-  const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
-  const selectedBuyToken = tokens.find((token) => token.value === buyToken) ?? tokens[1] ?? selectedSellToken;
+  const selectedSellToken = sellToken ? tokens.find((token) => token.value === sellToken) ?? null : null;
+  const selectedBuyToken = buyToken ? tokens.find((token) => token.value === buyToken) ?? null : null;
   const pickerTokensSource = useMemo(
     () => getPopularSwapTokens({
       chainId: tokenPickerChainId,
@@ -334,6 +334,8 @@ export function SwapComposer(props: {
     try {
       let takerAddress = activeUserAddress || "0x0000000000000000000000000000000000000000";
 
+      if (!sellToken || !buyToken || !selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
+
       if (sellToken.toLowerCase() === buyToken.toLowerCase()) {
         throw new Error("Choose different sell and buy tokens.");
       }
@@ -482,6 +484,7 @@ export function SwapComposer(props: {
     setJupiterRoute(null);
     setError(null);
     try {
+      if (!selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
       const inputMint = isSolanaSwap ? selectedSellToken.value : jupiterInputMint;
       const outputMint = isSolanaSwap ? selectedBuyToken.value : jupiterOutputMint;
       const formattedAmount = isSolanaSwap ? sellAmount : jupiterAmount;
@@ -518,6 +521,8 @@ export function SwapComposer(props: {
   }
 
   async function handlePrimaryAction() {
+    if (!selectedSellToken || !selectedBuyToken) return;
+
     if (isSolanaSwap) {
       if (!jupiterRoute) {
         await handleJupiterQuote();
@@ -569,20 +574,6 @@ export function SwapComposer(props: {
       return;
     }
 
-    if (side === "sell") {
-      setSellToken(nextToken.value);
-
-      if (nextToken.value.toLowerCase() === currentOpposite.toLowerCase()) {
-        setBuyToken(tokens.find((token) => token.value.toLowerCase() !== nextToken.value.toLowerCase())?.value ?? nextToken.value);
-      }
-    } else {
-      setBuyToken(nextToken.value);
-
-      if (nextToken.value.toLowerCase() === currentOpposite.toLowerCase()) {
-        setSellToken(tokens.find((token) => token.value.toLowerCase() !== nextToken.value.toLowerCase())?.value ?? nextToken.value);
-      }
-    }
-
     setQuote(null);
     setJupiterRoute(null);
     setJupiterResult(null);
@@ -593,15 +584,45 @@ export function SwapComposer(props: {
     setNetworkPickerOpen(false);
     setTokenPickerNetworkOpen(false);
 
-    let oppositeToken = tokens.find((t) => t.value.toLowerCase() === currentOpposite.toLowerCase());
+    let oppositeToken = tokens.find((t) => t.value.toLowerCase() === currentOpposite?.toLowerCase());
     if (!oppositeToken) {
-      oppositeToken = pickerTokensSource.find((t) => t.value.toLowerCase() === currentOpposite.toLowerCase());
+      oppositeToken = pickerTokensSource.find((t) => t.value.toLowerCase() === currentOpposite?.toLowerCase());
     }
 
+    let nextValue = nextToken.value;
+    let newOppositeValue = currentOpposite;
+    let nextChainId = chainId;
+
     if (oppositeToken && nextToken.chainId !== oppositeToken.chainId) {
+      nextChainId = CROSS_CHAIN_SWAP_ID;
       setChainId(CROSS_CHAIN_SWAP_ID);
+      
+      const ccTokens = getPopularSwapTokens({ chainId: CROSS_CHAIN_SWAP_ID });
+      
+      const findCcToken = (t: SwapTokenOption) => {
+        if (t.chainId === CROSS_CHAIN_SWAP_ID) return t.value;
+        const match = ccTokens.find(cc => cc.source !== "curated" && cc.source !== "featured" && cc.symbol === t.symbol && (cc.tokenAddress === t.tokenAddress || (t.value === "native" && cc.value.includes("."))));
+        return match?.value ?? t.value;
+      };
+
+      nextValue = findCcToken(nextToken);
+      newOppositeValue = findCcToken(oppositeToken);
     } else if (chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== chainId) {
+      nextChainId = nextToken.chainId;
       setChainId(nextToken.chainId);
+    }
+
+    if (newOppositeValue && nextValue.toLowerCase() === newOppositeValue.toLowerCase()) {
+      const allNewTokens = getPopularSwapTokens({ chainId: nextChainId });
+      newOppositeValue = allNewTokens.find((token) => token.value.toLowerCase() !== nextValue.toLowerCase())?.value ?? nextValue;
+    }
+
+    if (side === "sell") {
+      setSellToken(nextValue);
+      setBuyToken(newOppositeValue ?? "");
+    } else {
+      setBuyToken(nextValue);
+      setSellToken(newOppositeValue ?? "");
     }
   }
 
@@ -724,11 +745,13 @@ export function SwapComposer(props: {
     setRangoRoute(null);
     setError(null);
     try {
+      if (!selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
       const from = isCrossChainSwap ? selectedSellToken.value : rangoFrom;
       const to = isCrossChainSwap ? selectedBuyToken.value : rangoTo;
       const amount = isCrossChainSwap ? sellAmount : rangoAmount;
 
-      if (from.toLowerCase() === to.toLowerCase()) {
+      if (!selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
+      if (selectedSellToken.value === selectedBuyToken.value) {
         throw new Error("Choose different assets.");
       }
 
@@ -789,7 +812,7 @@ export function SwapComposer(props: {
 
   const providerReady = isEvmSwap
     ? Boolean(status?.configured && status.enabled)
-    : true;
+    : (isSolanaSwap || isCrossChainSwap);
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
     : false;
@@ -931,10 +954,16 @@ export function SwapComposer(props: {
                     setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
                   }}
                 >
-                  <TokenIcon token={selectedSellToken} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-black">{selectedSellToken.symbol}</span>
-                  </span>
+                  {selectedSellToken ? (
+                    <>
+                      <TokenIcon token={selectedSellToken} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-black">{selectedSellToken.symbol}</span>
+                      </span>
+                    </>
+                  ) : (
+                    <span className="min-w-0 flex-1 px-2 py-1 font-semibold text-slate-700">Выберите токен</span>
+                  )}
                   <span className="text-lg">⌄</span>
                 </button>
               </div>
@@ -966,7 +995,7 @@ export function SwapComposer(props: {
                   placeholder="0"
                   value={
                     quote ? shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals) : 
-                    isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals) :
+                    isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken?.decimals ?? 18) :
                     isCrossChainSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
                     ""
                   }
@@ -981,10 +1010,16 @@ export function SwapComposer(props: {
                     setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
                   }}
                 >
-                  <TokenIcon token={selectedBuyToken} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-black">{selectedBuyToken.symbol}</span>
-                  </span>
+                  {selectedBuyToken ? (
+                    <>
+                      <TokenIcon token={selectedBuyToken} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-black">{selectedBuyToken.symbol}</span>
+                      </span>
+                    </>
+                  ) : (
+                    <span className="min-w-0 flex-1 px-2 py-1 font-semibold text-slate-700">Выберите токен</span>
+                  )}
                   <span className="text-lg">⌄</span>
                 </button>
               </div>
@@ -1023,6 +1058,14 @@ export function SwapComposer(props: {
           >
             Connect Acorus wallet
           </a>
+        ) : !selectedSellToken || !selectedBuyToken ? (
+          <button
+            type="button"
+            className="button-primary w-full opacity-50 cursor-not-allowed"
+            disabled
+          >
+            Выберите токен
+          </button>
         ) : (
           <button
             type="button"
@@ -1172,16 +1215,16 @@ export function SwapComposer(props: {
                 <span>You pay</span>
                 <strong>
                   {isSolanaSwap
-                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).inAmountRaw, selectedSellToken.decimals)
-                    : (universalRoute as RangoSwapQuoteResponse).amountRaw} {selectedSellToken.symbol}
+                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).inAmountRaw, selectedSellToken?.decimals ?? 18)
+                    : (universalRoute as RangoSwapQuoteResponse).amountRaw} {selectedSellToken?.symbol ?? ""}
                 </strong>
               </div>
               <div className="flex justify-between gap-3">
                 <span>You receive</span>
                 <strong>
                   {isSolanaSwap
-                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken.decimals)
-                    : (universalRoute as RangoSwapQuoteResponse).outputAmountFormatted ?? (universalRoute as RangoSwapQuoteResponse).outputAmountRaw ?? "Route estimate"} {selectedBuyToken.symbol}
+                    ? shortenFormattedEvmTokenAmount((universalRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken?.decimals ?? 18)
+                    : (universalRoute as RangoSwapQuoteResponse).outputAmountFormatted ?? (universalRoute as RangoSwapQuoteResponse).outputAmountRaw ?? "Route estimate"} {selectedBuyToken?.symbol ?? ""}
                 </strong>
               </div>
               <div className="flex justify-between gap-3">

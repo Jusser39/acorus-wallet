@@ -322,6 +322,9 @@ export function getSwapNetworkLabel(chainId: number | string): string {
     return "Any network";
   }
 
+  if (chainId === "ton-mainnet") return "TON";
+  if (chainId === "bitcoin-mainnet") return "Bitcoin";
+
   return EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM";
 }
 

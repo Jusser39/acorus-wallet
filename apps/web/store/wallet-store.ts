@@ -78,6 +78,10 @@ interface WalletState {
   markActivity(): void;
   setError(message: string | null): void;
   clearWalletState(): void;
+
+  mockStakedBalances: Record<string, number>;
+  stakeMockAsset(asset: string, amount: number): void;
+  unstakeMockAsset(asset: string, amount: number): void;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -101,6 +105,25 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   lastUnlockedAt: null,
   lastActivityAt: null,
   error: null,
+  mockStakedBalances: {},
+  stakeMockAsset(asset, amount) {
+    const current = get().mockStakedBalances[asset] ?? 0;
+    set({
+      mockStakedBalances: {
+        ...get().mockStakedBalances,
+        [asset]: current + amount,
+      },
+    });
+  },
+  unstakeMockAsset(asset, amount) {
+    const current = get().mockStakedBalances[asset] ?? 0;
+    set({
+      mockStakedBalances: {
+        ...get().mockStakedBalances,
+        [asset]: Math.max(0, current - amount),
+      },
+    });
+  },
   setBootstrapped(value) {
     set({ isBootstrapped: value });
   },
