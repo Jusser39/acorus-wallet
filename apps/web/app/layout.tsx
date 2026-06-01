@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="h-full antialiased">
-      <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
+      <body className="min-h-full bg-[#fbf7ff] text-slate-950">
         <AppBootstrap />
         <ExtensionProfileSync />
         <div className="flex min-h-full flex-col">

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import { AcorusMagicStage } from "@/components/acorus-magic-stage";
 import { SwapComposer } from "@/components/swap-composer";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildFearGreedPulse } from "@/lib/market-pulse";
@@ -13,6 +15,13 @@ function formatUsd(value: number | null | undefined): string {
   if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
   return `$${value.toFixed(value < 1 ? 4 : 2)}`;
 }
+
+const ACTION_LINKS = [
+  { label: "Send", href: "/send", icon: "↗" },
+  { label: "Receive", href: "/receive", icon: "↙" },
+  { label: "Security", href: "/security", icon: "◇" },
+  { label: "Explore", href: "/explore", icon: "◎" },
+] as const;
 
 const FALLBACK_DISCOVERY_TOKENS: ExploreTokenItem[] = [
   {
@@ -55,7 +64,88 @@ const FALLBACK_DISCOVERY_TOKENS: ExploreTokenItem[] = [
     marketCapUsd: 76_000_000_000,
     source: "fallback",
   },
+  {
+    id: "fallback-bonk",
+    symbol: "BONK",
+    name: "Bonk",
+    logoUrl: "https://assets.coingecko.com/coins/images/28600/small/bonk.jpg",
+    price: 0.000018,
+    change24h: 4.2,
+    marketCapUsd: 1_400_000_000,
+    source: "fallback",
+  },
+  {
+    id: "fallback-chainlink",
+    symbol: "LINK",
+    name: "Chainlink",
+    logoUrl: "https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png",
+    price: 16.8,
+    change24h: 2.6,
+    marketCapUsd: 11_000_000_000,
+    source: "fallback",
+  },
+  {
+    id: "fallback-pepe",
+    symbol: "PEPE",
+    name: "Pepe",
+    logoUrl: "https://assets.coingecko.com/coins/images/29850/small/pepe-token.jpeg",
+    price: 0.000012,
+    change24h: 6.4,
+    marketCapUsd: 5_000_000_000,
+    source: "fallback",
+  },
+  {
+    id: "fallback-arbitrum",
+    symbol: "ARB",
+    name: "Arbitrum",
+    logoUrl: "https://assets.coingecko.com/coins/images/16547/small/arb.jpg",
+    price: 1.24,
+    change24h: 3.1,
+    marketCapUsd: 5_200_000_000,
+    source: "fallback",
+  },
 ];
+
+function MagicMarketRow({ token }: { token: ExploreTokenItem }) {
+  return (
+    <Link
+      href={buildExploreTokenHref(token)}
+      className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/45 p-3 transition hover:-translate-y-0.5 hover:bg-white/70"
+    >
+      {token.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={token.logoUrl} alt={token.symbol} className="h-10 w-10 rounded-full bg-white" />
+      ) : (
+        <span className="magic-orb h-10 w-10 text-[11px] font-black text-white">
+          {token.symbol.slice(0, 3)}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-black text-slate-950">{token.name}</span>
+        <span className="block text-xs font-semibold text-slate-500">{token.symbol}</span>
+      </span>
+      <span className="text-right">
+        <span className="block text-sm font-black text-slate-950">{formatUsd(token.price)}</span>
+        <span
+          className={
+            token.change24h == null
+              ? "text-xs text-slate-400"
+              : token.change24h >= 0
+                ? "text-xs font-black text-emerald-600"
+                : "text-xs font-black text-rose-600"
+          }
+        >
+          {token.change24h == null
+            ? "—"
+            : `${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`}
+        </span>
+      </span>
+      <span className="hidden rounded-full bg-gradient-to-r from-cyan-300 via-violet-500 to-pink-400 px-3 py-2 text-xs font-black text-white shadow-sm sm:inline-flex">
+        Swap
+      </span>
+    </Link>
+  );
+}
 
 export default async function Home() {
   const [trending, top] = await Promise.all([
@@ -67,83 +157,162 @@ export default async function Home() {
   const pulseColor = pulse.score <= 42 ? "#f43f5e" : pulse.score <= 58 ? "#f59e0b" : "#22c55e";
 
   return (
-    <main className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-start pt-10 px-4">
-      <div className="w-full max-w-[480px]">
-        <SwapComposer
-          portfolioAssets={[]}
-          title="Swap"
-          description="Exchange any token across EVM, Solana, and Bitcoin with universal routing."
-        />
+    <main className="magic-shell relative overflow-hidden">
+      {/* Coinkeep Design Integration: Background Blobs */}
+      <div className="bg-blobs">
+        <div className="blob blob-yellow"></div>
+        <div className="blob blob-blue"></div>
+        <div className="blob blob-pink"></div>
+        <div className="blob blob-green"></div>
       </div>
-
-      <div className="mt-16 w-full max-w-4xl px-4 text-[var(--text-secondary)] space-y-8">
-        <section className="uni-card p-6 border-none shadow-sm bg-[var(--surface-inset)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">Token Discovery</h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">Live tracking of market movements.</p>
+      <section className="magic-container py-8 relative z-10">
+        <div className="magic-dashboard-grid">
+          <section className="magic-dashboard-card magic-swap-panel-card">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Acorus swap</p>
+                <h2 className="mt-2 text-3xl font-black">Swap</h2>
+              </div>
+              <span className="rounded-full bg-cyan-100 px-4 py-2 text-sm font-black text-cyan-700">Live</span>
             </div>
-            <Link href="/explore" className="text-sm font-medium text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">
-              Explore all →
-            </Link>
+            <SwapComposer
+              compact
+              portfolioAssets={[]}
+              title="Swap"
+              description="Pick a network, choose popular tokens, and review the final route in the extension."
+            />
+          </section>
+
+          <section className="magic-dashboard-card magic-guardian-card">
+            <div className="flex items-center justify-between gap-3">
+              <span className="magic-token-chip px-4 py-2 text-sm font-black">Acorus Guardian</span>
+              <Link href="/wallet" className="magic-button-secondary px-4 py-2 text-sm">Open wallet</Link>
+            </div>
+            <AcorusMagicStage pose="home" />
+            <div className="mt-auto">
+              <h1 className="text-5xl font-black tracking-tight glow-text-content pb-2">
+                Your Multichain Magic Wallet
+              </h1>
+              <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-slate-600">
+                EVM, Solana, Bitcoin and future chains in one guardian shell. Keys stay local; routes and approvals stay explicit.
+              </p>
+            </div>
+          </section>
+
+          <aside className="grid content-start gap-4">
+            <section className="magic-dashboard-card magic-portfolio-panel-card">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Portfolio</p>
+                <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-black text-violet-700">USD</span>
+              </div>
+              <div className="mt-4 text-5xl font-black tracking-tight">$—</div>
+              <p className="mt-2 text-sm font-semibold text-emerald-600">Connect extension to calculate live balances.</p>
+              <div className="mt-5 h-28 rounded-3xl border border-white/60 bg-[linear-gradient(180deg,rgba(139,92,246,0.22),rgba(124,247,255,0.02))]" />
+            </section>
+
+            <div className="grid grid-cols-2 gap-3">
+              {ACTION_LINKS.map(({ label, href, icon }) => (
+                <Link key={label} href={href} className="magic-action-tile">
+                  <span>{icon}</span>
+                  <strong>{label}</strong>
+                </Link>
+              ))}
+            </div>
+          </aside>
+        </div>
+
+        <section className="magic-token-discovery mt-8">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Live discovery</p>
+                <h2 className="mt-2 text-2xl font-black">Token Discovery</h2>
+              </div>
+            </div>
+            <Link href="/explore" className="magic-button-secondary px-5 py-3 text-sm">Explore all</Link>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="magic-market-table">
             {discoveryTokens.slice(0, 6).map((token) => (
-              <Link
-                key={token.id}
-                href={buildExploreTokenHref(token)}
-                className="flex items-center gap-3 rounded-2xl p-3 transition hover:bg-[var(--surface-hover)] border border-[var(--border-light)] bg-[var(--surface-base)]"
-              >
-                {token.logoUrl ? (
-                  <img src={token.logoUrl} alt={token.symbol} className="h-8 w-8 rounded-full" />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-[var(--surface-active)] flex items-center justify-center text-[10px] font-bold text-[var(--text-primary)]">
-                    {token.symbol.slice(0, 3)}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-[var(--text-primary)] truncate">{token.name}</div>
-                  <div className="text-xs text-[var(--text-tertiary)]">{token.symbol}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-[var(--text-primary)]">{formatUsd(token.price)}</div>
-                  <div className={`text-xs font-medium ${token.change24h && token.change24h >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                    {token.change24h == null ? "—" : `${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`}
-                  </div>
-                </div>
-              </Link>
+              <MagicMarketRow key={token.id} token={token} />
             ))}
           </div>
         </section>
 
-        <section className="grid sm:grid-cols-2 gap-6">
-          <div className="uni-card p-6 border-none shadow-sm bg-[var(--surface-inset)]">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-2">Security Model</h2>
-            <p className="text-sm leading-relaxed mb-4 text-[var(--text-secondary)]">
-              Your keys never leave your device. All transactions require explicit confirmation. Backend swap providers receive only public quote metadata and never receive key material.
-            </p>
-            <Link href="/security" className="text-sm font-medium text-[var(--accent-primary)] hover:text-[var(--accent-primary-hover)]">
-              Learn more →
-            </Link>
-          </div>
-          
-          <div className="uni-card p-6 border-none shadow-sm bg-[var(--surface-inset)]">
-            <div className="flex justify-between items-start mb-2">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Market Fear & Greed</h2>
-              <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs" 
-                style={{ backgroundColor: pulseColor }}
+        <section className="mt-8 grid gap-4 lg:grid-cols-[0.85fr_1fr]">
+          <section className="magic-panel p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black">Fear & Greed</h2>
+                <p className="mt-1 text-sm text-slate-600">Market mood from tracked 24h token breadth.</p>
+              </div>
+              <div
+                className="fear-greed-meter"
+                style={{ "--fear-score": `${pulse.score}%`, "--fear-color": pulseColor } as CSSProperties}
               >
-                {pulse.score}
+                <span>{pulse.score}</span>
               </div>
             </div>
-            <p className="text-sm leading-relaxed text-[var(--text-secondary)] mb-4">
-              Current market mood is <strong className="text-[var(--text-primary)]">{pulse.label.toLowerCase()}</strong>. 
-              {pulse.positiveCount} tokens rising, {pulse.negativeCount} tokens falling in our tracked sample.
-            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/50 bg-white/45 p-3 sm:col-span-3">
+                <div className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Market mood</div>
+                <div className="mt-1 text-2xl font-black text-slate-950">{pulse.label}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Rising 24h</div>
+                <div className="mt-1 font-black text-emerald-600">{pulse.positiveCount}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Falling 24h</div>
+                <div className="mt-1 font-black text-rose-600">{pulse.negativeCount}</div>
+              </div>
+              <div className="rounded-2xl border border-white/50 bg-white/42 p-3">
+                <div className="text-xs font-bold text-slate-500">Tracked</div>
+                <div className="mt-1 font-black text-slate-950">{pulse.sampleSize}</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="magic-panel p-5">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">Safety model</p>
+            <h2 className="mt-2 text-2xl font-black">Local keys, explicit approvals</h2>
+            <div className="mt-5 grid gap-3 text-sm leading-6 text-slate-600">
+              <p>Seed phrase, passcode, and transaction signing stay inside the client or extension vault.</p>
+              <p>Backend swap providers receive only public quote metadata and never receive key material.</p>
+              <p>Each send, approval, and swap execution is reviewed before broadcast.</p>
+            </div>
+          </section>
+        </section>
+
+        {/* Coinkeep Design Integration: Horizontal Scroll Cards */}
+        <section className="mt-12 mb-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-black glow-text-content pb-2">Core Features</h2>
+          </div>
+          <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: "none" }}>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 mb-4 flex items-center justify-center text-white text-xl">🚀</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Blazing Fast Swaps</h3>
+              <p className="text-slate-600 text-sm">Experience split-second cross-chain swaps optimized by universal routing algorithms.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-600 mb-4 flex items-center justify-center text-white text-xl">🛡️</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Guardian Security</h3>
+              <p className="text-slate-600 text-sm">Your keys never leave your device. All transactions require explicit confirmation.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 mb-4 flex items-center justify-center text-white text-xl">🌐</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Multichain Ready</h3>
+              <p className="text-slate-600 text-sm">Seamlessly bridge across EVM, Solana, and Bitcoin without switching wallets.</p>
+            </div>
+            <div className="snap-center shrink-0 w-80 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-[24px] shadow-lg">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 mb-4 flex items-center justify-center text-white text-xl">📈</div>
+              <h3 className="text-xl font-bold mb-2 text-slate-900">Market Pulse</h3>
+              <p className="text-slate-600 text-sm">Built-in fear & greed indices alongside live token discovery.</p>
+            </div>
           </div>
         </section>
-      </div>
+
+      </section>
     </main>
   );
 }
