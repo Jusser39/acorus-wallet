@@ -198,11 +198,40 @@ export function getPopularSwapTokens(input: {
   }
 
   if (input.chainId === CROSS_CHAIN_SWAP_ID) {
-    const byValue = new Map<string, SwapTokenOption>();
-    for (const item of [...CROSS_CHAIN_TOKENS, ...initial]) {
-      byValue.set(item.value.toLowerCase(), item);
+    const byKey = new Map<string, SwapTokenOption>();
+
+    for (const item of CROSS_CHAIN_TOKENS) {
+      byKey.set(`${item.chainId}:${item.value.toLowerCase()}`, item);
     }
-    return Array.from(byValue.values());
+
+    for (const item of SOLANA_VOLUME_TOKENS) {
+      byKey.set(`${item.chainId}:${item.value.toLowerCase()}`, item);
+    }
+
+    const tonToken: SwapTokenOption = { value: "TON.TON", symbol: "TON", name: "Toncoin", decimals: 9, chainId: "ton-mainnet", tokenAddress: null, logoUrl: TOKEN_LOGOS.TON, verified: true, source: "native" };
+    const btcToken: SwapTokenOption = { value: "BTC.BTC", symbol: "BTC", name: "Bitcoin", decimals: 8, chainId: "bitcoin-mainnet", tokenAddress: null, logoUrl: TOKEN_LOGOS.BTC, verified: true, source: "native" };
+    byKey.set(`ton-mainnet:ton.ton`, tonToken);
+    byKey.set(`bitcoin-mainnet:btc.btc`, btcToken);
+
+    const allCurated = EVM_CHAINS.flatMap(chain => getCuratedTokens(chain.chainId as number).map((item): SwapTokenOption => ({
+      value: item.address,
+      tokenAddress: item.address,
+      symbol: item.symbol,
+      name: item.name,
+      decimals: item.decimals,
+      chainId: item.chainId,
+      logoUrl: item.logoUrl ?? TOKEN_LOGOS[item.symbol.toUpperCase()] ?? null,
+      verified: item.verified,
+      source: "curated",
+    })));
+
+    const allFeatured = FEATURED_EVM_TOKENS.map((item): SwapTokenOption => ({ ...item, source: "featured" }));
+
+    for (const item of [...allCurated, ...allFeatured, ...initial]) {
+      byKey.set(`${item.chainId}:${item.value.toLowerCase()}`, item);
+    }
+
+    return Array.from(byKey.values());
   }
 
   if (input.chainId === "ton-mainnet") {

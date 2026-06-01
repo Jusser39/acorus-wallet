@@ -75,6 +75,8 @@ export function SwapComposer(props: {
   const [connectedAddress, setConnectedAddress] = useState<string | null>(props.userAddress ?? null);
   const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
   const [networkPickerOpen, setNetworkPickerOpen] = useState(false);
+  const [tokenPickerNetworkOpen, setTokenPickerNetworkOpen] = useState(false);
+  const [tokenPickerChainId, setTokenPickerChainId] = useState<number | string>(props.initialChainId ?? CROSS_CHAIN_SWAP_ID);
   const [tokenSearch, setTokenSearch] = useState("");
   const [jupiterInputMint, setJupiterInputMint] = useState("So11111111111111111111111111111111111111112");
   const [jupiterOutputMint, setJupiterOutputMint] = useState("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
@@ -101,7 +103,14 @@ export function SwapComposer(props: {
   );
   const selectedSellToken = tokens.find((token) => token.value === sellToken) ?? tokens[0]!;
   const selectedBuyToken = tokens.find((token) => token.value === buyToken) ?? tokens[1] ?? selectedSellToken;
-  const pickerTokens = useMemo(() => filterSwapTokens(tokens, tokenSearch), [tokenSearch, tokens]);
+  const pickerTokensSource = useMemo(
+    () => getPopularSwapTokens({
+      chainId: tokenPickerChainId,
+      portfolioAssets: props.portfolioAssets,
+    }),
+    [tokenPickerChainId, props.portfolioAssets],
+  );
+  const pickerTokens = useMemo(() => filterSwapTokens(pickerTokensSource, tokenSearch), [tokenSearch, pickerTokensSource]);
   const routeNetworkOptions = useMemo(
     () => [
       ...EVM_CHAINS.map((chain) => ({
@@ -554,7 +563,7 @@ export function SwapComposer(props: {
 
   function handleTokenPick(side: "sell" | "buy", value: string) {
     const currentOpposite = side === "sell" ? buyToken : sellToken;
-    const nextToken = tokens.find((token) => token.value.toLowerCase() === value.toLowerCase());
+    const nextToken = pickerTokensSource.find((token) => token.value.toLowerCase() === value.toLowerCase());
 
     if (!nextToken) {
       return;
@@ -582,6 +591,18 @@ export function SwapComposer(props: {
     setError(null);
     setTokenPickerSide(null);
     setNetworkPickerOpen(false);
+    setTokenPickerNetworkOpen(false);
+
+    let oppositeToken = tokens.find((t) => t.value.toLowerCase() === currentOpposite.toLowerCase());
+    if (!oppositeToken) {
+      oppositeToken = pickerTokensSource.find((t) => t.value.toLowerCase() === currentOpposite.toLowerCase());
+    }
+
+    if (oppositeToken && nextToken.chainId !== oppositeToken.chainId) {
+      setChainId(CROSS_CHAIN_SWAP_ID);
+    } else if (chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== chainId) {
+      setChainId(nextToken.chainId);
+    }
   }
 
   function handleNetworkPick(nextChainId: number | string) {
@@ -607,16 +628,50 @@ export function SwapComposer(props: {
             ×
           </button>
         </div>
-        <div className="token-picker-search">
+        <div className="token-picker-search relative">
           <span className="text-xl text-fuchsia-400">⌕</span>
           <input
-            className="!bg-transparent"
+            className="!bg-transparent pr-[120px]"
             value={tokenSearch}
             onChange={(event) => setTokenSearch(event.target.value)}
             placeholder="Search by token, symbol, or address"
             aria-label="Search token"
           />
-          <span className="token-picker-chain">{getSwapNetworkLabel(chainId)}</span>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <button 
+              type="button" 
+              className="token-picker-chain flex items-center gap-1.5"
+              onClick={() => setTokenPickerNetworkOpen(!tokenPickerNetworkOpen)}
+            >
+              {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "Все сети" : getSwapNetworkLabel(tokenPickerChainId)}
+              <span className="text-xs">⌄</span>
+            </button>
+            {tokenPickerNetworkOpen ? (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto">
+                <button
+                  type="button"
+                  className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
+                  onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); }}
+                >
+                  <span className="text-xl flex gap-0.5">
+                    <span className="h-2 w-2 rounded-full bg-slate-200" />
+                    <span className="h-2 w-2 rounded-full bg-slate-300" />
+                  </span>
+                  Все сети
+                </button>
+                {routeNetworkOptions.filter((o) => o.chainId !== CROSS_CHAIN_SWAP_ID).map((option) => (
+                  <button
+                    key={option.chainId}
+                    type="button"
+                    className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === option.chainId ? "bg-slate-50 font-semibold" : ""}`}
+                    onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="token-picker-quick">
           {tokens.slice(0, 5).map((token) => (
@@ -1185,9 +1240,25 @@ function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
   return token.symbol.slice(0, 4).toUpperCase();
 }
 
-function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl"> }) {
+function getNetworkBadgeUrl(chainId: number | string): string | null {
+  if (chainId === 1) return "https://assets.coingecko.com/coins/images/279/small/ethereum.png";
+  if (chainId === 56) return "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png";
+  if (chainId === 137) return "https://assets.coingecko.com/coins/images/4713/small/polygon.png";
+  if (chainId === 42161) return "https://assets.coingecko.com/coins/images/16547/small/arb.jpg";
+  if (chainId === 10) return "https://assets.coingecko.com/coins/images/25244/small/Optimism.png";
+  if (chainId === 8453) return "https://avatars.githubusercontent.com/u/108554348?v=4"; // Base logo
+  if (chainId === 43114) return "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png";
+  if (chainId === 101) return "https://assets.coingecko.com/coins/images/4128/small/solana.png";
+  if (chainId === "ton-mainnet") return "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png";
+  if (chainId === "bitcoin-mainnet") return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png";
+  return null;
+}
+
+function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl" | "chainId"> }) {
+  const badgeUrl = getNetworkBadgeUrl(token.chainId);
+
   return (
-    <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
+    <span className="swap-token-icon relative" style={tokenIconStyle(token.symbol)}>
       <span>{tokenAvatarLabel(token)}</span>
       {token.logoUrl ? (
         <img
@@ -1197,6 +1268,13 @@ function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
+        />
+      ) : null}
+      {badgeUrl ? (
+        <img 
+          src={badgeUrl} 
+          alt="" 
+          className="absolute -bottom-1 -right-1 w-[14px] h-[14px] rounded-full border border-white bg-white z-10" 
         />
       ) : null}
     </span>
@@ -1222,16 +1300,8 @@ function tokenIconStyle(symbol: string): CSSProperties {
   } as CSSProperties;
 }
 
-function getTokenPickerSectionLabel(chainId: number | string): string {
-  if (chainId === SOLANA_SWAP_CHAIN_ID) {
-    return "Popular Solana tokens by 24h volume";
-  }
-
-  if (chainId === CROSS_CHAIN_SWAP_ID) {
-    return "Popular assets across networks";
-  }
-
-  return "Popular tokens on this network";
+function getTokenPickerSectionLabel(_chainId: number | string): string {
+  return "Токены по объему за 24 ч";
 }
 
 function getUniversalSwapCtaLabel(input: {
