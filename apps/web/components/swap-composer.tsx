@@ -74,6 +74,7 @@ export function SwapComposer(props: {
   const [extensionDetected, setExtensionDetected] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(props.userAddress ?? null);
   const [tokenPickerSide, setTokenPickerSide] = useState<"sell" | "buy" | null>(null);
+  const [tokenPickerSymbolGroup, setTokenPickerSymbolGroup] = useState<string | null>(null);
   const [networkPickerOpen, setNetworkPickerOpen] = useState(false);
   const [tokenPickerNetworkOpen, setTokenPickerNetworkOpen] = useState(false);
   const [tokenPickerChainId, setTokenPickerChainId] = useState<number | string>(props.initialChainId ?? CROSS_CHAIN_SWAP_ID);
@@ -233,6 +234,7 @@ export function SwapComposer(props: {
   useEffect(() => {
     if (tokenPickerSide) {
       setTokenSearch("");
+      setTokenPickerSymbolGroup(null);
     }
   }, [tokenPickerSide]);
 
@@ -582,6 +584,7 @@ export function SwapComposer(props: {
     setRangoResult(null);
     setError(null);
     setTokenPickerSide(null);
+    setTokenPickerSymbolGroup(null);
     setNetworkPickerOpen(false);
     setTokenPickerNetworkOpen(false);
 
@@ -642,16 +645,54 @@ export function SwapComposer(props: {
   }
 
   function renderInlineTokenPicker(side: "sell" | "buy") {
+    const isCrossChainPicker = tokenPickerChainId === CROSS_CHAIN_SWAP_ID;
+    let displayTokens = pickerTokens;
+    let isShowingNetworks = false;
+
+    if (isCrossChainPicker) {
+      if (tokenPickerSymbolGroup) {
+        displayTokens = pickerTokens.filter((t) => t.symbol === tokenPickerSymbolGroup);
+        isShowingNetworks = true;
+      } else {
+        const seen = new Set<string>();
+        displayTokens = [];
+        for (const t of pickerTokens) {
+          if (!seen.has(t.symbol)) {
+            seen.add(t.symbol);
+            displayTokens.push(t);
+          }
+        }
+      }
+    }
+
+    const handleItemClick = (token: SwapTokenOption) => {
+      if (isCrossChainPicker && !isShowingNetworks) {
+        const variants = pickerTokens.filter((t) => t.symbol === token.symbol);
+        if (variants.length > 1) {
+          setTokenPickerSymbolGroup(token.symbol);
+          return;
+        }
+      }
+      handleTokenPick(side, token.value);
+    };
+
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setTokenPickerSide(null)}>
         <div 
-          className="token-inline-picker premium-card flex flex-col w-full max-w-md shadow-2xl bg-white" 
+          className="token-inline-picker premium-card flex flex-col w-full max-w-md shadow-2xl bg-white h-[600px] max-h-[80vh]" 
           role="dialog" 
           aria-label="Choose token"
           onClick={(e) => e.stopPropagation()}
         >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+          {isShowingNetworks ? (
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setTokenPickerSymbolGroup(null)} className="text-xl px-2 hover:bg-slate-100 rounded-lg p-1 transition-colors">←</button>
+              <h2 className="text-xl font-black text-slate-950">Select Network</h2>
+            </div>
+          ) : (
+            <h2 className="text-xl font-black text-slate-950">Choose token</h2>
+          )}
           <div className="flex items-center gap-2">
             <div className="relative">
               <button 
@@ -667,7 +708,7 @@ export function SwapComposer(props: {
                   <button
                     type="button"
                     className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
-                    onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); }}
+                    onClick={() => { setTokenPickerChainId(CROSS_CHAIN_SWAP_ID); setTokenPickerNetworkOpen(false); setTokenPickerSymbolGroup(null); }}
                   >
                     <span className="text-xl flex gap-0.5">
                       <span className="h-2 w-2 rounded-full bg-slate-200" />
@@ -680,7 +721,7 @@ export function SwapComposer(props: {
                       key={option.chainId}
                       type="button"
                       className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === option.chainId ? "bg-slate-50 font-semibold" : ""}`}
-                      onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); }}
+                      onClick={() => { setTokenPickerChainId(option.chainId); setTokenPickerNetworkOpen(false); setTokenPickerSymbolGroup(null); }}
                     >
                       {option.label}
                     </button>
@@ -693,41 +734,49 @@ export function SwapComposer(props: {
             </button>
           </div>
         </div>
-        <div className="token-picker-search relative">
-          <span className="text-xl text-fuchsia-400">⌕</span>
-          <input
-            className="!bg-transparent"
-            value={tokenSearch}
-            onChange={(event) => setTokenSearch(event.target.value)}
-            placeholder="Search by token, symbol, or address"
-            aria-label="Search token"
-          />
-        </div>
-        <div className="token-picker-quick">
-          {tokens.slice(0, 5).map((token) => (
-            <button
-              key={`quick-${side}-${token.value}`}
-              type="button"
-              className="token-picker-chip"
-              onClick={() => handleTokenPick(side, token.value)}
-            >
-              <TokenIcon token={token} />
-              {token.symbol}
-            </button>
-          ))}
-        </div>
-        <p className="token-picker-section-label">{getTokenPickerSectionLabel(chainId)}</p>
+        {!isShowingNetworks && (
+          <div className="token-picker-search relative">
+            <span className="text-xl text-fuchsia-400">⌕</span>
+            <input
+              className="!bg-transparent"
+              value={tokenSearch}
+              onChange={(event) => setTokenSearch(event.target.value)}
+              placeholder="Search by token, symbol, or address"
+              aria-label="Search token"
+            />
+          </div>
+        )}
+        {!isShowingNetworks && (
+          <div className="token-picker-quick">
+            {tokens.slice(0, 5).map((token) => (
+              <button
+                key={`quick-${side}-${token.value}`}
+                type="button"
+                className="token-picker-chip"
+                onClick={() => handleItemClick(token)}
+              >
+                <TokenIcon token={token} />
+                {token.symbol}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="token-picker-section-label">
+          {isShowingNetworks ? `Available networks for ${tokenPickerSymbolGroup}` : getTokenPickerSectionLabel(chainId)}
+        </p>
         <div className="token-picker-list">
-          {pickerTokens.length ? pickerTokens.map((token) => (
+          {displayTokens.length ? displayTokens.map((token) => (
             <button
               key={`picker-${side}-${token.value}`}
               type="button"
               className="token-picker-row"
-              onClick={() => handleTokenPick(side, token.value)}
+              onClick={() => handleItemClick(token)}
             >
               <TokenIcon token={token} />
               <span className="min-w-0 flex-1 text-left">
-                <span className="block truncate text-lg font-black text-slate-950">{token.name}</span>
+                <span className="block truncate text-lg font-black text-slate-950">
+                  {isShowingNetworks ? getSwapNetworkLabel(token.chainId) : token.name}
+                </span>
                 <span className="block truncate text-sm text-slate-500">
                   {token.symbol}
                   {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
