@@ -744,6 +744,7 @@ export function SwapComposer(props: {
           )}
         </div>
       </div>
+      </div>
     );
   }
 
