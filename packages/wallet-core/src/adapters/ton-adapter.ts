@@ -1,0 +1,1 @@
+export { createTonAdapter } from "./ton";
