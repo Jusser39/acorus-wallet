@@ -70,7 +70,7 @@ export type TransactionRecordItem = TransactionRecord;
 
 export interface TokenMetadata {
   id: string;
-  chainId: number;
+  chainId: ChainId;
   tokenAddress: string;
   symbol: string;
   name: string;

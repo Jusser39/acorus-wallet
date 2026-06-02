@@ -4,6 +4,7 @@ import {
   type SendDraft,
   type SendDraftInput,
   type SendExecutionResult,
+  getCuratedTokens,
 } from "@acorus/shared";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { base58 } from "@scure/base";
@@ -12,7 +13,8 @@ import { mnemonicToSeedSync, validateMnemonic } from "bip39";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { sha256 } from "@noble/hashes/sha256";
 import { wipeBytes } from "../crypto/vault";
-import { type BroadcastSendInput, type ChainAdapter, notImplemented } from "./types";
+import { type BroadcastSendInput, type ChainAdapter } from "./types";
+import { fetchRangoQuote, fetchRangoSwapTransaction, type RangoQuoteRequest } from "../tron/swap";
 
 const TRON_CHAIN_ID = "tron-mainnet";
 const DEFAULT_TRON_RPC_URL = "https://api.trongrid.io";
@@ -81,13 +83,13 @@ export function createTronAdapter(): ChainAdapter {
     capabilities: {
       deriveAccount: true,
       nativeBalance: true,
-      tokenBalances: false,
+      tokenBalances: true,
       receive: true,
       sendDraft: true,
       broadcast: true,
       history: false,
-      swap: false,
-      dapp: false,
+      swap: true,
+      dapp: true,
     },
 
     validateAddress(address) {
@@ -114,8 +116,62 @@ export function createTronAdapter(): ChainAdapter {
       };
     },
 
-    async getTokenBalances() {
-      return [];
+    async getTokenBalances(input) {
+      const knownTokens = getCuratedTokens(TRON_CHAIN_ID);
+      const knownByContract = new Map(
+        knownTokens.map((token) => [token.address, token]),
+      );
+
+      const rpcBase = normalizeTronRpcUrl(input.rpcUrl);
+      
+      try {
+        const response = await fetch(`${rpcBase}/v1/accounts/${input.address}`, {
+          headers: { accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error(`tron_rpc_${response.status}`);
+        }
+
+        const data = await response.json();
+        const account = data.data?.[0];
+        
+        if (!account || !Array.isArray(account.trc20)) {
+          return [];
+        }
+
+        const balances: any[] = [];
+
+        for (const tokenData of account.trc20) {
+          const entries = Object.entries(tokenData);
+          if (entries.length === 0) continue;
+          
+          const [contractAddress, balanceRawStr] = entries[0] as [string, string];
+          const balanceRaw = BigInt(balanceRawStr);
+
+          if (balanceRaw > 0n) {
+            const known = knownByContract.get(contractAddress);
+            balances.push({
+              family: "tron",
+              chainId: TRON_CHAIN_ID,
+              type: "trc20",
+              symbol: known?.symbol ?? "TRC20",
+              name: known?.name ?? "Unknown TRC-20",
+              decimals: known?.decimals ?? 6,
+              tokenAddress: contractAddress,
+              logoUrl: known?.logoUrl ?? null,
+              isVerified: known?.verified ?? false,
+              balanceRaw: balanceRaw.toString(),
+              balanceFormatted: formatUnits(balanceRaw, known?.decimals ?? 6),
+            });
+          }
+        }
+
+        return balances;
+      } catch (e) {
+        console.error("Tron getTokenBalances error:", e);
+        return [];
+      }
     },
 
     getReceiveInfo(input) {
@@ -171,27 +227,119 @@ export function createTronAdapter(): ChainAdapter {
     },
 
     async getTransactionHistory() {
-      notImplemented("tron_history");
+      // Pending backend Tron history proxy implementation.
+      return [];
     },
 
-    async getSwapQuote() {
-      notImplemented("tron_swap_quote");
+    async getSwapQuote(input) {
+      return fetchRangoQuote({
+        from: input.sellTokenAddress === null ? "TRON.TRX" : `TRON.${input.sellTokenAddress}`,
+        to: input.buyTokenAddress === null ? "TRON.TRX" : `TRON.${input.buyTokenAddress}`,
+        amount: input.amountRaw,
+        slippageBps: input.slippageBps,
+        apiBaseUrl: input.rpcUrl,
+      });
     },
 
-    async executeSwap() {
-      notImplemented("tron_swap_execute");
+    async executeSwap(input) {
+      if (!input.mnemonic) {
+        throw new Error("missing_signer");
+      }
+
+      const signer = deriveTronSignerFromMnemonic(input.mnemonic);
+      const quote = input.quote as RangoQuoteRequest;
+
+      try {
+        const swapRes = await fetchRangoSwapTransaction({
+          from: quote.from,
+          to: quote.to,
+          amount: quote.amount,
+          slippageBps: quote.slippageBps,
+          fromAddress: signer.address,
+          toAddress: signer.address,
+          apiBaseUrl: input.rpcUrl,
+        });
+
+        if (!swapRes.ok || !swapRes.transaction) {
+          throw new Error(swapRes.error ?? "rango_swap_failed");
+        }
+
+        const transactionData = swapRes.transaction.txData as TronTransaction;
+        if (!transactionData || !transactionData.txID) {
+          throw new Error("rango_swap_missing_transaction_data");
+        }
+
+        const signed = signTronTransaction(transactionData, signer.privateKey);
+        const rpcBase = normalizeTronRpcUrl(input.rpcUrl);
+        const broadcast = await postJson<TronBroadcastResponse>(
+          `${rpcBase}/wallet/broadcasttransaction`,
+          signed,
+        );
+
+        if (!broadcast.result) {
+          throw new Error(broadcast.message ?? broadcast.code ?? "tron_broadcast_rejected");
+        }
+
+        const txHash = broadcast.txid ?? signed.txID;
+        if (!txHash) {
+          throw new Error("tron_broadcast_missing_txid");
+        }
+
+        return {
+          family: "tron",
+          chainId: TRON_CHAIN_ID,
+          status: "submitted",
+          txHash,
+          explorerUrl: this.buildExplorerTxUrl(txHash),
+          errorCode: null,
+          errorMessage: null,
+          broadcastProvider: "rango",
+          submittedAt: new Date().toISOString(),
+        };
+      } finally {
+        wipeBytes(signer.privateKey);
+      }
     },
 
-    async signMessage() {
-      notImplemented("tron_sign_message");
+    async signMessage(input) {
+      if (!input.mnemonic) {
+        throw new Error("missing_signer");
+      }
+      const signer = deriveTronSignerFromMnemonic(input.mnemonic);
+      try {
+        const prefix = "\x19TRON Signed Message:\n";
+        const messageBytes = new TextEncoder().encode(input.message);
+        const prefixBytes = new TextEncoder().encode(`${prefix}${messageBytes.length}`);
+        const payload = concatBytes(prefixBytes, messageBytes);
+        const digest = keccak_256(payload);
+
+        const signature = secp256k1.sign(digest, signer.privateKey, { lowS: true });
+        const signatureHex = `${bytesToHex(signatureToCompact(signature))}${recoveryByteHex(signature)}`;
+        return signatureHex;
+      } finally {
+        wipeBytes(signer.privateKey);
+      }
     },
 
     async signTypedData() {
-      notImplemented("tron_sign_typed_data");
+      throw new Error("tron_sign_typed_data_unsupported");
     },
 
-    async signTransaction() {
-      notImplemented("tron_sign_transaction");
+    async signTransaction(input) {
+      if (!input.mnemonic) {
+        throw new Error("missing_signer");
+      }
+      const signer = deriveTronSignerFromMnemonic(input.mnemonic);
+      try {
+        const transaction = typeof input.transaction === "string" 
+          ? JSON.parse(input.transaction) 
+          : input.transaction;
+        
+        const signed = signTronTransaction(transaction as TronTransaction, signer.privateKey);
+        return JSON.stringify(signed);
+      } finally {
+        wipeBytes(signer.privateKey);
+      }
     },
   };
 }

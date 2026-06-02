@@ -1,5 +1,7 @@
+import type { ChainId } from "./multichain";
+
 export interface CuratedToken {
-  chainId: number;
+  chainId: ChainId;
   address: string;
   symbol: string;
   name: string;
@@ -158,6 +160,6 @@ export const CURATED_TOKENS: CuratedToken[] = [
   { chainId: 59144, address: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff", symbol: "USDC", name: "USD Coin", decimals: 6, logoUrl: null, verified: true },
 ];
 
-export function getCuratedTokens(chainId: number): CuratedToken[] {
+export function getCuratedTokens(chainId: ChainId): CuratedToken[] {
   return CURATED_TOKENS.filter((item) => item.chainId === chainId);
 }
