@@ -581,7 +581,9 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                           <span className="text-xs text-slate-400">▼</span>
                         </button>
                         {networkMenuOpen ? (
-                          <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-48 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setNetworkMenuOpen(false)} />
+                            <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-48 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
                             {networkOptions.map((option) => (
                               <button
                                 key={`${option.chainId}-${option.tokenAddress}`}
@@ -613,7 +615,9 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                           Blockchain
                         </button>
                         {explorerMenuOpen ? (
-                          <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-64 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setExplorerMenuOpen(false)} />
+                            <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-64 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
                             {explorerOptions.map((option) => (
                               <a
                                 key={option.url}

@@ -1678,7 +1678,6 @@ main.flex-1,
 }
 
 .token-inline-picker .token-picker-list {
-  max-height: calc(100% - 150px);
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1694,13 +1693,6 @@ main.flex-1,
 }
 
 @media (max-width: 767px) {
-  .token-inline-picker {
-    max-height: 460px;
-  }
-
-  .token-inline-picker .token-picker-list {
-    max-height: 240px;
-  }
 }
 
 .token-picker-close {
@@ -1790,7 +1782,6 @@ main.flex-1,
 .token-picker-list {
   display: grid;
   gap: 8px;
-  max-height: min(430px, calc(100vh - 300px));
   margin-top: 14px;
   overflow-y: auto;
   padding-right: 14px;

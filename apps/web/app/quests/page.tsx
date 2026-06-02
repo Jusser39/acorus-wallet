@@ -182,10 +182,8 @@ function LeafIcon() {
 }
 
 export default function QuestsPage() {
-  const { profiles, activeProfileId } = useWalletStore((state) => ({
-    profiles: state.profiles,
-    activeProfileId: state.activeProfileId,
-  }));
+  const profiles = useWalletStore((state) => state.profiles);
+  const activeProfileId = useWalletStore((state) => state.activeProfileId);
   const hasWallet = profiles.some((profile) => profile.type !== "practice");
   const [mounted, setMounted] = useState(false);
   

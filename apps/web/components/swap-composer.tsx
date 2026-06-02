@@ -779,7 +779,7 @@ export function SwapComposer(props: {
                 </span>
                 <span className="block truncate text-sm text-slate-500">
                   {token.symbol}
-                  {token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native"}
+                  {isCrossChainPicker && !isShowingNetworks ? "" : (token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native")}
                 </span>
               </span>
               {token.balanceFormatted ? (
