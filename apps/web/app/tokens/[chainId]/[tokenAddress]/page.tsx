@@ -601,6 +601,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                               </button>
                             ))}
                           </div>
+                          </>
                         ) : null}
                       </div>
                     ) : null}
@@ -631,6 +632,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                               </a>
                             ))}
                           </div>
+                          </>
                         ) : null}
                       </div>
                     ) : null}
