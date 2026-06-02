@@ -305,14 +305,16 @@ export default function QuestsPage() {
               </div>
               <button
                 className={`py-2 px-4 rounded-full text-sm font-bold w-full transition-all ${
-                  canCheckIn 
-                    ? "bg-sky-400 text-white shadow-[0_4px_12px_rgba(56,189,248,0.3)] hover:scale-105" 
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  !hasWallet 
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    : canCheckIn 
+                      ? "bg-sky-400 text-white shadow-[0_4px_12px_rgba(56,189,248,0.3)] hover:scale-105" 
+                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
                 }`}
                 onClick={handleCheckIn}
-                disabled={!canCheckIn}
+                disabled={!canCheckIn && hasWallet}
               >
-                {canCheckIn ? "Claim 10" : "Claimed"} {canCheckIn && <LeafIcon />}
+                {!hasWallet ? "Connect Wallet" : canCheckIn ? "Claim 10" : "Claimed"} {hasWallet && canCheckIn && <LeafIcon />}
               </button>
             </div>
 
