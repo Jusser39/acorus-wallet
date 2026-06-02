@@ -7,6 +7,7 @@ import { listTransactions, updateTransactionStatus } from "@/lib/api";
 import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 import { StatusBadge } from "@/components/status-badge";
+import { GlassCard } from "@/components/glass-card";
 import type { TransactionRecordItem } from "@acorus/shared";
 
 export default function HistoryPage() {
@@ -115,22 +116,61 @@ export default function HistoryPage() {
         {items.length ? (
           items.map((item) => {
             const chain = getChainById(item.chainId);
-            const canRefresh = item.assetType !== "practice" && chain?.family === "evm";
+            const canRefresh = item.assetType !== "practice" && chain?.family === "evm" && !item.hash.startsWith("swap_");
+
+            let isSwap = false;
+            let swapData: any = null;
+            if (item.rawStatus) {
+              try {
+                const parsed = JSON.parse(item.rawStatus);
+                if (parsed && parsed.type === "swap") {
+                  isSwap = true;
+                  swapData = parsed;
+                }
+              } catch (e) {}
+            }
 
             return (
-              <div key={item.id} className="panel space-y-3">
+              <GlassCard key={item.id} className="p-4 space-y-3" glow={isSwap}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium">
-                      {item.direction.toUpperCase()} · {item.symbol} · {item.amount}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-400">
-                      {formatAddress(item.from)} → {formatAddress(item.to)}
-                    </p>
+                    {isSwap ? (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 10v12"/><path d="M7 22l-4-4"/><path d="M15 22l4-4"/><path d="M21 6H3"/><path d="M3 6l4-4"/><path d="M21 6l-4-4"/></svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">
+                            Swap {swapData.sellAmount} {swapData.sellSymbol} → {swapData.buyAmount} {swapData.buySymbol}
+                          </p>
+                          <p className="text-sm text-slate-400">
+                            via {swapData.routeLabel || swapData.provider || "Router"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ring-1 ${item.direction === "in" ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30" : "bg-slate-500/20 text-slate-300 ring-slate-500/30"}`}>
+                          {item.direction === "in" ? (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">
+                            {item.direction === "in" ? "Receive" : "Send"} {item.amount} {item.symbol}
+                          </p>
+                          <p className="text-sm text-slate-400">
+                            {item.direction === "in" ? `From: ${formatAddress(item.from)}` : `To: ${formatAddress(item.to)}`}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <StatusBadge status={item.status} />
                 </div>
-                <div className="grid gap-2 text-sm text-slate-300">
+                <div className="grid gap-2 text-sm text-slate-300 pl-10 border-t border-white/5 pt-3 mt-3">
                   <p>
                     Network: {chain?.name ?? item.chainId}
                   </p>
@@ -139,12 +179,12 @@ export default function HistoryPage() {
                     <p>Confirmed: {new Date(item.confirmedAt).toLocaleString("ru-RU")}</p>
                   ) : null}
                   <div className="flex flex-wrap items-center gap-4">
-                    <span>Hash: {formatAddress(item.hash)}</span>
+                    {item.hash && !item.hash.startsWith("swap_") ? <span>Hash: {formatAddress(item.hash)}</span> : null}
                     {item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash) ? (
                       <Link
                         href={item.explorerUrl ?? getExplorerTxUrl(item.chainId, item.hash)!}
                         target="_blank"
-                        className="text-emerald-300"
+                        className="text-emerald-300 hover:text-emerald-200 transition-colors"
                       >
                         Explorer
                       </Link>
@@ -152,19 +192,16 @@ export default function HistoryPage() {
                     {canRefresh ? (
                       <button
                         type="button"
-                        className="text-emerald-300"
+                        className="text-emerald-300 hover:text-emerald-200 transition-colors"
                         onClick={() => void handleRefreshSingle(item)}
                       >
                         Refresh status
                       </button>
                     ) : null}
                   </div>
-                  {item.rawStatus ? <p className="text-slate-400">Raw status: {item.rawStatus}</p> : null}
+                  {item.rawStatus && !isSwap ? <p className="text-slate-400 text-xs">Raw status: {item.rawStatus}</p> : null}
                 </div>
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                  {item.assetType}
-                </div>
-              </div>
+              </GlassCard>
             );
           })
         ) : (

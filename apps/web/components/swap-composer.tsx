@@ -18,6 +18,7 @@ import {
   getJupiterSwapQuote,
   getRangoSwapQuote,
   getUniversalSwapStatus,
+  createTransaction,
   type EvmSwapStatus,
   type UniversalSwapStatus,
 } from "@/lib/api";
@@ -42,6 +43,7 @@ import {
   getPopularSwapTokens,
   type SwapTokenOption,
 } from "@/lib/swap-token-catalog";
+import { useWalletStore, useActiveProfile } from "@/store/wallet-store";
 
 export function SwapComposer(props: {
   portfolioAssets?: AssetBalance[];
@@ -90,6 +92,10 @@ export function SwapComposer(props: {
   const [rangoResult, setRangoResult] = useState<string | null>(null);
   const [rangoRoute, setRangoRoute] = useState<RangoSwapQuoteResponse | null>(null);
   const [panelSide, setPanelSide] = useState<"left" | "right">("left");
+
+  const activeProfile = useActiveProfile();
+  const userId = useWalletStore((state) => state.userId);
+
   const composerRef = useRef<HTMLDivElement>(null);
   const activeUserAddress = props.userAddress ?? connectedAddress;
 
@@ -446,6 +452,32 @@ export function SwapComposer(props: {
         priceImpact: quote.estimatedPriceImpact,
         routeLabel: quote.routeSummary.label,
       });
+
+      if (userId && activeProfile) {
+        await createTransaction({
+          userId,
+          walletProfileId: activeProfile.id,
+          chainId: quote.chainId,
+          hash: `swap_${quote.requestId}`,
+          from: activeUserAddress ?? quote.takerAddress,
+          to: quote.to,
+          assetType: "erc20",
+          tokenAddress: quote.sellToken.address,
+          symbol: quote.sellToken.symbol,
+          amount: quote.sellAmountRaw,
+          status: "pending",
+          direction: "out",
+          submittedAt: new Date().toISOString(),
+          rawStatus: JSON.stringify({
+            type: "swap",
+            sellSymbol: quote.sellToken.symbol,
+            buySymbol: quote.buyToken.symbol,
+            sellAmount: shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals),
+            buyAmount: shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals),
+            provider: "0x",
+          }),
+        }).catch(() => {});
+      }
 
       setExtensionResult("Swap request queued in Acorus extension. Open the popup to approve or reject.");
     } catch (err) {
@@ -875,6 +907,42 @@ export function SwapComposer(props: {
         expiresAt: route.expiresAt,
         executionStatus: "review_only",
       });
+
+      if (userId && activeProfile) {
+        const routeLabel = provider === "jupiter"
+          ? (route as SolanaSwapQuoteResponse).routeSummary.map((step) => step.protocolName).filter(Boolean).join(" + ") || "Jupiter"
+          : (route as RangoSwapQuoteResponse).routeLabel;
+
+        const sellSymbol = provider === "jupiter" ? "SOL/SPL" : (route as RangoSwapQuoteResponse).from;
+        const buySymbol = provider === "jupiter" ? "SOL/SPL" : (route as RangoSwapQuoteResponse).to;
+        const sellAmountFormatted = provider === "jupiter" ? (route as SolanaSwapQuoteResponse).inAmountRaw : sellAmount;
+        const buyAmountFormatted = provider === "jupiter" ? (route as SolanaSwapQuoteResponse).outAmountRaw : (route as RangoSwapQuoteResponse).outputAmountFormatted;
+
+        await createTransaction({
+          userId,
+          walletProfileId: activeProfile.id,
+          chainId: provider === "jupiter" ? 101 : 0, // 0 for crosschain
+          hash: `swap_${Date.now().toString()}`,
+          from: activeUserAddress ?? "crosschain",
+          to: provider,
+          assetType: "erc20",
+          tokenAddress: null,
+          symbol: sellSymbol,
+          amount: "0",
+          status: "pending",
+          direction: "out",
+          submittedAt: new Date().toISOString(),
+          rawStatus: JSON.stringify({
+            type: "swap",
+            sellSymbol,
+            buySymbol,
+            sellAmount: sellAmountFormatted ?? "",
+            buyAmount: buyAmountFormatted ?? "",
+            provider,
+            routeLabel,
+          }),
+        }).catch(() => {});
+      }
 
       setExtensionResult("Route review queued in Acorus extension. Execution remains gated until this route is fully supported.");
     } catch (err) {
