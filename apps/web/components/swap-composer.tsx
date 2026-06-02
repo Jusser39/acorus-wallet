@@ -147,7 +147,8 @@ export function SwapComposer(props: {
   const isTonSwap = chainId === "ton-mainnet";
   const isBitcoinSwap = chainId === "bitcoin-mainnet";
   const isEvmSwap = !isSolanaSwap && !isCrossChainSwap && !isTonSwap && !isBitcoinSwap;
-  const universalRoute = isSolanaSwap ? jupiterRoute : isCrossChainSwap ? rangoRoute : null;
+  const isRangoSwap = isCrossChainSwap || isTonSwap || isBitcoinSwap;
+  const universalRoute = isSolanaSwap ? jupiterRoute : isRangoSwap ? rangoRoute : null;
 
   useEffect(() => {
     requestAcorusProviderDiscovery();
@@ -212,12 +213,12 @@ export function SwapComposer(props: {
       nextTokens,
       props.initialSellToken,
       props.initialBuyToken ?? nextTokens[1]?.value,
-    ) ?? nextTokens[0]?.value ?? "native";
+    ) ?? null;
     const nextBuyToken = resolveInitialTokenValue(
       nextTokens,
       props.initialBuyToken,
-      nextSellToken,
-    ) ?? nextTokens.find((token) => token.value.toLowerCase() !== nextSellToken.toLowerCase())?.value ?? nextSellToken;
+      nextSellToken ?? undefined,
+    ) ?? null;
 
     setSellToken(nextSellToken);
     setBuyToken(nextBuyToken);
@@ -270,7 +271,7 @@ export function SwapComposer(props: {
     const timer = window.setTimeout(() => {
       if (isSolanaSwap) {
         void handleJupiterQuote();
-      } else if (isCrossChainSwap) {
+      } else if (isRangoSwap) {
         void handleRangoQuote();
       } else if (isEvmSwap) {
         void handleQuote();
@@ -533,7 +534,7 @@ export function SwapComposer(props: {
       return;
     }
 
-    if (isCrossChainSwap) {
+    if (isRangoSwap) {
       if (!rangoRoute) {
         await handleRangoQuote();
         return;
@@ -642,7 +643,13 @@ export function SwapComposer(props: {
 
   function renderInlineTokenPicker(side: "sell" | "buy") {
     return (
-      <div className="token-inline-picker premium-card flex flex-col" role="dialog" aria-label="Choose token">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setTokenPickerSide(null)}>
+        <div 
+          className="token-inline-picker premium-card flex flex-col w-full max-w-md shadow-2xl bg-white" 
+          role="dialog" 
+          aria-label="Choose token"
+          onClick={(e) => e.stopPropagation()}
+        >
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-black text-slate-950">Choose token</h2>
           <div className="flex items-center gap-2">
@@ -746,9 +753,9 @@ export function SwapComposer(props: {
     setError(null);
     try {
       if (!selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
-      const from = isCrossChainSwap ? selectedSellToken.value : rangoFrom;
-      const to = isCrossChainSwap ? selectedBuyToken.value : rangoTo;
-      const amount = isCrossChainSwap ? sellAmount : rangoAmount;
+      const from = isRangoSwap ? selectedSellToken.value : rangoFrom;
+      const to = isRangoSwap ? selectedBuyToken.value : rangoTo;
+      const amount = isRangoSwap ? sellAmount : rangoAmount;
 
       if (!selectedSellToken || !selectedBuyToken) throw new Error("Select tokens to proceed.");
       if (selectedSellToken.value === selectedBuyToken.value) {
@@ -812,7 +819,7 @@ export function SwapComposer(props: {
 
   const providerReady = isEvmSwap
     ? Boolean(status?.configured && status.enabled)
-    : (isSolanaSwap || isCrossChainSwap);
+    : (isSolanaSwap || isRangoSwap);
   const highImpact = quote?.estimatedPriceImpact
     ? Number(quote.estimatedPriceImpact) > 0.05
     : false;
@@ -887,7 +894,7 @@ export function SwapComposer(props: {
           </div>
         ) : null}
 
-        {universalStatus && showUniversalRouteForms && !isSolanaSwap && !isCrossChainSwap ? (
+        {universalStatus && showUniversalRouteForms && !isSolanaSwap && !isRangoSwap ? (
           <div className="rounded-[1.6rem] border border-fuchsia-100 bg-white/72 p-4 shadow-sm text-sm text-slate-600">
             <h2 className="font-semibold mb-2">Universal routing providers</h2>
             <p>Select Solana or Any network above to activate universal routes.</p>
@@ -996,7 +1003,7 @@ export function SwapComposer(props: {
                   value={
                     quote ? shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals) : 
                     isSolanaSwap && jupiterRoute ? shortenFormattedEvmTokenAmount((jupiterRoute as SolanaSwapQuoteResponse).outAmountRaw, selectedBuyToken?.decimals ?? 18) :
-                    isCrossChainSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
+                    isRangoSwap && rangoRoute ? ((rangoRoute as RangoSwapQuoteResponse).outputAmountFormatted || "0") :
                     ""
                   }
                   readOnly
@@ -1136,9 +1143,7 @@ export function SwapComposer(props: {
           ? `space-y-6 xl:absolute xl:top-0 xl:z-50 xl:w-[360px] ${panelSide === "left" ? "xl:right-full xl:mr-6" : "xl:left-full xl:ml-6"}`
           : `space-y-6 ${panelSide === "left" ? "order-first" : ""}`
       }>
-        {tokenPickerSide ? (
-          renderInlineTokenPicker(tokenPickerSide)
-        ) : (
+        {tokenPickerSide ? null : (
           <>
             <div className="premium-card space-y-3 p-5">
               <h2 className="text-xl font-semibold text-slate-950">{quote || universalRoute ? "Route review" : "Swap status"}</h2>
@@ -1260,6 +1265,8 @@ export function SwapComposer(props: {
         )}
       </aside>
       ) : null}
+
+      {tokenPickerSide ? renderInlineTokenPicker(tokenPickerSide) : null}
 
     </div>
   );
