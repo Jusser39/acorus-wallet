@@ -7,15 +7,15 @@ import { useWalletStore } from "@/store/wallet-store";
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
-  const bootstrapped = useWalletStore((state) => state.bootstrapped);
+  const isBootstrapped = useWalletStore((state) => state.isBootstrapped);
 
   useEffect(() => {
-    if (bootstrapped && !unlockedVault) {
+    if (isBootstrapped && !unlockedVault) {
       router.push("/unlock");
     }
-  }, [bootstrapped, unlockedVault, router]);
+  }, [isBootstrapped, unlockedVault, router]);
 
-  if (!bootstrapped || !unlockedVault) {
+  if (!isBootstrapped || !unlockedVault) {
     return null; // Or a loading spinner
   }
 
