@@ -28,8 +28,10 @@ export function StakeClient() {
 
       {/* Hero Banner */}
       <div className="app-surface relative overflow-hidden rounded-[2rem] p-6 sm:p-8 shadow-xl shadow-fuchsia-500/5">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-fuchsia-400/10 blur-3xl"></div>
-        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-violet-400/10 blur-3xl"></div>
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-fuchsia-400/10 blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-violet-400/10 blur-3xl"></div>
+        </div>
         
         <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

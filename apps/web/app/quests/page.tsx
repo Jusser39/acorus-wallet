@@ -182,7 +182,10 @@ function LeafIcon() {
 }
 
 export default function QuestsPage() {
-  const profiles = useWalletStore((state) => state.profiles);
+  const { profiles, activeProfileId } = useWalletStore((state) => ({
+    profiles: state.profiles,
+    activeProfileId: state.activeProfileId,
+  }));
   const hasWallet = profiles.some((profile) => profile.type !== "practice");
   const [mounted, setMounted] = useState(false);
   
@@ -192,24 +195,27 @@ export default function QuestsPage() {
   const [baseShards, setBaseShards] = useState(180);
   const [activeTab, setActiveTab] = useState<"All quests" | "In progress" | "Completed">("All quests");
 
+  const storagePrefix = activeProfileId ? `acorus.quests.${activeProfileId}.` : "acorus.quests.";
+
   useEffect(() => {
     try {
-      setCompletedEvents(JSON.parse(localStorage.getItem("acorus.quests.events") ?? "[]"));
-      setLastCheckIn(localStorage.getItem("acorus.quests.lastCheckIn"));
-      setStreakCount(parseInt(localStorage.getItem("acorus.quests.streak") ?? "0", 10));
-      setBaseShards(parseInt(localStorage.getItem("acorus.quests.shards") ?? "180", 10));
+      setCompletedEvents(JSON.parse(localStorage.getItem(`${storagePrefix}events`) ?? "[]"));
+      setLastCheckIn(localStorage.getItem(`${storagePrefix}lastCheckIn`));
+      setStreakCount(parseInt(localStorage.getItem(`${storagePrefix}streak`) ?? "0", 10));
+      setBaseShards(parseInt(localStorage.getItem(`${storagePrefix}shards`) ?? "180", 10));
     } catch {}
     setMounted(true);
-  }, []);
+  }, [storagePrefix]);
 
   const saveState = (shards: number, streak: number, checkIn: string) => {
     setBaseShards(shards);
     setStreakCount(streak);
     setLastCheckIn(checkIn);
-    localStorage.setItem("acorus.quests.shards", shards.toString());
-    localStorage.setItem("acorus.quests.streak", streak.toString());
-    localStorage.setItem("acorus.quests.lastCheckIn", checkIn);
+    localStorage.setItem(`${storagePrefix}shards`, shards.toString());
+    localStorage.setItem(`${storagePrefix}streak`, streak.toString());
+    localStorage.setItem(`${storagePrefix}lastCheckIn`, checkIn);
   };
+
 
   const autoCompleted = useMemo(
     () =>
