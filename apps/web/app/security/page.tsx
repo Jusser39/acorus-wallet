@@ -45,6 +45,25 @@ export default function SecurityPage() {
         </p>
       </div>
 
+      {/* Scanner Banner */}
+      <div className="rounded-3xl border border-fuchsia-500/30 bg-gradient-to-r from-fuchsia-900/40 to-blue-900/40 p-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Active Threat Scanner</h2>
+            <p className="text-sm text-slate-300 mt-1">
+              Check tokens and smart contracts for honeypots, malicious code, and hidden taxes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push("/security/scanner")}
+            className="shrink-0 rounded-2xl bg-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-500 shadow-[0_0_20px_rgba(192,38,211,0.3)]"
+          >
+            Open Scanner
+          </button>
+        </div>
+      </div>
+
       {/* Wallet Lock */}
       <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 space-y-5 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
         <div className="flex items-center justify-between">
