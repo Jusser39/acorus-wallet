@@ -1,6 +1,6 @@
 import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
 import { getCuratedTokens } from "@acorus/shared";
-import type { ChainAdapter } from "./types";
+import { type ChainAdapter, notImplemented } from "./types";
 import {
   deriveSolanaAddressFromMnemonic,
   isValidSolanaAddress,
@@ -147,6 +147,30 @@ export function createSolanaAdapter(): ChainAdapter {
         broadcastProvider: "solana",
         submittedAt: new Date().toISOString(),
       };
+    },
+
+    async getTransactionHistory() {
+      notImplemented("solana_history");
+    },
+
+    async getSwapQuote() {
+      notImplemented("solana_swap_quote");
+    },
+
+    async executeSwap() {
+      notImplemented("solana_swap_execute");
+    },
+
+    async signMessage() {
+      notImplemented("solana_sign_message");
+    },
+
+    async signTypedData() {
+      notImplemented("solana_sign_typed_data");
+    },
+
+    async signTransaction() {
+      notImplemented("solana_sign_transaction");
     },
   };
 }

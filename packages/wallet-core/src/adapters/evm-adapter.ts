@@ -2,7 +2,7 @@ import type { Address } from "viem";
 import { formatUnits, getAddress, isAddress } from "viem";
 import { EVM_CHAINS, getChainById, getCuratedTokens } from "@acorus/shared";
 import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
-import type { ChainAdapter } from "./types";
+import { type ChainAdapter, notImplemented } from "./types";
 import { getEvmAddressFromMnemonic } from "../mnemonic";
 import { getErc20Balance, getNativeBalance } from "../evm/balance";
 import { buildExplorerAddressUrl, buildExplorerTxUrl } from "../evm/explorer";
@@ -233,6 +233,30 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
         broadcastProvider: "evm",
         submittedAt: new Date().toISOString(),
       };
+    },
+
+    async getTransactionHistory() {
+      notImplemented("evm_history");
+    },
+
+    async getSwapQuote() {
+      notImplemented("evm_swap_quote");
+    },
+
+    async executeSwap() {
+      notImplemented("evm_swap_execute");
+    },
+
+    async signMessage() {
+      notImplemented("evm_sign_message");
+    },
+
+    async signTypedData() {
+      notImplemented("evm_sign_typed_data");
+    },
+
+    async signTransaction() {
+      notImplemented("evm_sign_transaction");
     },
   };
 }

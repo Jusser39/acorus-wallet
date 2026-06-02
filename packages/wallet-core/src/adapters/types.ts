@@ -10,6 +10,7 @@ import type {
   SendDraft,
   SendDraftInput,
   SendExecutionResult,
+  TransactionRecord,
 } from "@acorus/shared";
 
 export type BroadcastSendInput = {
@@ -67,6 +68,41 @@ export type ChainAdapter = {
   createSendDraft?(input: SendDraftInput): Promise<SendDraft>;
   broadcastTransaction?(input: BroadcastInput): Promise<BroadcastResult>;
   broadcastSend?(input: BroadcastSendInput): Promise<SendExecutionResult>;
+
+  getTransactionHistory?(input: {
+    address: string;
+    rpcUrl?: string;
+  }): Promise<TransactionRecord[]>;
+
+  getSwapQuote?(input: {
+    fromAddress: string;
+    sellTokenAddress: string;
+    buyTokenAddress: string;
+    amountRaw: string;
+    slippageBps?: number;
+    rpcUrl?: string;
+  }): Promise<unknown>;
+
+  executeSwap?(input: {
+    quote: unknown;
+    mnemonic: string;
+    rpcUrl?: string;
+  }): Promise<SendExecutionResult>;
+
+  signMessage?(input: {
+    mnemonic: string;
+    message: string;
+  }): Promise<string>;
+
+  signTypedData?(input: {
+    mnemonic: string;
+    typedData: unknown;
+  }): Promise<string>;
+
+  signTransaction?(input: {
+    mnemonic: string;
+    transaction: unknown;
+  }): Promise<string>;
 };
 
 export function notImplemented(feature: string): never {

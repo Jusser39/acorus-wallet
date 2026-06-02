@@ -12,7 +12,7 @@ import { ripemd160 } from "@noble/hashes/ripemd160";
 import { sha256 } from "@noble/hashes/sha256";
 import { mnemonicToSeedSync, validateMnemonic } from "bip39";
 import { wipeBytes } from "../crypto/vault";
-import type { BroadcastSendInput, ChainAdapter } from "./types";
+import { type BroadcastSendInput, type ChainAdapter, notImplemented } from "./types";
 
 const BITCOIN_CHAIN_ID = "bitcoin-mainnet";
 const DEFAULT_ESPLORA_API = "https://blockstream.info/api";
@@ -135,6 +135,30 @@ export function createBitcoinAdapter(): ChainAdapter {
 
     async broadcastSend(input) {
       return broadcastBitcoinSend(input);
+    },
+
+    async getTransactionHistory() {
+      notImplemented("bitcoin_history");
+    },
+
+    async getSwapQuote() {
+      notImplemented("bitcoin_swap_quote");
+    },
+
+    async executeSwap() {
+      notImplemented("bitcoin_swap_execute");
+    },
+
+    async signMessage() {
+      notImplemented("bitcoin_sign_message");
+    },
+
+    async signTypedData() {
+      notImplemented("bitcoin_sign_typed_data");
+    },
+
+    async signTransaction() {
+      notImplemented("bitcoin_sign_transaction");
     },
   };
 }

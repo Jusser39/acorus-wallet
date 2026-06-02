@@ -12,7 +12,7 @@ import { mnemonicToSeedSync, validateMnemonic } from "bip39";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { sha256 } from "@noble/hashes/sha256";
 import { wipeBytes } from "../crypto/vault";
-import type { BroadcastSendInput, ChainAdapter } from "./types";
+import { type BroadcastSendInput, type ChainAdapter, notImplemented } from "./types";
 
 const TRON_CHAIN_ID = "tron-mainnet";
 const DEFAULT_TRON_RPC_URL = "https://api.trongrid.io";
@@ -168,6 +168,30 @@ export function createTronAdapter(): ChainAdapter {
 
     async broadcastSend(input) {
       return broadcastTronSend(input);
+    },
+
+    async getTransactionHistory() {
+      notImplemented("tron_history");
+    },
+
+    async getSwapQuote() {
+      notImplemented("tron_swap_quote");
+    },
+
+    async executeSwap() {
+      notImplemented("tron_swap_execute");
+    },
+
+    async signMessage() {
+      notImplemented("tron_sign_message");
+    },
+
+    async signTypedData() {
+      notImplemented("tron_sign_typed_data");
+    },
+
+    async signTransaction() {
+      notImplemented("tron_sign_transaction");
     },
   };
 }
