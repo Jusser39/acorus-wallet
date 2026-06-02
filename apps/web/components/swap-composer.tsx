@@ -679,7 +679,7 @@ export function SwapComposer(props: {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={() => setTokenPickerSide(null)}>
         <div 
-          className="token-inline-picker premium-card flex flex-col w-full max-w-md shadow-2xl bg-white h-[600px] max-h-[80vh]" 
+          className="token-inline-picker premium-card flex flex-col w-full max-w-[400px] shadow-2xl bg-white h-[500px] max-h-[75vh]" 
           role="dialog" 
           aria-label="Choose token"
           onClick={(e) => e.stopPropagation()}
@@ -698,13 +698,28 @@ export function SwapComposer(props: {
               <button 
                 type="button" 
                 className="token-picker-chain flex items-center gap-1.5"
-                onClick={() => setTokenPickerNetworkOpen(!tokenPickerNetworkOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTokenPickerNetworkOpen(!tokenPickerNetworkOpen);
+                }}
               >
                 {tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "Все сети" : getSwapNetworkLabel(tokenPickerChainId)}
                 <span className="text-xs">⌄</span>
               </button>
               {tokenPickerNetworkOpen ? (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto">
+                <div 
+                  className="absolute right-0 top-full mt-2 w-48 rounded-2xl bg-white p-2 shadow-xl border border-slate-100 z-50 text-sm max-h-[300px] overflow-y-auto"
+                  ref={(node) => {
+                    if (node) {
+                      const listener = (e: MouseEvent) => {
+                        if (!node.contains(e.target as Node)) {
+                          setTokenPickerNetworkOpen(false);
+                        }
+                      };
+                      document.addEventListener("click", listener, { once: true });
+                    }
+                  }}
+                >
                   <button
                     type="button"
                     className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${tokenPickerChainId === CROSS_CHAIN_SWAP_ID ? "bg-slate-50 font-semibold" : ""}`}
@@ -775,11 +790,11 @@ export function SwapComposer(props: {
               <TokenIcon token={token} />
               <span className="min-w-0 flex-1 text-left">
                 <span className="block truncate text-lg font-black text-slate-950">
-                  {isShowingNetworks ? getSwapNetworkLabel(token.chainId) : token.name}
+                  {isShowingNetworks ? getSwapNetworkLabel(token.chainId) : token.symbol}
                 </span>
                 <span className="block truncate text-sm text-slate-500">
-                  {token.symbol}
-                  {isCrossChainPicker && !isShowingNetworks ? "" : (token.tokenAddress ? ` · ${shortTokenAddress(token.tokenAddress)}` : " · native")}
+                  {isShowingNetworks ? token.name : (token.name.toLowerCase() !== token.symbol.toLowerCase() ? token.name : "")}
+                  {isCrossChainPicker && !isShowingNetworks ? "" : (token.tokenAddress ? ` · ${token.tokenAddress.slice(0, 6)}...${token.tokenAddress.slice(-4)}` : "")}
                 </span>
               </span>
               {token.balanceFormatted ? (
@@ -1008,6 +1023,7 @@ export function SwapComposer(props: {
                   aria-expanded={tokenPickerSide === "sell"}
                   onClick={() => {
                     setNetworkPickerOpen(false);
+                    setTokenPickerChainId(CROSS_CHAIN_SWAP_ID);
                     setTokenPickerSide(tokenPickerSide === "sell" ? null : "sell");
                   }}
                 >
@@ -1064,6 +1080,7 @@ export function SwapComposer(props: {
                   aria-expanded={tokenPickerSide === "buy"}
                   onClick={() => {
                     setNetworkPickerOpen(false);
+                    setTokenPickerChainId(CROSS_CHAIN_SWAP_ID);
                     setTokenPickerSide(tokenPickerSide === "buy" ? null : "buy");
                   }}
                 >
@@ -1428,13 +1445,6 @@ function getUniversalSwapCtaLabel(input: {
   return "Review route";
 }
 
-function shortTokenAddress(value: string): string {
-  if (value.length <= 12) {
-    return value;
-  }
-
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
 
 function parseChainId(value: string | number | null): number | null {
   if (value === null) {

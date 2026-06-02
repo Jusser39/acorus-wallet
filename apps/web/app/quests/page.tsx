@@ -203,7 +203,7 @@ export default function QuestsPage() {
       setBaseShards(parseInt(localStorage.getItem(`${storagePrefix}shards`) ?? "180", 10));
     } catch {}
     setMounted(true);
-  }, [storagePrefix]);
+  }, [storagePrefix, hasWallet, activeProfileId]);
 
   const saveState = (shards: number, streak: number, checkIn: string) => {
     setBaseShards(shards);
@@ -233,9 +233,13 @@ export default function QuestsPage() {
   const today = new Date().toISOString().split("T")[0]!;
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0]!;
   
-  const canCheckIn = lastCheckIn !== today;
+  const canCheckIn = hasWallet && lastCheckIn !== today;
 
   const handleCheckIn = () => {
+    if (!hasWallet) {
+      alert("Please connect or import a wallet first to start claiming rewards.");
+      return;
+    }
     if (!canCheckIn) return;
     
     let newStreak = streakCount;
