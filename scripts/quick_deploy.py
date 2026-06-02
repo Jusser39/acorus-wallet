@@ -11,9 +11,8 @@ try:
     
     commands = [
         "cd /opt/acorus-wallet && git stash && git pull origin main",
-        "cd /opt/acorus-wallet && pnpm install",
-        "cd /opt/acorus-wallet && pnpm --filter @acorus/web build",
-        "cd /opt/acorus-wallet && docker compose --env-file .env -f infra/docker-compose.yml restart web"
+        "cd /opt/acorus-wallet && docker compose --env-file .env -f infra/docker-compose.yml build web",
+        "cd /opt/acorus-wallet && docker compose --env-file .env -f infra/docker-compose.yml up -d web"
     ]
     
     for cmd in commands:
