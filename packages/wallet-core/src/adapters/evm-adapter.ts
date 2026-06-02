@@ -2,11 +2,13 @@ import type { Address } from "viem";
 import { formatUnits, getAddress, isAddress } from "viem";
 import { EVM_CHAINS, getChainById, getCuratedTokens } from "@acorus/shared";
 import type { AssetBalance, DerivedAccount, ReceiveInfo, SendDraft, SendExecutionResult } from "@acorus/shared";
-import { type ChainAdapter, notImplemented } from "./types";
+import type { ChainAdapter } from "./types";
 import { getEvmAddressFromMnemonic } from "../mnemonic";
 import { getErc20Balance, getNativeBalance } from "../evm/balance";
 import { buildExplorerAddressUrl, buildExplorerTxUrl } from "../evm/explorer";
 import { sendNativeTransaction, sendErc20Transaction } from "../evm/send";
+import { createEvmWalletClient } from "../evm/client";
+import { fetchZeroXQuote, type ZeroXQuoteResponse } from "../evm/swap";
 
 export function createEvmAdapter(chainId: number): ChainAdapter {
   const chain = getChainById(chainId);
@@ -36,9 +38,9 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
       receive: true,
       sendDraft: true,
       broadcast: true,
-      history: true,
-      swap: false,
-      dapp: false,
+      history: false,
+      swap: true,
+      dapp: true,
     },
 
     validateAddress(address: string): boolean {
@@ -236,27 +238,87 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
     },
 
     async getTransactionHistory() {
-      notImplemented("evm_history");
+      // Pending backend EVM history proxy implementation.
+      return [];
     },
 
-    async getSwapQuote() {
-      notImplemented("evm_swap_quote");
+    async getSwapQuote(input) {
+      return fetchZeroXQuote({
+        chainId: chainId,
+        sellToken: input.sellTokenAddress,
+        buyToken: input.buyTokenAddress,
+        sellAmount: input.amountRaw,
+        taker: input.fromAddress,
+        slippageBps: input.slippageBps,
+        apiBaseUrl: input.rpcUrl, // Optional fallback
+      });
     },
 
-    async executeSwap() {
-      notImplemented("evm_swap_execute");
+    async executeSwap(input) {
+      const numericChainId = chainId as number;
+      const quote = input.quote as ZeroXQuoteResponse;
+
+      if (!quote.transaction) {
+        throw new Error("swap_quote_missing_transaction");
+      }
+
+      if (!input.mnemonic) {
+        throw new Error("missing_signer");
+      }
+
+      const env = input.rpcUrl ? { [chain.rpcUrlEnv]: input.rpcUrl } : undefined;
+      const walletClient = createEvmWalletClient(input.mnemonic, numericChainId, env);
+      const txHash = await walletClient.sendTransaction({
+        account: walletClient.account!,
+        to: quote.transaction.to as Address,
+        data: quote.transaction.data as `0x${string}`,
+        value: BigInt(quote.transaction.value),
+        chain: walletClient.chain,
+      });
+
+      return {
+        family: "evm",
+        chainId: numericChainId,
+        status: "submitted",
+        txHash,
+        explorerUrl: buildExplorerTxUrl(numericChainId, txHash),
+        errorCode: null,
+        errorMessage: null,
+        broadcastProvider: "evm",
+        submittedAt: new Date().toISOString(),
+      };
     },
 
-    async signMessage() {
-      notImplemented("evm_sign_message");
+    async signMessage(input) {
+      const numericChainId = chainId as number;
+      const walletClient = createEvmWalletClient(input.mnemonic, numericChainId);
+      return walletClient.signMessage({
+        message: input.message,
+        account: walletClient.account!,
+      });
     },
 
-    async signTypedData() {
-      notImplemented("evm_sign_typed_data");
+    async signTypedData(input) {
+      const numericChainId = chainId as number;
+      const walletClient = createEvmWalletClient(input.mnemonic, numericChainId);
+      
+      // typedData from EIP-712 usually contains domain, types, primaryType, message
+      const typedData = input.typedData as any;
+      return walletClient.signTypedData({
+        ...typedData,
+        account: walletClient.account!,
+      });
     },
 
-    async signTransaction() {
-      notImplemented("evm_sign_transaction");
+    async signTransaction(input) {
+      const numericChainId = chainId as number;
+      const walletClient = createEvmWalletClient(input.mnemonic, numericChainId);
+      
+      const transaction = input.transaction as any;
+      return walletClient.signTransaction({
+        ...transaction,
+        account: walletClient.account!,
+      });
     },
   };
 }
