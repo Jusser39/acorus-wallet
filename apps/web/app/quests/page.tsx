@@ -197,10 +197,17 @@ export default function QuestsPage() {
 
   useEffect(() => {
     try {
-      setCompletedEvents(JSON.parse(localStorage.getItem(`${storagePrefix}events`) ?? "[]"));
-      setLastCheckIn(localStorage.getItem(`${storagePrefix}lastCheckIn`));
-      setStreakCount(parseInt(localStorage.getItem(`${storagePrefix}streak`) ?? "0", 10));
-      setBaseShards(parseInt(localStorage.getItem(`${storagePrefix}shards`) ?? "180", 10));
+      if (!hasWallet) {
+        setCompletedEvents([]);
+        setLastCheckIn(null);
+        setStreakCount(0);
+        setBaseShards(0);
+      } else {
+        setCompletedEvents(JSON.parse(localStorage.getItem(`${storagePrefix}events`) ?? "[]"));
+        setLastCheckIn(localStorage.getItem(`${storagePrefix}lastCheckIn`));
+        setStreakCount(parseInt(localStorage.getItem(`${storagePrefix}streak`) ?? "0", 10));
+        setBaseShards(parseInt(localStorage.getItem(`${storagePrefix}shards`) ?? "180", 10));
+      }
     } catch {}
     setMounted(true);
   }, [storagePrefix, hasWallet, activeProfileId]);
