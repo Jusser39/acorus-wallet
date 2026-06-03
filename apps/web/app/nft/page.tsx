@@ -38,17 +38,11 @@ export default function NftPage() {
       return;
     }
     
-    // Find the first account in the active profile's chain family (EVM/Solana)
     const registry = createDefaultAdapterRegistry();
-    const account = activeProfile.accounts.find(a => {
-       const adapter = registry.getAdapter(a.networkId);
-       return adapter && adapter.family === activeProfile.chainFamily;
-    });
+    const adapter = registry.list().find(a => a.family === activeProfile.chainFamily && a.capabilities.nft && a.getNfts);
 
-    if (account) {
-      const adapter = registry.getAdapter(account.networkId);
-      if (adapter?.capabilities.nft && adapter.getNfts) {
-        adapter.getNfts({ address: account.address }).then((nfts) => {
+    if (adapter && adapter.getNfts) {
+      adapter.getNfts({ address: activeProfile.publicAddress }).then((nfts) => {
           const mapped: NftCollectible[] = nfts.map(n => ({
             id: n.id,
             family: adapter.family,
@@ -77,7 +71,6 @@ export default function NftPage() {
           setLiveItems(null);
         });
         return;
-      }
     }
     setLiveItems(null);
   }, [activeProfile]);

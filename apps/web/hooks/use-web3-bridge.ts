@@ -31,11 +31,10 @@ export function useWeb3Bridge(iframeRef: React.RefObject<HTMLIFrameElement | nul
             respond(null, { code: 4001, message: "User rejected the request." });
             return;
           }
-          // Assuming EVM addresses are the first account for demo purposes, 
-          // or we can just mock an address if none available.
-          const evmAccount = activeProfile.accounts.find(a => a.networkId.startsWith("eip155"));
-          if (evmAccount) {
-            respond([evmAccount.address]);
+          // Assuming the active profile's public address is the EVM address
+          // for the demo, since it's a unified address across most chains.
+          if (activeProfile.publicAddress) {
+            respond([activeProfile.publicAddress]);
           } else {
             // Mock address for practice/demo wallets
             respond(["0x742d35Cc6634C0532925a3b844Bc454e4438f44e"]);
