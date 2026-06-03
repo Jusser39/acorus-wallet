@@ -1434,19 +1434,7 @@ function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
   return token.symbol.slice(0, 4).toUpperCase();
 }
 
-function getNetworkBadgeUrl(chainId: number | string): string | null {
-  if (chainId === 1) return "https://assets.coingecko.com/coins/images/279/small/ethereum.png";
-  if (chainId === 56) return "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png";
-  if (chainId === 137) return "https://assets.coingecko.com/coins/images/4713/small/polygon.png";
-  if (chainId === 42161) return "https://assets.coingecko.com/coins/images/16547/small/arb.jpg";
-  if (chainId === 10) return "https://assets.coingecko.com/coins/images/25244/small/Optimism.png";
-  if (chainId === 8453) return "https://avatars.githubusercontent.com/u/108554348?v=4"; // Base logo
-  if (chainId === 43114) return "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png";
-  if (chainId === 101) return "https://assets.coingecko.com/coins/images/4128/small/solana.png";
-  if (chainId === "ton-mainnet") return "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png";
-  if (chainId === "bitcoin-mainnet") return "https://assets.coingecko.com/coins/images/1/small/bitcoin.png";
-  return null;
-}
+
 
 function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl" | "chainId"> }) {
   return (
