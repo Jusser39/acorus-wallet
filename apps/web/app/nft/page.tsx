@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChainFamilyBadge } from "@/components/universal-badges";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
-import { CHAIN_ADAPTERS } from "@acorus/wallet-core";
+import { createDefaultAdapterRegistry } from "@acorus/wallet-core";
 import {
   filterNfts,
   getNftActionLabel,
@@ -39,13 +39,14 @@ export default function NftPage() {
     }
     
     // Find the first account in the active profile's chain family (EVM/Solana)
+    const registry = createDefaultAdapterRegistry();
     const account = activeProfile.accounts.find(a => {
-       const adapter = CHAIN_ADAPTERS[a.networkId];
+       const adapter = registry.getAdapter(a.networkId);
        return adapter && adapter.family === activeProfile.chainFamily;
     });
 
     if (account) {
-      const adapter = CHAIN_ADAPTERS[account.networkId];
+      const adapter = registry.getAdapter(account.networkId);
       if (adapter?.capabilities.nft && adapter.getNfts) {
         adapter.getNfts({ address: account.address }).then((nfts) => {
           const mapped: NftCollectible[] = nfts.map(n => ({
