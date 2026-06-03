@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChainFamilyBadge } from "@/components/universal-badges";
-import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
+import { useActiveProfile } from "@/store/wallet-store";
 import { createDefaultAdapterRegistry } from "@acorus/wallet-core";
 import {
   filterNfts,
