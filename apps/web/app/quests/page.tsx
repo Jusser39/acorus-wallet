@@ -225,10 +225,7 @@ export default function QuestsPage() {
 
   const completed = useMemo(() => [...new Set(autoCompleted)], [autoCompleted]);
   
-  const totalShards = useMemo(
-    () => baseShards + QUESTS.filter((q) => completed.includes(q.id)).reduce((sum, q) => sum + q.xp, 0),
-    [baseShards, completed],
-  );
+
 
   const today = new Date().toISOString().split("T")[0]!;
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0]!;
