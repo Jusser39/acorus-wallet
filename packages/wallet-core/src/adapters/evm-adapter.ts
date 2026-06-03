@@ -243,7 +243,7 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
       return [];
     },
 
-    async getNfts(input) {
+    async getNfts(_input) {
       return [
         {
           id: `eth-mock-${Date.now()}-1`,
