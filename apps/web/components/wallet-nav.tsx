@@ -139,7 +139,7 @@ export function WalletNav() {
           <GlobalMarketSearch />
         </div>
         <nav className="magic-nav overflow-x-auto p-1.5">
-          {navItems.map((item) => {
+          {navItems.filter((item) => item.href !== "/settings" || activeProfile).map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <a

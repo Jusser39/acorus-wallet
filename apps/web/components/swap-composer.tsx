@@ -60,6 +60,7 @@ export function SwapComposer(props: {
   title?: string;
   description?: string;
 }) {
+  const skipNextTokenReset = useRef(false);
   const [status, setStatus] = useState<EvmSwapStatus | null>(null);
   const [universalStatus, setUniversalStatus] = useState<UniversalSwapStatus | null>(null);
   const [chainId, setChainId] = useState<number | string>(props.initialChainId ?? 1);
@@ -210,6 +211,10 @@ export function SwapComposer(props: {
   }, []);
 
   useEffect(() => {
+    if (skipNextTokenReset.current) {
+      skipNextTokenReset.current = false;
+      return;
+    }
     const nextTokens = getPopularSwapTokens({
       chainId,
       portfolioAssets: props.portfolioAssets,
@@ -626,11 +631,12 @@ export function SwapComposer(props: {
     }
 
     let nextValue = nextToken.value;
-    let newOppositeValue = currentOpposite;
+    let newOppositeValue = oppositeToken?.value;
     let nextChainId = chainId;
 
     if (oppositeToken && nextToken.chainId !== oppositeToken.chainId) {
       nextChainId = CROSS_CHAIN_SWAP_ID;
+      skipNextTokenReset.current = true;
       setChainId(CROSS_CHAIN_SWAP_ID);
       
       const ccTokens = getPopularSwapTokens({ chainId: CROSS_CHAIN_SWAP_ID });
@@ -645,6 +651,7 @@ export function SwapComposer(props: {
       newOppositeValue = findCcToken(oppositeToken);
     } else if (chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== CROSS_CHAIN_SWAP_ID && nextToken.chainId !== chainId) {
       nextChainId = nextToken.chainId;
+      skipNextTokenReset.current = true;
       setChainId(nextToken.chainId);
     }
 

@@ -263,20 +263,6 @@ export default function QuestsPage() {
       <div className="flex flex-col items-center pt-6 pb-4">
         <h1 className="text-2xl font-bold text-slate-950 mb-6">Quests</h1>
         
-        <div className="w-full bg-white rounded-3xl p-5 shadow-sm border border-fuchsia-50/50 flex gap-4 items-center mb-8">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-fuchsia-100 to-sky-100 flex items-center justify-center text-2xl flex-shrink-0">
-            👻
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Total balance</p>
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-sky-400">{totalShards}</span>
-              <LeafIcon />
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">Keep collecting Shards for what's ahead!</p>
-          </div>
-        </div>
-        
         {/* Tabs */}
         <div className="flex w-full border-b border-slate-100 mb-6">
           {(["All quests", "In progress", "Completed"] as const).map((tab) => (
