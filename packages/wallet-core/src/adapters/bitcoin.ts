@@ -63,7 +63,7 @@ export function createBitcoinAdapter(): ChainAdapter {
       broadcast: true,
       history: false,
       swap: false,
-      dapp: false,
+      dapp: false, nft: false,
     },
 
     validateAddress(address) {

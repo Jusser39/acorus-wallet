@@ -48,7 +48,7 @@ export function createSolanaAdapter(): ChainAdapter {
       broadcast: true,
       history: false,
       swap: true,
-      dapp: true,
+      dapp: true, nft: false,
     },
 
     validateAddress(address: string): boolean {

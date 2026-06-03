@@ -15,6 +15,7 @@ export interface NftCollectible {
   collection: string;
   description: string;
   mediaTone: string;
+  imageUrl?: string | null;
   floorPriceLabel: string | null;
   lastTransferLabel: string | null;
   rarityLabel: string | null;

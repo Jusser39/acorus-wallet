@@ -89,7 +89,7 @@ export function createTronAdapter(): ChainAdapter {
       broadcast: true,
       history: false,
       swap: true,
-      dapp: true,
+      dapp: true, nft: false,
     },
 
     validateAddress(address) {

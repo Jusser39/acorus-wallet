@@ -40,7 +40,7 @@ export function createTonAdapter(): ChainAdapter {
       broadcast: true,
       history: false,
       swap: false,
-      dapp: false,
+      dapp: false, nft: false,
     },
 
     validateAddress(address) {

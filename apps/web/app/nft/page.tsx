@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChainFamilyBadge } from "@/components/universal-badges";
-import { useActiveProfile } from "@/store/wallet-store";
+import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
+import { CHAIN_ADAPTERS } from "@acorus/wallet-core";
 import {
   filterNfts,
   getNftActionLabel,
@@ -24,10 +25,63 @@ export default function NftPage() {
   const activeProfile = useActiveProfile();
   const [filter, setFilter] = useState<NftFilter>("all");
   const [selected, setSelected] = useState<NftCollectible | null>(null);
-  const allItems = useMemo(
+  const [liveItems, setLiveItems] = useState<NftCollectible[] | null>(null);
+
+  const fallbackItems = useMemo(
     () => getNftsForFamily(activeProfile?.chainFamily),
     [activeProfile?.chainFamily],
   );
+
+  useEffect(() => {
+    if (!activeProfile) {
+      setLiveItems(null);
+      return;
+    }
+    
+    // Find the first account in the active profile's chain family (EVM/Solana)
+    const account = activeProfile.accounts.find(a => {
+       const adapter = CHAIN_ADAPTERS[a.networkId];
+       return adapter && adapter.family === activeProfile.chainFamily;
+    });
+
+    if (account) {
+      const adapter = CHAIN_ADAPTERS[account.networkId];
+      if (adapter?.capabilities.nft && adapter.getNfts) {
+        adapter.getNfts({ address: account.address }).then((nfts) => {
+          const mapped: NftCollectible[] = nfts.map(n => ({
+            id: n.id,
+            family: adapter.family,
+            chainId: adapter.chainId,
+            chainName: adapter.name,
+            standard: "erc721",
+            contractAddress: n.contractAddress,
+            tokenId: n.tokenId,
+            name: n.name,
+            collection: n.collectionName,
+            description: "Live NFT fetched via adapter provider.",
+            mediaTone: "from-slate-800 via-slate-700 to-slate-900", // Fallback tone
+            imageUrl: n.imageUrl, // We need to support rendering imageUrl
+            floorPriceLabel: null,
+            lastTransferLabel: null,
+            rarityLabel: null,
+            isSpam: false,
+            isVerified: true,
+            sendStatus: "preview",
+            burnStatus: "preview",
+            explorerUrl: adapter.buildExplorerAddressUrl ? adapter.buildExplorerAddressUrl(n.contractAddress) : "#",
+          }));
+          setLiveItems(mapped);
+        }).catch(err => {
+          console.error("Failed to fetch live NFTs:", err);
+          setLiveItems(null);
+        });
+        return;
+      }
+    }
+    setLiveItems(null);
+  }, [activeProfile]);
+
+  const allItems = useMemo(() => liveItems ?? fallbackItems, [liveItems, fallbackItems]);
   const items = useMemo(() => filterNfts(allItems, filter), [allItems, filter]);
   const summary = useMemo(() => summarizeNfts(allItems), [allItems]);
   const isUnsupportedFamily =
@@ -111,7 +165,11 @@ export default function NftPage() {
 
       {selected ? (
         <div className="panel grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className={`min-h-64 rounded-3xl bg-gradient-to-br ${selected.mediaTone}`} />
+          <div className={`min-h-64 rounded-3xl bg-gradient-to-br ${selected.mediaTone} overflow-hidden flex items-center justify-center relative`}>
+            {selected.imageUrl ? (
+              <img src={selected.imageUrl} alt={selected.name} className="absolute inset-0 w-full h-full object-cover" />
+            ) : null}
+          </div>
           <div className="space-y-4">
             <div>
               <p className="text-sm text-slate-400">{selected.collection}</p>
@@ -173,7 +231,11 @@ function NftCard({ nft, onSelect }: { nft: NftCollectible; onSelect: () => void 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/80 shadow-[0_18px_48px_rgba(2,6,23,0.18)]">
       <button type="button" className="block w-full text-left" onClick={onSelect}>
-        <div className={`h-48 w-full bg-gradient-to-br ${nft.mediaTone}`} />
+        <div className={`h-48 w-full bg-gradient-to-br ${nft.mediaTone} relative overflow-hidden`}>
+           {nft.imageUrl ? (
+             <img src={nft.imageUrl} alt={nft.name} className="absolute inset-0 w-full h-full object-cover" />
+           ) : null}
+        </div>
         <div className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

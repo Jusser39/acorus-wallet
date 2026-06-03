@@ -32,6 +32,7 @@ export type ChainAdapterCapabilities = {
   history: boolean;
   swap: boolean;
   dapp: boolean;
+  nft: boolean;
 };
 
 export type ChainAdapter = {
@@ -73,6 +74,18 @@ export type ChainAdapter = {
     address: string;
     rpcUrl?: string;
   }): Promise<TransactionRecord[]>;
+
+  getNfts?(input: {
+    address: string;
+    rpcUrl?: string;
+  }): Promise<{
+    id: string;
+    name: string;
+    collectionName: string;
+    imageUrl: string;
+    contractAddress: string;
+    tokenId: string;
+  }[]>;
 
   getSwapQuote?(input: {
     fromAddress: string;

@@ -41,6 +41,7 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
       history: false,
       swap: true,
       dapp: true,
+      nft: true,
     },
 
     validateAddress(address: string): boolean {
@@ -240,6 +241,27 @@ export function createEvmAdapter(chainId: number): ChainAdapter {
     async getTransactionHistory() {
       // Pending backend EVM history proxy implementation.
       return [];
+    },
+
+    async getNfts(input) {
+      return [
+        {
+          id: `eth-mock-${Date.now()}-1`,
+          name: "Mock EVM Ape #1337",
+          collectionName: "Mock EVM Apes",
+          imageUrl: "https://i.seadn.io/gae/Ju9CkWtV-1Okvf45wo8UctR-M9He2PjILP0oOvxE89AyiPPGtrR3gysu1Zgy0hjd2xKIgjjjqvYw6_Qj55WifR0pG7xYc1v6jYxH?auto=format&dpr=1&w=1000",
+          contractAddress: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
+          tokenId: "1337",
+        },
+        {
+          id: `eth-mock-${Date.now()}-2`,
+          name: "Mock Punk #3100",
+          collectionName: "Mock Punks",
+          imageUrl: "https://i.seadn.io/gae/BdxvLseXcfl57B52XC1c7d1e8vB1g5c5T1G-1eW5zT2k2d3D5y3pY-2_1A3f5W5h1l-X-O2E9q?auto=format&dpr=1&w=1000",
+          contractAddress: "0xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb",
+          tokenId: "3100",
+        },
+      ];
     },
 
     async getSwapQuote(input) {
