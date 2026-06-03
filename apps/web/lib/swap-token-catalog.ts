@@ -139,7 +139,7 @@ const SOLANA_VOLUME_TOKENS: SwapTokenOption[] = [
   solanaToken("7GCihgDB8fe29giZ2xTR8hypQVniJhux9mxUF6jjJ1h5", "POPCAT", "Popcat", 9),
   solanaToken("ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82", "BOME", "Book of Meme", 6),
   solanaToken("2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump", "PNUT", "Peanut the Squirrel", 6),
-  solanaToken("JTOjtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", "JTO", "Jito", 9),
+  solanaToken("jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", "JTO", "Jito", 9),
   solanaToken("orcaEKTdK7LKz57vaAYafShVWfydmmu7vpg6LaUuLk", "ORCA", "Orca", 6),
   solanaToken("KMNo3nJm4ZVLwvsvWNqfJmhhVPf3ZGBmuuQdshW3pE9", "KMNO", "Kamino", 6),
   solanaToken("9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump", "FARTCOIN", "Fartcoin", 6),

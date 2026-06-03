@@ -1449,8 +1449,6 @@ function getNetworkBadgeUrl(chainId: number | string): string | null {
 }
 
 function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl" | "chainId"> }) {
-  const badgeUrl = getNetworkBadgeUrl(token.chainId);
-
   return (
     <div className="relative inline-flex flex-shrink-0">
       <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
@@ -1466,13 +1464,6 @@ function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl
           />
         ) : null}
       </span>
-      {badgeUrl ? (
-        <img 
-          src={badgeUrl} 
-          alt="" 
-          className="absolute -bottom-1 -right-1 w-[14px] h-[14px] rounded-full border border-white bg-white z-10" 
-        />
-      ) : null}
     </div>
   );
 }

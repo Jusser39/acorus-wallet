@@ -35,7 +35,7 @@ export type JupiterSwapStatus = {
   supportedChains: [101];
 };
 
-const BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/u;
+const BASE58_ADDRESS = /^[1-9A-HJ-NP-Za-km-z]{32,45}$/u;
 const POSITIVE_INTEGER = /^[1-9][0-9]*$/u;
 
 export function createJupiterSwapService(env: ApiEnv) {

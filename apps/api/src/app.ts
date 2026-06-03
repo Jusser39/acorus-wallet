@@ -108,14 +108,14 @@ const evmZeroXSwapQuerySchema = z
   });
 
 const solanaJupiterQuoteSchema = z.object({
-  inputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
-  outputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
+  inputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,45}$/u),
+  outputMint: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,45}$/u),
   amount: z.string().regex(/^[1-9][0-9]*$/u),
   slippageBps: z.coerce.number().int().min(0).max(10_000).optional(),
 });
 
 const solanaJupiterSwapSchema = solanaJupiterQuoteSchema.extend({
-  userPublicKey: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u),
+  userPublicKey: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,45}$/u),
 });
 
 const rangoSwapQuerySchema = z.object({
@@ -165,7 +165,7 @@ function buildWalletSearchResults(query: string) {
     }];
   }
 
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u.test(trimmed)) {
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,45}$/u.test(trimmed)) {
     return [{
       id: `wallet:solana:${trimmed}`,
       kind: "wallet" as const,
