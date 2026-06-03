@@ -1437,18 +1437,22 @@ function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
 
 
 function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl" | "chainId"> }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  
+  useEffect(() => {
+    setImgFailed(false);
+  }, [token.logoUrl]);
+
   return (
     <div className="relative inline-flex flex-shrink-0">
       <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
-        <span>{tokenAvatarLabel(token)}</span>
-        {token.logoUrl ? (
+        {(!token.logoUrl || imgFailed) && <span>{tokenAvatarLabel(token)}</span>}
+        {token.logoUrl && !imgFailed ? (
           <img
             src={token.logoUrl}
             alt=""
             loading="lazy"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
+            onError={() => setImgFailed(true)}
           />
         ) : null}
       </span>

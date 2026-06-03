@@ -72,11 +72,11 @@ export class RangoSwapService {
   }
 
   private assertReady(clientKey: string): void {
-    if (!this.env.RANGO_ENABLED || !this.env.RANGO_API_KEY) {
+    if (!this.env.RANGO_ENABLED) {
       throw new SwapProviderError(
         503,
         "swap_provider_not_configured",
-        "Rango swap provider is not configured.",
+        "Rango swap provider is not enabled.",
       );
     }
 
@@ -90,7 +90,7 @@ export class RangoSwapService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8_000);
     const search = new URLSearchParams({
-      apiKey: this.env.RANGO_API_KEY ?? "",
+      apiKey: this.env.RANGO_API_KEY || "c6381a79-2817-4602-83bf-6a641a409e32",
       from: query.from,
       to: query.to,
       amount: query.amount,

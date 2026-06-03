@@ -1648,7 +1648,6 @@ main.flex-1,
   height: 100%;
   width: 100%;
   object-fit: cover;
-  background: inherit;
 }
 
 .token-inline-picker {
