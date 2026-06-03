@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useWalletStore, useActiveProfile } from "@/store/wallet-store";
+import { useActiveProfile } from "@/store/wallet-store";
 
 export interface StakingAsset {
   symbol: string;
