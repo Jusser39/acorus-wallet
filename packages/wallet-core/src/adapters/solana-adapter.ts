@@ -201,9 +201,10 @@ export function createSolanaAdapter(): ChainAdapter {
     },
 
     async getSwapQuote(input) {
+      const WSOL_MINT = "So11111111111111111111111111111111111111112";
       return fetchJupiterQuote({
-        inputMint: input.sellTokenAddress,
-        outputMint: input.buyTokenAddress,
+        inputMint: input.sellTokenAddress || WSOL_MINT,
+        outputMint: input.buyTokenAddress || WSOL_MINT,
         amount: input.amountRaw,
         slippageBps: input.slippageBps,
         apiBaseUrl: input.rpcUrl, // Optional fallback
