@@ -108,7 +108,14 @@ export class RangoSwapService {
     try {
       const response = await fetch(
         `${this.env.RANGO_API_BASE.replace(/\/$/u, "")}${path}?${search.toString()}`,
-        { method: "GET", signal: controller.signal },
+        {
+          method: "GET",
+          signal: controller.signal,
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          }
+        },
       );
       const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
 
