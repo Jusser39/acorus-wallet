@@ -213,7 +213,7 @@ export function getPopularSwapTokens(input: {
     byKey.set(`ton-mainnet:ton.ton`, tonToken);
     byKey.set(`bitcoin-mainnet:btc.btc`, btcToken);
 
-    const allCurated = EVM_CHAINS.flatMap(chain => getCuratedTokens(chain.chainId as number).map((item): SwapTokenOption => ({
+    const allCurated = [...EVM_CHAINS.map(c => c.chainId), "tron-mainnet", "bitcoin-mainnet"].flatMap(chainId => getCuratedTokens(chainId as any).map((item): SwapTokenOption => ({
       value: item.address,
       tokenAddress: item.address,
       symbol: item.symbol,
@@ -324,6 +324,7 @@ export function getSwapNetworkLabel(chainId: number | string): string {
 
   if (chainId === "ton-mainnet") return "TON";
   if (chainId === "bitcoin-mainnet") return "Bitcoin";
+  if (chainId === "tron-mainnet") return "Tron";
 
   return EVM_CHAINS.find((item) => item.chainId === chainId)?.name ?? "EVM";
 }
