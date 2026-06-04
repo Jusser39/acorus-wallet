@@ -218,6 +218,7 @@ export function resolveStore(env: ApiEnv): AppStore {
 
 function normalizeError(error: unknown): { statusCode: number; message: string } {
   if (error instanceof z.ZodError) {
+    console.error("ZOD ERROR:", JSON.stringify(error.errors));
     return {
       statusCode: 400,
       message: "validation_error",

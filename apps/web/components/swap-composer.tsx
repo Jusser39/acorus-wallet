@@ -100,14 +100,16 @@ export function SwapComposer(props: {
   const composerRef = useRef<HTMLDivElement>(null);
   const activeUserAddress = props.userAddress ?? connectedAddress;
 
+  const initialChainId = props.initialChainId ?? 1;
+
   const tokens = useMemo(
     () => getPopularSwapTokens({
       chainId,
       portfolioAssets: props.portfolioAssets,
-      initialBuyToken: props.initialBuyToken,
-      initialBuyTokenMeta: props.initialBuyTokenMeta,
+      initialBuyToken: chainId === initialChainId ? props.initialBuyToken : undefined,
+      initialBuyTokenMeta: chainId === initialChainId ? props.initialBuyTokenMeta : undefined,
     }),
-    [chainId, props.initialBuyToken, props.initialBuyTokenMeta, props.portfolioAssets],
+    [chainId, initialChainId, props.initialBuyToken, props.initialBuyTokenMeta, props.portfolioAssets],
   );
   const selectedSellToken = sellToken ? tokens.find((token) => token.value === sellToken) ?? null : null;
   const selectedBuyToken = buyToken ? tokens.find((token) => token.value === buyToken) ?? null : null;
@@ -223,8 +225,8 @@ export function SwapComposer(props: {
     const nextTokens = getPopularSwapTokens({
       chainId,
       portfolioAssets: props.portfolioAssets,
-      initialBuyToken: props.initialBuyToken,
-      initialBuyTokenMeta: props.initialBuyTokenMeta,
+      initialBuyToken: chainId === initialChainId ? props.initialBuyToken : undefined,
+      initialBuyTokenMeta: chainId === initialChainId ? props.initialBuyTokenMeta : undefined,
     });
     const nextSellToken = resolveInitialTokenValue(
       nextTokens,
