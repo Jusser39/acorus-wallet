@@ -312,14 +312,18 @@ export default function QuestsPage() {
               <h3 className="font-semibold text-slate-900 mb-3">7-Day Streak</h3>
               <div className="flex gap-1 mb-4">
                 {[...Array(7)].map((_, i) => (
-                  <div key={i} className={`h-1 flex-1 rounded-full ${i < streakCount ? "bg-sky-400" : "bg-slate-100"}`} />
+                  <div key={i} className={`h-1 flex-1 rounded-full ${hasWallet && i < streakCount ? "bg-sky-400" : "bg-slate-100"}`} />
                 ))}
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-sky-400 text-sm font-bold bg-sky-50 px-2 py-0.5 rounded-full">
                   +100 <LeafIcon />
                 </div>
-                <span className="text-xs font-medium text-slate-400">{streakCount}/7</span>
+                {hasWallet ? (
+                  <span className="text-xs font-medium text-slate-400">{streakCount}/7</span>
+                ) : (
+                  <span className="text-xs font-medium text-slate-400">Connect wallet</span>
+                )}
               </div>
             </div>
           </div>
