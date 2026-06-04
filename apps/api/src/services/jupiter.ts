@@ -86,11 +86,11 @@ export class JupiterSwapService {
   }
 
   private isConfigured(): boolean {
-    return Boolean(this.env.JUPITER_API_KEY);
+    return Boolean(this.env.JUPITER_ENABLED);
   }
 
   private assertReady(clientKey: string): void {
-    if (!this.env.JUPITER_ENABLED || !this.env.JUPITER_API_KEY) {
+    if (!this.env.JUPITER_ENABLED) {
       throw new SwapProviderError(
         503,
         "swap_provider_not_configured",
