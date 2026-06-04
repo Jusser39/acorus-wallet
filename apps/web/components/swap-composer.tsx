@@ -132,6 +132,11 @@ export function SwapComposer(props: {
         caption: "Popular Solana tokens",
       },
       {
+        chainId: "tron-mainnet",
+        label: "Tron",
+        caption: "TRX network",
+      },
+      {
         chainId: "ton-mainnet",
         label: "TON",
         caption: "The Open Network",
