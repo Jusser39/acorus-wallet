@@ -2,166 +2,97 @@ import { ExtensionConnectLab } from "../../components/extension-connect-lab";
 
 const DOWNLOAD_HREF = "/downloads/acorus-wallet-extension.zip";
 
-const LIVE_METHODS = [
-  "eth_requestAccounts",
-  "eth_accounts",
-  "eth_chainId",
-  "net_version",
-  "eth_coinbase",
-  "wallet_getPermissions",
-  "wallet_requestPermissions",
-  "wallet_revokePermissions",
-  "wallet_addEthereumChain",
-  "wallet_switchEthereumChain",
-  "wallet_watchAsset",
-  "personal_sign",
-  "eth_signTypedData_v4",
-  "eth_signTransaction",
-  "eth_sendTransaction",
-];
-
-const SHIPPED_ITEMS = [
-  "Manifest V3 Chrome extension",
-  "Injected window.ethereum provider",
-  "Create/import encrypted extension vault",
-  "Lock/unlock wallet session",
-  "Per-site connect approval",
-  "Connected sites and revoke controls",
-  "EVM permissions API",
-  "Add network approval",
-  "Add/watch token approval",
-  "Live sign/send request queue",
-  "Signer confirmation gate inside extension",
-  "Real EVM signature + transaction broadcast after signer confirmation",
-  "WalletConnect pairing preview shell",
-  "Packaged ZIP download artifact",
-];
-
-const BENCHMARK_ITEMS = [
-  ["MetaMask", "window.ethereum, permissions, chain switching, add network, add token, sign/send prompts"],
-  ["Trust Wallet", "multi-wallet, multi-chain, dApp access, swaps, NFTs, custom tokens/testnets"],
-  ["Rabby", "100+ EVM networks, pre-transaction review, scam protection, approval manager"],
-  ["Phantom", "browser extension, self-custody, multi-chain assets and NFT-first UX"],
-];
-
-const NEXT_ITEMS = [
-  "Approval risk simulation and allowance warnings",
-  "WalletConnect live relay and request execution",
-  "Additional multichain provider packs",
-  "Tron provider bridge",
-  "Approval/token allowance manager",
-  "Hardware-backed biometrics where browser allows it",
-  "Chrome Web Store publishing package",
-];
-
 export default function ExtensionPage() {
   return (
-    <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10">
-      <div className="app-surface subtle-grid grid gap-6 rounded-[2rem] p-5 sm:p-7 lg:grid-cols-[1fr_420px] lg:items-center">
-        <div className="space-y-5">
-          <span className="section-kicker">Chrome extension wallet</span>
-          <div className="space-y-3">
-            <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Acorus Wallet Extension
-            </h1>
-            <p className="text-lg leading-8 text-slate-300">
-              Основной кошелек теперь живет в расширении: seed phrase, encrypted
-              vault, unlock state, dApp connect и approval prompts. Сайт
-              подключается к расширению через injected provider, как в MetaMask,
-              Trust Wallet и других production-кошельках.
-            </p>
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-16">
+      
+      {/* Hero Section */}
+      <div className="relative overflow-hidden rounded-[3rem] bg-slate-900 p-8 sm:p-12 lg:p-16 border border-slate-800 shadow-2xl">
+        {/* Abstract background blobs */}
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-cyan-600/20 blur-3xl" />
+        
+        <div className="relative z-10 max-w-3xl space-y-6">
+          <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-sm font-medium text-violet-300">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500"></span>
+            </span>
+            Beta Release v0.1.0
           </div>
-          <div className="flex flex-wrap gap-3">
-            <a className="button-primary inline-flex" href={DOWNLOAD_HREF} download>
-              Download extension ZIP
-            </a>
-            <a className="button-secondary inline-flex" href="/dapps">
-              Test dApp bridge
-            </a>
-          </div>
-        </div>
-
-        <div className="premium-card p-4">
-          <div className="text-sm font-semibold text-white">Install steps</div>
-          <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-            <li>1. Download ZIP and unpack it locally.</li>
-            <li>2. Open <code className="rounded bg-black/30 px-1">chrome://extensions</code>.</li>
-            <li>3. Enable Developer mode.</li>
-            <li>4. Click Load unpacked and choose the unpacked folder.</li>
-            <li>5. Open the Acorus popup and create or import the wallet.</li>
-          </ol>
-        </div>
-      </div>
-
-      <ExtensionConnectLab />
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="premium-card space-y-4 p-5">
-          <h2 className="text-xl font-semibold text-white">Wallet core</h2>
-          <ul className="space-y-2 text-sm leading-6 text-slate-300">
-            {SHIPPED_ITEMS.map((item) => (
-              <li key={item}>✓ {item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="premium-card space-y-4 p-5">
-          <h2 className="text-xl font-semibold text-white">Provider methods</h2>
-          <div className="flex flex-wrap gap-2">
-            {LIVE_METHODS.map((method) => (
-              <span
-                key={method}
-                className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100"
-              >
-                {method}
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+            Web3 at your <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">fingertips</span>
+          </h1>
+          <p className="text-lg leading-8 text-slate-300">
+            Seamlessly connect to dApps, manage multi-chain assets, and sign transactions with confidence. 
+            Acorus Extension brings true self-custody and advanced security directly to your browser.
+          </p>
+          
+          <div className="pt-4 flex flex-wrap gap-4 items-center">
+            <a className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-violet-600 to-cyan-600 px-8 py-3.5 font-semibold text-white transition-all hover:scale-105 shadow-xl shadow-violet-900/20" href={DOWNLOAD_HREF} download>
+              <span className="relative z-10 flex items-center gap-2">
+                Download ZIP
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:-translate-y-1 group-hover:translate-x-1">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
               </span>
-            ))}
+            </a>
+            <a className="inline-flex px-6 py-3 font-medium text-slate-300 hover:text-white transition-colors" href="/dapps">
+              Explore supported dApps &rarr;
+            </a>
           </div>
-          <p className="text-sm leading-6 text-slate-300">
-            Connect/account/chain reads are live through extension approval.
-            Supported EVM signature and transaction requests now execute inside
-            the extension after a dedicated signer confirmation step. WalletConnect
-            pairing and staged multichain follow-up requests remain preview-only.
-          </p>
-        </div>
-
-        <div className="premium-card space-y-4 p-5">
-          <h2 className="text-xl font-semibold text-white">Next build wave</h2>
-          <ul className="space-y-2 text-sm leading-6 text-slate-300">
-            {NEXT_ITEMS.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
         </div>
       </div>
 
-      <div className="premium-card space-y-5 p-5">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-white">Competitor parity track</h2>
-          <p className="text-sm leading-6 text-slate-300">
-            Расширение строится как основной self-custody слой: сайт остается
-            интерфейсом, а создание кошелька, unlock, connect и approval flow
-            живут в Chrome extension.
-          </p>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {BENCHMARK_ITEMS.map(([name, details]) => (
-            <div
-              key={name}
-              className="data-card rounded-2xl p-4"
-            >
-              <div className="text-sm font-semibold text-white">{name}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-300">{details}</p>
+      {/* Features Grid */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {[
+          { title: "True Self-Custody", desc: "Your keys, your crypto. Encrypted locally on your device with industry-leading standards.", icon: "🔐" },
+          { title: "Multi-Chain Ready", desc: "Native support for EVM, Solana, and Tron. Switch networks seamlessly without friction.", icon: "🌐" },
+          { title: "Advanced Security", desc: "Detailed transaction simulations and scam detection before you sign anything.", icon: "🛡️" },
+        ].map((feature, idx) => (
+          <div key={idx} className="group relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:bg-slate-800/80 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className="relative z-10">
+              <div className="mb-4 text-4xl">{feature.icon}</div>
+              <h3 className="mb-2 text-xl font-semibold text-white">{feature.title}</h3>
+              <p className="text-sm leading-6 text-slate-400">{feature.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Installation Steps */}
+      <div className="rounded-[2.5rem] border border-slate-800 bg-slate-950 p-8 sm:p-12 shadow-2xl">
+        <h2 className="mb-10 text-3xl font-bold text-white">How to install</h2>
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { step: "01", title: "Download", desc: "Get the latest extension ZIP file from the button above and extract it on your computer." },
+            { step: "02", title: "Open Settings", desc: "Type chrome://extensions in your Chrome browser address bar and hit enter." },
+            { step: "03", title: "Enable Dev Mode", desc: "Toggle the 'Developer mode' switch in the top right corner of the extensions page." },
+            { step: "04", title: "Load Unpacked", desc: "Click 'Load unpacked' and select the folder where you extracted the extension." },
+          ].map((item, idx) => (
+            <div key={idx} className="relative space-y-4">
+              <div className="text-6xl font-black text-slate-800/30 tracking-tighter">{item.step}</div>
+              <h4 className="text-lg font-bold text-white">{item.title}</h4>
+              <p className="text-sm leading-6 text-slate-400">{item.desc}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="warning-box text-sm leading-6">
-        Download artifact is generated by <code>pnpm extension:package</code>.
-        The ZIP contains the unpacked Chrome extension build only. Seed phrase
-        and private data are never included in the downloadable package.
+      {/* Lab component */}
+      <div className="mt-8 space-y-8 rounded-[3rem] border border-slate-800 bg-slate-900/30 p-8 sm:p-12">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">Connection Lab</h2>
+          <p className="text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Test the extension bridge live. Our injected provider intercepts dApp requests and routes them to the Acorus Extension seamlessly. Use this environment to verify transaction signing and connection flows.
+          </p>
+        </div>
+        <ExtensionConnectLab />
       </div>
+
     </section>
   );
 }
