@@ -13,6 +13,8 @@
   "dependencies": {
     "@acorus/shared": "workspace:*",
     "@acorus/wallet-core": "workspace:*",
+    "@walletconnect/core": "^2.23.9",
+    "@walletconnect/web3wallet": "^1.16.1",
     "buffer": "^6.0.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",

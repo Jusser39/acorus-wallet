@@ -48,6 +48,7 @@ import {
   resolveExtensionNetwork,
   setActiveExtensionChainId,
 } from "./extension-chain-registry";
+import { walletConnectClient } from "./walletconnect";
 import {
   buildExtensionPortfolioSnapshot,
   hideAsset,
@@ -186,6 +187,26 @@ export async function handleRuntimeMessage(
         extensionVaultStatus,
       }),
     };
+  }
+
+  if (input.kind === "walletconnect_pair") {
+    try {
+      await walletConnectClient.pair(input.uri);
+      return {
+        requestId,
+        ok: true,
+        result: "success",
+      };
+    } catch (error) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "walletconnect_error",
+          message: error instanceof Error ? error.message : "Failed to pair WalletConnect",
+        }
+      };
+    }
   }
 
   if (input.kind === "get_extension_home") {

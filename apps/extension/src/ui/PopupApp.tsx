@@ -1,14 +1,42 @@
 import React, { useState } from "react";
-import { Wallet, ArrowLeftRight, Send, Download, Settings, History } from "lucide-react";
+import { Wallet, ArrowLeftRight, Send, Download, Settings, History, Link2 } from "lucide-react";
 import { Dashboard } from "./screens/Dashboard";
 import { Swap } from "./screens/Swap";
 // import SendScreen from "./screens/Send";
 // import ReceiveScreen from "./screens/Receive";
 import { Activity } from "./screens/Activity";
 import { Settings } from "./screens/Settings";
+import { Approval } from "./screens/Approval";
+import { WalletConnect } from "./screens/WalletConnect";
+import { getBackgroundState } from "./api";
+import type { DappRequest } from "../shared/protocol";
 
 export function PopupApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [pendingRequest, setPendingRequest] = useState<DappRequest | null>(null);
+
+  React.useEffect(() => {
+    // Initial fetch
+    getBackgroundState().then(state => {
+      if (state && state.pendingRequests && state.pendingRequests.length > 0) {
+        setPendingRequest(state.pendingRequests[0]);
+      }
+    });
+
+    // Listen for incoming requests while popup is open
+    const handleMessage = (message: any) => {
+      if (message.kind === "acorus#stateChanged" && message.detail?.pendingRequests) {
+        if (message.detail.pendingRequests.length > 0) {
+          setPendingRequest(message.detail.pendingRequests[0]);
+        } else {
+          setPendingRequest(null);
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    return () => chrome.runtime.onMessage.removeListener(handleMessage);
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -18,12 +46,33 @@ export function PopupApp() {
         return <Swap />;
       case "activity":
         return <Activity />;
+      case "walletconnect":
+        return <WalletConnect />;
       case "settings":
         return <Settings />;
       default:
         return <Dashboard />;
     }
   };
+
+  if (pendingRequest) {
+    return (
+      <div className="h-[600px] w-[375px] overflow-hidden">
+        <Approval 
+          request={pendingRequest} 
+          onComplete={() => {
+            setPendingRequest(null);
+            // Re-fetch state to see if there are more requests
+            getBackgroundState().then(state => {
+              if (state && state.pendingRequests && state.pendingRequests.length > 0) {
+                setPendingRequest(state.pendingRequests[0]);
+              }
+            });
+          }} 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[600px] w-[375px] bg-slate-50 text-slate-900 overflow-hidden font-sans relative">
@@ -49,6 +98,7 @@ export function PopupApp() {
       <nav className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-100 flex items-center justify-around px-2 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
         <NavItem icon={<Wallet className="w-5 h-5" />} label="Wallet" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
         <NavItem icon={<ArrowLeftRight className="w-5 h-5" />} label="Swap" active={activeTab === "swap"} onClick={() => setActiveTab("swap")} />
+        <NavItem icon={<Link2 className="w-5 h-5" />} label="Connect" active={activeTab === "walletconnect"} onClick={() => setActiveTab("walletconnect")} />
         <NavItem icon={<History className="w-5 h-5" />} label="Activity" active={activeTab === "activity"} onClick={() => setActiveTab("activity")} />
       </nav>
     </div>

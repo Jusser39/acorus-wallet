@@ -130,6 +130,12 @@ export type ExtensionRuntimeMessage =
       surface: ExtensionSurface;
     }
   | {
+      kind: "walletconnect_pair";
+      requestId: string;
+      surface: ExtensionSurface;
+      uri: string;
+    }
+  | {
       kind: "get_state";
       requestId: string;
       surface: ExtensionSurface;
