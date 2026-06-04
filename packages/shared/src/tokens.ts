@@ -158,6 +158,7 @@ export const CURATED_TOKENS: CuratedToken[] = [
   { chainId: 43114, address: "0x9702230A8Ea53601f5cD2dc00fDBC13d4dF4A8c7", symbol: "USDT", name: "Tether USD", decimals: 6, logoUrl: null, verified: true },
   { chainId: 59144, address: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5CF34f", symbol: "WETH", name: "Wrapped Ether", decimals: 18, logoUrl: null, verified: true },
   { chainId: 59144, address: "0x176211869cA2b568f2A7D4EE941E073a821EE1ff", symbol: "USDC", name: "USD Coin", decimals: 6, logoUrl: null, verified: true },
+  { chainId: "tron-mainnet", address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", symbol: "USDT", name: "Tether USD", decimals: 6, logoUrl: null, verified: true },
 ];
 
 export function getCuratedTokens(chainId: ChainId): CuratedToken[] {
