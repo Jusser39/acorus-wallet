@@ -8,6 +8,7 @@ export default function BuyPage() {
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAsset] = useState("ETH");
   const [fiatCurrency] = useState("USD");
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const cryptoRate = 3500; // Mock ETH rate
   const cryptoAmount = fiatAmount ? (Number(fiatAmount) / cryptoRate).toFixed(4) : "0.0000";
@@ -43,7 +44,10 @@ export default function BuyPage() {
                   type="number" 
                   placeholder="0" 
                   value={fiatAmount}
-                  onChange={(e) => setFiatAmount(e.target.value)}
+                  onChange={(e) => {
+                    setFiatAmount(e.target.value);
+                    setIsSuccess(false);
+                  }}
                   className="bg-transparent text-6xl font-black outline-none w-full text-right placeholder:text-slate-300 ml-2"
                   autoFocus
                 />
@@ -55,7 +59,9 @@ export default function BuyPage() {
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-slate-500">You receive (approx)</span>
                 <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800">
-                  <img src="/icons/eth.svg" className="w-5 h-5" alt="ETH" />
+                  <div className="w-5 h-5 bg-[#627EEA] rounded-full flex items-center justify-center shadow-sm">
+                    <span className="text-[10px] font-bold text-white leading-none mt-[1px]">Ξ</span>
+                  </div>
                   {cryptoAsset}
                 </button>
               </div>
@@ -105,11 +111,21 @@ export default function BuyPage() {
 
           <div className="pt-2">
             <button 
-              className="w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-bold text-xl shadow-[0_8px_20px_-4px_rgba(124,58,237,0.4)] hover:shadow-[0_12px_24px_-4px_rgba(124,58,237,0.5)] transition-all disabled:opacity-50 disabled:shadow-none"
-              disabled={!fiatAmount || Number(fiatAmount) <= 0}
-              onClick={() => alert(`Redirecting to provider to buy ${cryptoAmount} ${cryptoAsset} for $${fiatAmount}`)}
+              className={`w-full py-4 rounded-2xl font-bold text-xl transition-all disabled:opacity-50 disabled:shadow-none ${
+                isSuccess 
+                  ? "bg-emerald-500 text-white shadow-none" 
+                  : "bg-violet-600 hover:bg-violet-700 text-white shadow-[0_8px_20px_-4px_rgba(124,58,237,0.4)] hover:shadow-[0_12px_24px_-4px_rgba(124,58,237,0.5)]"
+              }`}
+              disabled={!fiatAmount || Number(fiatAmount) <= 0 || isSuccess}
+              onClick={() => {
+                setIsSuccess(true);
+                setTimeout(() => {
+                  setIsSuccess(false);
+                  setFiatAmount("");
+                }, 2500);
+              }}
             >
-              Continue to Payment
+              {isSuccess ? "Redirecting to provider..." : "Continue to Payment"}
             </button>
             <div className="flex items-center justify-center gap-1.5 mt-4 text-xs font-semibold text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
