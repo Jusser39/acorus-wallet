@@ -192,40 +192,36 @@ export async function handleRuntimeMessage(
   if (input.kind === "create_wallet") {
     try {
       const result = await createExtensionWallet({ name: input.name, passcode: input.passcode });
-      notifyStateChanged();
       return { requestId, ok: true, result };
     } catch (error: any) {
-      return { requestId, ok: false, errorMessage: error.message };
+      return { requestId, ok: false, error: { code: "create_error", message: error.message } };
     }
   }
 
   if (input.kind === "import_wallet") {
     try {
       const result = await importExtensionWallet({ name: input.name, mnemonic: input.mnemonic, passcode: input.passcode });
-      notifyStateChanged();
       return { requestId, ok: true, result };
     } catch (error: any) {
-      return { requestId, ok: false, errorMessage: error.message };
+      return { requestId, ok: false, error: { code: "import_error", message: error.message } };
     }
   }
 
   if (input.kind === "unlock_wallet") {
     try {
-      const result = await unlockExtensionWallet(input.passcode);
-      notifyStateChanged();
+      const result = await unlockExtensionWallet({ passcode: input.passcode });
       return { requestId, ok: true, result };
     } catch (error: any) {
-      return { requestId, ok: false, errorMessage: error.message };
+      return { requestId, ok: false, error: { code: "unlock_error", message: error.message } };
     }
   }
 
   if (input.kind === "lock_wallet") {
     try {
       lockExtensionWallet();
-      notifyStateChanged();
       return { requestId, ok: true };
     } catch (error: any) {
-      return { requestId, ok: false, errorMessage: error.message };
+      return { requestId, ok: false, error: { code: "lock_error", message: error.message } };
     }
   }
 
