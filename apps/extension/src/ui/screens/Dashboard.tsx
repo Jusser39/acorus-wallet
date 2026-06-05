@@ -5,13 +5,29 @@ import type { ExtensionPortfolioSnapshot } from "../../background/extension-asse
 
 export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => void }) {
   const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(null);
+  const [err, setErr] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("tokens");
 
   useEffect(() => {
-    getExtensionHome().then((data) => {
-      if (data) setHome(data);
-    });
+    getExtensionHome().then((data: any) => {
+      if (data?.ok) {
+        setHome(data.result);
+      } else {
+        setErr(data);
+      }
+    }).catch(e => setErr(String(e)));
   }, []);
+
+  if (err) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <h3 className="text-red-500 font-bold">Error loading Dashboard</h3>
+        <pre className="text-xs mt-4 bg-slate-100 p-2 rounded w-full overflow-auto text-slate-800 break-words whitespace-pre-wrap">
+          {JSON.stringify(err, null, 2)}
+        </pre>
+      </div>
+    );
+  }
 
   if (!home) {
     return (

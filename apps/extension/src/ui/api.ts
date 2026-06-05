@@ -18,20 +18,17 @@ export async function getBackgroundState(): Promise<BackgroundStateSnapshot | nu
   return null;
 }
 
-export async function getExtensionHome(): Promise<ExtensionPortfolioSnapshot | null> {
+export async function getExtensionHome(): Promise<any> {
   try {
     const response: any = await chrome.runtime.sendMessage({
       kind: "get_extension_home",
       surface: "popup",
       requestId: "ui_get_home_" + Date.now(),
     });
-    if (response?.ok) {
-      return response.result as ExtensionPortfolioSnapshot;
-    }
+    return response;
   } catch (error) {
-    console.error("Failed to get extension home", error);
+    return { ok: false, error: String(error) };
   }
-  return null;
 }
 
 export async function createWallet(name: string, passcode: string): Promise<any> {
