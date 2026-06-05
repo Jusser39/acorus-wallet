@@ -117,17 +117,49 @@ export async function handleRuntimeMessage(
   message: unknown,
   sender: chrome.MessageSender,
 ): Promise<ExtensionRuntimeResponse> {
-  const validation = validateRuntimeMessage(message, sender, chrome.runtime.id ?? "");
+  try {
+    const validation = validateRuntimeMessage(message, sender, chrome.runtime.id ?? "");
 
-  if (!validation.ok) {
+    if (!validation.ok) {
+      return {
+        requestId: validation.requestId,
+        ok: false,
+        error: {
+          code: validation.code,
+          message: validation.message,
+        },
+      };
+    }
+
+    const { message: input } = validation;
+    const { requestId } = input;
+
+    if (input.kind === "get_state") {
+      return {
+        requestId,
+        ok: true,
+        result: await buildBackgroundStateSnapshot(),
+      };
+    }
+
+    if (input.kind === "get_extension_home") {
+      const activeChainId = await getActiveExtensionChainId();
+      return {
+        requestId,
+        ok: true,
+        result: await buildExtensionPortfolioSnapshot({ activeChainId }),
+      };
+    }
+  } catch (error) {
+    console.error("Unhandled error in handleRuntimeMessage:", error);
     return {
-      requestId: validation.requestId,
+      requestId: (message as any)?.requestId || "unknown",
       ok: false,
       error: {
-        code: validation.code,
-        message: validation.message,
-      },
-    };
+        code: "internal_error",
+        message: String(error)
+      }
+    } as any;
   }
 
   const input = validation.message;

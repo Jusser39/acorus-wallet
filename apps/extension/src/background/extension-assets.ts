@@ -105,6 +105,8 @@ export async function buildExtensionPortfolioSnapshot(input?: {
   const warnings: string[] = [];
   const assets: AssetBalance[] = [];
 
+  const balancePromises: Promise<AssetBalance | AssetBalance[]>[] = [];
+
   for (const network of networks) {
     const profile = vault.profiles.find((item) => item.chainFamily === network.family);
 
@@ -113,18 +115,10 @@ export async function buildExtensionPortfolioSnapshot(input?: {
     }
 
     if (network.family === "solana") {
-      const solanaAssets = await resolveSolanaPortfolioAssets(
-        profile.account,
-        network,
-        warnings,
+      balancePromises.push(
+        resolveSolanaPortfolioAssets(profile.account, network, warnings)
+          .then(solanaAssets => solanaAssets.filter(asset => !hidden.has(buildAssetId(asset))))
       );
-
-      for (const solanaAsset of solanaAssets) {
-        if (!hidden.has(buildAssetId(solanaAsset))) {
-          assets.push(solanaAsset);
-        }
-      }
-
       continue;
     }
 
@@ -132,12 +126,14 @@ export async function buildExtensionPortfolioSnapshot(input?: {
     const nativeId = buildAssetId(nativeAsset);
 
     if (!hidden.has(nativeId)) {
-      assets.push(await resolveAssetBalance({
-        asset: nativeAsset,
-        ownerAddress: profile.account,
-        network,
-        warnings,
-      }));
+      balancePromises.push(
+        resolveAssetBalance({
+          asset: nativeAsset,
+          ownerAddress: profile.account,
+          network,
+          warnings,
+        })
+      );
     }
   }
 
@@ -153,12 +149,24 @@ export async function buildExtensionPortfolioSnapshot(input?: {
       continue;
     }
 
-    assets.push(await resolveAssetBalance({
-      asset,
-      ownerAddress: profile.account,
-      network,
-      warnings,
-    }));
+    balancePromises.push(
+      resolveAssetBalance({
+        asset,
+        ownerAddress: profile.account,
+        network,
+        warnings,
+      })
+    );
+  }
+
+  const resolvedBalances = await Promise.all(balancePromises);
+  
+  for (const item of resolvedBalances) {
+    if (Array.isArray(item)) {
+      assets.push(...item);
+    } else if (item) {
+      assets.push(item);
+    }
   }
 
   const pricedAssets = await enrichAssetsWithPrices(assets, warnings);
@@ -229,9 +237,13 @@ async function fetchExtensionPrices(
   }
 
   const prices = new Map<string, ExtensionMarketPrice>();
+  const pricePromises = Array.from(byChain.entries()).map(([chainId, chainAssets]) => 
+    fetchPricesForChain(chainId, chainAssets, warnings)
+  );
 
-  for (const [chainId, chainAssets] of byChain.entries()) {
-    const result = await fetchPricesForChain(chainId, chainAssets, warnings);
+  const results = await Promise.all(pricePromises);
+  
+  for (const result of results) {
     for (const price of result) {
       prices.set(buildPriceKey(price), price);
     }
