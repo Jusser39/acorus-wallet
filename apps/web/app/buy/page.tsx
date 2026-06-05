@@ -10,8 +10,9 @@ export default function BuyPage() {
   const [fiatCurrency, setFiatCurrency] = useState("USD");
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const cryptoRate = 3500; // Mock ETH rate
-  const cryptoAmount = fiatAmount ? (Number(fiatAmount) / cryptoRate).toFixed(4) : "0.0000";
+  const rates: Record<string, number> = { ETH: 3200, BTC: 65000, SOL: 150, USDC: 1 };
+  const cryptoRate = rates[cryptoAsset] || 3200;
+  const cryptoAmount = fiatAmount ? (Number(fiatAmount) / cryptoRate).toFixed(cryptoAsset === 'USDC' ? 2 : 5) : "0.0000";
 
   return (
     <main className="magic-shell relative overflow-hidden px-4 py-10 min-h-screen flex items-center justify-center">

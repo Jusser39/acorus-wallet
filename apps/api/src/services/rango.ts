@@ -133,19 +133,21 @@ export class RangoSwapService {
         const rate = fromUsd / toUsd;
           
         const amount = Number(query.amount) || 1;
-        const simulatedOutput = String((amount * rate) * 0.98); // simulate a 2% fee/slippage drop
+        const simulatedOutput = (amount * rate) * 0.98; // simulate a 2% fee/slippage drop
+        const toDecimals = toSymbol === "SOL" || toSymbol === "WSOL" ? 9 : toSymbol === "BTC" || toSymbol === "WBTC" ? 8 : toSymbol === "USDC" || toSymbol === "USDT" ? 6 : 18;
+        const rawOutput = (BigInt(Math.floor(simulatedOutput * 1e6)) * (10n ** BigInt(toDecimals))) / 1000000n;
         return {
           requestId: "simulated_rango_" + Date.now(),
           resultType: "OK",
-          outputAmount: simulatedOutput,
-          outputAmountHumanReadable: simulatedOutput,
+          outputAmount: rawOutput.toString(),
+          outputAmountHumanReadable: String(simulatedOutput),
           route: [
             {
               swapperId: "MockSwapper",
               fromBlockchain: query.from.split(".")[0] || "ETH",
               toBlockchain: query.to.split(".")[0] || "SOL",
               fromAmountPrecision: String(amount),
-              toAmountPrecision: simulatedOutput,
+              toAmountPrecision: String(simulatedOutput),
             }
           ]
         };

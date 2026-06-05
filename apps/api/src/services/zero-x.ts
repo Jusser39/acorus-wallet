@@ -629,26 +629,32 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
 
 async function getMockTokenPriceUsd(symbol: string): Promise<number> {
   const norm = symbol.toUpperCase();
-  if (norm === "USDT" || norm === "USDC" || norm === "DAI") return 1;
-  try {
-    const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${norm}USDT`);
-    if (res.ok) {
-      const data = await res.json() as { price: string };
-      return Number(data.price);
-    }
-  } catch (err) {}
-  
-  // fallback hardcoded prices
-  if (norm === "ETH" || norm === "WETH") return 3800;
-  if (norm === "BNB" || norm === "WBNB") return 600;
-  if (norm === "MATIC" || norm === "POL") return 0.7;
-  if (norm === "SOL") return 160;
-  if (norm === "AVAX") return 35;
-  if (norm === "PEPE") return 0.00001;
-  if (norm === "TURBO") return 0.005;
-  if (norm === "NEIRO") return 0.002;
-  if (norm === "FLOKI") return 0.0001;
-  return 1; // default to 1:1 if unknown
+  const BASE_USD_PRICES: Record<string, number> = {
+    BTC: 65000,
+    WBTC: 65000,
+    ETH: 3200,
+    WETH: 3200,
+    BNB: 600,
+    WBNB: 600,
+    MATIC: 0.75,
+    POL: 0.75,
+    AVAX: 35,
+    SOL: 150,
+    TRX: 0.12,
+    XRP: 1.36,
+    DOGE: 0.22,
+    ADA: 0.82,
+    LINK: 16,
+    UNI: 8,
+    USDT: 1,
+    USDC: 1,
+    DAI: 1,
+    PEPE: 0.00001,
+    TURBO: 0.005,
+    NEIRO: 0.002,
+    FLOKI: 0.0001,
+  };
+  return BASE_USD_PRICES[norm] ?? 1;
 }
 
 function calculateMockAmount(
