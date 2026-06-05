@@ -31,3 +31,37 @@ export async function getExtensionHome(): Promise<ExtensionPortfolioSnapshot | n
   }
   return null;
 }
+
+export async function createWallet(name: string, passcode: string): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "create_wallet",
+    requestId: "ui_create_" + Date.now(),
+    name,
+    passcode
+  });
+}
+
+export async function importWallet(name: string, mnemonic: string, passcode: string): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "import_wallet",
+    requestId: "ui_import_" + Date.now(),
+    name,
+    mnemonic,
+    passcode
+  });
+}
+
+export async function unlockWallet(passcode: string): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "unlock_wallet",
+    requestId: "ui_unlock_" + Date.now(),
+    passcode
+  });
+}
+
+export async function lockWallet(): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "lock_wallet",
+    requestId: "ui_lock_" + Date.now()
+  });
+}

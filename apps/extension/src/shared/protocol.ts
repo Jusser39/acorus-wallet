@@ -130,6 +130,32 @@ export type ExtensionRuntimeMessage =
       surface: ExtensionSurface;
     }
   | {
+      kind: "create_wallet";
+      requestId: string;
+      surface: ExtensionSurface;
+      name: string;
+      passcode: string;
+    }
+  | {
+      kind: "import_wallet";
+      requestId: string;
+      surface: ExtensionSurface;
+      name: string;
+      mnemonic: string;
+      passcode: string;
+    }
+  | {
+      kind: "unlock_wallet";
+      requestId: string;
+      surface: ExtensionSurface;
+      passcode: string;
+    }
+  | {
+      kind: "lock_wallet";
+      requestId: string;
+      surface: ExtensionSurface;
+    }
+  | {
       kind: "walletconnect_pair";
       requestId: string;
       surface: ExtensionSurface;

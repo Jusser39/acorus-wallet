@@ -189,6 +189,46 @@ export async function handleRuntimeMessage(
     };
   }
 
+  if (input.kind === "create_wallet") {
+    try {
+      const result = await createExtensionWallet({ name: input.name, passcode: input.passcode });
+      notifyStateChanged();
+      return { requestId, ok: true, result };
+    } catch (error: any) {
+      return { requestId, ok: false, errorMessage: error.message };
+    }
+  }
+
+  if (input.kind === "import_wallet") {
+    try {
+      const result = await importExtensionWallet({ name: input.name, mnemonic: input.mnemonic, passcode: input.passcode });
+      notifyStateChanged();
+      return { requestId, ok: true, result };
+    } catch (error: any) {
+      return { requestId, ok: false, errorMessage: error.message };
+    }
+  }
+
+  if (input.kind === "unlock_wallet") {
+    try {
+      const result = await unlockExtensionWallet(input.passcode);
+      notifyStateChanged();
+      return { requestId, ok: true, result };
+    } catch (error: any) {
+      return { requestId, ok: false, errorMessage: error.message };
+    }
+  }
+
+  if (input.kind === "lock_wallet") {
+    try {
+      lockExtensionWallet();
+      notifyStateChanged();
+      return { requestId, ok: true };
+    } catch (error: any) {
+      return { requestId, ok: false, errorMessage: error.message };
+    }
+  }
+
   if (input.kind === "walletconnect_pair") {
     try {
       await walletConnectClient.pair(input.uri);

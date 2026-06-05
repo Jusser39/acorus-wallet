@@ -1,42 +1,82 @@
-import React, { useState } from "react";
-import { Wallet, ArrowLeftRight, Send, Download, Settings, History, Link2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Wallet, ArrowLeftRight, Send, Download, Settings as SettingsIcon, History, Link2 } from "lucide-react";
 import { Dashboard } from "./screens/Dashboard";
 import { Swap } from "./screens/Swap";
-// import SendScreen from "./screens/Send";
-// import ReceiveScreen from "./screens/Receive";
 import { Activity } from "./screens/Activity";
 import { Settings } from "./screens/Settings";
 import { Approval } from "./screens/Approval";
 import { WalletConnect } from "./screens/WalletConnect";
+import { Welcome } from "./screens/Welcome";
+import { CreateWallet } from "./screens/CreateWallet";
+import { ImportWallet } from "./screens/ImportWallet";
+import { Unlock } from "./screens/Unlock";
 import { getBackgroundState } from "./api";
-import type { DappRequest } from "../shared/protocol";
+import type { DappRequest, BackgroundStateSnapshot } from "../shared/protocol";
 
 export function PopupApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [pendingRequest, setPendingRequest] = useState<DappRequest | null>(null);
+  const [appState, setAppState] = useState<BackgroundStateSnapshot | null>(null);
+  const [onboardingMode, setOnboardingMode] = useState<"create" | "import" | null>(null);
 
-  React.useEffect(() => {
-    // Initial fetch
+  const fetchState = () => {
     getBackgroundState().then(state => {
-      if (state && state.pendingRequests && state.pendingRequests.length > 0) {
-        setPendingRequest(state.pendingRequests[0]);
-      }
-    });
-
-    // Listen for incoming requests while popup is open
-    const handleMessage = (message: any) => {
-      if (message.kind === "acorus#stateChanged" && message.detail?.pendingRequests) {
-        if (message.detail.pendingRequests.length > 0) {
-          setPendingRequest(message.detail.pendingRequests[0]);
+      if (state) {
+        setAppState(state);
+        if (state.pendingRequests && state.pendingRequests.length > 0) {
+          setPendingRequest(state.pendingRequests[0]);
         } else {
           setPendingRequest(null);
         }
       }
-    };
+    });
+  };
 
+  useEffect(() => {
+    fetchState();
+    const handleMessage = (message: any) => {
+      if (message.kind === "acorus#stateChanged") {
+        fetchState();
+      }
+    };
     chrome.runtime.onMessage.addListener(handleMessage);
     return () => chrome.runtime.onMessage.removeListener(handleMessage);
   }, []);
+
+  if (!appState) {
+    return <div className="h-[600px] w-[375px] bg-slate-50 flex items-center justify-center text-slate-500 font-medium">Loading Acorus...</div>;
+  }
+
+  // Router logic based on Vault status
+  if (!appState.extensionVaultStatus.hasVault) {
+    if (onboardingMode === "create") {
+      return (
+        <div className="h-[600px] w-[375px] overflow-hidden">
+          <CreateWallet onBack={() => setOnboardingMode(null)} onComplete={fetchState} />
+        </div>
+      );
+    }
+    if (onboardingMode === "import") {
+      return (
+        <div className="h-[600px] w-[375px] overflow-hidden">
+          <ImportWallet onBack={() => setOnboardingMode(null)} onComplete={fetchState} />
+        </div>
+      );
+    }
+    return (
+      <div className="h-[600px] w-[375px] overflow-hidden">
+        <Welcome onSelect={setOnboardingMode} />
+      </div>
+    );
+  }
+
+  if (!appState.extensionVaultStatus.isUnlocked) {
+    return (
+      <div className="h-[600px] w-[375px] overflow-hidden">
+        <Unlock onUnlock={fetchState} />
+      </div>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {

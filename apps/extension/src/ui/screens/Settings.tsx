@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getBackgroundState } from "../api";
+import { getBackgroundState, lockWallet } from "../api";
 import type { BackgroundStateSnapshot } from "../../shared/protocol";
 import { Globe, Lock, Shield, Link2Off } from "lucide-react";
 
@@ -11,6 +11,10 @@ export function Settings() {
       if (data) setState(data);
     });
   }, []);
+
+  const handleLock = async () => {
+    await lockWallet();
+  };
 
   return (
     <div className="p-4 flex flex-col gap-4">
@@ -48,7 +52,10 @@ export function Settings() {
             <Shield className="w-5 h-5 text-fuchsia-600" />
             Security & Privacy
           </div>
-          <button className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left">
+          <button 
+            onClick={handleLock}
+            className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-colors text-left"
+          >
             <span className="font-semibold text-sm">Lock Wallet</span>
             <Lock className="w-4 h-4 text-slate-400" />
           </button>
