@@ -167,16 +167,10 @@ export function PopupApp() {
       </header>
       
       {/* Address Bar */}
-      <div className="px-4 pb-2 flex items-center gap-2">
-        <div className="flex items-center bg-slate-100 rounded-full py-1.5 px-3">
-          <div className="flex -space-x-1 mr-2">
-            <img src="/icons/eth.svg" className="w-4 h-4 rounded-full border border-white z-20" alt="ETH" />
-            <img src="/icons/bnb.svg" className="w-4 h-4 rounded-full border border-white z-10" alt="BNB" />
-          </div>
-          <span className="text-sm font-medium text-slate-600 mr-2 tracking-tight">
-            0xEA52a...79b5f
-          </span>
-          <Copy className="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600" />
+      <div className="px-4 pb-2 bg-white relative z-40">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full text-xs font-semibold text-slate-600 border border-slate-200/50">
+          {appState.extensionVaultStatus.profiles[0]?.evmAddress?.slice(0,6) || "0xEA52"}...{appState.extensionVaultStatus.profiles[0]?.evmAddress?.slice(-5) || "79b5f"}
+          <Copy className="w-3 h-3 ml-1 text-slate-400 hover:text-slate-600 cursor-pointer" />
         </div>
       </div>
 

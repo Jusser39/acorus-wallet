@@ -97,16 +97,17 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
           <div className="flex flex-col px-2">
             {home.assets.map((asset, index) => {
               const val = asset.fiatValue ? `${asset.fiatValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $` : "—";
-              const famIcon = asset.family === "evm" ? "/icons/eth.svg" : asset.family === "solana" ? "/icons/sol.svg" : "/icons/bnb.svg";
               
               return (
                 <div key={index} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                        {asset.symbol === "ETH" ? <img src="/icons/eth.svg" className="w-full h-full rounded-full" /> : asset.symbol.charAt(0)}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                        {asset.symbol.substring(0, 2)}
                       </div>
-                      <img src={famIcon} className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-white" alt="net" />
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-slate-800 text-[8px] font-black text-white flex items-center justify-center">
+                        {asset.family === "evm" ? "E" : asset.family === "solana" ? "S" : "B"}
+                      </div>
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">

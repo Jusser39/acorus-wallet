@@ -257,7 +257,14 @@ async function fetchPricesForChain(
 
   for (const base of EXTENSION_API_BASES) {
     try {
-      const response = await fetch(`${base}/api/market/prices?${params.toString()}`);
+      // Use AbortSignal to avoid hanging the extension indefinitely
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(`${base}/api/market/prices?${params.toString()}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         continue;
@@ -541,6 +548,9 @@ async function fetchJsonRpc<T>(
   method: string,
   params: unknown[],
 ): Promise<T | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  
   const response = await fetch(rpcUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -550,7 +560,9 @@ async function fetchJsonRpc<T>(
       method,
       params,
     }),
+    signal: controller.signal
   });
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     throw new Error("RPC endpoint did not respond.");
