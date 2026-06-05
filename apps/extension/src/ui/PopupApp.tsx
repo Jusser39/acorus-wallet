@@ -23,6 +23,8 @@ export function PopupApp() {
   const [appState, setAppState] = useState<BackgroundStateSnapshot | null>(null);
   const [onboardingMode, setOnboardingMode] = useState<"create" | "import" | null>(null);
 
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+
   const fetchState = () => {
     getBackgroundState().then(state => {
       if (state) {
@@ -126,10 +128,39 @@ export function PopupApp() {
 
   return (
     <div className="flex flex-col h-[600px] w-[375px] bg-white text-slate-900 overflow-hidden font-sans relative">
-      <header className="flex items-center justify-between p-4 bg-white">
-        <button className="flex items-center gap-1 font-bold text-lg hover:opacity-80 transition-opacity">
-          Account 1 <ChevronDown className="w-5 h-5 text-slate-400" />
-        </button>
+      <header className="flex items-center justify-between p-4 bg-white relative z-50">
+        <div className="relative">
+          <button 
+            onClick={() => setShowAccountMenu(!showAccountMenu)}
+            className="flex items-center gap-1 font-bold text-lg hover:opacity-80 transition-opacity"
+          >
+            Account 1 <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showAccountMenu ? "rotate-180" : ""}`} />
+          </button>
+          
+          {showAccountMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowAccountMenu(false)} />
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-3 py-2 border-b border-slate-50 mb-1">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Accounts</div>
+                  <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm font-semibold text-slate-700">Account 1</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowAccountMenu(false);
+                    setActiveTab("settings");
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                >
+                  Manage / Reset Wallet
+                </button>
+              </div>
+            </>
+          )}
+        </div>
         <button className="p-2 -mr-2 rounded-full hover:bg-slate-100 transition-colors" onClick={() => setActiveTab("settings")}>
           <Menu className="w-6 h-6 text-slate-700" />
         </button>

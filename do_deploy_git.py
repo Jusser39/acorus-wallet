@@ -28,7 +28,7 @@ try:
     print("Executing deployment commands...")
     stdin, stdout, stderr = client.exec_command(commands, get_pty=True)
     for line in iter(stdout.readline, ""):
-        print(line.encode('utf-8', 'replace').decode('utf-8'), end="")
+        print(line.encode('ascii', 'ignore').decode('ascii'), end="")
         sys.stdout.flush()
     client.close()
 except Exception as e:

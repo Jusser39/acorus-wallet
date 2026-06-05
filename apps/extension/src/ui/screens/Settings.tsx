@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { getBackgroundState, lockWallet } from "../api";
+import { getBackgroundState, lockWallet, resetWallet } from "../api";
 import type { BackgroundStateSnapshot } from "../../shared/protocol";
 import { Globe, Lock, Shield, Link2Off, ArrowLeft } from "lucide-react";
 
 export function Settings({ onBack }: { onBack?: () => void }) {
   const [state, setState] = useState<BackgroundStateSnapshot | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     getBackgroundState().then((data) => {
@@ -14,6 +15,13 @@ export function Settings({ onBack }: { onBack?: () => void }) {
 
   const handleLock = async () => {
     await lockWallet();
+  };
+
+  const handleReset = async () => {
+    if (confirm("Are you sure you want to reset the extension? This will wipe your current wallet and cannot be undone unless you have your seed phrase saved!")) {
+      setIsResetting(true);
+      await resetWallet();
+    }
   };
 
   return (
@@ -76,10 +84,14 @@ export function Settings({ onBack }: { onBack?: () => void }) {
           </button>
 
           <button 
-            className="flex items-center justify-between p-3 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors text-left"
+            onClick={handleReset}
+            disabled={isResetting}
+            className="flex items-center justify-between p-3 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors text-left disabled:opacity-50"
           >
             <div className="flex flex-col">
-              <span className="font-semibold text-rose-700 text-sm">Reset Extension</span>
+              <span className="font-semibold text-rose-700 text-sm">
+                {isResetting ? "Resetting..." : "Reset Extension"}
+              </span>
               <span className="text-xs text-rose-500/70 font-medium">Clear all local data</span>
             </div>
             <span className="text-xs font-bold text-rose-600 px-2 py-1 bg-rose-200/50 rounded-md">DANGER</span>

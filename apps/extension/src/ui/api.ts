@@ -71,3 +71,11 @@ export async function lockWallet(): Promise<any> {
     requestId: "ui_lock_" + Date.now()
   });
 }
+
+export async function resetWallet(): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "reset_extension_wallet",
+    surface: "popup",
+    requestId: "ui_reset_" + Date.now()
+  });
+}
