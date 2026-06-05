@@ -19,7 +19,10 @@ export async function getSolanaNativeBalance(input: {
 
   for (const connection of createSolanaConnections(input.rpcUrl)) {
     try {
-      const lamports = await connection.getBalance(publicKey, "confirmed");
+      const lamports = await Promise.race([
+        connection.getBalance(publicKey, "confirmed"),
+        new Promise<number>((_, reject) => setTimeout(() => reject(new Error("Solana RPC Timeout")), 5000))
+      ]);
 
       return {
         lamports: lamports.toString(),
