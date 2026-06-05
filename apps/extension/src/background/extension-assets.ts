@@ -271,14 +271,14 @@ async function fetchPricesForChain(
     try {
       // Use AbortSignal to avoid hanging the extension indefinitely
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
       
       const response = await fetch(`${base}/api/market/prices?${params.toString()}`, {
         signal: controller.signal
       });
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
+        clearTimeout(timeoutId);
         continue;
       }
 
@@ -286,6 +286,8 @@ async function fetchPricesForChain(
         ok?: boolean;
         prices?: ExtensionMarketPrice[];
       };
+      
+      clearTimeout(timeoutId);
 
       if (payload.ok && Array.isArray(payload.prices)) {
         return payload.prices;
@@ -561,32 +563,37 @@ async function fetchJsonRpc<T>(
   params: unknown[],
 ): Promise<T | null> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
   
-  const response = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method,
-      params,
-    }),
-    signal: controller.signal
-  });
-  clearTimeout(timeoutId);
+  try {
+    const response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method,
+        params,
+      }),
+      signal: controller.signal
+    });
 
-  if (!response.ok) {
-    throw new Error("RPC endpoint did not respond.");
+    if (!response.ok) {
+      throw new Error("RPC endpoint did not respond.");
+    }
+
+    const payload = await response.json() as { result?: T; error?: { message?: string } };
+    clearTimeout(timeoutId);
+
+    if (payload.error) {
+      throw new Error(payload.error.message ?? "RPC call failed.");
+    }
+
+    return payload.result ?? null;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-
-  const payload = await response.json() as { result?: T; error?: { message?: string } };
-
-  if (payload.error) {
-    throw new Error(payload.error.message ?? "RPC call failed.");
-  }
-
-  return payload.result ?? null;
 }
 
 function encodeErc20BalanceOf(ownerAddress: string): `0x${string}` {

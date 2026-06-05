@@ -13,7 +13,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
       if (data?.ok) {
         setHome(data.result);
       } else {
-        setErr(data);
+        setErr(data || { error: "Background script failed to respond or returned undefined." });
       }
     }).catch(e => setErr(String(e)));
   }, []);
