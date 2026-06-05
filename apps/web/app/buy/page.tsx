@@ -6,8 +6,8 @@ import { CreditCard, Apple, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 
 export default function BuyPage() {
   const [fiatAmount, setFiatAmount] = useState("");
-  const [cryptoAsset] = useState("ETH");
-  const [fiatCurrency] = useState("USD");
+  const [cryptoAsset, setCryptoAsset] = useState("ETH");
+  const [fiatCurrency, setFiatCurrency] = useState("USD");
   const [isSuccess, setIsSuccess] = useState(false);
 
   const cryptoRate = 3500; // Mock ETH rate
@@ -33,8 +33,17 @@ export default function BuyPage() {
             <div className="bg-white/80 rounded-3xl p-5 border border-white/50 shadow-sm backdrop-blur-md relative">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-slate-500">You pay</span>
-                <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs">$</span>
+                <button 
+                  onClick={() => {
+                    const currencies = ["USD", "EUR", "RUB"];
+                    const next = currencies[(currencies.indexOf(fiatCurrency) + 1) % currencies.length];
+                    setFiatCurrency(next);
+                  }}
+                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800"
+                >
+                  <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs">
+                    {fiatCurrency === "USD" ? "$" : fiatCurrency === "EUR" ? "€" : "₽"}
+                  </span>
                   {fiatCurrency}
                 </button>
               </div>
@@ -58,9 +67,16 @@ export default function BuyPage() {
             <div className="bg-white/80 rounded-3xl p-5 border border-white/50 shadow-sm backdrop-blur-md relative">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-slate-500">You receive (approx)</span>
-                <button className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800">
-                  <div className="w-5 h-5 bg-[#627EEA] rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-[10px] font-bold text-white leading-none mt-[1px]">Ξ</span>
+                <button 
+                  onClick={() => {
+                    const assets = ["ETH", "BTC", "SOL", "USDC"];
+                    const nextAsset = assets[(assets.indexOf(cryptoAsset) + 1) % assets.length];
+                    setCryptoAsset(nextAsset);
+                  }}
+                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800"
+                >
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+                    <span className="text-[10px] font-bold text-white leading-none mt-[1px]">{cryptoAsset.charAt(0)}</span>
                   </div>
                   {cryptoAsset}
                 </button>
