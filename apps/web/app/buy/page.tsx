@@ -70,7 +70,7 @@ export default function BuyPage() {
                 <button 
                   onClick={() => {
                     const assets = ["ETH", "BTC", "SOL", "USDC"];
-                    const nextAsset = assets[(assets.indexOf(cryptoAsset) + 1) % assets.length];
+                    const nextAsset = assets[(assets.indexOf(cryptoAsset) + 1) % assets.length]!;
                     setCryptoAsset(nextAsset);
                   }}
                   className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800"
