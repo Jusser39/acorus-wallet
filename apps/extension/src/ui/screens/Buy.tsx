@@ -47,7 +47,7 @@ export function Buy({ onBack }: { onBack?: () => void }) {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-slate-500">You receive (approx)</span>
             <button className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full text-sm font-bold transition-colors text-slate-800">
-              <img src="/icons/eth.svg" className="w-4 h-4" alt="ETH" />
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">E</div>
               {cryptoAsset}
             </button>
           </div>
