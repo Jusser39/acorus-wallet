@@ -2375,13 +2375,13 @@ html[data-acorus-theme="dark"] .magic-action-tile {
 
 .blob {
   position: absolute;
-  filter: blur(175px);
   opacity: 0.5;
   border-radius: 50%;
+  transform: translateZ(0); /* Hardware acceleration */
 }
 
 .blob-yellow {
-  background: #ffe3b9;
+  background: radial-gradient(50% 50% at 50% 50%, #ffe3b9 0%, rgba(255, 227, 185, 0) 100%);
   width: 400px;
   height: 470px;
   bottom: 20%;
@@ -2389,7 +2389,7 @@ html[data-acorus-theme="dark"] .magic-action-tile {
 }
 
 .blob-blue {
-  background: #c4f4fe;
+  background: radial-gradient(50% 50% at 50% 50%, #c4f4fe 0%, rgba(196, 244, 254, 0) 100%);
   width: 1100px;
   height: 500px;
   top: 10%;
@@ -2397,7 +2397,7 @@ html[data-acorus-theme="dark"] .magic-action-tile {
 }
 
 .blob-pink {
-  background: #ffe5f4;
+  background: radial-gradient(50% 50% at 50% 50%, #ffe5f4 0%, rgba(255, 229, 244, 0) 100%);
   width: 550px;
   height: 700px;
   top: 5%;
@@ -2405,7 +2405,7 @@ html[data-acorus-theme="dark"] .magic-action-tile {
 }
 
 .blob-green {
-  background: #ecffc3;
+  background: radial-gradient(50% 50% at 50% 50%, #ecffc3 0%, rgba(236, 255, 195, 0) 100%);
   width: 360px;
   height: 900px;
   top: -10%;
