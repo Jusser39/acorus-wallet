@@ -9,13 +9,26 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   const [activeTab, setActiveTab] = useState("tokens");
 
   useEffect(() => {
+    let isMounted = true;
+    const timeout = setTimeout(() => {
+      if (isMounted) setErr({ error: "UI Timeout: Background script took more than 5 seconds to respond." });
+    }, 5000);
+
     getExtensionHome().then((data: any) => {
+      if (!isMounted) return;
+      clearTimeout(timeout);
       if (data?.ok) {
         setHome(data.result);
       } else {
         setErr(data || { error: "Background script failed to respond or returned undefined." });
       }
-    }).catch(e => setErr(String(e)));
+    }).catch(e => {
+      if (!isMounted) return;
+      clearTimeout(timeout);
+      setErr(String(e));
+    });
+
+    return () => { isMounted = false; clearTimeout(timeout); };
   }, []);
 
   if (err) {
