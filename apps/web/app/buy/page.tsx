@@ -36,7 +36,7 @@ export default function BuyPage() {
                 <button 
                   onClick={() => {
                     const currencies = ["USD", "EUR", "RUB"];
-                    const next = currencies[(currencies.indexOf(fiatCurrency) + 1) % currencies.length];
+                    const next = currencies[(currencies.indexOf(fiatCurrency) + 1) % currencies.length]!;
                     setFiatCurrency(next);
                   }}
                   className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full text-sm font-bold transition-colors text-slate-800"
