@@ -13,6 +13,7 @@ const navItems = [
   { href: "/swap", label: "Swap" },
   { href: "/send", label: "Send" },
   { href: "/receive", label: "Receive" },
+  { href: "/predictions", label: "Predictions" },
   { href: "/explore", label: "Explore" },
   { href: "/stake", label: "Stake" },
   { href: "/nft", label: "NFTs" },

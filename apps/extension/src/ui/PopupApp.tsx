@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Wallet, ArrowLeftRight, Send, Download, Settings as SettingsIcon, History, Link2 } from "lucide-react";
+import { Menu, ChevronDown, Copy } from "lucide-react";
 import { Dashboard } from "./screens/Dashboard";
+import { Buy } from "./screens/Buy";
 import { Swap } from "./screens/Swap";
+import { Activity } from "./screens/Activity";
+import { Send } from "./screens/Send";
+import { Receive } from "./screens/Receive";
 import { Activity } from "./screens/Activity";
 import { Settings } from "./screens/Settings";
 import { Approval } from "./screens/Approval";
@@ -81,17 +85,23 @@ export function PopupApp() {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard onNavigate={setActiveTab} />;
+      case "buy":
+        return <Buy onBack={() => setActiveTab("dashboard")} />;
       case "swap":
-        return <Swap />;
+        return <Swap onBack={() => setActiveTab("dashboard")} />;
+      case "send":
+        return <Send onBack={() => setActiveTab("dashboard")} />;
+      case "receive":
+        return <Receive onBack={() => setActiveTab("dashboard")} />;
       case "activity":
-        return <Activity />;
+        return <Activity onBack={() => setActiveTab("dashboard")} />;
       case "walletconnect":
-        return <WalletConnect />;
+        return <WalletConnect onBack={() => setActiveTab("dashboard")} />;
       case "settings":
-        return <Settings />;
+        return <Settings onBack={() => setActiveTab("dashboard")} />;
       default:
-        return <Dashboard />;
+        return <Dashboard onNavigate={setActiveTab} />;
     }
   };
 
@@ -115,44 +125,35 @@ export function PopupApp() {
   }
 
   return (
-    <div className="flex flex-col h-[600px] w-[375px] bg-slate-50 text-slate-900 overflow-hidden font-sans relative">
-      <div className="flex-1 overflow-y-auto pb-16">
-        <header className="flex items-center justify-between p-4 bg-white border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-tr from-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">A</span>
-            </div>
-            <h1 className="font-bold text-lg tracking-tight">Acorus</h1>
+    <div className="flex flex-col h-[600px] w-[375px] bg-white text-slate-900 overflow-hidden font-sans relative">
+      <header className="flex items-center justify-between p-4 bg-white">
+        <button className="flex items-center gap-1 font-bold text-lg hover:opacity-80 transition-opacity">
+          Account 1 <ChevronDown className="w-5 h-5 text-slate-400" />
+        </button>
+        <button className="p-2 -mr-2 rounded-full hover:bg-slate-100 transition-colors" onClick={() => setActiveTab("settings")}>
+          <Menu className="w-6 h-6 text-slate-700" />
+        </button>
+      </header>
+      
+      {/* Address Bar */}
+      <div className="px-4 pb-2 flex items-center gap-2">
+        <div className="flex items-center bg-slate-100 rounded-full py-1.5 px-3">
+          <div className="flex -space-x-1 mr-2">
+            <img src="/icons/eth.svg" className="w-4 h-4 rounded-full border border-white z-20" alt="ETH" />
+            <img src="/icons/bnb.svg" className="w-4 h-4 rounded-full border border-white z-10" alt="BNB" />
           </div>
-          <button className="p-2 rounded-full hover:bg-slate-100 transition-colors" onClick={() => setActiveTab("settings")}>
-            <Settings className="w-5 h-5 text-slate-600" />
-          </button>
-        </header>
+          <span className="text-sm font-medium text-slate-600 mr-2 tracking-tight">
+            0xEA52a...79b5f
+          </span>
+          <Copy className="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600" />
+        </div>
+      </div>
 
-        <main>
+      <div className="flex-1 overflow-y-auto">
+        <main className="h-full">
           {renderContent()}
         </main>
       </div>
-
-      {/* Bottom Navigation */}
-      <nav className="absolute bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-100 flex items-center justify-around px-2 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
-        <NavItem icon={<Wallet className="w-5 h-5" />} label="Wallet" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
-        <NavItem icon={<ArrowLeftRight className="w-5 h-5" />} label="Swap" active={activeTab === "swap"} onClick={() => setActiveTab("swap")} />
-        <NavItem icon={<Link2 className="w-5 h-5" />} label="Connect" active={activeTab === "walletconnect"} onClick={() => setActiveTab("walletconnect")} />
-        <NavItem icon={<History className="w-5 h-5" />} label="Activity" active={activeTab === "activity"} onClick={() => setActiveTab("activity")} />
-      </nav>
     </div>
-  );
-}
-
-function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center w-16 h-12 gap-1 transition-colors ${active ? "text-violet-600" : "text-slate-400 hover:text-slate-600"}`}
-    >
-      {icon}
-      <span className="text-[10px] font-medium">{label}</span>
-    </button>
   );
 }

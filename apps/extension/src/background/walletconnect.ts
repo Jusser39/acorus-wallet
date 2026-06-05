@@ -23,7 +23,7 @@ export class WalletConnectClient {
       });
 
       this.wallet = await Web3Wallet.init({
-        core,
+        core: core as any,
         metadata: {
           name: "Acorus Extension",
           description: "Ultimate Multi-Chain Wallet",

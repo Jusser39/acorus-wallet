@@ -14,6 +14,7 @@
   "dependencies": {
     "@acorus/shared": "workspace:*",
     "@acorus/wallet-core": "workspace:*",
+    "lucide-react": "^1.17.0",
     "next": "16.2.6",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
