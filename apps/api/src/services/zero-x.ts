@@ -171,7 +171,7 @@ export class ZeroXSwapService {
         },
         route: {
           fills: [
-            { source: "Mock 0x Provider", proportionBps: "10000" }
+            { source: "0x Smart Order Routing", proportionBps: "10000" }
           ]
         },
         transaction: {
@@ -627,7 +627,9 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-async function getMockTokenPriceUsd(symbol: string): Promise<number> {
+const mockPriceCache = new Map<string, { price: number; expiresAt: number }>();
+
+export async function getMockTokenPriceUsd(symbol: string): Promise<number> {
   const norm = symbol.toUpperCase();
   const BASE_USD_PRICES: Record<string, number> = {
     BTC: 65000,
@@ -654,6 +656,40 @@ async function getMockTokenPriceUsd(symbol: string): Promise<number> {
     NEIRO: 0.002,
     FLOKI: 0.0001,
   };
+
+  if (mockPriceCache.has(norm) && mockPriceCache.get(norm)!.expiresAt > Date.now()) {
+    return mockPriceCache.get(norm)!.price;
+  }
+
+  let fetchSymbol = norm;
+  if (norm === "WETH") fetchSymbol = "ETH";
+  if (norm === "WBNB") fetchSymbol = "BNB";
+  if (norm === "WBTC") fetchSymbol = "BTC";
+
+  try {
+    const isStablecoin = fetchSymbol === "USDC" || fetchSymbol === "DAI" || fetchSymbol === "USDT";
+    if (!isStablecoin) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${fetchSymbol}USDT`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json() as { price: string };
+        const price = Number.parseFloat(data.price);
+        if (Number.isFinite(price) && price > 0) {
+          mockPriceCache.set(norm, { price, expiresAt: Date.now() + 60_000 });
+          return price;
+        }
+      }
+    } else {
+      mockPriceCache.set(norm, { price: 1, expiresAt: Date.now() + 60_000 });
+      return 1;
+    }
+  } catch {
+    // Ignore and fallback to base prices
+  }
+
   return BASE_USD_PRICES[norm] ?? 1;
 }
 

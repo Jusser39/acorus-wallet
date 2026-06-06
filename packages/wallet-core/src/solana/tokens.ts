@@ -26,7 +26,7 @@ export async function getSolanaSplTokenBalances(input: {
         connection.getParsedTokenAccountsByOwner(owner, {
           programId: TOKEN_PROGRAM_ID,
         }),
-        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Solana RPC Timeout")), 5000))
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Solana RPC Timeout")), 1500))
       ]);
 
       return accounts.value.map((item: any) => {

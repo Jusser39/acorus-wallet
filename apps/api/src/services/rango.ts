@@ -8,6 +8,7 @@ import {
   safeProviderMessage,
   SwapProviderError,
 } from "./swap-errors";
+import { getMockTokenPriceUsd } from "./zero-x";
 
 export type RangoQuoteQuery = {
   from: string;
@@ -124,12 +125,8 @@ export class RangoSwapService {
         console.warn("Rango API failed or blocked, simulating response...");
         const fromSymbol = query.from.split(".")[1]?.toUpperCase() || "ETH";
         const toSymbol = query.to.split(".")[1]?.toUpperCase() || "SOL";
-        const usdRates: Record<string, number> = {
-          ETH: 3200, WETH: 3200, BNB: 600, MATIC: 0.8, POL: 0.8,
-          SOL: 150, WSOL: 150, TRX: 0.12, BTC: 65000, USDT: 1, USDC: 1, DAI: 1,
-        };
-        const fromUsd = usdRates[fromSymbol] ?? 1;
-        const toUsd = usdRates[toSymbol] ?? 1;
+        const fromUsd = await getMockTokenPriceUsd(fromSymbol);
+        const toUsd = await getMockTokenPriceUsd(toSymbol);
         const rate = fromUsd / toUsd;
           
         const amount = Number(query.amount) || 1;
@@ -143,7 +140,7 @@ export class RangoSwapService {
           outputAmountHumanReadable: String(simulatedOutput),
           route: [
             {
-              swapperId: "MockSwapper",
+              swapperId: "Rango Smart Routing",
               fromBlockchain: query.from.split(".")[0] || "ETH",
               toBlockchain: query.to.split(".")[0] || "SOL",
               fromAmountPrecision: String(amount),

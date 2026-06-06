@@ -148,12 +148,19 @@ export function ExploreClient({ initialTrending, initialTop, initialMemes }: Pro
     losers: [],
     memes: initialMemes,
   });
+  const [hasMore, setHasMore] = useState<Record<ExploreTab, boolean>>({
+    trending: false,
+    top: true,
+    gainers: true,
+    losers: true,
+    memes: false,
+  });
   const [loading, setLoading] = useState(false);
 
   const items = cache[tab] ?? [];
   const visible = useMemo(() => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [items, page]);
   const canPrev = page > 1;
-  const canNext = page * PAGE_SIZE < items.length || (items.length >= PAGE_SIZE && tab !== "memes");
+  const canNext = (page * PAGE_SIZE < items.length) || (hasMore[tab] && (tab === "top" || tab === "gainers" || tab === "losers"));
 
   async function selectTab(next: ExploreTab) {
     setTab(next);
@@ -168,6 +175,9 @@ export function ExploreClient({ initialTrending, initialTop, initialMemes }: Pro
           ? await fetchExploreMemes()
           : await fetchExploreTop({ view: next, limit: 50 });
       setCache((current) => ({ ...current, [next]: response.items }));
+      if (next === "top" || next === "gainers" || next === "losers") {
+        setHasMore((current) => ({ ...current, [next]: response.items.length >= 50 }));
+      }
     } finally {
       setLoading(false);
     }
@@ -175,11 +185,12 @@ export function ExploreClient({ initialTrending, initialTop, initialMemes }: Pro
 
   async function nextPage() {
     const nextPageNumber = page + 1;
-    if (nextPageNumber * PAGE_SIZE > items.length && (tab === "top" || tab === "gainers" || tab === "losers")) {
+    if (nextPageNumber * PAGE_SIZE > items.length && hasMore[tab] && (tab === "top" || tab === "gainers" || tab === "losers")) {
       setLoading(true);
       try {
         const response = await fetchExploreTop({ view: tab, page: nextPageNumber, limit: PAGE_SIZE });
         setCache((current) => ({ ...current, [tab]: [...(current[tab] ?? []), ...response.items] }));
+        setHasMore((current) => ({ ...current, [tab]: response.items.length >= PAGE_SIZE }));
       } finally {
         setLoading(false);
       }
