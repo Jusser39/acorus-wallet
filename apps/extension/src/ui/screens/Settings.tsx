@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getBackgroundState, lockWallet, resetWallet } from "../api";
+import { getBackgroundState, lockWallet, resetWallet, revokeSession } from "../api";
 import type { BackgroundStateSnapshot } from "../../shared/protocol";
 import { Globe, Lock, Shield, Link2Off, ArrowLeft } from "lucide-react";
 
@@ -44,20 +44,28 @@ export function Settings({ onBack }: { onBack?: () => void }) {
           
           {!state ? (
             <div className="text-sm text-slate-400">Loading...</div>
-          ) : state.dappShell.connections.length === 0 ? (
+          ) : state.sessions.length === 0 ? (
             <div className="text-sm text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
               No active connections.
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {state.dappShell.connections.map((conn) => (
-                <div key={conn.origin} className="flex flex-col gap-1 p-2 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="font-semibold text-slate-800 text-sm truncate">{conn.origin}</div>
+              {state.sessions.map((conn) => (
+                <div key={conn.id} className="flex flex-col gap-1 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="font-semibold text-slate-800 text-sm truncate">{conn.origin.origin}</div>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-xs text-slate-500">
-                      {conn.approvedNamespaces.length} namespaces
+                      {conn.chainIds.length} networks
                     </span>
-                    <button className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1">
+                    <button 
+                      onClick={async () => {
+                        await revokeSession(conn.id);
+                        getBackgroundState().then((data) => {
+                          if (data) setState(data);
+                        });
+                      }}
+                      className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1"
+                    >
                       <Link2Off className="w-3 h-3" />
                       Disconnect
                     </button>

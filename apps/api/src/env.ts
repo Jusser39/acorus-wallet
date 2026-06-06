@@ -79,7 +79,7 @@ const envSchema = z.object({
   MARKET_PRICE_TTL_SEC: z.coerce.number().int().positive().default(60),
   MARKET_CHART_TTL_SEC: z.coerce.number().int().positive().default(300),
   MARKET_DISCOVERY_TTL_SEC: z.coerce.number().int().positive().default(300),
-  MARKET_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+  MARKET_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
   MARKET_RATE_LIMIT_RPM: z.coerce.number().int().positive().default(30),
 
   ZEROX_API_KEY: optionalStringFromEnv,

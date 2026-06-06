@@ -516,6 +516,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   async getPrices(requests: MarketPriceRequest[]): Promise<MarketPriceDto[]> {
     const results: MarketPriceDto[] = [];
     const remaining = [...requests];
+    let lastError: unknown;
 
     for (const provider of this.providers) {
       if (remaining.length === 0) break;
@@ -534,9 +535,14 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
         }
         remaining.length = 0;
         remaining.push(...newRemaining);
-      } catch {
+      } catch (error) {
+        lastError = error;
         continue;
       }
+    }
+
+    if (remaining.length > 0 && lastError) {
+      throw lastError;
     }
 
     return results;
@@ -586,41 +592,50 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   }
 
   async getTrending(): Promise<ExploreTokenItem[]> {
+    let lastError: unknown;
     for (const provider of this.providers) {
       if (provider.getTrending) {
         try {
           return await provider.getTrending();
-        } catch {
+        } catch (error) {
+          lastError = error;
           continue;
         }
       }
     }
+    if (lastError) throw lastError;
     return [];
   }
 
   async getTopMarkets(currency: FiatCurrency, limit = 20): Promise<ExploreTokenItem[]> {
+    let lastError: unknown;
     for (const provider of this.providers) {
       if (provider.getTopMarkets) {
         try {
           return await provider.getTopMarkets(currency, limit);
-        } catch {
+        } catch (error) {
+          lastError = error;
           continue;
         }
       }
     }
+    if (lastError) throw lastError;
     return [];
   }
 
   async getMemeBoosts(): Promise<ExploreTokenItem[]> {
+    let lastError: unknown;
     for (const provider of this.providers) {
       if (provider.getMemeBoosts) {
         try {
           return await provider.getMemeBoosts();
-        } catch {
+        } catch (error) {
+          lastError = error;
           continue;
         }
       }
     }
+    if (lastError) throw lastError;
     return [];
   }
 

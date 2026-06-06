@@ -4,12 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { searchMarket, type MarketSearchResult } from "@/lib/api";
 
-function formatUsd(value: number | null | undefined): string {
-  if (value == null) return "";
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
-  return `$${value.toFixed(value < 1 ? 4 : 2)}`;
-}
+import { useFormatter } from "@/hooks/use-formatter";
 
 function groupLabel(kind: MarketSearchResult["kind"]): string {
   if (kind === "pool") return "Pool";
@@ -22,6 +17,7 @@ export function GlobalMarketSearch() {
   const [results, setResults] = useState<MarketSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { formatCurrency } = useFormatter();
   const normalized = query.trim();
   const showResults = open && normalized.length >= 2;
 
@@ -87,7 +83,7 @@ export function GlobalMarketSearch() {
                         </span>
                       </span>
                       <span className="block truncate text-xs text-slate-500">
-                        {item.subtitle}{item.liquidityUsd ? ` · liq ${formatUsd(item.liquidityUsd)}` : ""}
+                        {item.subtitle}{item.liquidityUsd ? ` · liq ${formatCurrency(item.liquidityUsd)}` : ""}
                       </span>
                     </span>
                   </>

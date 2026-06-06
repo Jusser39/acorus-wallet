@@ -658,6 +658,17 @@ export async function deleteUserToken(id: string): Promise<void> {
   await apiFetch<{ ok: true }>(`/api/user-tokens/${id}`, { method: "DELETE" });
 }
 
+export type FiatRatesResponse = {
+  base: string;
+  rates: Record<string, number>;
+  updatedAt: number;
+};
+
+export async function getFiatRates(): Promise<FiatRatesResponse> {
+  const response = await apiFetch<{ ok: true; rates: FiatRatesResponse }>("/api/market/fiat-rates");
+  return response.rates;
+}
+
 export async function getMarketPrices(input: {
   chainId: number;
   currency: FiatCurrency;

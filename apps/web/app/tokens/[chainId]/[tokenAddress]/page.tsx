@@ -55,15 +55,7 @@ type TokenMeta = {
   name: string;
 };
 
-function formatUsd(value: number | null | undefined): string {
-  if (value == null) return "—";
-  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
-  if (value > 0.001) return `$${value.toFixed(4)}`;
-  return `$${value.toExponential(2)}`;
-}
+import { useFormatter } from "@/hooks/use-formatter";
 
 function findCuratedToken(chainId: number, tokenAddress: string): TokenMeta | null {
   const curated = getCuratedTokens(chainId).find(
@@ -203,6 +195,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
+  const { formatCurrency } = useFormatter();
 
   const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() =>
     hasNumericChain && !isNativeToken && !isSkeleton ? findCuratedToken(numericChainId, tokenAddress) : null,
@@ -721,12 +714,12 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard label="Market cap" value={formatUsd(displayMarketCap)} />
-            <MetricCard label="FDV" value={formatUsd(displayFdv)} />
-            <MetricCard label="24h volume" value={formatUsd(displayVolume24h)} />
-            <MetricCard label="Liquidity" value={formatUsd(displayLiquidity)} />
-            <MetricCard label="24h high" value={formatUsd(displayHigh24h)} />
-            <MetricCard label="24h low" value={formatUsd(displayLow24h)} />
+            <MetricCard label="Market cap" value={formatCurrency(displayMarketCap)} />
+            <MetricCard label="FDV" value={formatCurrency(displayFdv)} />
+            <MetricCard label="24h volume" value={formatCurrency(displayVolume24h)} />
+            <MetricCard label="Liquidity" value={formatCurrency(displayLiquidity)} />
+            <MetricCard label="24h high" value={formatCurrency(displayHigh24h)} />
+            <MetricCard label="24h low" value={formatCurrency(displayLow24h)} />
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">

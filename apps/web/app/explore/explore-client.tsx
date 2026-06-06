@@ -32,15 +32,7 @@ const TAB_SHORT_LABELS: Record<ExploreTab, string> = {
   memes: "Top memes",
 };
 
-function formatUsd(value: number | null | undefined): string {
-  if (value == null) return "-";
-  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
-  if (value > 0.001) return `$${value.toFixed(4)}`;
-  return `$${value.toExponential(2)}`;
-}
+import { useFormatter } from "../../hooks/use-formatter";
 
 function PriceChangeBadge({ value }: { value: number | null | undefined }) {
   if (value == null) return <span className="text-xs text-slate-400">-</span>;
@@ -55,6 +47,7 @@ function PriceChangeBadge({ value }: { value: number | null | undefined }) {
 
 function TokenRow({ token, rank }: { token: ExploreTokenItem; rank: number }) {
   const href = buildExploreTokenHref(token);
+  const { formatCurrency } = useFormatter();
 
   return (
     <Link href={href} className="explore-row">
@@ -73,12 +66,12 @@ function TokenRow({ token, rank }: { token: ExploreTokenItem; rank: number }) {
         </span>
       </span>
       <span className="hidden text-right sm:block">
-        <span className="block text-sm font-semibold text-slate-950">{formatUsd(token.price)}</span>
-        <span className="block text-xs text-slate-500">MCap {formatUsd(token.marketCapUsd)}</span>
+        <span className="block text-sm font-semibold text-slate-950">{formatCurrency(token.price)}</span>
+        <span className="block text-xs text-slate-500">MCap {formatCurrency(token.marketCapUsd)}</span>
       </span>
       <span className="hidden text-right lg:block">
         <span className="block text-xs text-slate-500">24h volume</span>
-        <span className="block text-sm font-semibold text-slate-950">{formatUsd(token.volume24hUsd)}</span>
+        <span className="block text-sm font-semibold text-slate-950">{formatCurrency(token.volume24hUsd)}</span>
       </span>
       <span className="text-right">
         <PriceChangeBadge value={token.change24h} />
@@ -189,6 +182,12 @@ export function ExploreClient({ initialTrending, initialTop, initialMemes }: Pro
       setLoading(true);
       try {
         const response = await fetchExploreTop({ view: tab, page: nextPageNumber, limit: PAGE_SIZE });
+        
+        if (response.items.length === 0) {
+          setHasMore((current) => ({ ...current, [tab]: false }));
+          return;
+        }
+
         setCache((current) => ({ ...current, [tab]: [...(current[tab] ?? []), ...response.items] }));
         setHasMore((current) => ({ ...current, [tab]: response.items.length >= PAGE_SIZE }));
       } finally {

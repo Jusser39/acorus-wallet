@@ -8,8 +8,10 @@ import { createUserToken, discoverToken, type TokenDiscoveryResult } from "@/lib
 import { EVM_CHAINS } from "@acorus/shared";
 import { isAddress } from "viem";
 import { readErc20TokenMetadata } from "@acorus/wallet-core";
+import { useFormatter } from "@/hooks/use-formatter";
 
 export default function AddTokenPage() {
+  const { formatCurrency } = useFormatter();
   const router = useRouter();
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
@@ -230,21 +232,21 @@ export default function AddTokenPage() {
               {preview.liquidityUsd && (
                 <div className="text-sm">
                   <p className="text-slate-400">Liquidity</p>
-                  <p className="font-medium">${preview.liquidityUsd.toLocaleString()}</p>
+                  <p className="font-medium">{formatCurrency(preview.liquidityUsd)}</p>
                 </div>
               )}
 
               {preview.volume24hUsd && (
                 <div className="text-sm">
                   <p className="text-slate-400">24h Volume</p>
-                  <p className="font-medium">${preview.volume24hUsd.toLocaleString()}</p>
+                  <p className="font-medium">{formatCurrency(preview.volume24hUsd)}</p>
                 </div>
               )}
 
               {preview.marketCapUsd && (
                 <div className="text-sm">
                   <p className="text-slate-400">Market Cap</p>
-                  <p className="font-medium">${preview.marketCapUsd.toLocaleString()}</p>
+                  <p className="font-medium">{formatCurrency(preview.marketCapUsd)}</p>
                 </div>
               )}
 

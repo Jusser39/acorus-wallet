@@ -1,20 +1,13 @@
-import Link from "next/link";
 import type { CSSProperties } from "react";
 import { AcorusMagicStage } from "@/components/acorus-magic-stage";
 import { SwapComposer } from "@/components/swap-composer";
 import { fetchExploreTop, fetchExploreTrending } from "@/lib/api";
 import { buildFearGreedPulse } from "@/lib/market-pulse";
-import { buildExploreTokenHref } from "@/lib/token-routes";
 import type { ExploreTokenItem } from "@acorus/shared";
 
-function formatUsd(value: number | null | undefined): string {
-  if (value == null) return "—";
-  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}T`;
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
-  return `$${value.toFixed(value < 1 ? 4 : 2)}`;
-}
+import { MagicMarketRow } from "@/components/magic-market-row";
+import { PortfolioDashboardCard } from "@/components/portfolio-dashboard-card";
+import Link from "next/link";
 
 const ACTION_LINKS = [
   { label: "Send", href: "/send", icon: "↗" },
@@ -106,46 +99,6 @@ const FALLBACK_DISCOVERY_TOKENS: ExploreTokenItem[] = [
   },
 ];
 
-function MagicMarketRow({ token }: { token: ExploreTokenItem }) {
-  return (
-    <Link
-      href={buildExploreTokenHref(token)}
-      className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/45 p-3 transition hover:-translate-y-0.5 hover:bg-white/70"
-    >
-      {token.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={token.logoUrl} alt={token.symbol} className="h-10 w-10 rounded-full bg-white" />
-      ) : (
-        <span className="magic-orb h-10 w-10 text-[11px] font-black text-white">
-          {token.symbol.slice(0, 3)}
-        </span>
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-black text-slate-950">{token.name}</span>
-        <span className="block text-xs font-semibold text-slate-500">{token.symbol}</span>
-      </span>
-      <span className="text-right">
-        <span className="block text-sm font-black text-slate-950">{formatUsd(token.price)}</span>
-        <span
-          className={
-            token.change24h == null
-              ? "text-xs text-slate-400"
-              : token.change24h >= 0
-                ? "text-xs font-black text-emerald-600"
-                : "text-xs font-black text-rose-600"
-          }
-        >
-          {token.change24h == null
-            ? "—"
-            : `${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`}
-        </span>
-      </span>
-      <span className="hidden rounded-full bg-gradient-to-r from-cyan-300 via-violet-500 to-pink-400 px-3 py-2 text-xs font-black text-white shadow-sm sm:inline-flex">
-        Swap
-      </span>
-    </Link>
-  );
-}
 
 export default async function Home() {
   const [trending, top] = await Promise.all([
@@ -200,15 +153,7 @@ export default async function Home() {
           </section>
 
           <aside className="grid content-start gap-4">
-            <section className="magic-dashboard-card magic-portfolio-panel-card">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">Portfolio</p>
-                <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-black text-violet-700">USD</span>
-              </div>
-              <div className="mt-4 text-5xl font-black tracking-tight">$—</div>
-              <p className="mt-2 text-sm font-semibold text-emerald-600">Connect extension to calculate live balances.</p>
-              <div className="mt-5 h-28 rounded-3xl border border-white/60 bg-[linear-gradient(180deg,rgba(139,92,246,0.22),rgba(124,247,255,0.02))]" />
-            </section>
+            <PortfolioDashboardCard />
 
             <div className="grid grid-cols-2 gap-3">
               {ACTION_LINKS.map(({ label, href, icon }) => (

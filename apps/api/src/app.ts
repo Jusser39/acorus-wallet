@@ -20,6 +20,7 @@ import {
   type WalletProfileUpdateInput,
 } from "./store";
 import { createMarketDataProvider, MockMarketDataProvider } from "./market/index.js";
+import { getFiatRates } from "./market/fiat-rates";
 import { createJupiterSwapService } from "./services/jupiter";
 import { createRangoSwapService } from "./services/rango";
 import { createLiFiSwapService, LiFiSwapError } from "./services/lifi";
@@ -680,7 +681,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.delete("/api/user-tokens/:id", async (request, reply) => {
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     await store.deleteUserToken(params.id);
-    reply.code(204);
+    reply.status(204).send();
+  });
+
+  app.get("/api/market/fiat-rates", async () => {
+    const rates = await getFiatRates();
+    return { ok: true, rates };
   });
 
   // ---- Market Prices ----

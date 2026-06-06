@@ -76,3 +76,12 @@ export async function resetWallet(): Promise<any> {
     requestId: "ui_reset_" + Date.now()
   });
 }
+
+export async function revokeSession(sessionId: string): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "revoke_session",
+    surface: "popup",
+    requestId: "ui_revoke_" + Date.now(),
+    sessionId
+  });
+}

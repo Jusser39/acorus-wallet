@@ -10,7 +10,7 @@ HOST = "85.239.59.199"
 USER = "root"
 PASS = "yhNc+9-BE@FKAo"
 REMOTE_PATH = "/opt/acorus-wallet"
-LOCAL_ROOT = r"C:\Users\NZXT\acorus-wallet"
+LOCAL_ROOT = r"C:\Users\NZXT\.gemini\antigravity\scratch\acorus-wallet-latest"
 TARBALL = r"C:\Users\NZXT\acorus-wave6-deploy.tar.gz"
 
 EXCLUDE_DIRS = {
