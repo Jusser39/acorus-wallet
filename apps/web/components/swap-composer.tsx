@@ -979,6 +979,8 @@ export function SwapComposer(props: {
     ? getSwapCtaLabel({
         extensionDetected,
         connected: Boolean(activeUserAddress),
+        providerReady,
+        amountEntered: Boolean(sellAmount),
         quoteLoading: loading,
         quoteReady: Boolean(quote),
         approvalRequired: Boolean(quote?.approvalRequired),
@@ -989,7 +991,7 @@ export function SwapComposer(props: {
     : getUniversalSwapCtaLabel({
         loading,
         routeReady: Boolean(universalRoute),
-        hasAmount,
+        amountEntered: Boolean(sellAmount),
       });
 
   return (
@@ -1289,7 +1291,7 @@ export function SwapComposer(props: {
       {showSidePanel ? (
       <aside className={
         props.compact
-          ? `space-y-6 xl:absolute xl:top-0 xl:z-50 xl:w-[360px] ${panelSide === "left" ? "xl:right-full xl:mr-6" : "xl:left-full xl:ml-6"}`
+          ? `space-y-6 mt-5`
           : `space-y-6 ${panelSide === "left" ? "order-first" : ""}`
       }>
         {tokenPickerSide ? null : (
@@ -1493,14 +1495,14 @@ function getTokenPickerSectionLabel(_chainId: number | string): string {
 function getUniversalSwapCtaLabel(input: {
   loading: boolean;
   routeReady: boolean;
-  hasAmount: boolean;
+  amountEntered: boolean;
 }): string {
   if (input.loading) {
     return "Finding route...";
   }
 
-  if (!input.hasAmount) {
-    return "Enter an amount";
+  if (!input.amountEntered) {
+    return "Enter amount";
   }
 
   if (!input.routeReady) {

@@ -1,6 +1,8 @@
 export type SwapCtaState = {
   extensionDetected: boolean;
   connected: boolean;
+  providerReady: boolean;
+  amountEntered: boolean;
   quoteLoading: boolean;
   quoteReady: boolean;
   approvalRequired: boolean;
@@ -12,6 +14,8 @@ export type SwapCtaState = {
 export function getSwapCtaLabel(input: SwapCtaState): string {
   if (!input.extensionDetected) return "Install Acorus Extension";
   if (!input.connected) return "Connect wallet";
+  if (!input.providerReady) return "Live quotes unavailable";
+  if (!input.amountEntered) return "Enter amount";
   if (input.wrongChain) return "Switch network";
   if (input.quoteLoading) return "Finding best route...";
   if (input.quoteExpired) return "Refresh quote";

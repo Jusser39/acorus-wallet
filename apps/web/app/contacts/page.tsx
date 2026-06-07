@@ -121,15 +121,15 @@ export default function ContactsPage() {
     <section className="page grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="panel space-y-4">
         <h1 className="text-3xl font-semibold">Contact book</h1>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-slate-600">
           Контакты сохраняются на backend как публичные адресные записи без seed/private key.
         </p>
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Name</span>
+          <span className="text-sm text-slate-600">Name</span>
           <input value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Address</span>
+          <span className="text-sm text-slate-600">Address</span>
           <input
             value={address}
             onChange={(event) => setAddress(event.target.value)}
@@ -143,11 +143,11 @@ export default function ContactsPage() {
           />
         </label>
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Note</span>
+          <span className="text-sm text-slate-600">Note</span>
           <textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
         </label>
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-        {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
+        {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+        {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
         <button
           type="button"
           className="button-primary"
@@ -164,10 +164,10 @@ export default function ContactsPage() {
             <div key={item.id} className="panel flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="font-medium">{item.name}</p>
-                <p className="mt-1 text-sm text-slate-300">
+                <p className="mt-1 text-sm text-slate-600">
                   {formatAddress(item.address)} · {item.chainFamily.toUpperCase()}
                 </p>
-                {item.note ? <p className="mt-2 text-sm text-slate-400">{item.note}</p> : null}
+                {item.note ? <p className="mt-2 text-sm text-slate-500">{item.note}</p> : null}
               </div>
               <div className="flex gap-3">
                 <button
@@ -200,7 +200,7 @@ export default function ContactsPage() {
             </div>
           ))
         ) : (
-          <div className="panel text-sm text-slate-400">Контактов пока нет.</div>
+          <div className="panel text-sm text-slate-500">Контактов пока нет.</div>
         )}
       </div>
     </section>

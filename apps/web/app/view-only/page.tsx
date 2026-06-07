@@ -74,16 +74,16 @@ export default function ViewOnlyPage() {
     <section className="page grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="panel space-y-5">
         <h1 className="text-3xl font-semibold">View-only wallet</h1>
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-slate-600">
           Можно смотреть балансы и историю, но отправка невозможна, потому что приватного ключа нет.
         </p>
 
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Wallet name</span>
+          <span className="text-sm text-slate-600">Wallet name</span>
           <input value={walletName} onChange={(event) => setWalletName(event.target.value)} />
         </label>
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Chain family</span>
+          <span className="text-sm text-slate-600">Chain family</span>
           <select
             value={chainFamily}
             onChange={(event) => setChainFamily(event.target.value as "evm" | "solana" | "tron")}
@@ -94,7 +94,7 @@ export default function ViewOnlyPage() {
           </select>
         </label>
         <label className="space-y-2">
-          <span className="text-sm text-slate-300">Public address</span>
+          <span className="text-sm text-slate-600">Public address</span>
           <input
             value={address}
             onChange={(event) => setAddress(event.target.value)}
@@ -102,7 +102,7 @@ export default function ViewOnlyPage() {
           />
         </label>
 
-        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+        {error ? <p className="text-sm text-rose-500">{error}</p> : null}
 
         <button
           type="button"
@@ -116,7 +116,7 @@ export default function ViewOnlyPage() {
 
       <aside className="panel space-y-4">
         <h2 className="text-xl font-semibold">What you can do</h2>
-        <ul className="space-y-3 text-sm text-slate-300">
+        <ul className="space-y-3 text-sm text-slate-600">
           <li>Просматривать native и token balances.</li>
           <li>Открывать историю транзакций и explorer links.</li>
           <li>Хранить контактные данные отдельно от private key.</li>

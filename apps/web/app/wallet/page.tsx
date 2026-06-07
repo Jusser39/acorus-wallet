@@ -88,9 +88,7 @@ export default function WalletPage() {
   const isEvm = activeProfile?.chainFamily === "evm";
   const isSolana = activeProfile?.chainFamily === "solana";
   const isSkeletonFamily =
-    activeProfile?.chainFamily === "tron"
-    || activeProfile?.chainFamily === "utxo"
-    || activeProfile?.chainFamily === "ton";
+    activeProfile?.chainFamily === "ton";
   const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
   const healthSummary = activeProfile
     ? buildWalletHealthSummary({
