@@ -213,8 +213,28 @@ export function getPopularSwapTokens(input: {
     byKey.set(`ton-mainnet:ton.ton`, tonToken);
     byKey.set(`bitcoin-mainnet:btc.btc`, btcToken);
 
+    const RANGO_CHAIN_MAP: Record<number | string, string> = {
+      1: "ETH",
+      56: "BSC",
+      137: "POLYGON",
+      42161: "ARBITRUM",
+      10: "OPTIMISM",
+      8453: "BASE",
+      43114: "AVAX_CCHAIN",
+      59144: "LINEA",
+      "bitcoin-mainnet": "BTC",
+      "tron-mainnet": "TRON",
+      "ton-mainnet": "TON",
+    };
+
+    function toRangoAssetId(itemChainId: number | string, symbol: string, address: string | null | undefined): string {
+      const chainName = RANGO_CHAIN_MAP[itemChainId] ?? "ETH";
+      if (!address || address === "native") return `${chainName}.${symbol}`;
+      return `${chainName}.${symbol}-${address}`;
+    }
+
     const allCurated = [...EVM_CHAINS.map(c => c.chainId), "tron-mainnet", "bitcoin-mainnet"].flatMap(chainId => getCuratedTokens(chainId as any).map((item): SwapTokenOption => ({
-      value: item.address,
+      value: toRangoAssetId(item.chainId, item.symbol, item.address),
       tokenAddress: item.address,
       symbol: item.symbol,
       name: item.name,
@@ -225,9 +245,18 @@ export function getPopularSwapTokens(input: {
       source: "curated",
     })));
 
-    const allFeatured = FEATURED_EVM_TOKENS.map((item): SwapTokenOption => ({ ...item, source: "featured" }));
+    const allFeatured = FEATURED_EVM_TOKENS.map((item): SwapTokenOption => ({
+      ...item,
+      value: toRangoAssetId(item.chainId, item.symbol, item.tokenAddress),
+      source: "featured"
+    }));
 
-    for (const item of [...allCurated, ...allFeatured, ...initial]) {
+    const mappedInitial = initial.map((item) => ({
+      ...item,
+      value: toRangoAssetId(item.chainId, item.symbol, item.tokenAddress)
+    }));
+
+    for (const item of [...allCurated, ...allFeatured, ...mappedInitial]) {
       byKey.set(`${item.chainId}:${item.value.toLowerCase()}`, item);
     }
 
