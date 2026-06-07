@@ -6,6 +6,7 @@ set -e
 cd /opt/acorus-wallet
 echo "Pulling latest changes..."
 git reset --hard
+git clean -fd
 git pull
 echo "Installing dependencies..."
 pnpm install

@@ -56,6 +56,7 @@ type TokenMeta = {
 };
 
 import { useFormatter } from "@/hooks/use-formatter";
+import { useTranslation } from "@/hooks/use-translation";
 
 function findCuratedToken(chainId: number, tokenAddress: string): TokenMeta | null {
   const curated = getCuratedTokens(chainId).find(
@@ -194,8 +195,11 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
 
   const activeProfile = useActiveProfile();
   const userId = useWalletStore((state) => state.userId);
-  const currency: FiatCurrency = (activeProfile?.preferredCurrency as FiatCurrency) ?? "USD";
+  const displayCurrency = useWalletStore((state) => state.displayCurrency);
   const { formatCurrency } = useFormatter();
+  const { t } = useTranslation();
+
+  const currency: FiatCurrency = (displayCurrency as FiatCurrency) ?? "USD";
 
   const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() =>
     hasNumericChain && !isNativeToken && !isSkeleton ? findCuratedToken(numericChainId, tokenAddress) : null,
@@ -606,7 +610,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     {explorerOptions.length ? (
                       <div className="relative">
                         <button type="button" onClick={() => setExplorerMenuOpen((value) => !value)} className="button-secondary text-sm">
-                          Blockchain
+                          {t("general.blockchain")}
                         </button>
                         {explorerMenuOpen ? (
                           <>
@@ -635,34 +639,30 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       </a>
                     ))}
                     <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
-                      {shareState === "copied" ? "Copied" : shareState === "failed" ? "Copy failed" : "Share"}
+                      {shareState === "copied" ? t("general.copied") : shareState === "failed" ? t("general.failed") : t("general.share")}
                     </button>
                     {!isNativeToken ? (
                       <button type="button" onClick={() => void handleCopyAddress()} className="button-secondary text-sm">
-                        Copy address
+                        {t("general.copy_address")}
                       </button>
                     ) : null}
                     <Link href={`/swap?chainId=${canEvmSwap ? tradeChainId : fallbackSwap.chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
-                      Trade this token
+                      {t("token.trade")}
                     </Link>
                     <Link href="/receive" className="button-secondary text-sm">
-                      Receive
+                      {t("token.receive")}
                     </Link>
                   </div>
                 </div>
               </div>
               <div className="rounded-[1.5rem] border border-fuchsia-100 bg-white/70 p-4 text-left shadow-[0_18px_50px_rgba(168,85,247,0.08)] lg:text-right">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Price</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{t("token.price")}</p>
                 {loadingPrice ? (
                   <div className="mt-4 h-12 w-40 animate-pulse rounded bg-fuchsia-100 lg:ml-auto" />
                 ) : displayPrice != null ? (
                   <>
                     <p className="mt-2 text-3xl font-semibold text-slate-950">
-                      {displayPrice.toLocaleString("en-US", {
-                        style: "currency",
-                        currency,
-                        maximumFractionDigits: displayPrice < 1 ? 6 : 2,
-                      })}
+                      {formatCurrency(displayPrice)}
                     </p>
                     {priceChange != null ? (
                       <p className={`mt-1 text-sm font-semibold ${priceChange >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
@@ -672,7 +672,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     ) : null}
                   </>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-500">No price data.</p>
+                  <p className="mt-3 text-sm text-slate-500">{t("general.no_data")}</p>
                 )}
               </div>
             </div>
@@ -714,29 +714,29 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard label="Market cap" value={formatCurrency(displayMarketCap)} />
-            <MetricCard label="FDV" value={formatCurrency(displayFdv)} />
-            <MetricCard label="24h volume" value={formatCurrency(displayVolume24h)} />
-            <MetricCard label="Liquidity" value={formatCurrency(displayLiquidity)} />
-            <MetricCard label="24h high" value={formatCurrency(displayHigh24h)} />
-            <MetricCard label="24h low" value={formatCurrency(displayLow24h)} />
+            <MetricCard label={t("token.market_cap")} value={formatCurrency(displayMarketCap)} />
+            <MetricCard label={t("token.fdv")} value={formatCurrency(displayFdv)} />
+            <MetricCard label={t("token.volume_24h")} value={formatCurrency(displayVolume24h)} />
+            <MetricCard label={t("token.liquidity")} value={formatCurrency(displayLiquidity)} />
+            <MetricCard label={t("token.high_24h")} value={formatCurrency(displayHigh24h)} />
+            <MetricCard label={t("token.low_24h")} value={formatCurrency(displayLow24h)} />
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard label="Launch date" value={formatDate(tokenDetail?.launchedAt)} />
-            <MetricCard label="Rank" value={tokenDetail?.rank ? `#${tokenDetail.rank}` : "—"} />
-            <MetricCard label="Circulating supply" value={formatNumber(displayCirculatingSupply)} />
-            <MetricCard label="Total supply" value={formatNumber(tokenDetail?.totalSupply)} />
-            <MetricCard label="Max supply" value={formatNumber(tokenDetail?.maxSupply)} />
+            <MetricCard label={t("token.launch_date")} value={formatDate(tokenDetail?.launchedAt)} />
+            <MetricCard label={t("token.rank")} value={tokenDetail?.rank ? `#${tokenDetail.rank}` : "—"} />
+            <MetricCard label={t("token.circulating_supply")} value={formatNumber(displayCirculatingSupply)} />
+            <MetricCard label={t("token.total_supply")} value={formatNumber(tokenDetail?.totalSupply)} />
+            <MetricCard label={t("token.max_supply")} value={formatNumber(tokenDetail?.maxSupply)} />
             <MetricCard
-              label="Categories"
+              label={t("token.categories")}
               value={tokenDetail?.categories?.length ? tokenDetail.categories.slice(0, 3).join(", ") : "—"}
             />
           </div>
 
           {tokenDetail?.description ? (
             <div className="panel space-y-3">
-              <h2 className="text-xl font-semibold text-slate-950">About {resolvedName}</h2>
+              <h2 className="text-xl font-semibold text-slate-950">{t("token.about")} {resolvedName}</h2>
               <p className="max-w-3xl text-sm leading-7 text-slate-600">
                 {tokenDetail.description}
               </p>

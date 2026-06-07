@@ -6,7 +6,6 @@ import {
   APP_CURRENCIES,
   APP_LANGUAGES,
   applyAppPreferencesToDocument,
-  buildGoogleTranslateUrl,
   getCurrencyOption,
   getLanguageOption,
   toMarketDataCurrency,
@@ -120,13 +119,6 @@ export default function SettingsPage() {
       displayCurrency,
       preferredLanguage: code,
     });
-
-    if (code !== "ru") {
-      window.location.assign(buildGoogleTranslateUrl({
-        targetLanguage: code,
-        pageUrl: window.location.href,
-      }));
-    }
   }
 
   function handleSafetyModeToggle(nextValue: boolean) {

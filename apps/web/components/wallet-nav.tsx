@@ -5,26 +5,28 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { GlobalMarketSearch } from "@/components/global-market-search";
 import { WalletAccountMenu } from "@/components/wallet-account-menu";
+import { useTranslation } from "@/hooks/use-translation";
 import { useActiveProfile, useWalletStore } from "@/store/wallet-store";
 
 const navItems = [
-  { href: "/wallet", label: "Wallet" },
+  { href: "/wallet", translationKey: "nav.wallet" },
   { href: "/buy", label: "Buy" },
-  { href: "/swap", label: "Swap" },
-  { href: "/send", label: "Send" },
-  { href: "/receive", label: "Receive" },
+  { href: "/swap", translationKey: "nav.swap" },
+  { href: "/send", translationKey: "nav.send" },
+  { href: "/receive", translationKey: "nav.receive" },
   { href: "/predictions", label: "Predictions" },
-  { href: "/explore", label: "Explore" },
+  { href: "/explore", translationKey: "nav.explore" },
   { href: "/stake", label: "Stake" },
   { href: "/nft", label: "NFTs" },
   { href: "/quests", label: "Quests" },
   { href: "/dapps", label: "dApps" },
-  { href: "/security", label: "Security" },
-  { href: "/settings", label: "Settings" },
+  { href: "/security", translationKey: "nav.security" },
+  { href: "/settings", translationKey: "nav.settings" },
 ];
 
 export function WalletNav() {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const activeProfile = useActiveProfile();
   const profiles = useWalletStore((state) => state.profiles);
   const unlockedVault = useWalletStore((state) => state.unlockedVault);
@@ -152,7 +154,7 @@ export function WalletNav() {
                     : "text-slate-700 hover:bg-slate-900/5 hover:text-slate-950"
                 }`}
               >
-                {item.label}
+                {item.translationKey ? t(item.translationKey) : item.label}
               </a>
             );
           })}

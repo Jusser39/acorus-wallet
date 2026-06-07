@@ -11,8 +11,8 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   useEffect(() => {
     let isMounted = true;
     const timeout = setTimeout(() => {
-      if (isMounted) setErr({ error: "UI Timeout: Background script took more than 5 seconds to respond." });
-    }, 5000);
+      if (isMounted) setErr({ error: "UI Timeout: Background script took more than 15 seconds to respond. The public RPC nodes might be rate limiting us." });
+    }, 15000);
 
     getExtensionHome().then((data: any) => {
       if (!isMounted) return;
