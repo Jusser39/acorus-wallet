@@ -22,6 +22,7 @@ export function PopupApp() {
   const [pendingRequest, setPendingRequest] = useState<DappRequest | null>(null);
   const [appState, setAppState] = useState<BackgroundStateSnapshot | null>(null);
   const [onboardingMode, setOnboardingMode] = useState<"create" | "import" | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
@@ -168,9 +169,20 @@ export function PopupApp() {
       
       {/* Address Bar */}
       <div className="px-4 pb-2 bg-white relative z-40">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full text-xs font-semibold text-slate-600 border border-slate-200/50">
-          {appState.extensionVaultStatus.profiles[0]?.evmAddress?.slice(0,6) || "0xEA52"}...{appState.extensionVaultStatus.profiles[0]?.evmAddress?.slice(-5) || "79b5f"}
-          <Copy className="w-3 h-3 ml-1 text-slate-400 hover:text-slate-600 cursor-pointer" />
+        <div 
+          onClick={() => {
+            const addr = appState.extensionVaultStatus.profiles[0]?.account;
+            if (addr) {
+              navigator.clipboard.writeText(addr).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full text-xs font-semibold text-slate-600 border border-slate-200/50 cursor-pointer hover:bg-slate-200 transition-colors"
+        >
+          {appState.extensionVaultStatus.profiles[0]?.account?.slice(0,6) || "0xEA52"}...{appState.extensionVaultStatus.profiles[0]?.account?.slice(-5) || "79b5f"}
+          {copied ? <div className="w-3 h-3 ml-1 text-emerald-500 font-bold">✓</div> : <Copy className="w-3 h-3 ml-1 text-slate-400" />}
         </div>
       </div>
 

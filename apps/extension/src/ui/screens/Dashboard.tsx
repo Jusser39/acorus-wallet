@@ -7,6 +7,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(null);
   const [err, setErr] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("tokens");
+  const [selectedChainId, setSelectedChainId] = useState<number | "all">("all");
 
   useEffect(() => {
     let isMounted = true;
@@ -112,10 +113,16 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
         <>
           {/* Filters Row */}
           <div className="px-4 flex items-center justify-between mb-2">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50">
-              Все популярные сети
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
+            <select
+              value={selectedChainId}
+              onChange={(e) => setSelectedChainId(e.target.value === "all" ? "all" : Number(e.target.value))}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50 outline-none cursor-pointer appearance-none"
+            >
+              <option value="all">Все популярные сети</option>
+              {home.networks.map(n => (
+                <option key={n.chainId} value={n.chainId}>{n.name}</option>
+              ))}
+            </select>
             <div className="flex items-center gap-3">
               <button className="text-slate-600 hover:text-slate-900"><SlidersHorizontal className="w-4 h-4" /></button>
               <button className="text-slate-600 hover:text-slate-900"><MoreVertical className="w-4 h-4" /></button>
@@ -124,16 +131,20 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
 
           {/* Assets List */}
           <div className="flex flex-col px-2">
-            {home.assets.map((asset, index) => {
+            {home.assets.filter(a => selectedChainId === "all" || a.chainId === selectedChainId).map((asset, index) => {
               const val = asset.fiatValue ? `${asset.fiatValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $` : "—";
               
               return (
                 <div key={index} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
-                        {asset.symbol.substring(0, 2)}
-                      </div>
+                      {asset.logoUrl ? (
+                        <img src={asset.logoUrl} alt={asset.symbol} className="w-10 h-10 rounded-full object-cover shadow-inner bg-slate-50" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                          {asset.symbol.substring(0, 2)}
+                        </div>
+                      )}
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white bg-slate-800 text-[8px] font-black text-white flex items-center justify-center">
                         {asset.family === "evm" ? "E" : asset.family === "solana" ? "S" : "B"}
                       </div>

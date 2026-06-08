@@ -1,9 +1,88 @@
-import React from "react";
-import { ArrowLeft } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Copy, CheckCircle2 } from "lucide-react";
+import { getExtensionHome, getBackgroundState } from "../api";
+import type { ExtensionPortfolioSnapshot } from "../../background/extension-assets";
+import type { BackgroundStateSnapshot } from "../../shared/protocol";
 
 export function Receive({ onBack }: { onBack: () => void }) {
+  const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(null);
+  const [bgState, setBgState] = useState<BackgroundStateSnapshot | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    getExtensionHome().then((data: any) => {
+      if (data?.ok && data.result) {
+        setHome(data.result);
+      }
+    });
+    getBackgroundState().then((state) => {
+      if (state) setBgState(state);
+    });
+  }, []);
+
+  const assetData = home?.assets?.find(a => a.symbol === selectedAsset);
+  const address = assetData ? bgState?.extensionVaultStatus?.profiles?.find(p => p.chainFamily === assetData.family)?.account : null;
+
+  const handleCopy = () => {
+    if (!address) return;
+    navigator.clipboard.writeText(address).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  if (selectedAsset && assetData && address) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 relative pb-4">
+        <header className="flex items-center justify-between p-4 bg-white border-b border-slate-100">
+          <button onClick={() => setSelectedAsset(null)} className="p-2 -ml-2 rounded-full hover:bg-slate-100">
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
+          </button>
+          <h1 className="font-bold text-lg">Receive {selectedAsset}</h1>
+          <div className="w-9" />
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center gap-6 mt-2">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center">
+            {/* Simple CSS-based placeholder for QR, as we don't have a QR library */}
+            <div className="w-48 h-48 bg-slate-100 border-8 border-white shadow-sm rounded-xl flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), repeating-linear-gradient(45deg, #000 25%, #fff 25%, #fff 75%, #000 75%, #000)", backgroundPosition: "0 0, 10px 10px", backgroundSize: "20px 20px" }}></div>
+              {assetData.logoUrl ? (
+                <img src={assetData.logoUrl} className="w-12 h-12 rounded-full z-10 bg-white p-1" />
+              ) : (
+                <div className="w-12 h-12 rounded-full z-10 bg-white p-1 flex items-center justify-center font-bold text-slate-800 border border-slate-200">
+                  {assetData.symbol.substring(0, 2)}
+                </div>
+              )}
+            </div>
+            
+            <p className="mt-6 text-sm text-slate-500 font-medium text-center">
+              Send only {selectedAsset} to this address.
+            </p>
+          </div>
+
+          <div className="w-full bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Address</span>
+            <div className="flex items-center gap-3">
+              <p className="font-mono text-sm text-slate-800 break-all leading-tight flex-1">
+                {address}
+              </p>
+              <button 
+                onClick={handleCopy}
+                className="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+              >
+                {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-slate-600" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full bg-white relative">
+    <div className="flex flex-col h-full bg-white relative pb-4">
       <header className="flex items-center justify-between p-4 border-b border-slate-100">
         <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100">
           <ArrowLeft className="w-5 h-5 text-slate-700" />
@@ -12,10 +91,29 @@ export function Receive({ onBack }: { onBack: () => void }) {
         <div className="w-9" />
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="text-center mt-10 text-slate-400">
-          Select asset to receive...
+      <div className="flex-1 overflow-y-auto px-2 pt-2">
+        <div className="px-2 pb-2">
+          <h2 className="text-sm font-semibold text-slate-500">Select asset to receive</h2>
         </div>
+        {home?.assets?.map(a => (
+          <div 
+            key={a.symbol} 
+            onClick={() => setSelectedAsset(a.symbol)}
+            className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-colors"
+          >
+            {a.logoUrl ? (
+              <img src={a.logoUrl} className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                {a.symbol.substring(0, 2)}
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-900">{a.symbol}</span>
+              <span className="text-xs font-medium text-slate-500">{a.name}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

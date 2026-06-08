@@ -24,7 +24,7 @@ const manifest = {
     service_worker: "background/index.js",
     type: "module",
   },
-  permissions: ["storage", "activeTab", "scripting"],
+  permissions: ["storage", "activeTab", "scripting", "clipboardWrite"],
   host_permissions: ["<all_urls>"],
   content_scripts: [
     {
@@ -49,6 +49,14 @@ const manifest = {
 
 await mkdir(distDir, { recursive: true });
 await cp(staticDir, distDir, { recursive: true });
+
+try {
+  const webIconsDir = path.join(root, "..", "web", "public", "icons");
+  await cp(webIconsDir, path.join(distDir, "icons"), { recursive: true });
+} catch (e) {
+  console.log("Could not copy icons from web", e);
+}
+
 await writeFile(
   path.join(distDir, "manifest.json"),
   `${JSON.stringify(manifest, null, 2)}\n`,

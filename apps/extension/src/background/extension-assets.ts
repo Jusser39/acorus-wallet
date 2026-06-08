@@ -343,6 +343,9 @@ export function buildAssetId(
 }
 
 function buildNativeAsset(network: ExtensionNetwork): AssetRef {
+  const curatedTokens = getCuratedTokens(network.chainId);
+  const nativeCurated = curatedTokens.find((t) => t.type === "native");
+
   return {
     family: network.family,
     chainId: network.chainId,
@@ -356,6 +359,7 @@ function buildNativeAsset(network: ExtensionNetwork): AssetRef {
         : 18,
     tokenAddress: null,
     isVerified: true,
+    logoUrl: nativeCurated?.logoUrl ?? null,
   };
 }
 
@@ -416,6 +420,7 @@ async function resolveAssetBalance(input: {
         fiatValue: null,
         priceUsd: null,
         source: "live_rpc",
+        logoUrl: asset.logoUrl ?? getCuratedTokens(network.chainId).find(t => t.type === "native")?.logoUrl ?? null,
       };
     }
 
@@ -433,6 +438,7 @@ async function resolveAssetBalance(input: {
         fiatValue: null,
         priceUsd: null,
         source: "live_rpc",
+        logoUrl: asset.logoUrl ?? getCuratedTokens(network.chainId).find(t => t.address?.toLowerCase() === asset.tokenAddress?.toLowerCase())?.logoUrl ?? null,
       };
     }
   } catch (error) {

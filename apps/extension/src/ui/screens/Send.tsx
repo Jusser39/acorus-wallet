@@ -12,11 +12,11 @@ export function Send({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    getExtensionHome().then((data) => {
-      if (data) {
-        setHome(data);
-        if (data.assets.length > 0) {
-          setAsset(data.assets[0].symbol);
+    getExtensionHome().then((data: any) => {
+      if (data?.ok && data.result) {
+        setHome(data.result);
+        if (data.result.assets?.length > 0) {
+          setAsset(data.result.assets[0].symbol);
         }
       }
     });
@@ -65,9 +65,9 @@ export function Send({ onBack }: { onBack: () => void }) {
             onChange={(e) => setAsset(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-lg font-bold outline-none cursor-pointer"
           >
-            {home?.assets.map(a => (
+            {home?.assets?.map(a => (
               <option key={a.symbol} value={a.symbol}>
-                {a.symbol} ({a.formatted})
+                {a.symbol} ({a.balanceFormatted})
               </option>
             ))}
           </select>
@@ -97,7 +97,7 @@ export function Send({ onBack }: { onBack: () => void }) {
             <span className="font-bold text-xl text-slate-400">{asset}</span>
           </div>
           <div className="text-xs font-medium text-slate-400">
-            Available: {selectedAssetData?.formatted || "0"} {asset}
+            Available: {selectedAssetData?.balanceFormatted || "0"} {asset}
           </div>
         </div>
 

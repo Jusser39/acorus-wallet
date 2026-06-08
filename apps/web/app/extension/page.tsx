@@ -1,4 +1,4 @@
-const DOWNLOAD_HREF = "/downloads/acorus-wallet-extension.zip";
+const DOWNLOAD_HREF = "/downloads/acorus-wallet-extension-v2.zip";
 
 export default function ExtensionPage() {
   return (
