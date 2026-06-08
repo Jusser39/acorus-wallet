@@ -72,7 +72,7 @@ function findClosestPoint(points: ChartPoint[], clientX: number, rect: DOMRect):
   points[0]!);
 }
 
-export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) {
+export function TokenChart({ chart, loading, symbol }: Props) {
   const [hovered, setHovered] = useState<ChartPoint | null>(null);
   const { formatCurrency } = useFormatter();
   const points = useMemo(() => buildChartPoints(chart?.points ?? []), [chart?.points]);
