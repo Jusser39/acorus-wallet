@@ -4,6 +4,8 @@ import { getSwapCtaLabel, type SwapCtaState } from "./swap-cta";
 const base: SwapCtaState = {
   extensionDetected: true,
   connected: true,
+  providerReady: true,
+  amountEntered: true,
   hasAmount: true,
   quoteLoading: false,
   quoteReady: false,

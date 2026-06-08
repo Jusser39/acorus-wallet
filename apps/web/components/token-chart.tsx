@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import type { MarketChart } from "@/lib/api";
+import { useFormatter } from "@/hooks/use-formatter";
 
 interface Props {
   chart: MarketChart | null;
@@ -19,14 +20,6 @@ type ChartPoint = MarketChart["points"][number] & {
   x: number;
   y: number;
 };
-
-function formatPrice(value: number, currency = "USD"): string {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: value < 1 ? 6 : 2,
-  });
-}
 
 function formatTimestamp(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -81,6 +74,7 @@ function findClosestPoint(points: ChartPoint[], clientX: number, rect: DOMRect):
 
 export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) {
   const [hovered, setHovered] = useState<ChartPoint | null>(null);
+  const { formatCurrency } = useFormatter();
   const points = useMemo(() => buildChartPoints(chart?.points ?? []), [chart?.points]);
   const path = buildSvgPath(points);
   const first = points[0];
@@ -120,7 +114,7 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
         <div>
           <p className="text-sm text-slate-500">Price chart</p>
           <p className="mt-1 text-2xl font-semibold text-slate-950">
-            {activePoint ? formatPrice(activePoint.price, currency) : "—"}
+            {activePoint ? formatCurrency(activePoint.price) : "—"}
           </p>
           <p className="text-xs text-slate-500">
             {activePoint ? formatTimestamp(activePoint.timestamp) : "Move over the chart"}
@@ -141,7 +135,7 @@ export function TokenChart({ chart, loading, symbol, currency = "USD" }: Props) 
               "--chart-tip-color": strokeColor,
             } as CSSProperties}
           >
-            <strong>{formatPrice(hovered.price, currency)}</strong>
+            <strong>{formatCurrency(hovered.price)}</strong>
             <span>{formatTimestamp(hovered.timestamp)}</span>
             <span className={activeChangePercent !== null && activeChangePercent >= 0 ? "text-emerald-600" : "text-rose-600"}>
               {formatPercent(activeChangePercent)}

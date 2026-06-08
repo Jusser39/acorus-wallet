@@ -199,7 +199,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const { formatCurrency } = useFormatter();
   const { t } = useTranslation();
 
-  const currency: FiatCurrency = (displayCurrency as FiatCurrency) ?? "USD";
+  const displayCurrencyStr = (displayCurrency as FiatCurrency) ?? "USD";
+  const apiCurrency: FiatCurrency = "USD";
 
   const [tokenMeta, setTokenMeta] = useState<TokenMeta | null>(() =>
     hasNumericChain && !isNativeToken && !isSkeleton ? findCuratedToken(numericChainId, tokenAddress) : null,
@@ -293,7 +294,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
           tokenAddress: !isCoinGeckoRoute && hasNumericChain && !isNativeToken ? tokenAddress : undefined,
           symbol: symbolParam,
           name: nameParam,
-          currency,
+          currency: apiCurrency,
         });
         if (!active) return;
         setTokenDetail(detail);
@@ -317,7 +318,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, tokenAddress]);
+  }, [coinId, apiCurrency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, tokenAddress]);
 
   useEffect(() => {
     let active = true;
@@ -330,7 +331,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
       try {
         const prices = await getMarketPrices({
           chainId: numericChainId,
-          currency,
+          currency: apiCurrency,
           symbols: [resolvedSymbol],
           tokenAddresses: [isNativeToken ? null : tokenAddress],
         });
@@ -353,7 +354,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, resolvedSymbol, tokenAddress]);
+  }, [apiCurrency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, resolvedSymbol, tokenAddress]);
 
   useEffect(() => {
     let active = true;
@@ -364,10 +365,10 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
 
       try {
         const data = isCoinGeckoRoute && coinId
-          ? await getMarketCoinChart({ coinId, currency, range })
+          ? await getMarketCoinChart({ coinId, currency: apiCurrency, range })
           : await getMarketChart({
               chainId: numericChainId,
-              currency,
+              currency: apiCurrency,
               symbol: resolvedSymbol,
               tokenAddress: isNativeToken ? null : tokenAddress,
               range,
@@ -391,7 +392,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     return () => {
       active = false;
     };
-  }, [coinId, currency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
+  }, [coinId, apiCurrency, hasNumericChain, isCoinGeckoRoute, isNativeToken, isSkeleton, numericChainId, range, resolvedSymbol, tokenAddress]);
 
   const priceChange = tokenDetail?.change24h?.percent ?? price?.change24h?.percent ?? null;
   const tradePlatform = useMemo(
@@ -710,7 +711,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                 </button>
               ))}
             </div>
-            <TokenChart chart={chart} loading={loadingChart} symbol={resolvedSymbol} currency={currency} />
+            <TokenChart chart={chart} loading={loadingChart} symbol={resolvedSymbol} currency={displayCurrencyStr} />
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">

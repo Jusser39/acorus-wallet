@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@acorus/shared": resolve(__dirname, "../../packages/shared/src/index.ts"),
       "@acorus/wallet-core": resolve(__dirname, "../../packages/wallet-core/src/index.ts"),
+      "@": resolve(__dirname, "./"),
     },
   },
   test: {

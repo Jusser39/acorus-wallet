@@ -38,7 +38,7 @@ describe("TokenChart", () => {
 
     fireEvent.mouseMove(svg!, { clientX: 430 });
 
-    expect(screen.getAllByText("$11.00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/11[,.]00/).length).toBeGreaterThan(0);
     expect(screen.getByText("+10.00%")).toBeTruthy();
     expect(screen.getByText("+10.00% from range start")).toBeTruthy();
     expect(screen.getAllByText(/May .*2026/i).length).toBeGreaterThan(0);
