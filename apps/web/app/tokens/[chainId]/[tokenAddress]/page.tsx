@@ -534,10 +534,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     }
   }
 
-  async function handleCopyAddress() {
-    if (typeof navigator === "undefined" || isNativeToken) return;
-    await navigator.clipboard.writeText(tokenAddress).catch(() => undefined);
-  }
 
   return (
     <section className="page mx-auto max-w-7xl space-y-6">
