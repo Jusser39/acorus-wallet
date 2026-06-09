@@ -15,23 +15,25 @@ export async function getSolanaNativeBalance(input: {
   rpcUrl?: string;
 }): Promise<SolanaNativeBalance> {
   const publicKey = toSolanaPublicKey(input.address);
-  let lastError: unknown = null;
+  const connections = createSolanaConnections(input.rpcUrl);
 
-  for (const connection of createSolanaConnections(input.rpcUrl)) {
-    try {
-      const lamports = await Promise.race([
-        connection.getBalance(publicKey, "confirmed"),
-        new Promise<number>((_, reject) => setTimeout(() => reject(new Error("Solana RPC Timeout")), 1500))
-      ]);
+  try {
+    const lamports = await Promise.any(
+      connections.map((connection) =>
+        Promise.race([
+          connection.getBalance(publicKey, "confirmed"),
+          new Promise<number>((_, reject) =>
+            setTimeout(() => reject(new Error("Solana RPC Timeout")), 2000)
+          ),
+        ])
+      )
+    );
 
-      return {
-        lamports: lamports.toString(),
-        sol: (lamports / LAMPORTS_PER_SOL).toString(),
-      };
-    } catch (error) {
-      lastError = error;
-    }
+    return {
+      lamports: lamports.toString(),
+      sol: (lamports / LAMPORTS_PER_SOL).toString(),
+    };
+  } catch (error: any) {
+    throw new Error(formatSolanaRpcError(error));
   }
-
-  throw new Error(formatSolanaRpcError(lastError));
 }

@@ -8,6 +8,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   const [err, setErr] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("tokens");
   const [selectedChainId, setSelectedChainId] = useState<number | "all">("all");
+  const [networkMenuOpen, setNetworkMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -113,16 +114,38 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
         <>
           {/* Filters Row */}
           <div className="px-4 flex items-center justify-between mb-2">
-            <select
-              value={selectedChainId}
-              onChange={(e) => setSelectedChainId(e.target.value === "all" ? "all" : Number(e.target.value))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50 outline-none cursor-pointer appearance-none"
-            >
-              <option value="all">Все популярные сети</option>
-              {home.networks.map(n => (
-                <option key={n.chainId} value={n.chainId}>{n.name}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button 
+                onClick={() => setNetworkMenuOpen(!networkMenuOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50 outline-none cursor-pointer"
+              >
+                {selectedChainId === "all" ? "Все популярные сети" : home.networks.find(n => n.chainId === selectedChainId)?.name}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              
+              {networkMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNetworkMenuOpen(false)} />
+                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 max-h-64 overflow-y-auto">
+                    <button 
+                      className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-800"
+                      onClick={() => { setSelectedChainId("all"); setNetworkMenuOpen(false); }}
+                    >
+                      Все популярные сети
+                    </button>
+                    {home.networks.map(n => (
+                      <button 
+                        key={n.chainId}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-800"
+                        onClick={() => { setSelectedChainId(n.chainId); setNetworkMenuOpen(false); }}
+                      >
+                        {n.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <button className="text-slate-600 hover:text-slate-900"><SlidersHorizontal className="w-4 h-4" /></button>
               <button className="text-slate-600 hover:text-slate-900"><MoreVertical className="w-4 h-4" /></button>

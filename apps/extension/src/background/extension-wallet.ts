@@ -112,6 +112,13 @@ export async function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {
   const vault = result[EXTENSION_VAULT_KEY] as EncryptedVaultV1 | undefined;
   const meta = normalizeVaultMeta(result[EXTENSION_VAULT_META_KEY]);
 
+  if (!unlockedSession && typeof chrome !== "undefined" && chrome.storage?.session) {
+    const sessionResult = await chrome.storage.session.get("unlockedSession");
+    if (sessionResult.unlockedSession) {
+      unlockedSession = sessionResult.unlockedSession;
+    }
+  }
+
   return {
     hasVault: Boolean(vault && meta),
     isUnlocked: Boolean(unlockedSession),
@@ -147,6 +154,9 @@ export async function unlockExtensionWallet(input: {
     evmAddress: plaintext.evmAddress,
     unlockedAt: new Date().toISOString(),
   };
+  if (typeof chrome !== "undefined" && chrome.storage?.session) {
+    await chrome.storage.session.set({ unlockedSession });
+  }
   clearSensitiveMemoryBestEffort(plaintext);
 
   return getExtensionVaultStatus();
@@ -154,11 +164,17 @@ export async function unlockExtensionWallet(input: {
 
 export async function lockExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
+  if (typeof chrome !== "undefined" && chrome.storage?.session) {
+    await chrome.storage.session.remove("unlockedSession");
+  }
   return getExtensionVaultStatus();
 }
 
 export async function resetExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
+  if (typeof chrome !== "undefined" && chrome.storage?.session) {
+    await chrome.storage.session.remove("unlockedSession");
+  }
   await chrome.storage.local.set({
     [EXTENSION_VAULT_KEY]: null,
     [EXTENSION_VAULT_META_KEY]: null,
@@ -172,7 +188,7 @@ export async function executeExtensionSignMessage(input: {
   chainId?: ChainId | null;
   account?: string | null;
 }): Promise<string> {
-  const session = requireUnlockedSession();
+  const session = await requireUnlockedSession();
 
   if (isSolanaSignMessageParams(input.params)) {
     return signSolanaMessage({
@@ -195,7 +211,7 @@ export async function executeExtensionSolanaSend(input: {
   params: unknown[];
   account?: string | null;
 }): Promise<string> {
-  const session = requireUnlockedSession();
+  const session = await requireUnlockedSession();
   const payload = parseSolanaSendPayload(input.params);
   const result = payload.assetType === "spl"
     ? await executeSplTransfer({
@@ -233,7 +249,7 @@ export async function executeExtensionSignTypedData(input: {
   chainId?: ChainId | null;
   account?: string | null;
 }): Promise<string> {
-  const session = requireUnlockedSession();
+  const session = await requireUnlockedSession();
   const account = requireUnlockedEvmAccount(session, input.account);
   const payload = parseTypedDataPayload(input.params);
   const signTypedData = account.signTypedData.bind(account);
@@ -349,11 +365,16 @@ async function installExtensionWallet(input: {
   };
 }
 
-function requireUnlockedSession(): NonNullable<typeof unlockedSession> {
+async function requireUnlockedSession(): Promise<NonNullable<typeof unlockedSession>> {
+  if (!unlockedSession && typeof chrome !== "undefined" && chrome.storage?.session) {
+    const sessionResult = await chrome.storage.session.get("unlockedSession");
+    if (sessionResult.unlockedSession) {
+      unlockedSession = sessionResult.unlockedSession;
+    }
+  }
   if (!unlockedSession) {
     throw new Error("Unlock Acorus Wallet extension before signing.");
   }
-
   return unlockedSession;
 }
 
@@ -448,7 +469,7 @@ async function prepareExtensionTransaction(input: {
   walletClient: ReturnType<typeof createEvmWalletClient>;
   request: Awaited<ReturnType<ReturnType<typeof createEvmPublicClient>["prepareTransactionRequest"]>>;
 }> {
-  const session = requireUnlockedSession();
+  const session = await requireUnlockedSession();
   const account = requireUnlockedEvmAccount(session, input.account);
   const transaction = extractTransactionPayload(input.params);
   const chainId = resolveEvmChainId(transaction.chainId, input.chainId);

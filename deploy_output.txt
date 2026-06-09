@@ -1,0 +1,94 @@
+ WARN  Unsupported engine: wanted: {"node":">=24.0.0"} (current: {"node":"v20.20.2","pnpm":"10.11.0"})
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @prisma/engines, esbuild, prisma, sharp,            │
+│   unrs-resolver.                                                             │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 7.6s using pnpm v10.11.0
+.                                        |  WARN  Unsupported engine: wanted: {"node":">=24.0.0"} (current: {"node":"v20.20.2","pnpm":"10.11.0"})
+
+> @acorus/web@0.1.0 prebuild /root/acorus-wallet/apps/web
+> pnpm --filter @acorus/shared build && pnpm --filter @acorus/wallet-core build
+
+../..                                    |  WARN  Unsupported engine: wanted: {"node":">=24.0.0"} (current: {"node":"v20.20.2","pnpm":"10.11.0"})
+
+> @acorus/shared@0.1.0 build /root/acorus-wallet/packages/shared
+> tsup src/index.ts --format esm --clean
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js 5.64 KB
+ESM ⚡️ Build success in 136ms
+../..                                    |  WARN  Unsupported engine: wanted: {"node":">=24.0.0"} (current: {"node":"v20.20.2","pnpm":"10.11.0"})
+
+> @acorus/wallet-core@0.1.0 prebuild /root/acorus-wallet/packages/wallet-core
+> pnpm --filter @acorus/shared build
+
+../..                                    |  WARN  Unsupported engine: wanted: {"node":">=24.0.0"} (current: {"node":"v20.20.2","pnpm":"10.11.0"})
+
+> @acorus/shared@0.1.0 build /root/acorus-wallet/packages/shared
+> tsup src/index.ts --format esm --clean
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js 5.64 KB
+ESM ⚡️ Build success in 169ms
+
+> @acorus/wallet-core@0.1.0 build /root/acorus-wallet/packages/wallet-core
+> tsup src/index.ts --format esm --clean
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js 10.48 KB
+ESM ⚡️ Build success in 127ms
+
+> @acorus/web@0.1.0 build /root/acorus-wallet/apps/web
+> next build
+
+  Suggestion: Wait for the build to complete.
+/root/acorus-wallet/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @acorus/web@0.1.0 build: `next build`
+Exit status 1
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [all](ids: [ 0, 3, 4 ])
+[PM2] [bot-api](3) ✓
+[PM2] [api](0) ✓
+[PM2] [g4f-server](4) ✓
+┌────┬───────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name          │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼───────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ api           │ default     │ 0.1.0   │ fork    │ 2682982  │ 0s     │ 48   │ online    │ 0%       │ 47.5mb   │ root     │ disabled │
+│ 3  │ bot-api       │ default     │ 1.0.0   │ fork    │ 2682971  │ 0s     │ 160  │ online    │ 0%       │ 48.7mb   │ root     │ disabled │
+│ 4  │ g4f-server    │ default     │ N/A     │ fork    │ 2682993  │ 0s     │ 121… │ online    │ 0%       │ 8.6mb    │ root     │ disabled │
+└────┴───────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+STDERR:
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+⨯ Another next build process is already running.
+
+  This could be:
+  - A next build still in progress
+  - A previous build that didn't exit cleanly
+

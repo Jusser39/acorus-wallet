@@ -1,0 +1,239 @@
+[
+    {
+        "Id": "e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2",
+        "Created": "2026-06-07T23:50:09.136934881Z",
+        "Path": "docker-entrypoint.sh",
+        "Args": [
+            "pnpm",
+            "--filter",
+            "@acorus/web",
+            "start"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 2522605,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-06-07T23:50:26.471556236Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:9f61ed85d00fee56a8ead59bccbe1d7649b211a397f92754e4287affad178a9d",
+        "ResolvConfPath": "/var/lib/docker/containers/e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2/hostname",
+        "HostsPath": "/var/lib/docker/containers/e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2/hosts",
+        "LogPath": "/var/lib/docker/containers/e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2/e2141c822d328c24f13520feebcc5cebf4d7dffc98d1754eccc19ffc3c8a81a2-json.log",
+        "Name": "/acorus-web",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "infra_default",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [],
+        "Config": {
+            "Hostname": "e2141c822d32",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "3000/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "NODE_ENV=production",
+                "NEXT_PUBLIC_API_URL=",
+                "INTERNAL_API_URL=http://api:4000",
+                "NEXT_PUBLIC_DEFAULT_SAFETY_MODE=true",
+                "NEXT_PUBLIC_DEFAULT_AUTOLOCK_MINUTES=10",
+                "WEB_PORT=3000",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=24.16.0",
+                "YARN_VERSION=1.22.22",
+                "NEXT_PUBLIC_ETH_RPC_URL=https://ethereum-rpc.publicnode.com",
+                "NEXT_PUBLIC_BSC_RPC_URL=https://bsc-rpc.publicnode.com",
+                "NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-bor-rpc.publicnode.com",
+                "NEXT_PUBLIC_ARBITRUM_RPC_URL=https://arbitrum-one-rpc.publicnode.com",
+                "NEXT_PUBLIC_OPTIMISM_RPC_URL=https://optimism-rpc.publicnode.com",
+                "NEXT_PUBLIC_BASE_RPC_URL=https://base-rpc.publicnode.com"
+            ],
+            "Cmd": [
+                "pnpm",
+                "--filter",
+                "@acorus/web",
+                "start"
+            ],
+            "Image": "infra-web",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "docker-entrypoint.sh"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "558723849361efc09b80284231f184fb3789c5a558c13d05afae235e3049869e",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "api:service_healthy:false",
+                "com.docker.compose.image": "sha256:9f61ed85d00fee56a8ead59bccbe1d7649b211a397f92754e4287affad178a9d",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "infra",
+                "com.docker.compose.project.config_files": "/opt/acorus-wallet/infra/docker-compose.yml",
+                "com.docker.compose.project.environment_file": "/opt/acorus-wallet/.env",
+                "com.docker.compose.project.working_dir": "/opt/acorus-wallet/infra",
+                "com.docker.compose.replace": "acorus-web",
+                "com.docker.compose.service": "web",
+                "com.docker.compose.version": "2.40.3"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "725cf37da8b8ff285ad5809f912e620c72cb1bdb924fe2bde34dda5c294b4506",
+            "SandboxKey": "/var/run/docker/netns/725cf37da8b8",
+            "Ports": {
+                "3000/tcp": null
+            },
+            "Networks": {
+                "infra_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "acorus-web",
+                        "web"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "be7952260cbcdbd677235fcfe5e18aac2adcd828a95f8f533215220176b587a2",
+                    "EndpointID": "2b2a4d6781ccfa4a7e285a06ae6074da4fee6e6982f1b162940c4a6e691183fc",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.5",
+                    "MacAddress": "36:20:1b:4c:12:b1",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "acorus-web",
+                        "web",
+                        "e2141c822d32"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:fe46cc6bfb571e84108ff3d745eac80afc68fea5dd158c722a975a63f405d7ae",
+            "size": 3143,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

@@ -1,0 +1,641 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name 24wallet.ru www.24wallet.ru;
+
+    return 308 https://24wallet.ru$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name www.24wallet.ru;
+
+    ssl_certificate /etc/letsencrypt/live/24wallet.ru/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/24wallet.ru/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    return 308 https://24wallet.ru$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name 24wallet.ru;
+
+    client_max_body_size 32m;
+
+    ssl_certificate /etc/letsencrypt/live/24wallet.ru/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/24wallet.ru/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+server {
+    server_name bstcrm.ru www.bstcrm.ru 85.239.59.199 _;
+    client_max_body_size 32m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8010;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    listen [::]:443 ssl http2; # managed by Certbot
+    listen 443 ssl http2; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/bstcrm.ru/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/bstcrm.ru/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+server {
+    if ($host = www.bstcrm.ru) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = bstcrm.ru) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name bstcrm.ru www.bstcrm.ru 85.239.59.199 _;
+    return 404; # managed by Certbot
+
+
+
+
+}server {
+    server_name mariasportick.ru www.mariasportick.ru;
+
+    access_log /var/log/nginx/mariasportick.ru.access.log;
+    error_log /var/log/nginx/mariasportick.ru.error.log;
+
+    location / {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    listen [::]:443 ssl; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/mariasportick.ru/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/mariasportick.ru/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+server {
+    if ($host = www.mariasportick.ru) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = mariasportick.ru) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name mariasportick.ru www.mariasportick.ru;
+    return 404; # managed by Certbot
+
+
+
+
+}server {
+    listen 80;
+    listen [::]:80;
+    server_name ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    client_max_body_size 50m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/javascript text/xml text/x-component application/json application/javascript application/x-javascript application/xml application/xml+rss application/xhtml+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon image/webp;
+    # Browser cache for static assets
+    location ~* \.(jpg|jpeg|png|gif|webp|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    location ~* \.(css|js)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    access_log /var/log/nginx/ultraauto39.access.log;
+    error_log /var/log/nginx/ultraauto39.error.log;
+    # Redirect legacy .html URL
+    location = /services/parts-by-vin.html {
+        return 301 https://ultraauto39.ru/services/parts-by-vin$is_args$args;
+    }
+    location = /appointment {
+        return 301 https://ultraauto39.ru/contacts$is_args$args;
+    }
+    location = /brands/mersedes {
+        return 301 https://ultraauto39.ru/cars/mercedes$is_args$args;
+    }
+
+    # Dedicated proxy for ultraauto-api
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Full Apos CMS proxy
+    
+    
+
+    
+
+
+
+location /api/bot-calendar {
+    proxy_pass http://127.0.0.1:5005;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+
+location /api/bot-lead {
+    proxy_pass http://127.0.0.1:5005;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 120;
+    }
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    client_max_body_size 50m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/javascript text/xml text/x-component application/json application/javascript application/x-javascript application/xml application/xml+rss application/xhtml+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon image/webp;
+    # Browser cache for static assets
+    location ~* \.(jpg|jpeg|png|gif|webp|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    location ~* \.(css|js)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    access_log /var/log/nginx/ultraauto39.access.log;
+    error_log /var/log/nginx/ultraauto39.error.log;
+    # Redirect legacy .html URL
+    location = /services/parts-by-vin.html {
+        return 301 https://ultraauto39.ru/services/parts-by-vin$is_args$args;
+    }
+    # Dedicated proxy for ultraauto-api
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Full Apos CMS proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 120;
+    }
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    client_max_body_size 50m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/javascript text/xml text/x-component application/json application/javascript application/x-javascript application/xml application/xml+rss application/xhtml+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon image/webp;
+    # Browser cache for static assets
+    location ~* \.(jpg|jpeg|png|gif|webp|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    location ~* \.(css|js)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    access_log /var/log/nginx/ultraauto39.access.log;
+    error_log /var/log/nginx/ultraauto39.error.log;
+    # Redirect legacy .html URL
+    location = /services/parts-by-vin.html {
+        return 301 https://ultraauto39.ru/services/parts-by-vin$is_args$args;
+    }
+    # Dedicated proxy for ultraauto-api
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Full Apos CMS proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 120;
+    }
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    client_max_body_size 50m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/javascript text/xml text/x-component application/json application/javascript application/x-javascript application/xml application/xml+rss application/xhtml+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon image/webp;
+    # Browser cache for static assets
+    location ~* \.(jpg|jpeg|png|gif|webp|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    location ~* \.(css|js)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    access_log /var/log/nginx/ultraauto39.access.log;
+    error_log /var/log/nginx/ultraauto39.error.log;
+    # Redirect legacy .html URL
+    location = /services/parts-by-vin.html {
+        return 301 https://ultraauto39.ru/services/parts-by-vin$is_args$args;
+    }
+    location = /appointment {
+        return 301 https://ultraauto39.ru/contacts$is_args$args;
+    }
+    location = /brands/mersedes {
+        return 301 https://ultraauto39.ru/cars/mercedes$is_args$args;
+    }
+    # Dedicated proxy for ultraauto-api
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Full Apos CMS proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 120;
+    }
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.ultraauto39.ru;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    return 301 https://ultraauto39.ru$request_uri;
+}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ultraauto39.ru;
+    ssl_certificate /etc/letsencrypt/live/ultraauto39.ru/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ultraauto39.ru/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    client_max_body_size 50m;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/javascript text/xml text/x-component application/json application/javascript application/x-javascript application/xml application/xml+rss application/xhtml+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon image/webp;
+    # Browser cache for static assets
+    location ~* \.(jpg|jpeg|png|gif|webp|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    location ~* \.(css|js)$ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+    access_log /var/log/nginx/ultraauto39.access.log;
+    error_log /var/log/nginx/ultraauto39.error.log;
+    # Redirect legacy .html URL
+    location = /services/parts-by-vin.html {
+        return 301 https://ultraauto39.ru/services/parts-by-vin$is_args$args;
+    }
+    location = /appointment {
+        return 301 https://ultraauto39.ru/contacts$is_args$args;
+    }
+    location = /brands/mersedes {
+        return 301 https://ultraauto39.ru/cars/mercedes$is_args$args;
+    }
+    location ~ ^/cars/(mini|changan|exeed|omoda|jetour|tank)$ {
+        return 301 https://ultraauto39.ru/cars$is_args$args;
+    }
+    # Dedicated proxy for ultraauto-api
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Full Apos CMS proxy
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 120;
+    }
+}
+
+STDERR:

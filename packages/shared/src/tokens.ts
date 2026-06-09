@@ -8,9 +8,19 @@ export interface CuratedToken {
   decimals: number;
   logoUrl: string | null;
   verified: boolean;
+  type?: "native" | "erc20" | "spl";
 }
 
 export const CURATED_TOKENS: CuratedToken[] = [
+  { chainId: 1, type: "native", address: "native", symbol: "ETH", name: "Ethereum", decimals: 18, logoUrl: "https://cryptologos.cc/logos/ethereum-eth-logo.png", verified: true },
+  { chainId: 10, type: "native", address: "native", symbol: "ETH", name: "Optimism", decimals: 18, logoUrl: "https://cryptologos.cc/logos/optimism-ethereum-op-logo.png", verified: true },
+  { chainId: 56, type: "native", address: "native", symbol: "BNB", name: "BNB Smart Chain", decimals: 18, logoUrl: "https://cryptologos.cc/logos/bnb-bnb-logo.png", verified: true },
+  { chainId: 137, type: "native", address: "native", symbol: "MATIC", name: "Polygon", decimals: 18, logoUrl: "https://cryptologos.cc/logos/polygon-matic-logo.png", verified: true },
+  { chainId: 42161, type: "native", address: "native", symbol: "ETH", name: "Arbitrum One", decimals: 18, logoUrl: "https://cryptologos.cc/logos/arbitrum-arb-logo.png", verified: true },
+  { chainId: 43114, type: "native", address: "native", symbol: "AVAX", name: "Avalanche C-Chain", decimals: 18, logoUrl: "https://cryptologos.cc/logos/avalanche-avax-logo.png", verified: true },
+  { chainId: 8453, type: "native", address: "native", symbol: "ETH", name: "Base", decimals: 18, logoUrl: "https://cryptologos.cc/logos/base-logo.png", verified: true },
+  { chainId: 101, type: "native", address: "native", symbol: "SOL", name: "Solana", decimals: 9, logoUrl: "https://cryptologos.cc/logos/solana-sol-logo.png", verified: true },
+  { chainId: "tron-mainnet", type: "native", address: "native", symbol: "TRX", name: "Tron", decimals: 6, logoUrl: "https://cryptologos.cc/logos/tron-trx-logo.png", verified: true },
   {
     chainId: 1,
     address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
