@@ -215,6 +215,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
   const [shareState, setShareState] = useState<"idle" | "copied" | "failed">("idle");
   const [explorerMenuOpen, setExplorerMenuOpen] = useState(false);
   const [networkMenuOpen, setNetworkMenuOpen] = useState(false);
+  const [websiteMenuOpen, setWebsiteMenuOpen] = useState(false);
 
   const explorerTokenUrl = useMemo(
     () =>
@@ -413,9 +414,10 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     && EVM_CHAINS.some((item) => item.chainId === tradeChainId);
   const activeEvmAddress = activeProfile?.chainFamily === "evm" ? activeProfile.publicAddress : null;
   const targetSwapToken = (isNativeToken && !isCoinGeckoRoute) || tradeTokenAddress === "native" ? "native" : tradeTokenAddress;
-  const defaultSellToken = isNativeToken && !isCoinGeckoRoute
-    ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDC")?.address ?? "native"
+  const defaultSellToken = canEvmSwap
+    ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDT")?.address ?? "native"
     : "native";
+  const isReady = !isCoinGeckoRoute || tokenDetail !== null;
   const fallbackSwap = useMemo(() => {
     const symbol = resolvedSymbol.toLowerCase();
     const address = tokenAddress.toLowerCase();
@@ -630,11 +632,42 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                         ) : null}
                       </div>
                     ) : null}
-                    {externalLinks.map((link) => (
+                    {externalLinks.filter(l => l.kind !== "website").map((link) => (
                       <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
-                        {link.kind === "twitter" ? "𝕏" : link.kind === "website" ? "Website" : link.label}
+                        {link.kind === "twitter" ? "𝕏" : link.label}
                       </a>
                     ))}
+                    {externalLinks.filter(l => l.kind === "website").length > 0 ? (
+                      <div className="relative">
+                        <button type="button" onClick={() => externalLinks.filter(l => l.kind === "website").length > 1 ? setWebsiteMenuOpen((value) => !value) : window.open(externalLinks.find(l => l.kind === "website")?.url, "_blank")} className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
+                          Website {externalLinks.filter(l => l.kind === "website").length > 1 ? "⌄" : ""}
+                        </button>
+                        {websiteMenuOpen && externalLinks.filter(l => l.kind === "website").length > 1 ? (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setWebsiteMenuOpen(false)} />
+                            <div className="absolute left-0 top-[calc(100%+8px)] z-20 min-w-64 overflow-hidden rounded-2xl border border-fuchsia-100 bg-white p-2 text-slate-950 shadow-[0_22px_60px_rgba(88,28,135,0.18)]">
+                              {externalLinks.filter(l => l.kind === "website").map((option) => (
+                                <a
+                                  key={option.url}
+                                  href={option.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block rounded-xl px-4 py-3 font-semibold transition-colors hover:bg-fuchsia-50 hover:text-fuchsia-600"
+                                >
+                                  {(() => {
+                                    try {
+                                      return new URL(option.url).hostname.replace(/^www\./, "");
+                                    } catch {
+                                      return option.url;
+                                    }
+                                  })()}
+                                </a>
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <button type="button" onClick={() => void handleShare()} className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
                       {shareState === "copied" ? t("general.copied") : shareState === "failed" ? t("general.failed") : t("general.share")}
                     </button>
@@ -734,21 +767,25 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
-          <SwapComposer
-            compact
-            initialChainId={isCoinGeckoRoute ? tradeChainId : chainId}
-            initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
-            initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
-            initialBuyTokenMeta={{
-              symbol: resolvedSymbol,
-              name: resolvedName,
-              decimals: canEvmSwap ? tradePlatform?.decimals ?? 18 : fallbackSwap.decimals,
-            }}
-            portfolioAssets={[]}
-            userAddress={canEvmSwap ? activeEvmAddress : null}
-            title={`Swap ${resolvedSymbol}`}
-            description="Choose a network and tokens. Acorus will fetch the best available route and ask the extension to review before signing."
-          />
+          {isReady ? (
+            <SwapComposer
+              compact
+              initialChainId={isCoinGeckoRoute ? tradeChainId : chainId}
+              initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
+              initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
+              initialBuyTokenMeta={{
+                symbol: resolvedSymbol,
+                name: resolvedName,
+                decimals: canEvmSwap ? tradePlatform?.decimals ?? 18 : fallbackSwap.decimals,
+              }}
+              portfolioAssets={[]}
+              userAddress={canEvmSwap ? activeEvmAddress : null}
+              title={`Swap ${resolvedSymbol}`}
+              description="Choose a network and tokens. Acorus will fetch the best available route and ask the extension to review before signing."
+            />
+          ) : (
+            <div className="premium-card min-h-[500px] animate-pulse bg-white/50" />
+          )}
         </aside>
       </div>
     </section>
