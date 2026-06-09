@@ -642,16 +642,8 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
                       {shareState === "copied" ? t("general.copied") : shareState === "failed" ? t("general.failed") : t("general.share")}
                     </button>
-                    {!isNativeToken ? (
-                      <button type="button" onClick={() => void handleCopyAddress()} className="button-secondary text-sm">
-                        {t("general.copy_address")}
-                      </button>
-                    ) : null}
-                    <Link href={`/swap?chainId=${canEvmSwap ? tradeChainId : fallbackSwap.chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
+                    <Link href={`/swap?chainId=${chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
                       {t("token.trade")}
-                    </Link>
-                    <Link href="/receive" className="button-secondary text-sm">
-                      {t("token.receive")}
                     </Link>
                   </div>
                 </div>
@@ -748,7 +740,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
           <SwapComposer
             compact
-            initialChainId={canEvmSwap ? tradeChainId : fallbackSwap.chainId}
+            initialChainId={chainId}
             initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
             initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
             initialBuyTokenMeta={{

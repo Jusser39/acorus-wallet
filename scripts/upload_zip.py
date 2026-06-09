@@ -4,7 +4,7 @@ import os
 host = '85.239.59.199'
 user = 'root'
 password = 'yhNc+9-BE@FKAo'
-local_file = 'apps/web/public/extension.zip'
+local_file = 'apps/web/public/downloads/acorus-wallet-extension.zip'
 remote_tmp_file = '/root/acorus-wallet-extension-v2.zip'
 
 client = paramiko.SSHClient()
