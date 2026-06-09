@@ -13,12 +13,14 @@ export function Send({ onBack }: { onBack: () => void }) {
 
   const [assetMenuOpen, setAssetMenuOpen] = useState(false);
 
+  const getAssetId = (a: any) => `${a.chainId}_${a.symbol}_${a.tokenAddress || 'native'}`;
+
   useEffect(() => {
     getExtensionHome().then((data: any) => {
       if (data?.ok && data.result) {
         setHome(data.result);
         if (data.result.assets?.length > 0) {
-          setAsset(data.result.assets[0].id);
+          setAsset(getAssetId(data.result.assets[0]));
         }
       }
     });
@@ -35,7 +37,7 @@ export function Send({ onBack }: { onBack: () => void }) {
     }, 1500);
   };
 
-  const selectedAssetData = home?.assets.find(a => a.id === asset);
+  const selectedAssetData = home?.assets.find(a => getAssetId(a) === asset);
 
   if (success) {
     return (
@@ -77,9 +79,9 @@ export function Send({ onBack }: { onBack: () => void }) {
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 max-h-64 overflow-y-auto">
                   {home?.assets?.map(a => (
                     <button 
-                      key={a.id}
+                      key={getAssetId(a)}
                       className="w-full text-left px-4 py-3 hover:bg-slate-50 text-base font-semibold text-slate-800 border-b border-slate-50 last:border-0"
-                      onClick={() => { setAsset(a.id); setAssetMenuOpen(false); }}
+                      onClick={() => { setAsset(getAssetId(a)); setAssetMenuOpen(false); }}
                     >
                       {a.symbol} <span className="text-sm font-medium text-slate-500 ml-1">on {home?.networks.find(n => n.chainId === a.chainId)?.name}</span>
                       <span className="float-right text-sm font-medium text-slate-400">{a.balanceFormatted}</span>

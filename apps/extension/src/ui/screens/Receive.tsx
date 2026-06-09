@@ -10,6 +10,8 @@ export function Receive({ onBack }: { onBack: () => void }) {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const getAssetId = (a: any) => `${a.chainId}_${a.symbol}_${a.tokenAddress || 'native'}`;
+
   useEffect(() => {
     getExtensionHome().then((data: any) => {
       if (data?.ok && data.result) {
@@ -21,7 +23,7 @@ export function Receive({ onBack }: { onBack: () => void }) {
     });
   }, []);
 
-  const assetData = home?.assets?.find(a => a.symbol === selectedAsset);
+  const assetData = home?.assets?.find(a => getAssetId(a) === selectedAsset);
   const address = assetData ? bgState?.extensionVaultStatus?.profiles?.find(p => p.chainFamily === assetData.family)?.account : null;
 
   const handleCopy = () => {
@@ -97,8 +99,8 @@ export function Receive({ onBack }: { onBack: () => void }) {
         </div>
         {home?.assets?.map(a => (
           <div 
-            key={a.symbol} 
-            onClick={() => setSelectedAsset(a.symbol)}
+            key={getAssetId(a)} 
+            onClick={() => setSelectedAsset(getAssetId(a))}
             className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-2xl cursor-pointer transition-colors"
           >
             {a.logoUrl ? (
@@ -110,7 +112,7 @@ export function Receive({ onBack }: { onBack: () => void }) {
             )}
             <div className="flex flex-col">
               <span className="font-bold text-slate-900">{a.symbol}</span>
-              <span className="text-xs font-medium text-slate-500">{a.name}</span>
+              <span className="text-xs font-medium text-slate-500">{a.name} <span className="text-slate-400 font-normal">on {home?.networks.find(n => n.chainId === a.chainId)?.name}</span></span>
             </div>
           </div>
         ))}
