@@ -1007,9 +1007,6 @@ export function SwapComposer(props: {
     >
       <GlassCard glow className={`space-y-5 p-4 sm:p-5 ${panelSide === "left" && !props.compact ? "order-last" : ""}`}>
         <div className="px-3 pt-3">
-          <span className="section-kicker !border-fuchsia-100 !bg-white/80 !text-violet-800">
-            Swap
-          </span>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950 glow-text-content">
             {props.title ?? "Swap"}
           </h1>

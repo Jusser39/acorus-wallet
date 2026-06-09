@@ -606,7 +606,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                   <div className="mt-4 flex flex-wrap gap-2">
                     {explorerOptions.length ? (
                       <div className="relative">
-                        <button type="button" onClick={() => setExplorerMenuOpen((value) => !value)} className="button-secondary text-sm">
+                        <button type="button" onClick={() => setExplorerMenuOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
                           {t("general.blockchain")}
                         </button>
                         {explorerMenuOpen ? (
@@ -631,14 +631,14 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                       </div>
                     ) : null}
                     {externalLinks.map((link) => (
-                      <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="button-secondary text-sm">
+                      <a key={`${link.kind}-${link.url}`} href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
                         {link.kind === "twitter" ? "𝕏" : link.kind === "website" ? "Website" : link.label}
                       </a>
                     ))}
-                    <button type="button" onClick={() => void handleShare()} className="button-secondary text-sm">
+                    <button type="button" onClick={() => void handleShare()} className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
                       {shareState === "copied" ? t("general.copied") : shareState === "failed" ? t("general.failed") : t("general.share")}
                     </button>
-                    <Link href={`/swap?chainId=${chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex text-sm">
+                    <Link href={`/swap?chainId=${isCoinGeckoRoute ? tradeChainId : chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex items-center px-6 py-2 text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
                       {t("token.trade")}
                     </Link>
                   </div>
@@ -736,7 +736,7 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
           <SwapComposer
             compact
-            initialChainId={chainId}
+            initialChainId={isCoinGeckoRoute ? tradeChainId : chainId}
             initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
             initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
             initialBuyTokenMeta={{
