@@ -586,9 +586,11 @@ async function handleEvmCompatibilityRequest(
 
   const result = await requestBridgeMethod(
     acorusMethod,
-    shouldScopeEvmMethodToFamily(method)
-      ? [{ family: "evm" }, ...normalizeEvmRequestParams(paramsInput)]
-      : normalizeEvmRequestParams(paramsInput),
+    acorusMethod === "acorus_rpc"
+      ? [{ rpcMethod: method }, ...normalizeEvmRequestParams(paramsInput)]
+      : shouldScopeEvmMethodToFamily(method)
+        ? [{ family: "evm" }, ...normalizeEvmRequestParams(paramsInput)]
+        : normalizeEvmRequestParams(paramsInput),
   );
 
   switch (method) {

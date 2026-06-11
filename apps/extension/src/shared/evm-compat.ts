@@ -18,6 +18,19 @@ export const EVM_COMPATIBILITY_METHODS = [
   "eth_signTypedData_v4",
   "eth_signTransaction",
   "eth_sendTransaction",
+  // Standard RPC Read Methods
+  "eth_call",
+  "eth_estimateGas",
+  "eth_gasPrice",
+  "eth_blockNumber",
+  "eth_getTransactionByHash",
+  "eth_getTransactionReceipt",
+  "eth_getTransactionCount",
+  "eth_getBalance",
+  "eth_getCode",
+  "eth_getStorageAt",
+  "eth_getBlockByNumber",
+  "eth_getBlockByHash",
 ] as const;
 
 export type EvmCompatibilityMethod =
@@ -116,6 +129,19 @@ export function mapEvmMethodToAcorusMethod(
       return "acorus_signTransaction";
     case "eth_sendTransaction":
       return "acorus_sendTransaction";
+    case "eth_call":
+    case "eth_estimateGas":
+    case "eth_gasPrice":
+    case "eth_blockNumber":
+    case "eth_getTransactionByHash":
+    case "eth_getTransactionReceipt":
+    case "eth_getTransactionCount":
+    case "eth_getBalance":
+    case "eth_getCode":
+    case "eth_getStorageAt":
+    case "eth_getBlockByNumber":
+    case "eth_getBlockByHash":
+      return "acorus_rpc";
     default:
       return null;
   }

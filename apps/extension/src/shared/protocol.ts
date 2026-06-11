@@ -49,6 +49,7 @@ export const ACORUS_PROVIDER_METHODS = [
   "acorus_signTypedData",
   "acorus_signTransaction",
   "acorus_sendTransaction",
+  "acorus_rpc",
   "acorus_tonConnect",
   "acorus_tonRestoreConnection",
   "acorus_tonSendTransaction",

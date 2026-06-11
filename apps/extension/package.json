@@ -8,7 +8,8 @@
     "build": "tsup --config tsup.config.ts && tailwindcss -i src/ui/index.css -o dist/index.css && node ./scripts/postbuild.mjs",
     "lint": "tsc --noEmit -p tsconfig.json",
     "pretest": "pnpm --filter @acorus/wallet-core build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@acorus/shared": "workspace:*",
@@ -23,9 +24,11 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",
+    "playwright": "^1.60.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19"
   }

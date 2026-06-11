@@ -288,6 +288,22 @@ export async function executeExtensionSendTransaction(input: {
   });
 }
 
+export async function executeExtensionRpc(input: {
+  method: string;
+  params: unknown[];
+  chainId: ChainId;
+}): Promise<unknown> {
+  const chainId = resolveEvmChainId(null, input.chainId);
+  const env = buildExtensionEvmEnv(chainId);
+  const clientOptions = await buildExtensionEvmClientOptions(chainId);
+  const publicClient = createEvmPublicClient(chainId, env, clientOptions);
+
+  return publicClient.request({
+    method: input.method as any,
+    params: input.params as any,
+  });
+}
+
 async function installExtensionWallet(input: {
   name: string;
   mnemonic: string;

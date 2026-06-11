@@ -128,8 +128,8 @@ export function PopupApp() {
   }
 
   return (
-    <div className="flex flex-col h-[600px] w-[375px] bg-white text-slate-900 overflow-hidden font-sans relative">
-      <header className="flex items-center justify-between p-4 bg-white relative z-50">
+    <div className="flex flex-col h-[600px] w-[375px] bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans relative transition-colors duration-300">
+      <header className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 relative z-50 transition-colors duration-300">
         <div className="relative">
           <button 
             onClick={() => setShowAccountMenu(!showAccountMenu)}
@@ -141,12 +141,12 @@ export function PopupApp() {
           {showAccountMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowAccountMenu(false)} />
-              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-                <div className="px-3 py-2 border-b border-slate-50 mb-1">
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-3 py-2 border-b border-slate-50 dark:border-slate-800 mb-1">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Accounts</div>
-                  <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
                     <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-sm font-semibold text-slate-700">Account 1</span>
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Account 1</span>
                   </div>
                 </div>
                 <button 

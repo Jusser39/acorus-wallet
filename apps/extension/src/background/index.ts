@@ -32,6 +32,7 @@ import {
 import {
   createExtensionWallet,
   executeExtensionSendTransaction,
+  executeExtensionRpc,
   executeExtensionSolanaSend,
   executeExtensionSignMessage,
   executeExtensionSignTransaction,
@@ -1161,6 +1162,54 @@ async function handleProviderMethod(
       ok: true,
       result: bridge.activeChainId,
     };
+  }
+
+  if (method === "acorus_rpc") {
+    if (!session || !hasDappPermission(session, "view_chain")) {
+      return {
+        requestId,
+        ok: false,
+        error: {
+          code: "not_connected",
+          message: "No approved session is connected.",
+        },
+      };
+    }
+
+    const bridge = await touchOriginSession(origin);
+    const activeChainId = bridge.activeChainId;
+
+    if (!activeChainId) {
+      return {
+        requestId,
+        ok: false,
+        error: { code: "no_chain", message: "No active chain." },
+      };
+    }
+
+    const payload = normalizeRecord(params?.[0]);
+    const rpcMethod = String(payload.rpcMethod ?? "");
+    const rpcParams = params?.slice(1) ?? [];
+
+    try {
+      const result = await executeExtensionRpc({
+        method: rpcMethod,
+        params: rpcParams,
+        chainId: activeChainId,
+      });
+
+      return {
+        requestId,
+        ok: true,
+        result,
+      };
+    } catch (e) {
+      return {
+        requestId,
+        ok: false,
+        error: { code: "rpc_error", message: String(e) },
+      };
+    }
   }
 
   if (method === "acorus_getPermissions") {
