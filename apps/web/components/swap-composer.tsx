@@ -55,6 +55,7 @@ export function SwapComposer(props: {
     symbol: string;
     name: string;
     decimals: number;
+    logoUrl?: string | null;
   };
   compact?: boolean;
   title?: string;
