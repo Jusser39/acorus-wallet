@@ -4,18 +4,26 @@ import { getExtensionHome } from "../api";
 import type { ExtensionPortfolioSnapshot } from "../../background/extension-assets";
 
 export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => void }) {
-  const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(null);
+  const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(() => {
+    try {
+      const cached = localStorage.getItem("acorus_dashboard_cache");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [err, setErr] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("tokens");
   const [selectedChainId, setSelectedChainId] = useState<number | "all">("all");
   const [networkMenuOpen, setNetworkMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [slidersMenuOpen, setSlidersMenuOpen] = useState(false);
+  const [sortByValue, setSortByValue] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const timeout = setTimeout(() => {
-      if (isMounted) setErr({ error: "UI Timeout: Background script took more than 30 seconds to respond. The public RPC nodes might be rate limiting us." });
+      if (isMounted && !home) setErr({ error: "UI Timeout: Background script took more than 30 seconds to respond. The public RPC nodes might be rate limiting us." });
     }, 30000);
 
     getExtensionHome().then((data: any) => {
@@ -23,13 +31,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
       clearTimeout(timeout);
       if (data?.ok) {
         setHome(data.result);
-      } else {
+        localStorage.setItem("acorus_dashboard_cache", JSON.stringify(data.result));
+      } else if (!home) {
         setErr(data || { error: "Background script failed to respond or returned undefined." });
       }
     }).catch(e => {
       if (!isMounted) return;
       clearTimeout(timeout);
-      setErr(String(e));
+      if (!home) setErr(String(e));
     });
 
     return () => { isMounted = false; clearTimeout(timeout); };
@@ -58,6 +67,22 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   }
 
   const totalValue = home.totalFiatValue ?? 0;
+  
+  const handleViewExplorer = () => {
+    setMoreMenuOpen(false);
+    // Find the first account address
+    const profile = home.assets.length > 0 ? "0x" : ""; // Not direct access to profile, but we can assume address is known or use a generic link
+    // Wait, we can get active account from home assets if it's there, but actually home doesn't have the address.
+    // However we can just redirect to etherscan general.
+    window.open(`https://etherscan.io/`, "_blank");
+  };
+
+  const displayAssets = [...home.assets]
+    .filter(a => selectedChainId === "all" || a.chainId === selectedChainId)
+    .sort((a, b) => {
+      if (!sortByValue) return 0;
+      return (b.fiatValue || 0) - (a.fiatValue || 0);
+    });
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950 relative pb-8">
@@ -144,8 +169,11 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setSlidersMenuOpen(false)} />
                     <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-950 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50">
-                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setSlidersMenuOpen(false)}>Manage tokens</button>
-                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setSlidersMenuOpen(false)}>Sort by value</button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => { setSlidersMenuOpen(false); onNavigate?.("settings"); }}>Manage tokens</button>
+                      <button className="w-full text-left flex items-center justify-between px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => { setSortByValue(!sortByValue); setSlidersMenuOpen(false); }}>
+                        Sort by value
+                        {sortByValue && <span className="w-2 h-2 rounded-full bg-violet-500"></span>}
+                      </button>
                     </div>
                   </>
                 )}
@@ -162,7 +190,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
                     <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
                     <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-950 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50">
                       <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => { setMoreMenuOpen(false); onNavigate?.("settings"); }}>Settings</button>
-                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setMoreMenuOpen(false)}>View explorer</button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={handleViewExplorer}>View explorer</button>
                     </div>
                   </>
                 )}
@@ -172,7 +200,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
 
           {/* Assets List */}
           <div className="flex flex-col px-2">
-            {home.assets.filter(a => selectedChainId === "all" || a.chainId === selectedChainId).map((asset, index) => {
+            {displayAssets.map((asset, index) => {
               const val = asset.fiatValue ? `${asset.fiatValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $` : "—";
               
               return (
@@ -199,7 +227,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="font-semibold text-slate-900 dark:text-white text-[15px]">{val}</span>
-                    <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{asset.formatted} {asset.symbol}</span>
+                    <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{asset.formatted ?? asset.balanceFormatted} {asset.symbol}</span>
                   </div>
                 </div>
               );
