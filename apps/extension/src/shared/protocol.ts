@@ -129,6 +129,14 @@ export type ExtensionActivityRecord = {
 };
 
 export type ExtensionRuntimeMessage =
+    | {
+        kind: "send_internal_transaction";
+        requestId: string;
+        surface: ExtensionSurface;
+        to: string;
+        value: string;
+        chainId: number;
+      }
   | {
       kind: "ping";
       requestId: string;
@@ -547,3 +555,4 @@ export function isInpageStateEnvelope(
     && typeof (candidate.state as Partial<DappBridgeSessionView>).origin === "string"
   );
 }
+

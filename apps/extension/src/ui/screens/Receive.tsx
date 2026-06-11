@@ -4,6 +4,8 @@ import { getExtensionHome, getBackgroundState } from "../api";
 import type { ExtensionPortfolioSnapshot } from "../../background/extension-assets";
 import type { BackgroundStateSnapshot } from "../../shared/protocol";
 
+import { QRCodeSVG } from "qrcode.react";
+
 export function Receive({ onBack }: { onBack: () => void }) {
   const [home, setHome] = useState<ExtensionPortfolioSnapshot | null>(null);
   const [bgState, setBgState] = useState<BackgroundStateSnapshot | null>(null);
@@ -47,16 +49,17 @@ export function Receive({ onBack }: { onBack: () => void }) {
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center gap-6 mt-2">
           <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col items-center">
-            {/* Simple CSS-based placeholder for QR, as we don't have a QR library */}
-            <div className="w-48 h-48 bg-slate-100 dark:bg-slate-800 border-8 border-white shadow-sm rounded-xl flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "repeating-linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), repeating-linear-gradient(45deg, #000 25%, #fff 25%, #fff 75%, #000 75%, #000)", backgroundPosition: "0 0, 10px 10px", backgroundSize: "20px 20px" }}></div>
-              {assetData.logoUrl ? (
-                <img src={assetData.logoUrl} className="w-12 h-12 rounded-full z-10 bg-white dark:bg-slate-950 p-1" />
-              ) : (
-                <div className="w-12 h-12 rounded-full z-10 bg-white dark:bg-slate-950 p-1 flex items-center justify-center font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                  {assetData.symbol.substring(0, 2)}
-                </div>
-              )}
+            <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm relative">
+              <QRCodeSVG value={address} size={180} />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                {assetData.logoUrl ? (
+                  <img src={assetData.logoUrl} className="w-10 h-10 rounded-full bg-white p-1 border border-slate-100 shadow-sm" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-sm border-2 border-white">
+                    {assetData.symbol.substring(0, 2)}
+                  </div>
+                )}
+              </div>
             </div>
             
             <p className="mt-6 text-sm text-slate-500 dark:text-slate-400 font-medium text-center">

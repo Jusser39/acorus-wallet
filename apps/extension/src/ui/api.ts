@@ -85,3 +85,15 @@ export async function revokeSession(sessionId: string): Promise<any> {
     sessionId
   });
 }
+
+export async function sendInternalTransaction(to: string, value: string, chainId: number): Promise<any> {
+  return chrome.runtime.sendMessage({
+    kind: "send_internal_transaction",
+    surface: "popup",
+    requestId: "ui_send_" + Date.now(),
+    to,
+    value,
+    chainId
+  });
+}
+

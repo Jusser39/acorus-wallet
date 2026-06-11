@@ -153,7 +153,19 @@ async function handleRuntimeMessageInternal(
   const input = validation.message;
   const requestId = input.requestId;
 
-  if (input.kind === "ping") {
+  if (input.kind === "send_internal_transaction") {
+      try {
+        const txHash = await executeExtensionSendTransaction({
+          params: [{ to: input.to, value: input.value, data: "0x" }],
+          chainId: input.chainId
+        });
+        return { requestId, ok: true, result: txHash };
+      } catch (err) {
+        return { requestId, ok: false, error: { code: "tx_failed", message: String(err) } };
+      }
+    }
+
+    if (input.kind === "ping") {
     return {
       requestId,
       ok: true,
@@ -3191,3 +3203,4 @@ function isHexString(value: unknown): value is `0x${string}` {
 function normalizeLowerHex(value: string): string {
   return value.trim().toLowerCase();
 }
+

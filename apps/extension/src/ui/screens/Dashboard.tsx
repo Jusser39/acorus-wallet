@@ -208,9 +208,52 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
         </>
       )}
 
-      {activeTab === "predictions" && (
-        <PredictionsTab />
-      )}
+      {activeTab === "predictions" && <PredictionsTab />}
+      {activeTab === "defi" && <DefiTab />}
+      {activeTab === "perps" && <PerpsTab />}
+      {activeTab === "nft" && <NftTab />}
+    </div>
+  );
+}
+
+function DefiTab() {
+  return (
+    <div className="flex flex-col px-4 gap-4 pb-10 items-center justify-center text-center mt-10">
+      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-2">
+        <ArrowLeftRight className="w-8 h-8" />
+      </div>
+      <h3 className="font-bold text-slate-900 dark:text-white text-lg">No Active Positions</h3>
+      <p className="text-slate-500 dark:text-slate-400 font-medium text-sm px-6">Explore DeFi protocols and earn yield on your assets across multiple chains.</p>
+      <button className="mt-4 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-colors">
+        Explore Opportunities
+      </button>
+    </div>
+  );
+}
+
+function PerpsTab() {
+  return (
+    <div className="flex flex-col px-4 gap-4 pb-10 items-center justify-center text-center mt-10">
+      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-2">
+        <TrendingUp className="w-8 h-8" />
+      </div>
+      <h3 className="font-bold text-slate-900 dark:text-white text-lg">Start Trading Perps</h3>
+      <p className="text-slate-500 dark:text-slate-400 font-medium text-sm px-6">Trade with up to 50x leverage directly from your wallet with zero gas fees on L2s.</p>
+      <button className="mt-4 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-colors">
+        Deposit Collateral
+      </button>
+    </div>
+  );
+}
+
+function NftTab() {
+  return (
+    <div className="flex flex-col px-4 gap-4 pb-10 items-center justify-center text-center mt-10">
+      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-2">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      </div>
+      <h3 className="font-bold text-slate-900 dark:text-white text-lg">No NFTs Found</h3>
+      <p className="text-slate-500 dark:text-slate-400 font-medium text-sm px-6">Your NFT collection is currently empty. Purchase or mint NFTs to see them here.</p>
     </div>
   );
 }
@@ -268,15 +311,19 @@ const MOCK_PREDICTIONS = [
 ];
 
 function PredictionsTab() {
+  const handleMarketClick = (title: string) => {
+    window.open("https://polymarket.com/markets", "_blank");
+  };
+
   return (
     <div className="flex flex-col px-4 gap-4 pb-10">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-slate-900 dark:text-white text-lg">Trending Markets</h3>
-        <button className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
+        <button onClick={() => handleMarketClick("all")} className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
       </div>
 
       {MOCK_PREDICTIONS.map((market) => (
-        <div key={market.id} className="flex flex-col p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-500 transition-colors cursor-pointer group">
+        <div key={market.id} onClick={() => handleMarketClick(market.title)} className="flex flex-col p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-500 transition-colors cursor-pointer group">
           <div className="flex items-start gap-3">
             <img src={market.image} className="w-10 h-10 rounded-full object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900" alt="" />
             <div className="flex flex-col flex-1">
@@ -297,14 +344,14 @@ function PredictionsTab() {
               {/* Progress Bar & Odds */}
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex h-2.5 rounded-full overflow-hidden w-full">
-                  <div className="bg-emerald-500 h-full" style={{ width: `${market.yesOdds}%` }}></div>
-                  <div className="bg-rose-500 h-full" style={{ width: `${market.noOdds}%` }}></div>
+                  <div className="bg-emerald-500 h-full transition-all" style={{ width: `${market.yesOdds}%` }}></div>
+                  <div className="bg-rose-500 h-full transition-all" style={{ width: `${market.noOdds}%` }}></div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <button className="flex-1 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-sm font-bold text-center mr-2 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); handleMarketClick(market.title); }} className="flex-1 py-1.5 px-3 bg-emerald-50 dark:bg-emerald-950 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-500 rounded-lg text-sm font-bold text-center mr-2 transition-colors">
                     Yes {market.yesOdds}%
                   </button>
-                  <button className="flex-1 py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-sm font-bold text-center ml-2 transition-colors">
+                  <button onClick={(e) => { e.stopPropagation(); handleMarketClick(market.title); }} className="flex-1 py-1.5 px-3 bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-500 rounded-lg text-sm font-bold text-center ml-2 transition-colors">
                     No {market.noOdds}%
                   </button>
                 </div>
@@ -316,4 +363,5 @@ function PredictionsTab() {
     </div>
   );
 }
+
 
