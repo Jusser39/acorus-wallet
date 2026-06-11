@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+
 
 type DappItem = {
   name: string;
@@ -136,10 +136,12 @@ export function DappDirectory() {
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visibleItems.map((item) => (
-                <Link
+                <a
                   key={`${category.id}-${item.name}`}
-                  href={`/dapps/browser?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.name)}`}
-                  className="group rounded-3xl border border-fuchsia-100 bg-white p-4 shadow-[0_16px_50px_rgba(168,85,247,0.10)] transition hover:-translate-y-0.5 hover:border-fuchsia-200 hover:shadow-[0_22px_70px_rgba(168,85,247,0.16)]"
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group rounded-3xl border border-fuchsia-100 bg-white p-4 shadow-[0_16px_50px_rgba(168,85,247,0.10)] transition hover:-translate-y-0.5 hover:border-fuchsia-200 hover:shadow-[0_22px_70px_rgba(168,85,247,0.16)] block"
                 >
                   <div className="flex items-start gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -165,9 +167,9 @@ export function DappDirectory() {
                     ))}
                   </div>
                   <div className="mt-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-sky-400 px-4 py-2 text-center text-sm font-semibold text-white">
-                    Open in Acorus Browser
+                    Open in Browser
                   </div>
-                </Link>
+                </a>
               ))}
             </div>
           </section>

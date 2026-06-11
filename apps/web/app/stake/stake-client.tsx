@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useActiveProfile } from "@/store/wallet-store";
+import { requestAcorusProviderDiscovery, requestAcorusExtension } from "@/lib/extension-bridge";
 
 export interface StakingAsset {
   symbol: string;
@@ -28,6 +29,7 @@ export function StakeClient() {
 
   useEffect(() => {
     setMounted(true);
+    requestAcorusProviderDiscovery();
     if (activeProfile) {
       const stored = localStorage.getItem(`acorus.stake.${activeProfile.id}`);
       if (stored) {
@@ -47,9 +49,13 @@ export function StakeClient() {
     localStorage.setItem(`acorus.stake.${activeProfile.id}`, JSON.stringify(next));
   };
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!activeProfile) {
-      alert("Please connect or unlock your wallet to stake assets.");
+      try {
+        await requestAcorusExtension<string[]>("acorus_requestAccounts", [{ family: "evm" }]);
+      } catch (err) {
+        alert("Please unlock your Acorus wallet extension or install it to continue.");
+      }
       return;
     }
     const val = parseFloat(amount);

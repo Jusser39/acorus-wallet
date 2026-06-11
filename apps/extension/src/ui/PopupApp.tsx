@@ -14,12 +14,14 @@ import { Welcome } from "./screens/Welcome";
 import { CreateWallet } from "./screens/CreateWallet";
 import { ImportWallet } from "./screens/ImportWallet";
 import { Unlock } from "./screens/Unlock";
+import { ConnectionApproval } from "./screens/ConnectionApproval";
 import { getBackgroundState } from "./api";
-import type { DappRequest, BackgroundStateSnapshot } from "../shared/protocol";
+import type { DappRequest, BackgroundStateSnapshot, DappSessionProposal } from "../shared/protocol";
 
 export function PopupApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [pendingRequest, setPendingRequest] = useState<DappRequest | null>(null);
+  const [pendingProposal, setPendingProposal] = useState<DappSessionProposal | null>(null);
   const [appState, setAppState] = useState<BackgroundStateSnapshot | null>(null);
   const [onboardingMode, setOnboardingMode] = useState<"create" | "import" | null>(null);
   const [copied, setCopied] = useState(false);
@@ -30,10 +32,17 @@ export function PopupApp() {
     getBackgroundState().then(state => {
       if (state) {
         setAppState(state);
+        
         if (state.pendingRequests && state.pendingRequests.length > 0) {
           setPendingRequest(state.pendingRequests[0]);
         } else {
           setPendingRequest(null);
+        }
+
+        if (state.proposals && state.proposals.length > 0) {
+          setPendingProposal(state.proposals[0]);
+        } else {
+          setPendingProposal(null);
         }
       }
     });
@@ -108,6 +117,20 @@ export function PopupApp() {
     }
   };
 
+  if (pendingProposal) {
+    return (
+      <div className="h-[600px] w-[375px] overflow-hidden">
+        <ConnectionApproval 
+          proposal={pendingProposal} 
+          onComplete={() => {
+            setPendingProposal(null);
+            fetchState();
+          }} 
+        />
+      </div>
+    );
+  }
+
   if (pendingRequest) {
     return (
       <div className="h-[600px] w-[375px] overflow-hidden">
@@ -115,12 +138,7 @@ export function PopupApp() {
           request={pendingRequest} 
           onComplete={() => {
             setPendingRequest(null);
-            // Re-fetch state to see if there are more requests
-            getBackgroundState().then(state => {
-              if (state && state.pendingRequests && state.pendingRequests.length > 0) {
-                setPendingRequest(state.pendingRequests[0]);
-              }
-            });
+            fetchState();
           }} 
         />
       </div>
