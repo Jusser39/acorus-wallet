@@ -139,7 +139,7 @@ export default function SendPage() {
     void (async () => {
       await Promise.resolve();
 
-      if (!active) {
+      if (!active || !userId) {
         return;
       }
 
