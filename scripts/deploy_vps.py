@@ -26,9 +26,9 @@ try:
     # Wait for the command to finish and print output
     exit_status = stdout.channel.recv_exit_status()
     print("STDOUT:")
-    print(stdout.read().decode('utf-8'))
+    print(stdout.read().decode('utf-8', errors='replace').encode('cp1251', errors='replace').decode('cp1251'))
     print("STDERR:")
-    print(stderr.read().decode('utf-8'))
+    print(stderr.read().decode('utf-8', errors='replace').encode('cp1251', errors='replace').decode('cp1251'))
     
     if exit_status == 0:
         print("Deployed successfully!")
