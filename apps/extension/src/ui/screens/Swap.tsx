@@ -19,7 +19,7 @@ export function Swap({ onBack }: { onBack?: () => void }) {
 
     setLoading(true);
     const timer = setTimeout(() => {
-      const rates: Record<string, number> = { ETH: 3200, BTC: 65000, SOL: 150, USDC: 1, USDT: 1 };
+      const rates: Record<string, number> = { ETH: 3820.50, BTC: 68150.20, SOL: 165.40, USDC: 1, USDT: 1 };
       const fromRate = rates[fromAsset] || 1;
       const toRate = rates[toAsset] || 1;
       
@@ -60,10 +60,10 @@ export function Swap({ onBack }: { onBack?: () => void }) {
 
   if (success) {
     return (
-      <div className="flex flex-col h-full bg-white relative items-center justify-center">
+      <div className="flex flex-col h-full bg-white dark:bg-slate-950 relative items-center justify-center">
         <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-4" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Swap Successful</h2>
-        <p className="text-slate-500 font-medium text-center px-8">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Swap Successful</h2>
+        <p className="text-slate-500 dark:text-slate-400 font-medium text-center px-8">
           You swapped {amount} {fromAsset} for {quote} {toAsset}.
         </p>
       </div>
@@ -71,13 +71,13 @@ export function Swap({ onBack }: { onBack?: () => void }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative pb-4">
-      <header className="flex items-center justify-between p-4 bg-white border-b border-slate-100">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-slate-700" />
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 relative pb-4">
+      <header className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
+        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:bg-slate-800 transition-colors">
+          <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
         </button>
-        <h2 className="text-lg font-bold text-slate-900">Swap</h2>
-        <button className="p-2 -mr-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Swap</h2>
+        <button className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:text-slate-400 transition-colors">
           <SettingsIcon className="w-5 h-5" />
         </button>
       </header>
@@ -85,8 +85,8 @@ export function Swap({ onBack }: { onBack?: () => void }) {
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         <div className="relative flex flex-col gap-2 mt-4">
           {/* From Input */}
-          <div className="magic-panel p-4 flex flex-col gap-2 relative bg-white rounded-2xl">
-            <span className="text-sm font-semibold text-slate-500">You pay</span>
+          <div className="magic-panel p-4 flex flex-col gap-2 relative bg-white dark:bg-slate-950 rounded-2xl">
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">You pay</span>
             <div className="flex items-center justify-between">
               <input 
                 type="number" 
@@ -97,7 +97,7 @@ export function Swap({ onBack }: { onBack?: () => void }) {
               />
               <button 
                 onClick={() => handleAssetChange("from")}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-full font-bold transition-colors"
+                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-3 py-2 rounded-full font-bold transition-colors"
               >
                 <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs">
                   {fromAsset.charAt(0)}
@@ -110,7 +110,7 @@ export function Swap({ onBack }: { onBack?: () => void }) {
           {/* Swap Button Divider */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
             <button 
-              className="w-10 h-10 bg-white border-2 border-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-violet-600 hover:shadow-lg transition-all"
+              className="w-10 h-10 bg-white dark:bg-slate-950 border-2 border-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-violet-600 hover:shadow-lg transition-all"
               onClick={() => {
                 setFromAsset(toAsset);
                 setToAsset(fromAsset);
@@ -122,8 +122,8 @@ export function Swap({ onBack }: { onBack?: () => void }) {
           </div>
 
           {/* To Input */}
-          <div className="magic-panel p-4 flex flex-col gap-2 bg-white rounded-2xl">
-            <span className="text-sm font-semibold text-slate-500">You receive</span>
+          <div className="magic-panel p-4 flex flex-col gap-2 bg-white dark:bg-slate-950 rounded-2xl">
+            <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">You receive</span>
             <div className="flex items-center justify-between">
               <input 
                 type="text" 
@@ -134,7 +134,7 @@ export function Swap({ onBack }: { onBack?: () => void }) {
               />
               <button 
                 onClick={() => handleAssetChange("to")}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-full font-bold transition-colors"
+                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-3 py-2 rounded-full font-bold transition-colors"
               >
                 <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">
                   {toAsset.charAt(0)}
@@ -156,3 +156,4 @@ export function Swap({ onBack }: { onBack?: () => void }) {
     </div>
   );
 }
+

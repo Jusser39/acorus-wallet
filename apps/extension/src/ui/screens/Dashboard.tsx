@@ -9,6 +9,8 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   const [activeTab, setActiveTab] = useState("tokens");
   const [selectedChainId, setSelectedChainId] = useState<number | "all">("all");
   const [networkMenuOpen, setNetworkMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [slidersMenuOpen, setSlidersMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,7 +39,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
     return (
       <div className="flex flex-col items-center justify-center h-full p-4">
         <h3 className="text-red-500 font-bold">Error loading Dashboard</h3>
-        <pre className="text-xs mt-4 bg-slate-100 p-2 rounded w-full overflow-auto text-slate-800 break-words whitespace-pre-wrap">
+        <pre className="text-xs mt-4 bg-slate-100 dark:bg-slate-800 p-2 rounded w-full overflow-auto text-slate-800 dark:text-slate-200 break-words whitespace-pre-wrap">
           {JSON.stringify(err, null, 2)}
         </pre>
       </div>
@@ -48,8 +50,8 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
     return (
       <div className="flex items-center justify-center h-full mt-20">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-slate-100 rounded-full"></div>
-          <div className="w-32 h-6 bg-slate-100 rounded"></div>
+          <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full"></div>
+          <div className="w-32 h-6 bg-slate-100 dark:bg-slate-800 rounded"></div>
         </div>
       </div>
     );
@@ -58,14 +60,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
   const totalValue = home.totalFiatValue ?? 0;
 
   return (
-    <div className="flex flex-col h-full bg-white relative pb-8">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950 relative pb-8">
       {/* Big Balance */}
       <div className="px-4 pt-6 pb-4">
-        <h2 className="text-4xl font-semibold tracking-tight text-slate-900">
+        <h2 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white">
           {totalValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
         </h2>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-sm font-medium text-slate-600">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
             +0,00 $ (+0,00 %)
           </span>
           <button className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
@@ -85,7 +87,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
 
 
       {/* Tabs */}
-      <div className="px-4 border-b border-slate-100 flex items-center gap-6 overflow-x-auto no-scrollbar mb-4">
+      <div className="px-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-6 overflow-x-auto no-scrollbar mb-4">
         <TabItem active={activeTab === "tokens"} label="Токены" onClick={() => setActiveTab("tokens")} />
         <TabItem active={activeTab === "predictions"} label="Прогнозы" onClick={() => setActiveTab("predictions")} />
         <TabItem active={activeTab === "perps"} label="Перпы" onClick={() => setActiveTab("perps")} />
@@ -101,7 +103,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
             <div className="relative">
               <button 
                 onClick={() => setNetworkMenuOpen(!networkMenuOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm font-medium hover:bg-slate-50 outline-none cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium hover:bg-slate-50 dark:bg-slate-900 outline-none cursor-pointer"
               >
                 {selectedChainId === "all" ? "Все популярные сети" : home.networks.find(n => n.chainId === selectedChainId)?.name}
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -110,9 +112,9 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
               {networkMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNetworkMenuOpen(false)} />
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 max-h-64 overflow-y-auto">
+                  <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-950 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50 max-h-64 overflow-y-auto">
                     <button 
-                      className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-800"
+                      className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200"
                       onClick={() => { setSelectedChainId("all"); setNetworkMenuOpen(false); }}
                     >
                       Все популярные сети
@@ -120,7 +122,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
                     {home.networks.map(n => (
                       <button 
                         key={n.chainId}
-                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium text-slate-800"
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200"
                         onClick={() => { setSelectedChainId(n.chainId); setNetworkMenuOpen(false); }}
                       >
                         {n.name}
@@ -131,8 +133,40 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
               )}
             </div>
             <div className="flex items-center gap-3">
-              <button className="text-slate-600 hover:text-slate-900"><SlidersHorizontal className="w-4 h-4" /></button>
-              <button className="text-slate-600 hover:text-slate-900"><MoreVertical className="w-4 h-4" /></button>
+              <div className="relative">
+                <button 
+                  onClick={() => setSlidersMenuOpen(!slidersMenuOpen)}
+                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white outline-none"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+                {slidersMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setSlidersMenuOpen(false)} />
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-950 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50">
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setSlidersMenuOpen(false)}>Manage tokens</button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setSlidersMenuOpen(false)}>Sort by value</button>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="relative">
+                <button 
+                  onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white outline-none"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {moreMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-950 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800 py-2 z-50">
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => { setMoreMenuOpen(false); onNavigate?.("settings"); }}>Settings</button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200" onClick={() => setMoreMenuOpen(false)}>View explorer</button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -142,11 +176,11 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
               const val = asset.fiatValue ? `${asset.fiatValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $` : "—";
               
               return (
-                <div key={index} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
+                <div key={index} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:bg-slate-900 rounded-xl cursor-pointer transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       {asset.logoUrl ? (
-                        <img src={asset.logoUrl} alt={asset.symbol} className="w-10 h-10 rounded-full object-cover shadow-inner bg-slate-50" />
+                        <img src={asset.logoUrl} alt={asset.symbol} className="w-10 h-10 rounded-full object-cover shadow-inner bg-slate-50 dark:bg-slate-900" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
                           {asset.symbol.substring(0, 2)}
@@ -158,14 +192,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900 text-[15px]">{asset.name}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white text-[15px]">{asset.name}</span>
                       </div>
-                      <span className="text-[13px] font-medium text-slate-500 mt-0.5">—</span>
+                      <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">—</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="font-semibold text-slate-900 text-[15px]">{val}</span>
-                    <span className="text-[13px] font-medium text-slate-500 mt-0.5">{asset.formatted} {asset.symbol}</span>
+                    <span className="font-semibold text-slate-900 dark:text-white text-[15px]">{val}</span>
+                    <span className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">{asset.formatted} {asset.symbol}</span>
                   </div>
                 </div>
               );
@@ -184,10 +218,10 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
 function ActionButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button onClick={onClick} className="flex flex-col items-center justify-center gap-2">
-      <div className="w-[60px] h-[60px] bg-slate-100 rounded-2xl flex items-center justify-center text-slate-800 hover:bg-slate-200 transition-colors">
+      <div className="w-[60px] h-[60px] bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-200 transition-colors">
         {icon}
       </div>
-      <span className="text-[12px] font-medium text-slate-800">{label}</span>
+      <span className="text-[12px] font-medium text-slate-800 dark:text-slate-200">{label}</span>
     </button>
   );
 }
@@ -196,7 +230,7 @@ function TabItem({ active, label, onClick }: { active: boolean; label: string; o
   return (
     <button 
       onClick={onClick} 
-      className={`pb-3 border-b-2 text-[15px] font-semibold whitespace-nowrap transition-colors ${active ? "border-slate-900 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+      className={`pb-3 border-b-2 text-[15px] font-semibold whitespace-nowrap transition-colors ${active ? "border-slate-900 text-slate-900 dark:text-white" : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700"}`}
     >
       {label}
     </button>
@@ -237,19 +271,19 @@ function PredictionsTab() {
   return (
     <div className="flex flex-col px-4 gap-4 pb-10">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-slate-900 text-lg">Trending Markets</h3>
+        <h3 className="font-bold text-slate-900 dark:text-white text-lg">Trending Markets</h3>
         <button className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
       </div>
 
       {MOCK_PREDICTIONS.map((market) => (
-        <div key={market.id} className="flex flex-col p-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-blue-500 transition-colors cursor-pointer group">
+        <div key={market.id} className="flex flex-col p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:border-blue-500 transition-colors cursor-pointer group">
           <div className="flex items-start gap-3">
-            <img src={market.image} className="w-10 h-10 rounded-full object-cover border border-slate-100 bg-slate-50" alt="" />
+            <img src={market.image} className="w-10 h-10 rounded-full object-cover border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900" alt="" />
             <div className="flex flex-col flex-1">
-              <h4 className="font-bold text-slate-900 leading-tight mb-1 group-hover:text-blue-600 transition-colors">
+              <h4 className="font-bold text-slate-900 dark:text-white leading-tight mb-1 group-hover:text-blue-600 transition-colors">
                 {market.title}
               </h4>
-              <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 mb-3">
+              <div className="flex items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">
                 <div className="flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5" />
                   {market.volume} Vol.
@@ -282,3 +316,4 @@ function PredictionsTab() {
     </div>
   );
 }
+

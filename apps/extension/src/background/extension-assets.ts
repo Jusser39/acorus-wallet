@@ -17,6 +17,15 @@ import {
 } from "./extension-chain-registry";
 import { readStorageValue, writeStorageValue } from "./extension-storage";
 import { getExtensionVaultStatus } from "./extension-wallet";
+import { fetchExtensionPrices } from "./price-oracle";
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: () => T): Promise<T> {
+  let timer: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback()), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
 
 export type WatchedAsset = AssetRef & {
   id: string;
@@ -116,8 +125,11 @@ export async function buildExtensionPortfolioSnapshot(input?: {
 
     if (network.family === "solana") {
       balancePromises.push(
-        resolveSolanaPortfolioAssets(profile.account, network, warnings)
-          .then(solanaAssets => solanaAssets.filter(asset => !hidden.has(buildAssetId(asset))))
+        withTimeout(
+          resolveSolanaPortfolioAssets(profile.account, network, warnings),
+          3000,
+          () => []
+        ).then(solanaAssets => solanaAssets.filter(asset => !hidden.has(buildAssetId(asset))))
       );
       continue;
     }
@@ -127,12 +139,23 @@ export async function buildExtensionPortfolioSnapshot(input?: {
 
     if (!hidden.has(nativeId)) {
       balancePromises.push(
-        resolveAssetBalance({
-          asset: nativeAsset,
-          ownerAddress: profile.account,
-          network,
-          warnings,
-        })
+        withTimeout(
+          resolveAssetBalance({
+            asset: nativeAsset,
+            ownerAddress: profile.account,
+            network,
+            warnings,
+          }),
+          3000,
+          () => ({
+            ...nativeAsset,
+            balanceRaw: "0",
+            balanceFormatted: "0",
+            fiatValue: null,
+            priceUsd: null,
+            source: "timeout",
+          })
+        )
       );
     }
   }
@@ -150,12 +173,23 @@ export async function buildExtensionPortfolioSnapshot(input?: {
     }
 
     balancePromises.push(
-      resolveAssetBalance({
-        asset,
-        ownerAddress: profile.account,
-        network,
-        warnings,
-      })
+      withTimeout(
+        resolveAssetBalance({
+          asset,
+          ownerAddress: profile.account,
+          network,
+          warnings,
+        }),
+        3000,
+        () => ({
+          ...asset,
+          balanceRaw: "0",
+          balanceFormatted: "0",
+          fiatValue: null,
+          priceUsd: null,
+          source: "timeout",
+        })
+      )
     );
   }
 
