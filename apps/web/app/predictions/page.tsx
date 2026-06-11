@@ -2,9 +2,22 @@
 
 import { useState } from "react";
 import { GlassCard } from "@/components/glass-card";
-import { TrendingUp, Users, Activity, BarChart3, AlertCircle } from "lucide-react";
+import { TrendingUp, Users, Activity, BarChart3, AlertCircle, X, ShieldCheck, Info } from "lucide-react";
+import { requestAcorusExtension, requestAcorusProviderDiscovery } from "@/lib/extension-bridge";
 
-const MOCK_PREDICTIONS = [
+type Market = {
+  id: number;
+  title: string;
+  category: string;
+  volume: string;
+  traders: string;
+  yesOdds: number;
+  noOdds: number;
+  image: string;
+  endDate: string;
+};
+
+const MOCK_PREDICTIONS: Market[] = [
   {
     id: 1,
     title: "Will Bitcoin reach $100k by 2026?",
@@ -48,14 +61,101 @@ const MOCK_PREDICTIONS = [
     noOdds: 18,
     image: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png",
     endDate: "Dec 31, 2026"
+  },
+  {
+    id: 5,
+    title: "Will the FED cut interest rates in Q3 2026?",
+    category: "Politics",
+    volume: "$5.4M",
+    traders: "2.1k",
+    yesOdds: 30,
+    noOdds: 70,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Seal_of_the_United_States_Federal_Reserve_System.svg/1024px-Seal_of_the_United_States_Federal_Reserve_System.svg.png",
+    endDate: "Sep 30, 2026"
+  },
+  {
+    id: 6,
+    title: "Solana to reach $500 in 2026?",
+    category: "Crypto",
+    volume: "$44.1M",
+    traders: "35.2k",
+    yesOdds: 74,
+    noOdds: 26,
+    image: "https://cryptologos.cc/logos/solana-sol-logo.png",
+    endDate: "Dec 31, 2026"
+  },
+  {
+    id: 7,
+    title: "Will Real Madrid win the Champions League 2026?",
+    category: "Sports",
+    volume: "$19.3M",
+    traders: "18.5k",
+    yesOdds: 41,
+    noOdds: 59,
+    image: "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/800px-Real_Madrid_CF.svg.png",
+    endDate: "Jun 1, 2026"
+  },
+  {
+    id: 8,
+    title: "Will Claude 4 be released before 2026?",
+    category: "AI",
+    volume: "$3.2M",
+    traders: "1.2k",
+    yesOdds: 90,
+    noOdds: 10,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Anthropic_logo.svg/1024px-Anthropic_logo.svg.png",
+    endDate: "Dec 31, 2025"
   }
 ];
 
 export default function PredictionsPage() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [betModalOpen, setBetModalOpen] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
+  const [betChoice, setBetChoice] = useState<"YES" | "NO" | null>(null);
+  const [betAmount, setBetAmount] = useState("");
+  const [isBetting, setIsBetting] = useState(false);
   
   const categories = ["All", "Crypto", "Politics", "AI", "Sports"];
   const filteredMarkets = activeCategory === "All" ? MOCK_PREDICTIONS : MOCK_PREDICTIONS.filter(m => m.category === activeCategory);
+
+  const openBetModal = (market: Market, choice: "YES" | "NO") => {
+    setSelectedMarket(market);
+    setBetChoice(choice);
+    setBetAmount("");
+    setBetModalOpen(true);
+  };
+
+  const handleConfirmBet = async () => {
+    if (!betAmount || Number(betAmount) <= 0 || !selectedMarket) return;
+    
+    setIsBetting(true);
+    requestAcorusProviderDiscovery();
+    
+    try {
+      // Prompt wallet connection if not connected
+      const accounts = await requestAcorusExtension<string[]>("acorus_requestAccounts", [{ family: "evm" }]);
+      const account = Array.isArray(accounts) ? accounts[0] : null;
+      
+      if (!account) throw new Error("Wallet not connected");
+
+      // Send mock transaction to prediction contract
+      await requestAcorusExtension("acorus_sendTransaction", [{
+        from: account,
+        to: "0x8E304892cfa76e8a8D293043d83492ffF9859f77", // Mock contract
+        value: "0x0",
+        data: "0x",
+      }]);
+
+      alert(`Successfully placed $${betAmount} on ${betChoice} for "${selectedMarket.title}"`);
+      setBetModalOpen(false);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || "Failed to place bet. Please unlock your wallet.");
+    } finally {
+      setIsBetting(false);
+    }
+  };
 
   return (
     <main className="magic-shell relative overflow-hidden px-4 py-10 min-h-screen">
@@ -81,11 +181,11 @@ export default function PredictionsPage() {
           <div className="flex gap-4">
             <div className="flex flex-col items-center justify-center bg-white rounded-2xl p-4 min-w-[120px] shadow-sm">
               <span className="text-sm font-semibold text-slate-500 mb-1">Total Volume</span>
-              <span className="text-2xl font-black text-slate-900">$187.6M</span>
+              <span className="text-2xl font-black text-slate-900">$255.4M</span>
             </div>
             <div className="flex flex-col items-center justify-center bg-white rounded-2xl p-4 min-w-[120px] shadow-sm">
               <span className="text-sm font-semibold text-slate-500 mb-1">Active Markets</span>
-              <span className="text-2xl font-black text-slate-900">1,240</span>
+              <span className="text-2xl font-black text-slate-900">1,244</span>
             </div>
           </div>
         </div>
@@ -110,12 +210,12 @@ export default function PredictionsPage() {
         {/* Markets Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {filteredMarkets.map((market) => (
-            <GlassCard key={market.id} glow className="p-6 flex flex-col group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+            <GlassCard key={market.id} glow className="p-6 flex flex-col group transition-transform duration-300">
               <div className="flex items-start gap-4 mb-4">
                 <img src={market.image} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-white" />
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-xl font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors cursor-pointer">
                       {market.title}
                     </h3>
                   </div>
@@ -131,7 +231,7 @@ export default function PredictionsPage() {
               </div>
 
               {/* Progress Bar */}
-              <div className="flex h-3 rounded-full overflow-hidden w-full mb-4 bg-slate-100">
+              <div className="flex h-3 rounded-full overflow-hidden w-full mb-4 bg-slate-100 cursor-pointer">
                 <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${market.yesOdds}%` }}></div>
                 <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${market.noOdds}%` }}></div>
               </div>
@@ -139,17 +239,17 @@ export default function PredictionsPage() {
               {/* Actions */}
               <div className="flex items-center gap-4 mt-auto">
                 <button 
-                  className="flex-1 py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition-colors flex justify-between items-center"
-                  onClick={(e) => { e.stopPropagation(); alert(`Buying YES on: ${market.title}`) }}
+                  className="flex-1 py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
+                  onClick={(e) => { e.stopPropagation(); openBetModal(market, "YES"); }}
                 >
-                  <span>Buy Yes</span>
+                  <span className="group-hover/btn:scale-105 transition-transform">Buy Yes</span>
                   <span className="text-lg">{market.yesOdds}¢</span>
                 </button>
                 <button 
-                  className="flex-1 py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors flex justify-between items-center"
-                  onClick={(e) => { e.stopPropagation(); alert(`Buying NO on: ${market.title}`) }}
+                  className="flex-1 py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
+                  onClick={(e) => { e.stopPropagation(); openBetModal(market, "NO"); }}
                 >
-                  <span>Buy No</span>
+                  <span className="group-hover/btn:scale-105 transition-transform">Buy No</span>
                   <span className="text-lg">{market.noOdds}¢</span>
                 </button>
               </div>
@@ -163,6 +263,92 @@ export default function PredictionsPage() {
         </div>
 
       </section>
+
+      {/* Betting Modal */}
+      {betModalOpen && selectedMarket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setBetModalOpen(false)}></div>
+          <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-900">Place Bet</h2>
+              <button onClick={() => setBetModalOpen(false)} className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-full transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <img src={selectedMarket.image} alt="" className="w-10 h-10 rounded-full border border-slate-100 bg-white" />
+                <div className="font-bold text-slate-800 leading-tight">
+                  {selectedMarket.title}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mb-6 p-1 bg-slate-100 rounded-xl">
+                <button 
+                  onClick={() => setBetChoice("YES")}
+                  className={`flex-1 py-2 font-bold rounded-lg transition-all ${betChoice === "YES" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-500 hover:bg-slate-200/50"}`}
+                >
+                  YES ({selectedMarket.yesOdds}¢)
+                </button>
+                <button 
+                  onClick={() => setBetChoice("NO")}
+                  className={`flex-1 py-2 font-bold rounded-lg transition-all ${betChoice === "NO" ? "bg-rose-500 text-white shadow-sm" : "text-slate-500 hover:bg-slate-200/50"}`}
+                >
+                  NO ({selectedMarket.noOdds}¢)
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <label className="text-sm font-semibold text-slate-500 mb-2 block">Amount (USDC)</label>
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
+                  <span className="text-xl font-bold text-slate-400 mr-2">$</span>
+                  <input 
+                    type="number" 
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="bg-transparent w-full outline-none text-2xl font-black text-slate-800 placeholder:text-slate-300"
+                    autoFocus
+                  />
+                  <button onClick={() => setBetAmount("100")} className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full hover:bg-blue-200 transition-colors ml-2">MAX</button>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl mb-6 border border-slate-100 flex flex-col gap-2 text-sm">
+                <div className="flex justify-between font-semibold text-slate-500">
+                  <span>Potential Return</span>
+                  <span className="text-slate-800">${(Number(betAmount) * 100 / (betChoice === "YES" ? selectedMarket.yesOdds : selectedMarket.noOdds)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-slate-500">
+                  <span>Network Fee</span>
+                  <span className="text-slate-800">~$0.05</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleConfirmBet}
+                disabled={!betAmount || Number(betAmount) <= 0 || isBetting}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              >
+                {isBetting ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-5 h-5" />
+                    Confirm Bet
+                  </>
+                )}
+              </button>
+              
+              <div className="flex items-center justify-center gap-1.5 mt-4 text-xs font-semibold text-slate-400">
+                <Info className="w-4 h-4 text-slate-400" />
+                Powered by Acorus Smart Contracts
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
