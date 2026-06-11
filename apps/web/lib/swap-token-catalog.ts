@@ -173,6 +173,7 @@ export function getPopularSwapTokens(input: {
     symbol: string;
     name: string;
     decimals: number;
+    logoUrl?: string | null;
   };
 }): SwapTokenOption[] {
   const initial = input.initialBuyToken && input.initialBuyToken !== "native" && input.initialBuyTokenMeta
@@ -183,7 +184,7 @@ export function getPopularSwapTokens(input: {
         name: input.initialBuyTokenMeta.name,
         decimals: input.initialBuyTokenMeta.decimals,
         chainId: input.chainId,
-        logoUrl: TOKEN_LOGOS[input.initialBuyTokenMeta.symbol.toUpperCase()] ?? null,
+        logoUrl: input.initialBuyTokenMeta.logoUrl ?? TOKEN_LOGOS[input.initialBuyTokenMeta.symbol.toUpperCase()] ?? null,
         verified: false,
         source: "featured" as const,
       }]

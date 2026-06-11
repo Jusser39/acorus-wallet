@@ -77,16 +77,16 @@ export class ZeroXSwapService {
   async getPrice(input: ZeroXQuery, clientKey = "default"): Promise<EvmSwapPriceResponse> {
     this.assertReady(clientKey);
     const query = normalizeZeroXQuery(input);
-    const payload = await this.fetchZeroX("price", query);
     const tokens = await resolveQueryTokens(query);
+    const payload = await this.fetchZeroX("price", query, tokens);
     return mapZeroXPriceResponse(payload, query, tokens);
   }
 
   async getQuote(input: ZeroXQuery, clientKey = "default"): Promise<EvmSwapQuoteResponse> {
     this.assertReady(clientKey);
     const query = normalizeZeroXQuery(input);
-    const payload = await this.fetchZeroX("quote", query);
     const tokens = await resolveQueryTokens(query);
+    const payload = await this.fetchZeroX("quote", query, tokens);
     return mapZeroXQuoteResponse(payload, query, tokens);
   }
 
@@ -124,10 +124,11 @@ export class ZeroXSwapService {
   private async fetchZeroX(
     mode: "price" | "quote",
     query: NormalizedZeroXQuery,
+    tokens: { sellToken: EvmSwapTokenRef; buyToken: EvmSwapTokenRef }
   ): Promise<Record<string, unknown>> {
     if (!this.env.ZEROX_API_KEY) {
-      const sellPriceUsd = await getMockTokenPriceUsd(query.sellToken.symbol, query.sellToken.address, query.chainId);
-      const buyPriceUsd = await getMockTokenPriceUsd(query.buyToken.symbol, query.buyToken.address, query.chainId);
+      const sellPriceUsd = await getMockTokenPriceUsd(tokens.sellToken.symbol, query.sellToken.address, query.chainId);
+      const buyPriceUsd = await getMockTokenPriceUsd(tokens.buyToken.symbol, query.buyToken.address, query.chainId);
 
       let sellAmountRaw = query.sellAmount;
       let buyAmountRaw = query.buyAmount;
@@ -501,7 +502,6 @@ async function resolveSwapTokenMetadata(
     chainId: token.chainId,
     tokenAddress: token.address,
     env,
-    userToken: token as EvmTokenMetadata,
   });
 
   return metadata;
