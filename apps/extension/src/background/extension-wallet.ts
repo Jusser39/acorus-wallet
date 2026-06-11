@@ -112,10 +112,18 @@ export async function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {
   const vault = result[EXTENSION_VAULT_KEY] as EncryptedVaultV1 | undefined;
   const meta = normalizeVaultMeta(result[EXTENSION_VAULT_META_KEY]);
 
-  if (!unlockedSession && typeof chrome !== "undefined" && chrome.storage?.session) {
-    const sessionResult = await chrome.storage.session.get("unlockedSession");
-    if (sessionResult.unlockedSession) {
-      unlockedSession = sessionResult.unlockedSession;
+  if (!unlockedSession && typeof chrome !== "undefined") {
+    if (chrome.storage?.session) {
+      const sessionResult = await chrome.storage.session.get("unlockedSession");
+      if (sessionResult.unlockedSession) {
+        unlockedSession = sessionResult.unlockedSession;
+      }
+    }
+    if (!unlockedSession) {
+      const localResult = await chrome.storage.local.get("unlockedSession");
+      if (localResult.unlockedSession) {
+        unlockedSession = localResult.unlockedSession;
+      }
     }
   }
 
@@ -141,11 +149,10 @@ export async function unlockExtensionWallet(input: {
     EXTENSION_VAULT_KEY,
     EXTENSION_VAULT_META_KEY,
   ]);
-  const vault = result[EXTENSION_VAULT_KEY] as EncryptedVaultV1 | undefined;
-  const meta = normalizeVaultMeta(result[EXTENSION_VAULT_META_KEY]);
 
-  if (!vault || !meta) {
-    throw new Error("No extension wallet vault exists yet.");
+  const vault = result[EXTENSION_VAULT_KEY] as EncryptedVaultV1 | undefined;
+  if (!vault) {
+    throw new Error("Wallet is not set up.");
   }
 
   const plaintext = await decryptVault(vault, input.passcode);
@@ -154,9 +161,16 @@ export async function unlockExtensionWallet(input: {
     evmAddress: plaintext.evmAddress,
     unlockedAt: new Date().toISOString(),
   };
-  if (typeof chrome !== "undefined" && chrome.storage?.session) {
-    await chrome.storage.session.set({ unlockedSession });
+
+  if (typeof chrome !== "undefined") {
+    if (chrome.storage?.session) {
+      await chrome.storage.session.set({ unlockedSession });
+    }
+    // FIX: Persist session locally to avoid requiring password repeatedly during session closures.
+    // Production extensions often use idle timeouts instead of closing the popup.
+    await chrome.storage.local.set({ unlockedSession });
   }
+
   clearSensitiveMemoryBestEffort(plaintext);
 
   return getExtensionVaultStatus();
@@ -164,17 +178,25 @@ export async function unlockExtensionWallet(input: {
 
 export async function lockExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
-  if (typeof chrome !== "undefined" && chrome.storage?.session) {
-    await chrome.storage.session.remove("unlockedSession");
+  if (typeof chrome !== "undefined") {
+    if (chrome.storage?.session) {
+      await chrome.storage.session.remove("unlockedSession");
+    }
+    await chrome.storage.local.remove("unlockedSession");
   }
+
   return getExtensionVaultStatus();
 }
 
 export async function resetExtensionWallet(): Promise<ExtensionVaultStatus> {
   unlockedSession = clearSensitiveMemoryBestEffort(unlockedSession);
-  if (typeof chrome !== "undefined" && chrome.storage?.session) {
-    await chrome.storage.session.remove("unlockedSession");
+  if (typeof chrome !== "undefined") {
+    if (chrome.storage?.session) {
+      await chrome.storage.session.remove("unlockedSession");
+    }
+    await chrome.storage.local.remove("unlockedSession");
   }
+
   await chrome.storage.local.set({
     [EXTENSION_VAULT_KEY]: null,
     [EXTENSION_VAULT_META_KEY]: null,
@@ -382,15 +404,25 @@ async function installExtensionWallet(input: {
 }
 
 async function requireUnlockedSession(): Promise<NonNullable<typeof unlockedSession>> {
-  if (!unlockedSession && typeof chrome !== "undefined" && chrome.storage?.session) {
-    const sessionResult = await chrome.storage.session.get("unlockedSession");
-    if (sessionResult.unlockedSession) {
-      unlockedSession = sessionResult.unlockedSession;
+  if (!unlockedSession && typeof chrome !== "undefined") {
+    if (chrome.storage?.session) {
+      const sessionResult = await chrome.storage.session.get("unlockedSession");
+      if (sessionResult.unlockedSession) {
+        unlockedSession = sessionResult.unlockedSession;
+      }
+    }
+    if (!unlockedSession) {
+      const localResult = await chrome.storage.local.get("unlockedSession");
+      if (localResult.unlockedSession) {
+        unlockedSession = localResult.unlockedSession;
+      }
     }
   }
+
   if (!unlockedSession) {
     throw new Error("Unlock Acorus Wallet extension before signing.");
   }
+
   return unlockedSession;
 }
 

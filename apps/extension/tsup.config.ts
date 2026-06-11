@@ -1,5 +1,9 @@
 import path from "node:path";
 import { defineConfig } from "tsup";
+import dotenv from "dotenv";
+
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 export default defineConfig({
   entry: {
@@ -24,6 +28,11 @@ export default defineConfig({
   splitting: false,
   target: "es2022",
   esbuildOptions(options) {
+    options.define = {
+      ...(options.define ?? {}),
+      "import.meta.env.VITE_ONEINCH_API_KEY": JSON.stringify(process.env.VITE_ONEINCH_API_KEY || ""),
+      "import.meta.env.VITE_ETHERSCAN_API_KEY": JSON.stringify(process.env.VITE_ETHERSCAN_API_KEY || ""),
+    };
     options.inject = [
       ...(options.inject ?? []),
       path.resolve(__dirname, "src/shared/node-compat-inject.ts"),

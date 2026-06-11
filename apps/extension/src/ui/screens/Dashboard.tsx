@@ -95,7 +95,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
           <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
             +0,00 $ (+0,00 %)
           </span>
-          <button className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
+          <button onClick={handleViewExplorer} className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Обзор <ExternalLink className="w-3.5 h-3.5" />
           </button>
         </div>

@@ -114,8 +114,15 @@ export function Send({ onBack }: { onBack: () => void }) {
             placeholder="0x..." 
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="bg-transparent text-lg font-medium outline-none w-full placeholder:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2 focus:border-violet-500 transition-colors"
+            className={`bg-transparent text-lg font-medium outline-none w-full placeholder:text-slate-300 border-b pb-2 transition-colors ${
+              address && !/^0x[a-fA-F0-9]{40}$/i.test(address)
+                ? "border-red-500 text-red-500 focus:border-red-500" 
+                : "border-slate-100 dark:border-slate-800 focus:border-violet-500"
+            }`}
           />
+          {address && !/^0x[a-fA-F0-9]{40}$/i.test(address) && (
+            <p className="text-xs text-red-500 font-medium">Invalid EVM Address</p>
+          )}
         </div>
 
         <div className="magic-panel p-4 flex flex-col gap-2 bg-white dark:bg-slate-950 rounded-2xl">
@@ -137,7 +144,7 @@ export function Send({ onBack }: { onBack: () => void }) {
 
         <button 
           onClick={handleSend}
-          disabled={!asset || !address || !amount || loading}
+          disabled={!asset || !address || !/^0x[a-fA-F0-9]{40}$/i.test(address) || !amount || loading}
           className="mt-auto w-full py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
         >
           {loading ? "Sending..." : "Confirm Send"}
