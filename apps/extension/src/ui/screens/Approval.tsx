@@ -46,6 +46,9 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
     }
   };
 
+  const isSendTransaction = request.kind === "send_transaction" || request.kind === "sign_transaction";
+  const transactionParams = isSendTransaction && Array.isArray(request.params) && request.params[0] && typeof request.params[0] === 'object' ? request.params[0] as any : null;
+
   return (
     <div className="flex flex-col h-full bg-white relative z-50">
       <div className={`p-6 text-white text-center ${isHighRisk ? "bg-red-600" : "bg-violet-600"}`}>
@@ -53,10 +56,10 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
           {isHighRisk ? <ShieldAlert className="w-16 h-16 animate-pulse" /> : <ShieldCheck className="w-16 h-16" />}
         </div>
         <h2 className="text-2xl font-bold tracking-tight mb-2">
-          {isHighRisk ? "Scam Warning" : (request.kind === "ton_connect" ? "TON Connection Request" : "Signature Request")}
+          {isHighRisk ? "Scam Warning" : (request.kind === "ton_connect" ? "TON Connection Request" : isSendTransaction ? "Transaction Request" : "Signature Request")}
         </h2>
         <p className="text-sm opacity-90 max-w-[250px] mx-auto">
-          {request.origin} is requesting a {request.kind === "ton_connect" ? "connection to TON" : "signature"}.
+          {request.origin} is requesting a {request.kind === "ton_connect" ? "connection to TON" : isSendTransaction ? "transaction" : "signature"}.
         </p>
       </div>
 
@@ -72,6 +75,48 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
         {!isHighRisk && (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-700">
             <p className="text-sm leading-relaxed">{riskWarning}</p>
+          </div>
+        )}
+
+        {transactionParams && (
+          <div className="rounded-xl border border-slate-100 overflow-hidden bg-white">
+            <div className="bg-slate-50 p-3 border-b border-slate-100 font-mono text-xs text-slate-500 uppercase font-semibold">
+              Transaction Details
+            </div>
+            <div className="p-4 space-y-3">
+              {transactionParams.to && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Target (To)</span>
+                  <span className="text-sm font-mono text-slate-700 truncate">{transactionParams.to}</span>
+                </div>
+              )}
+              {transactionParams.value && transactionParams.value !== "0x0" && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Native Value</span>
+                  <span className="text-sm font-mono text-slate-700">{transactionParams.value}</span>
+                </div>
+              )}
+              {transactionParams.data && transactionParams.data !== "0x" && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Calldata</span>
+                  <span className="text-xs font-mono text-slate-500 break-all line-clamp-3">{transactionParams.data}</span>
+                </div>
+              )}
+              <div className="flex gap-4">
+                {transactionParams.gas && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Gas Limit</span>
+                    <span className="text-sm font-mono text-slate-700">{transactionParams.gas}</span>
+                  </div>
+                )}
+                {transactionParams.gasPrice && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">Gas Price</span>
+                    <span className="text-sm font-mono text-slate-700">{transactionParams.gasPrice}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -103,8 +148,12 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
             isHighRisk ? "bg-red-600 hover:bg-red-700" : "bg-violet-600 hover:bg-violet-700"
           }`}
         >
-          <Check className="w-5 h-5" />
-          {isHighRisk ? "Accept Risk" : (request.kind === "ton_connect" ? "Connect" : "Sign")}
+          {isSubmitting ? (
+             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          ) : (
+            <Check className="w-5 h-5" />
+          )}
+          {isHighRisk ? "Accept Risk" : (request.kind === "ton_connect" ? "Connect" : isSendTransaction ? "Send" : "Sign")}
         </button>
       </div>
     </div>

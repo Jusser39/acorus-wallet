@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acorus Extension Dummy dApp</title>
+    <style>
+        body { font-family: system-ui; padding: 2rem; max-width: 600px; margin: auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+        pre { background: #eee; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Acorus Extension Test</h1>
+    <p>Status: <span id="status">Disconnected</span></p>
+    <p>Account: <span id="account">None</span></p>
+
+    <button id="connectBtn">Connect Wallet</button>
+    <button id="signBtn">Sign Message</button>
+    <button id="sendBtn">Send Transaction</button>
+    <button id="disconnectBtn">Disconnect</button>
+
+    <h3>Logs</h3>
+    <pre id="logs"></pre>
+
+    <script>
+        const logs = document.getElementById('logs');
+        function log(msg) { logs.textContent += msg + '\n'; }
+
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                if (!window.ethereum) throw new Error('No window.ethereum');
+                log('Connecting...');
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                log('Connected: ' + accounts[0]);
+                document.getElementById('status').innerText = 'Connected';
+                document.getElementById('account').innerText = accounts[0];
+            } catch(e) { log('Error: ' + e.message); }
+        };
+
+        document.getElementById('signBtn').onclick = async () => {
+            try {
+                const account = document.getElementById('account').innerText;
+                const msg = '0x' + btoa('Hello from dummy dApp').split('').map(c => c.charCodeAt(0).toString(16)).join('');
+                log('Signing: ' + msg);
+                const sig = await window.ethereum.request({ method: 'personal_sign', params: [msg, account] });
+                log('Signature: ' + sig);
+            } catch(e) { log('Error: ' + e.message); }
+        };
+
+        document.getElementById('sendBtn').onclick = async () => {
+            try {
+                const account = document.getElementById('account').innerText;
+                log('Sending TX...');
+                const tx = await window.ethereum.request({ 
+                    method: 'eth_sendTransaction', 
+                    params: [{
+                        from: account,
+                        to: '0x0000000000000000000000000000000000000000',
+                        value: '0x2386f26fc10000' // 0.01 ETH
+                    }] 
+                });
+                log('TX Hash: ' + tx);
+            } catch(e) { log('Error: ' + e.message); }
+        };
+    </script>
+</body>
+</html>
