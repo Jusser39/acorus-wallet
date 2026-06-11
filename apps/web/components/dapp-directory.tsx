@@ -33,6 +33,8 @@ const DAPP_CATEGORIES: DappCategory[] = [
       { name: "SunPump", url: "https://sunpump.meme/", domain: "sunpump.meme", chains: ["Tron"], description: "First meme coin platform on Tron." },
       { name: "Aave", url: "https://app.aave.com/", domain: "aave.com", chains: ["Ethereum", "Base", "Arbitrum"], description: "Lending and borrowing markets." },
       { name: "Curve", url: "https://curve.fi/", domain: "curve.fi", chains: ["Ethereum", "Arbitrum", "Base"], description: "Stablecoin and blue-chip liquidity." },
+      { name: "STON.fi", url: "https://ston.fi/", domain: "ston.fi", chains: ["TON"], description: "Zero-Trust Cross-Chain DEX on TON." },
+      { name: "DeDust", url: "https://dedust.io/", domain: "dedust.io", chains: ["TON"], description: "Advanced decentralized exchange on TON." },
     ],
   },
   {
@@ -66,6 +68,17 @@ const DAPP_CATEGORIES: DappCategory[] = [
       { name: "Tensor", url: "https://www.tensor.trade/", domain: "tensor.trade", chains: ["Solana"], description: "Solana NFT marketplace." },
       { name: "APENFT", url: "https://apenft.io/", domain: "apenft.io", chains: ["Tron"], description: "Premier NFT marketplace on Tron." },
       { name: "Zora", url: "https://zora.co/", domain: "zora.co", chains: ["Base", "Zora"], description: "Creator collectibles and mints." },
+      { name: "Getgems", url: "https://getgems.io/", domain: "getgems.io", chains: ["TON"], description: "The largest NFT marketplace on TON." },
+      { name: "Fragment", url: "https://fragment.com/", domain: "fragment.com", chains: ["TON"], description: "Buy and sell Telegram usernames and numbers." },
+    ],
+  },
+  {
+    id: "games",
+    title: "Games & Social (TON)",
+    items: [
+      { name: "Catizen", url: "https://catizen.ai/", domain: "catizen.ai", chains: ["TON"], description: "Play-to-earn Web3 social game on TON." },
+      { name: "TapSwap", url: "https://tapswap.io/", domain: "tapswap.io", chains: ["TON", "Solana"], description: "Fastest growing clicker game." },
+      { name: "Notcoin", url: "https://notco.in/", domain: "notco.in", chains: ["TON"], description: "Probably nothing." },
     ],
   },
 ];
