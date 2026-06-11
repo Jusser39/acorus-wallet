@@ -10,7 +10,10 @@ export type DappRequestKind =
   | "sign_message"
   | "sign_typed_data"
   | "sign_transaction"
-  | "send_transaction";
+  | "send_transaction"
+  | "ton_connect"
+  | "ton_send_transaction"
+  | "ton_disconnect";
 
 export type DappPermissionScope =
   | "view_accounts"

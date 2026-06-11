@@ -60,9 +60,11 @@ export function buildSendAssetOptions(input: {
     // UniversalPortfolioView assets have family; PortfolioSummaryView assets don't
     const assetFamily: string | undefined = asset.family;
     const effectiveFamily = assetFamily ?? input.network.family;
+    const hasBalance = asset.balanceRaw ? BigInt(asset.balanceRaw) > 0n : true;
     return (
       effectiveFamily === input.network.family &&
-      String(asset.chainId) === String(input.network.chainId)
+      String(asset.chainId) === String(input.network.chainId) &&
+      hasBalance
     );
   }) as AssetBalance[];
 

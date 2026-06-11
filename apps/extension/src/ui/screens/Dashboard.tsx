@@ -82,23 +82,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
         <ActionButton icon={<Download className="w-5 h-5" />} label="Получить" onClick={() => onNavigate?.("receive")} />
       </div>
 
-      {/* Banner */}
-      <div className="px-4 mb-6">
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm flex relative overflow-hidden group cursor-pointer hover:border-slate-200 transition-colors">
-          <div className="absolute top-2 right-2 text-slate-300 hover:text-slate-500">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-xl">X</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm text-slate-800">Pre-IPO SpaceX</span>
-              <span className="font-medium text-xs text-slate-500">Trade the index with the top 100 US tech and consumer stocks</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* Tabs */}
       <div className="px-4 border-b border-slate-100 flex items-center gap-6 overflow-x-auto no-scrollbar mb-4">

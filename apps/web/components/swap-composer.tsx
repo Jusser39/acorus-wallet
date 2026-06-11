@@ -1426,14 +1426,19 @@ function resolveInitialTokenValue(
   avoid?: string,
 ): string | null {
   const byPreferred = preferred
-    ? tokens.find((token) => token.value.toLowerCase() === preferred.toLowerCase())
+    ? tokens.find((token) => token.value.toLowerCase() === preferred.toLowerCase() || token.tokenAddress?.toLowerCase() === preferred.toLowerCase())
     : null;
 
-  if (byPreferred && byPreferred.value.toLowerCase() !== avoid?.toLowerCase()) {
+  if (byPreferred && byPreferred.value.toLowerCase() !== avoid?.toLowerCase() && (byPreferred.tokenAddress ?? "native").toLowerCase() !== avoid?.toLowerCase()) {
     return byPreferred.value;
   }
 
-  return tokens.find((token) => token.value.toLowerCase() !== avoid?.toLowerCase())?.value ?? null;
+  if (!preferred) {
+    const usdt = tokens.find((token) => token.symbol.toUpperCase() === "USDT" && token.value.toLowerCase() !== avoid?.toLowerCase() && (token.tokenAddress ?? "native").toLowerCase() !== avoid?.toLowerCase());
+    if (usdt) return usdt.value;
+  }
+
+  return tokens.find((token) => token.value.toLowerCase() !== avoid?.toLowerCase() && (token.tokenAddress ?? "native").toLowerCase() !== avoid?.toLowerCase())?.value ?? null;
 }
 
 function tokenAvatarLabel(token: Pick<SwapTokenOption, "symbol">): string {
@@ -1449,10 +1454,12 @@ function TokenIcon({ token }: { token: Pick<SwapTokenOption, "symbol" | "logoUrl
     setImgFailed(false);
   }, [token.logoUrl]);
 
+  const hasLogo = Boolean(token.logoUrl && !imgFailed);
+
   return (
     <div className="relative inline-flex flex-shrink-0">
-      <span className="swap-token-icon" style={tokenIconStyle(token.symbol)}>
-        {(!token.logoUrl || imgFailed) && <span>{tokenAvatarLabel(token)}</span>}
+      <span className={`swap-token-icon ${hasLogo ? "bg-transparent" : ""}`} style={hasLogo ? undefined : tokenIconStyle(token.symbol)}>
+        {!hasLogo && <span>{tokenAvatarLabel(token)}</span>}
         {token.logoUrl && !imgFailed ? (
           <img
             src={token.logoUrl}

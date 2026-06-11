@@ -126,8 +126,8 @@ export class ZeroXSwapService {
     query: NormalizedZeroXQuery,
   ): Promise<Record<string, unknown>> {
     if (!this.env.ZEROX_API_KEY) {
-      const sellPriceUsd = await getMockTokenPriceUsd(query.sellToken.symbol);
-      const buyPriceUsd = await getMockTokenPriceUsd(query.buyToken.symbol);
+      const sellPriceUsd = await getMockTokenPriceUsd(query.sellToken.symbol, query.sellToken.address, query.chainId);
+      const buyPriceUsd = await getMockTokenPriceUsd(query.buyToken.symbol, query.buyToken.address, query.chainId);
 
       let sellAmountRaw = query.sellAmount;
       let buyAmountRaw = query.buyAmount;
@@ -629,7 +629,7 @@ function normalizeRecord(value: unknown): Record<string, unknown> {
 
 const mockPriceCache = new Map<string, { price: number; expiresAt: number }>();
 
-export async function getMockTokenPriceUsd(symbol: string): Promise<number> {
+export async function getMockTokenPriceUsd(symbol: string, address?: string, chainId?: number): Promise<number> {
   const norm = symbol.toUpperCase();
   const BASE_USD_PRICES: Record<string, number> = {
     BTC: 65000,
@@ -665,6 +665,30 @@ export async function getMockTokenPriceUsd(symbol: string): Promise<number> {
   if (norm === "WETH") fetchSymbol = "ETH";
   if (norm === "WBNB") fetchSymbol = "BNB";
   if (norm === "WBTC") fetchSymbol = "BTC";
+
+  if (chainId) {
+    try {
+      const port = process.env.API_PORT ?? 4000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const url = `http://127.0.0.1:${port}/api/market/prices?chainId=${chainId}&symbols=${norm}&tokenAddresses=${address ?? ""}`;
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json() as { prices: Array<{ price: number }> };
+        if (data.prices && data.prices[0] && typeof data.prices[0].price === "number") {
+          const price = data.prices[0].price;
+          if (price > 0) {
+            mockPriceCache.set(norm, { price, expiresAt: Date.now() + 60_000 });
+            return price;
+          }
+        }
+      }
+    } catch {
+      // Ignore and fall through
+    }
+  }
 
   try {
     const isStablecoin = fetchSymbol === "USDC" || fetchSymbol === "DAI" || fetchSymbol === "USDT";

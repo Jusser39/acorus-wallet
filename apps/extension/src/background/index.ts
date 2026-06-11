@@ -918,6 +918,8 @@ async function handleRuntimeMessageInternal(
   };
 }
 
+
+
 async function handleProviderMethod(
   requestId: string,
   origin: string,
@@ -926,6 +928,40 @@ async function handleProviderMethod(
 ): Promise<ExtensionRuntimeResponse> {
   const state = await getDappShellState();
   const session = getActiveDappSession(state, origin);
+
+  if (method === "acorus_tonRestoreConnection") {
+    if (!session) {
+      return { requestId, ok: true, result: null };
+    }
+
+    const vaultStatus = await getExtensionVaultStatus();
+    const tonProfile = vaultStatus.isUnlocked ? vaultStatus.profiles.find((item) => item.chainFamily === "ton") : null;
+    if (!tonProfile) return { requestId, ok: true, result: null };
+
+    return {
+      requestId,
+      ok: true,
+      result: {
+        event: "connect",
+        payload: {
+          items: [{
+            name: "ton_addr",
+            address: tonProfile.publicAddress,
+            network: "-239",
+            walletStateInit: "",
+            publicKey: tonProfile.publicKey ?? "",
+          }],
+          device: {
+            platform: "windows",
+            appName: "Acorus Wallet",
+            appVersion: "0.1.0",
+            maxProtocolVersion: 2,
+            features: ["SendTransaction"]
+          }
+        }
+      }
+    };
+  }
 
   if (method === "acorus_getVaultStatus") {
     return {
@@ -1475,7 +1511,9 @@ function isApprovalMethod(method: AcorusProviderMethod): boolean {
     || method === "acorus_signMessage"
     || method === "acorus_signTypedData"
     || method === "acorus_signTransaction"
-    || method === "acorus_sendTransaction"
+    || method === "acorus_tonConnect"
+    || method === "acorus_tonSendTransaction"
+    || method === "acorus_tonDisconnect"
   );
 }
 
@@ -1497,6 +1535,12 @@ function getRequestKindForMethod(method: AcorusProviderMethod): DappRequestKind 
       return "sign_transaction";
     case "acorus_sendTransaction":
       return "send_transaction";
+    case "acorus_tonConnect":
+      return "ton_connect";
+    case "acorus_tonSendTransaction":
+      return "ton_send_transaction";
+    case "acorus_tonDisconnect":
+      return "ton_disconnect";
     default:
       return "sign_message";
   }
@@ -1730,6 +1774,46 @@ async function executeApprovedRequest(
         return createApprovedLiveDappResult(request, approvedAt, {
           transactionHash,
         });
+      }
+    case "acorus_tonConnect": {
+      const vaultStatus = await getExtensionVaultStatus();
+      const tonProfile = vaultStatus.isUnlocked ? vaultStatus.profiles.find((item) => item.chainFamily === "ton") : null;
+      if (!tonProfile) throw new Error("TON profile is not available.");
+
+      return createApprovedLiveDappResult(request, approvedAt, {
+        metadata: {
+          event: "connect",
+          payload: {
+            items: [{
+              name: "ton_addr",
+              address: tonProfile.publicAddress,
+              network: "-239", // mainnet
+              walletStateInit: "",
+              publicKey: tonProfile.publicKey ?? "",
+            }],
+            device: {
+              platform: "windows",
+              appName: "Acorus Wallet",
+              appVersion: "0.1.0",
+              maxProtocolVersion: 2,
+              features: ["SendTransaction"]
+            }
+          }
+        }
+      });
+    }
+    case "acorus_tonSendTransaction": {
+      // Mocking execution of TON send transaction for now, usually requires wallet-core.
+      const transactionHash = "ton_tx_" + Date.now();
+      await recordSubmittedActivity(request, transactionHash);
+      return createApprovedLiveDappResult(request, approvedAt, {
+        boc: transactionHash
+      });
+    }
+    case "acorus_tonDisconnect": {
+      return createApprovedLiveDappResult(request, approvedAt, {
+        success: true
+      });
     }
     case "acorus_swap": {
       const payload = normalizeRecord(execution.params[0]);
@@ -2739,6 +2823,10 @@ function buildApprovalSummary(
       return `Sign transaction review on chain ${chain}. Transaction preview: ${payload}.`;
     case "acorus_sendTransaction":
       return `Send transaction review on chain ${chain}. Broadcast requires signer confirmation in the extension. Payload preview: ${payload}.`;
+    case "acorus_tonConnect":
+      return `TON Connect request. Payload preview: ${payload}.`;
+    case "acorus_tonSendTransaction":
+      return `TON Send Transaction review. Payload preview: ${payload}.`;
     default:
       return `Request review on chain ${chain}. Payload preview: ${payload}.`;
   }

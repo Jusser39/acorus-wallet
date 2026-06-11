@@ -184,9 +184,14 @@ export function AssetList({
                 {detailHref ? (
                   <Link href={detailHref} className="block">
                     <div className="flex items-center gap-3">
-                      <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
-                        {asset.symbol.slice(0, 2).toUpperCase()}
-                      </div>
+                      {asset.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={asset.logoUrl} alt={asset.symbol} className="h-11 w-11 shrink-0 rounded-full bg-slate-800 object-cover" />
+                      ) : (
+                        <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
+                          {asset.symbol.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="truncate text-sm font-semibold">{asset.symbol}</p>
@@ -210,9 +215,14 @@ export function AssetList({
                   </Link>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
-                      {asset.symbol.slice(0, 2).toUpperCase()}
-                    </div>
+                    {asset.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={asset.logoUrl} alt={asset.symbol} className="h-11 w-11 shrink-0 rounded-full bg-slate-800 object-cover" />
+                    ) : (
+                      <div className="token-orb h-11 w-11 shrink-0 text-xs font-bold">
+                        {asset.symbol.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-sm font-semibold">{asset.symbol}</p>

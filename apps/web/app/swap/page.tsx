@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { AcorusMagicStage } from "@/components/acorus-magic-stage";
 import { ExtensionWalletCard } from "@/components/extension-wallet-card";
 import { SwapComposer } from "@/components/swap-composer";
@@ -31,7 +32,8 @@ function SwapClient() {
     <div className="magic-page-grid">
       <div className="magic-panel p-5 sm:p-7">
         <div className="mb-6">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-700">
+          <Link href="/wallet" className="text-sm font-semibold text-slate-500 hover:text-fuchsia-700">← Back to Wallet</Link>
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.24em] text-violet-700">
             Acorus swap
           </p>
           <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">

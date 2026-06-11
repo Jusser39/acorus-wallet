@@ -76,8 +76,28 @@ declare global {
     acorusBitcoin?: AcorusSimpleChainProvider;
     acorusTon?: AcorusSimpleChainProvider;
     acorusEthereumInjected?: boolean;
+    tonkeeper?: {
+      tonconnect: AcorusTonConnectProvider;
+    };
   }
 }
+
+type AcorusTonConnectProvider = {
+  deviceInfo: {
+    platform: string;
+    appName: string;
+    appVersion: string;
+    maxProtocolVersion: number;
+    features: (string | { name: string; maxMessages: number })[];
+  };
+  protocolVersion: number;
+  isWalletBrowser: boolean;
+  connect(protocolVersion: number, message: unknown): Promise<unknown>;
+  restoreConnection(): Promise<unknown>;
+  send(message: unknown): Promise<unknown>;
+  disconnect(): Promise<unknown>;
+  listen(callback: (event: unknown) => void): () => void;
+};
 
 type AcorusMultichainProviderFamily = "evm" | "solana" | "tron" | "utxo" | "ton";
 
@@ -381,6 +401,65 @@ class AcorusEthereumProviderRuntime implements AcorusEthereumProvider {
   }
 }
 
+function createTonConnectProvider(): AcorusTonConnectProvider {
+  const listeners = new Set<(event: unknown) => void>();
+
+  window.addEventListener("acorus#stateChanged", (e: Event) => {
+    const customEvent = e as CustomEvent<DappBridgeSessionView>;
+    if (customEvent.detail.status !== "connected") {
+      for (const listener of listeners) {
+        listener({ event: "disconnect", payload: {} });
+      }
+    }
+  });
+
+  return {
+    deviceInfo: {
+      platform: "windows",
+      appName: "Acorus Wallet",
+      appVersion: "0.1.0",
+      maxProtocolVersion: 2,
+      features: [
+        "SendTransaction",
+        { name: "SendTransaction", maxMessages: 4 }
+      ]
+    },
+    protocolVersion: 2,
+    isWalletBrowser: false,
+    async connect(protocolVersion: number, message: unknown) {
+      const result = await requestBridgeMethod("acorus_tonConnect", [protocolVersion, message]) as any;
+      const connectEvent = result?.metadata || result;
+      for (const listener of listeners) {
+        listener(connectEvent);
+      }
+      return connectEvent;
+    },
+    async restoreConnection() {
+      const result = await requestBridgeMethod("acorus_tonRestoreConnection", []) as any;
+      const connectEvent = result?.metadata || result;
+      if (connectEvent) {
+        for (const listener of listeners) {
+          listener(connectEvent);
+        }
+      }
+      return connectEvent;
+    },
+    async send(message: unknown) {
+      return requestBridgeMethod("acorus_tonSendTransaction", [message]);
+    },
+    async disconnect() {
+      await requestBridgeMethod("acorus_tonDisconnect", []);
+      for (const listener of listeners) {
+        listener({ event: "disconnect", payload: {} });
+      }
+    },
+    listen(callback: (event: unknown) => void) {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    }
+  };
+}
+
 const ethereumProvider = deepFreeze(new AcorusEthereumProviderRuntime());
 const solanaProvider = deepFreeze(createSolanaProvider());
 const tronProvider = deepFreeze(createTronProvider());
@@ -405,6 +484,7 @@ const acorusProvider: NonNullable<Window["acorus"]> = deepFreeze({
 
     return requestBridgeMethod(input.method, input.params ?? []);
   },
+  tonconnect: deepFreeze(createTonConnectProvider()),
 });
 
 Object.freeze(AcorusEthereumProviderRuntime.prototype);
@@ -418,6 +498,14 @@ defineImmutableWindowProperty("acorusTron", tronProvider);
 defineImmutableWindowProperty("acorusBitcoin", bitcoinProvider);
 defineImmutableWindowProperty("acorusTon", tonProvider);
 defineImmutableWindowProperty("acorus", acorusProvider);
+
+try {
+  defineImmutableWindowProperty("tonkeeper", { tonconnect: acorusProvider.tonconnect });
+  defineImmutableWindowProperty("tonconnect", acorusProvider.tonconnect);
+  window.dispatchEvent(new Event("tonready"));
+} catch {
+  // Ignore if already defined
+}
 window.dispatchEvent(new Event("acorus#initialized"));
 window.dispatchEvent(new Event("ethereum#initialized"));
 window.dispatchEvent(new Event("solana#initialized"));

@@ -103,6 +103,9 @@ export default function ReceivePage() {
     <section className="page grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="panel space-y-5">
         <div>
+          <div className="mb-4">
+            <Link href="/wallet" className="text-sm font-semibold text-slate-500 hover:text-fuchsia-700">← Back to Wallet</Link>
+          </div>
           <h1 className="text-3xl font-semibold">Receive</h1>
           <p className="mt-2 text-sm text-slate-300">
             {receiveInfo?.warning

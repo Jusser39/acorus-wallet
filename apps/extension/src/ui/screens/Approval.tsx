@@ -53,10 +53,10 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
           {isHighRisk ? <ShieldAlert className="w-16 h-16 animate-pulse" /> : <ShieldCheck className="w-16 h-16" />}
         </div>
         <h2 className="text-2xl font-bold tracking-tight mb-2">
-          {isHighRisk ? "Scam Warning" : "Signature Request"}
+          {isHighRisk ? "Scam Warning" : (request.kind === "ton_connect" ? "TON Connection Request" : "Signature Request")}
         </h2>
         <p className="text-sm opacity-90 max-w-[250px] mx-auto">
-          {request.origin} is requesting a signature.
+          {request.origin} is requesting a {request.kind === "ton_connect" ? "connection to TON" : "signature"}.
         </p>
       </div>
 
@@ -104,7 +104,7 @@ export function Approval({ request, onComplete }: { request: DappRequest; onComp
           }`}
         >
           <Check className="w-5 h-5" />
-          {isHighRisk ? "Accept Risk" : "Sign"}
+          {isHighRisk ? "Accept Risk" : (request.kind === "ton_connect" ? "Connect" : "Sign")}
         </button>
       </div>
     </div>

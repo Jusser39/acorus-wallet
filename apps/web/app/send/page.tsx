@@ -20,7 +20,7 @@ import {
   listContacts,
   updateTransactionStatus,
 } from "@/lib/api";
-import { loadWalletAssetSnapshot } from "@/lib/assets";
+import { loadPortfolioSummary } from "@/lib/portfolio";
 import { canWalletSend, isSafetyModeBlockingRealSend } from "@/lib/send-policy";
 import { SendComposer } from "@/components/send-composer";
 import { ExtensionWalletCard } from "@/components/extension-wallet-card";
@@ -147,15 +147,30 @@ export default function SendPage() {
       setError(null);
 
       try {
-        const snapshot = await loadWalletAssetSnapshot(activeProfile, evmSelectedChainId);
+        const snapshot = await loadPortfolioSummary(
+          { ...activeProfile, id: activeProfile.id },
+          evmSelectedChainId,
+          userId,
+          "USD",
+        );
 
         if (!active) {
           return;
         }
 
-        setNativeBalance(snapshot.nativeBalance);
-        setNativeBalanceRaw(snapshot.nativeBalanceRaw);
-        setTokens(snapshot.tokens);
+        const nativeAsset = snapshot.assets.find(a => a.type === "native");
+        const tokenAssets = snapshot.assets.filter(a => a.type !== "native");
+
+        setNativeBalance(nativeAsset?.balanceFormatted ?? "0");
+        setNativeBalanceRaw(parseUnits(nativeAsset?.balanceFormatted ?? "0", nativeAsset?.decimals ?? 18));
+        setTokens(tokenAssets.map(t => ({
+          tokenAddress: t.tokenAddress!,
+          symbol: t.symbol,
+          name: t.name,
+          decimals: t.decimals,
+          balance: t.balanceFormatted,
+          balanceRaw: parseUnits(t.balanceFormatted, t.decimals),
+        })));
       } catch (nextError) {
         if (!active) {
           return;
@@ -505,6 +520,7 @@ export default function SendPage() {
         </div>
         
         <section className="magic-container relative z-10 space-y-6 max-w-5xl mx-auto">
+          <Link href="/wallet" className="text-sm font-semibold text-slate-500 hover:text-fuchsia-700">← Back to Wallet</Link>
           <GlassCard glow className="p-6">
             <ExtensionWalletCard
               title="Extension send account"
@@ -534,6 +550,7 @@ export default function SendPage() {
       </div>
       
       <section className="magic-container relative z-10 space-y-8 max-w-5xl mx-auto">
+        <Link href="/wallet" className="text-sm font-semibold text-slate-500 hover:text-fuchsia-700">← Back to Wallet</Link>
         <GlassCard glow className="p-6">
           {/* Universal Send Composer — Wave 5 execution layer */}
           <ExtensionWalletCard title="Extension send account" family="evm" chainId={evmSelectedChainId} />
@@ -627,7 +644,7 @@ export default function SendPage() {
               <option value="native">
                 Native · {chain.nativeSymbol} · {formatAmount(nativeBalance)}
               </option>
-              {tokens.map((token) => (
+              {tokens.filter(token => token.balanceRaw > 0n).map((token) => (
                 <option key={token.tokenAddress} value={token.tokenAddress}>
                   {token.symbol} · {formatAmount(token.balance)}
                 </option>

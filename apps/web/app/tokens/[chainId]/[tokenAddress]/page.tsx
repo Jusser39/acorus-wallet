@@ -414,8 +414,9 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
     && EVM_CHAINS.some((item) => item.chainId === tradeChainId);
   const activeEvmAddress = activeProfile?.chainFamily === "evm" ? activeProfile.publicAddress : null;
   const targetSwapToken = (isNativeToken && !isCoinGeckoRoute) || tradeTokenAddress === "native" ? "native" : tradeTokenAddress;
+  const defaultUsdtAddress = getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDT")?.address ?? "native";
   const defaultSellToken = canEvmSwap
-    ? getCuratedTokens(tradeChainId).find((token) => token.symbol === "USDT")?.address ?? "native"
+    ? (targetSwapToken.toLowerCase() === defaultUsdtAddress.toLowerCase() ? "native" : defaultUsdtAddress)
     : "native";
   const isReady = !isCoinGeckoRoute || tokenDetail !== null;
   const fallbackSwap = useMemo(() => {
@@ -671,9 +672,6 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
                     <button type="button" onClick={() => void handleShare()} className="inline-flex items-center gap-2 rounded-full border border-slate-200/50 bg-slate-50/50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-white hover:text-fuchsia-600 hover:shadow-md">
                       {shareState === "copied" ? t("general.copied") : shareState === "failed" ? t("general.failed") : t("general.share")}
                     </button>
-                    <Link href={`/swap?chainId=${isCoinGeckoRoute ? tradeChainId : chainId}&buyToken=${encodeURIComponent(canEvmSwap ? targetSwapToken : (fallbackSwap.buyToken ?? ""))}&buySymbol=${encodeURIComponent(resolvedSymbol)}&buyName=${encodeURIComponent(resolvedName)}`} className="button-primary inline-flex items-center px-6 py-2 text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
-                      {t("token.trade")}
-                    </Link>
                   </div>
                 </div>
               </div>
@@ -769,14 +767,16 @@ export default function TokenDetailPage({ params }: { params: Promise<PageParams
         <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
           {isReady ? (
             <SwapComposer
+              key={`${canEvmSwap ? tradeChainId : fallbackSwap.chainId}-${canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}`}
               compact
-              initialChainId={isCoinGeckoRoute ? tradeChainId : chainId}
+              initialChainId={canEvmSwap ? tradeChainId : fallbackSwap.chainId}
               initialSellToken={canEvmSwap ? defaultSellToken : fallbackSwap.sellToken}
               initialBuyToken={canEvmSwap ? targetSwapToken : fallbackSwap.buyToken}
               initialBuyTokenMeta={{
                 symbol: resolvedSymbol,
                 name: resolvedName,
                 decimals: canEvmSwap ? tradePlatform?.decimals ?? 18 : fallbackSwap.decimals,
+                logoUrl: tokenDetail?.logoUrl,
               }}
               portfolioAssets={[]}
               userAddress={canEvmSwap ? activeEvmAddress : null}

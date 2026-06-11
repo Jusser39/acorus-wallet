@@ -49,6 +49,10 @@ export const ACORUS_PROVIDER_METHODS = [
   "acorus_signTypedData",
   "acorus_signTransaction",
   "acorus_sendTransaction",
+  "acorus_tonConnect",
+  "acorus_tonRestoreConnection",
+  "acorus_tonSendTransaction",
+  "acorus_tonDisconnect",
 ] as const;
 
 export type AcorusProviderMethod = (typeof ACORUS_PROVIDER_METHODS)[number];
