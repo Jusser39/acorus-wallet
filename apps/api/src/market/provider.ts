@@ -169,6 +169,7 @@ const BASE_USD_PRICES: Record<string, number> = {
   USDT: 1,
   USDC: 1,
   WETH: 3200,
+  BEAT: 8.69,
 };
 
 const COINGECKO_ID_TO_SYMBOL: Record<string, string> = {

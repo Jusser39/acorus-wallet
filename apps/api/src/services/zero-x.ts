@@ -666,6 +666,7 @@ export async function getMockTokenPriceUsd(symbol: string, address?: string, cha
     TURBO: 0.005,
     NEIRO: 0.002,
     FLOKI: 0.0001,
+    BEAT: 8.69,
   };
 
   if (mockPriceCache.has(norm) && mockPriceCache.get(norm)!.expiresAt > Date.now()) {
