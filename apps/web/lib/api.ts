@@ -346,6 +346,8 @@ export async function getEvmSwapQuote(input: {
   chainId: number;
   sellToken: string;
   buyToken: string;
+  sellSymbol?: string;
+  buySymbol?: string;
   sellAmount?: string;
   buyAmount?: string;
   taker: string;
@@ -423,6 +425,8 @@ function buildEvmSwapSearch(input: {
   chainId: number;
   sellToken: string;
   buyToken: string;
+  sellSymbol?: string;
+  buySymbol?: string;
   sellAmount?: string;
   buyAmount?: string;
   taker: string;
@@ -434,6 +438,14 @@ function buildEvmSwapSearch(input: {
     buyToken: input.buyToken,
     taker: input.taker,
   });
+
+  if (input.sellSymbol) {
+    params.set("sellSymbol", input.sellSymbol);
+  }
+
+  if (input.buySymbol) {
+    params.set("buySymbol", input.buySymbol);
+  }
 
   if (input.sellAmount) {
     params.set("sellAmount", input.sellAmount);

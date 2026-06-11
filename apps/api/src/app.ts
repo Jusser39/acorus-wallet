@@ -98,6 +98,8 @@ const evmZeroXSwapQuerySchema = z
     chainId: z.coerce.number().int().positive(),
     sellToken: z.string().min(1),
     buyToken: z.string().min(1),
+    sellSymbol: z.string().optional(),
+    buySymbol: z.string().optional(),
     sellAmount: z.string().regex(/^[1-9][0-9]*$/u).optional(),
     buyAmount: z.string().regex(/^[1-9][0-9]*$/u).optional(),
     taker: z.string().regex(/^0x[a-fA-F0-9]{40}$/u),

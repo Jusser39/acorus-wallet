@@ -20,6 +20,8 @@ export type ZeroXQuery = {
   chainId: number;
   sellToken: string;
   buyToken: string;
+  sellSymbol?: string;
+  buySymbol?: string;
   sellAmount?: string;
   buyAmount?: string;
   taker: string;
@@ -292,8 +294,8 @@ export function normalizeZeroXQuery(input: ZeroXQuery): NormalizedZeroXQuery {
     throw new ZeroXSwapError(400, "swap_bad_request", "Invalid taker address.");
   }
 
-  const sellToken = normalizeToken(input.sellToken, chain.chainId, chain.nativeSymbol);
-  const buyToken = normalizeToken(input.buyToken, chain.chainId, chain.nativeSymbol);
+  const sellToken = normalizeToken(input.sellToken, chain.chainId, chain.nativeSymbol, input.sellSymbol);
+  const buyToken = normalizeToken(input.buyToken, chain.chainId, chain.nativeSymbol, input.buySymbol);
 
   return {
     chainId: chain.chainId,
@@ -308,23 +310,31 @@ export function normalizeZeroXQuery(input: ZeroXQuery): NormalizedZeroXQuery {
   };
 }
 
-function normalizeToken(value: string, chainId: number, nativeSymbol: string): EvmSwapTokenRef {
-  const trimmed = value.trim();
-  const lower = trimmed.toLowerCase();
+function normalizeToken(value: string | undefined, chainId: number, nativeSymbol: string, providedSymbol?: string): EvmSwapTokenRef {
+  if (!value) {
+    throw new ZeroXSwapError(400, "swap_bad_request", "Token address is required.");
+  }
 
-  if (
-    NATIVE_TOKEN_ALIASES.has(lower)
-    || lower === nativeSymbol.toLowerCase()
-    || lower === ZEROX_NATIVE_TOKEN_ADDRESS
-  ) {
-    return buildNativeEvmTokenMetadata(chainId);
+  const trimmed = value.trim().toLowerCase();
+
+  if (trimmed === "native" || trimmed === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+    return {
+      chainId,
+      address: "native",
+      symbol: nativeSymbol,
+      decimals: 18,
+      name: `${nativeSymbol} Token`,
+      verified: true,
+      source: "onchain",
+    };
   }
 
   if (!HEX_ADDRESS.test(trimmed)) {
-    throw new ZeroXSwapError(400, "swap_bad_request", "Token must be native or an ERC-20 address.");
+    throw new ZeroXSwapError(400, "swap_bad_request", `Invalid token address: ${trimmed}`);
   }
 
   const curated = getCuratedEvmTokenMetadata(chainId, trimmed);
+
   if (curated) {
     return curated;
   }
@@ -332,7 +342,7 @@ function normalizeToken(value: string, chainId: number, nativeSymbol: string): E
   return {
     chainId,
     address: trimmed,
-    symbol: `TKN-${trimmed.slice(2, 6).toUpperCase()}`,
+    symbol: providedSymbol || `TKN-${trimmed.slice(2, 6).toUpperCase()}`,
     decimals: 18,
     name: `Custom Token ${trimmed.slice(0, 6)}…${trimmed.slice(-4)}`,
     verified: false,
@@ -502,6 +512,7 @@ async function resolveSwapTokenMetadata(
     chainId: token.chainId,
     tokenAddress: token.address,
     env,
+    userToken: token as EvmTokenMetadata,
   });
 
   return metadata;

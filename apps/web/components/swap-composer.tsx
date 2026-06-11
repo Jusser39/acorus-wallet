@@ -369,6 +369,8 @@ export function SwapComposer(props: {
         chainId: chainId as number,
         sellToken,
         buyToken,
+        sellSymbol: selectedSellToken.symbol,
+        buySymbol: selectedBuyToken.symbol,
         sellAmount: normalizeEvmTokenAmount(sellAmount, selectedSellToken.decimals),
         taker: takerAddress,
         slippageBps,
