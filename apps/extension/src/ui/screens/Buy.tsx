@@ -7,6 +7,7 @@ export function Buy({ onBack }: { onBack?: () => void }) {
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAsset, setCryptoAsset] = useState("ETH");
   const [fiatCurrency, setFiatCurrency] = useState("USD");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "apple_pay">("card");
   const [bgState, setBgState] = useState<BackgroundStateSnapshot | null>(null);
 
   useEffect(() => {
@@ -28,7 +29,8 @@ export function Buy({ onBack }: { onBack?: () => void }) {
       fiatCurrency,
       defaultFiatAmount: fiatAmount,
       cryptoCurrencyList: cryptoAsset,
-      network: "ethereum",
+      network: cryptoAsset === "SOL" ? "solana" : cryptoAsset === "BTC" ? "bitcoin" : "ethereum",
+      defaultPaymentMethod: paymentMethod === "apple_pay" ? "apple_pay" : "credit_debit_card",
     });
     
     if (activeProfile?.account) {
@@ -91,7 +93,10 @@ export function Buy({ onBack }: { onBack?: () => void }) {
         <div className="flex flex-col gap-2 mt-2">
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 px-1 mb-1">Payment Method</h3>
           
-          <button className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-violet-500 dark:hover:border-violet-500 transition-all text-left group">
+          <button 
+            onClick={() => setPaymentMethod("card")}
+            className={`flex items-center justify-between p-4 bg-white dark:bg-slate-950 border rounded-2xl hover:border-violet-500 dark:hover:border-violet-500 transition-all text-left group ${paymentMethod === "card" ? "border-violet-500 ring-1 ring-violet-500/20" : "border-slate-200 dark:border-slate-800"}`}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-300">
                 <CreditCard className="w-5 h-5" />
@@ -101,7 +106,23 @@ export function Buy({ onBack }: { onBack?: () => void }) {
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Visa, Mastercard via Transak</span>
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-violet-500" />
+            <ArrowRight className={`w-5 h-5 transition-colors ${paymentMethod === "card" ? "text-violet-500" : "text-slate-300 dark:text-slate-600 group-hover:text-violet-500"}`} />
+          </button>
+
+          <button 
+            onClick={() => setPaymentMethod("apple_pay")}
+            className={`flex items-center justify-between p-4 bg-white dark:bg-slate-950 border rounded-2xl hover:border-violet-500 dark:hover:border-violet-500 transition-all text-left group ${paymentMethod === "apple_pay" ? "border-violet-500 ring-1 ring-violet-500/20" : "border-slate-200 dark:border-slate-800"}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-full flex items-center justify-center text-white dark:text-slate-900">
+                <Apple className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-900 dark:text-white">Apple Pay</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Fast checkout</span>
+              </div>
+            </div>
+            <ArrowRight className={`w-5 h-5 transition-colors ${paymentMethod === "apple_pay" ? "text-violet-500" : "text-slate-300 dark:text-slate-600 group-hover:text-violet-500"}`} />
           </button>
         </div>
 

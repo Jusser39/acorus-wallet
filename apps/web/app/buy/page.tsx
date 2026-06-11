@@ -8,11 +8,32 @@ export default function BuyPage() {
   const [fiatAmount, setFiatAmount] = useState("");
   const [cryptoAsset, setCryptoAsset] = useState("ETH");
   const [fiatCurrency, setFiatCurrency] = useState("USD");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "apple_pay">("card");
   const [isSuccess, setIsSuccess] = useState(false);
 
   const rates: Record<string, number> = { ETH: 3200, BTC: 65000, SOL: 150, USDC: 1 };
   const cryptoRate = rates[cryptoAsset] || 3200;
   const cryptoAmount = fiatAmount ? (Number(fiatAmount) / cryptoRate).toFixed(cryptoAsset === 'USDC' ? 2 : 5) : "0.0000";
+
+  const handleBuy = () => {
+    if (!fiatAmount || Number(fiatAmount) <= 0) return;
+    
+    setIsSuccess(true);
+    const baseUrl = "https://global.transak.com/";
+    const params = new URLSearchParams({
+      fiatCurrency,
+      defaultFiatAmount: fiatAmount,
+      cryptoCurrencyList: cryptoAsset,
+      network: cryptoAsset === "SOL" ? "solana" : cryptoAsset === "BTC" ? "bitcoin" : "ethereum",
+      defaultPaymentMethod: paymentMethod === "apple_pay" ? "apple_pay" : "credit_debit_card",
+    });
+    
+    setTimeout(() => {
+      window.open(`${baseUrl}?${params.toString()}`, "_blank");
+      setIsSuccess(false);
+      setFiatAmount("");
+    }, 1500);
+  };
 
   return (
     <main className="magic-shell relative overflow-hidden px-4 py-10 min-h-screen flex items-center justify-center">
@@ -94,7 +115,10 @@ export default function BuyPage() {
           <div className="flex flex-col gap-3 mt-4">
             <h3 className="text-sm font-bold text-slate-800 px-1">Payment Method</h3>
             
-            <button className="flex items-center justify-between p-4 bg-white/90 border border-slate-200 rounded-2xl hover:border-violet-500 hover:shadow-md transition-all text-left group backdrop-blur-md">
+            <button 
+              onClick={() => setPaymentMethod("card")}
+              className={`flex items-center justify-between p-4 bg-white/90 border rounded-2xl hover:border-violet-500 hover:shadow-md transition-all text-left group backdrop-blur-md ${paymentMethod === "card" ? "border-violet-500 shadow-md ring-2 ring-violet-500/20" : "border-slate-200"}`}
+            >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-700">
                   <CreditCard className="w-6 h-6" />
@@ -108,11 +132,14 @@ export default function BuyPage() {
                 <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
                   <Zap className="w-3 h-3" /> Best Rate
                 </div>
-                <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 transition-colors" />
+                <ArrowRight className={`w-5 h-5 transition-colors ${paymentMethod === "card" ? "text-violet-500" : "text-slate-300 group-hover:text-violet-500"}`} />
               </div>
             </button>
 
-            <button className="flex items-center justify-between p-4 bg-white/90 border border-slate-200 rounded-2xl hover:border-violet-500 hover:shadow-md transition-all text-left group backdrop-blur-md">
+            <button 
+              onClick={() => setPaymentMethod("apple_pay")}
+              className={`flex items-center justify-between p-4 bg-white/90 border rounded-2xl hover:border-violet-500 hover:shadow-md transition-all text-left group backdrop-blur-md ${paymentMethod === "apple_pay" ? "border-violet-500 shadow-md ring-2 ring-violet-500/20" : "border-slate-200"}`}
+            >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center text-white">
                   <Apple className="w-6 h-6" />
@@ -122,7 +149,7 @@ export default function BuyPage() {
                   <span className="text-sm font-medium text-slate-500">Fast checkout</span>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 transition-colors" />
+              <ArrowRight className={`w-5 h-5 transition-colors ${paymentMethod === "apple_pay" ? "text-violet-500" : "text-slate-300 group-hover:text-violet-500"}`} />
             </button>
           </div>
 
@@ -134,13 +161,7 @@ export default function BuyPage() {
                   : "bg-violet-600 hover:bg-violet-700 text-white shadow-[0_8px_20px_-4px_rgba(124,58,237,0.4)] hover:shadow-[0_12px_24px_-4px_rgba(124,58,237,0.5)]"
               }`}
               disabled={!fiatAmount || Number(fiatAmount) <= 0 || isSuccess}
-              onClick={() => {
-                setIsSuccess(true);
-                setTimeout(() => {
-                  setIsSuccess(false);
-                  setFiatAmount("");
-                }, 2500);
-              }}
+              onClick={handleBuy}
             >
               {isSuccess ? "Redirecting to provider..." : "Continue to Payment"}
             </button>
