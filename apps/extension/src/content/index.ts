@@ -30,6 +30,22 @@ chrome.storage.onChanged.addListener((_changes, areaName) => {
     void syncOriginState();
   }
 });
+
+function injectProviderScript(): void {
+  try {
+    const container = document.head || document.documentElement;
+    const scriptTag = document.createElement("script");
+    scriptTag.src = chrome.runtime.getURL("inpage/index.js");
+    scriptTag.onload = function () {
+      scriptTag.remove();
+    };
+    container.insertBefore(scriptTag, container.children[0]);
+  } catch (error) {
+    console.error("Acorus Wallet: Provider injection failed.", error);
+  }
+}
+
+injectProviderScript();
 void syncOriginState();
 
 function handleWindowMessage(event: MessageEvent<unknown>): void {

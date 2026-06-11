@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Menu, ChevronDown, Copy } from "lucide-react";
 import { Dashboard } from "./screens/Dashboard";
 import { Buy } from "./screens/Buy";
@@ -6,9 +6,9 @@ import { Swap } from "./screens/Swap";
 import { Activity } from "./screens/Activity";
 import { Send } from "./screens/Send";
 import { Receive } from "./screens/Receive";
-import { Activity } from "./screens/Activity";
 import { Settings } from "./screens/Settings";
 import { Approval } from "./screens/Approval";
+import { SignerUnlockApproval } from "./screens/SignerUnlockApproval";
 import { WalletConnect } from "./screens/WalletConnect";
 import { Welcome } from "./screens/Welcome";
 import { CreateWallet } from "./screens/CreateWallet";
@@ -16,48 +16,60 @@ import { ImportWallet } from "./screens/ImportWallet";
 import { Unlock } from "./screens/Unlock";
 import { ConnectionApproval } from "./screens/ConnectionApproval";
 import { getBackgroundState } from "./api";
-import type { DappRequest, BackgroundStateSnapshot, DappSessionProposal } from "../shared/protocol";
+
+import type {
+  DappRequest,
+  DappSessionProposal,
+} from "@acorus/shared";
+import type {
+  BackgroundStateSnapshot,
+  SignerUnlockIntent,
+} from "../shared/protocol";
 
 export function PopupApp() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [pendingRequest, setPendingRequest] = useState<DappRequest | null>(null);
   const [pendingProposal, setPendingProposal] = useState<DappSessionProposal | null>(null);
+  const [pendingSignerUnlock, setPendingSignerUnlock] = useState<SignerUnlockIntent | null>(null);
   const [appState, setAppState] = useState<BackgroundStateSnapshot | null>(null);
   const [onboardingMode, setOnboardingMode] = useState<"create" | "import" | null>(null);
   const [copied, setCopied] = useState(false);
-
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
-  const fetchState = () => {
-    getBackgroundState().then(state => {
-      if (state) {
-        setAppState(state);
-        
-        if (state.pendingRequests && state.pendingRequests.length > 0) {
-          setPendingRequest(state.pendingRequests[0]);
-        } else {
-          setPendingRequest(null);
-        }
-
-        if (state.proposals && state.proposals.length > 0) {
-          setPendingProposal(state.proposals[0]);
-        } else {
-          setPendingProposal(null);
-        }
+  const fetchState = useCallback(() => {
+    void getBackgroundState().then((state) => {
+      if (!state) {
+        return;
       }
+
+      setAppState(state);
+      setPendingProposal(state.proposals?.[0] ?? null);
+      setPendingRequest(state.pendingRequests?.[0] ?? null);
+      setPendingSignerUnlock(state.signerUnlockQueue?.[0] ?? null);
     });
-  };
+  }, []);
 
   useEffect(() => {
     fetchState();
-    const handleMessage = (message: any) => {
-      if (message.kind === "acorus#stateChanged") {
+
+    const handleStorageChanged = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName === "local" && Object.keys(changes).some((key) => key.startsWith("acorus_"))) {
         fetchState();
       }
     };
-    chrome.runtime.onMessage.addListener(handleMessage);
-    return () => chrome.runtime.onMessage.removeListener(handleMessage);
-  }, []);
+
+    chrome.storage.onChanged.addListener(handleStorageChanged);
+
+    const timer = window.setInterval(fetchState, 1_000);
+
+    return () => {
+      chrome.storage.onChanged.removeListener(handleStorageChanged);
+      window.clearInterval(timer);
+    };
+  }, [fetchState]);
 
   if (!appState) {
     return <div className="h-[600px] w-[375px] bg-slate-50 flex items-center justify-center text-slate-500 font-medium">Loading Acorus...</div>;
@@ -126,6 +138,20 @@ export function PopupApp() {
             setPendingProposal(null);
             fetchState();
           }} 
+        />
+      </div>
+    );
+  }
+
+  if (pendingSignerUnlock) {
+    return (
+      <div className="h-[600px] w-[375px] overflow-hidden">
+        <SignerUnlockApproval
+          intent={pendingSignerUnlock}
+          onComplete={() => {
+            setPendingSignerUnlock(null);
+            fetchState();
+          }}
         />
       </div>
     );

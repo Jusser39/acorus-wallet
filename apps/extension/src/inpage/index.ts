@@ -243,9 +243,10 @@ function applyBridgeState(envelope: InpageStateEnvelope): void {
   emitEthereumStateChanges(previous, bridgeState);
 }
 
-function createProviderError(code: string, message: string): Error {
-  const error = new Error(message);
-  error.name = code;
+function createProviderError(code: string | number, message: string): Error {
+  const error = new Error(message) as any;
+  error.code = typeof code === "number" ? code : 4001;
+  error.name = String(code);
   return error;
 }
 

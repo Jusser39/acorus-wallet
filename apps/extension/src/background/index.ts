@@ -20,6 +20,7 @@ import {
   type ChainId,
   type ChainFamily,
   type DappShellSnapshot,
+  isTrustedAcorusAppOrigin,
 } from "@acorus/shared";
 import { buildSplTransferDraft, buildSwapApprovalTransaction } from "@acorus/wallet-core";
 import {
@@ -80,9 +81,12 @@ import {
 } from "./permission-store";
 import { validateRuntimeMessage } from "./messaging";
 
+const PROVIDER_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+
 const pendingProviderApprovals = new Map<
   string,
   {
+    timeoutId: ReturnType<typeof setTimeout>;
     resolve: (response: ExtensionRuntimeResponse) => void;
   }
 >();
@@ -1521,24 +1525,7 @@ function toStringArray(value: unknown): string[] {
     : [];
 }
 
-function isTrustedAcorusAppOrigin(origin: string): boolean {
-  try {
-    const url = new URL(origin);
-    return (
-      url.origin === "http://85.239.59.199:8080"
-      || url.origin === "http://24wallet.ru"
-      || url.origin === "https://24wallet.ru"
-      || url.origin === "http://www.24wallet.ru"
-      || url.origin === "https://www.24wallet.ru"
-      || url.origin === "http://localhost:3000"
-      || url.origin === "http://127.0.0.1:3000"
-      || url.origin === "http://localhost:3024"
-      || url.origin === "http://127.0.0.1:3024"
-    );
-  } catch {
-    return false;
-  }
-}
+
 
 function trustedAppOnlyError(requestId: string): ExtensionRuntimeResponse {
   return providerError(
@@ -1572,6 +1559,7 @@ function isApprovalMethod(method: AcorusProviderMethod): boolean {
     || method === "acorus_signMessage"
     || method === "acorus_signTypedData"
     || method === "acorus_signTransaction"
+    || method === "acorus_sendTransaction"
     || method === "acorus_tonConnect"
     || method === "acorus_tonSendTransaction"
     || method === "acorus_tonDisconnect"
@@ -1638,7 +1626,23 @@ function waitForProviderApproval(
   request: DappRequest,
 ): Promise<ExtensionRuntimeResponse> {
   return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      pendingProviderApprovals.delete(request.id);
+      pendingProviderExecutions.delete(request.id);
+      pendingSignerUnlocks.delete(createSignerUnlockIntentId(request.id));
+
+      resolve({
+        requestId: request.id,
+        ok: false,
+        error: {
+          code: "approval_timeout",
+          message: "The Acorus Wallet request approval timed out.",
+        },
+      });
+    }, PROVIDER_APPROVAL_TIMEOUT_MS);
+
     pendingProviderApprovals.set(request.id, {
+      timeoutId,
       resolve,
     });
   });
@@ -1652,7 +1656,11 @@ function resolvePendingConnectionApproval(
   const bridge = createDappBridgeSessionView(nextSnapshot, origin);
 
   for (const [requestId, pending] of pendingConnectionApprovals.entries()) {
-    if (pending.origin !== origin && pending.proposalId !== proposalId) {
+    if (pending.origin !== origin) {
+      continue;
+    }
+
+    if (pending.proposalId !== proposalId) {
       continue;
     }
 
@@ -1673,7 +1681,11 @@ function rejectPendingConnectionApproval(
   message: string,
 ): void {
   for (const [requestId, pending] of pendingConnectionApprovals.entries()) {
-    if (pending.origin !== origin && pending.proposalId !== proposalId) {
+    if (pending.origin !== origin) {
+      continue;
+    }
+
+    if (pending.proposalId !== proposalId) {
       continue;
     }
 
@@ -1700,6 +1712,7 @@ function resolvePendingProviderApproval(
     return;
   }
 
+  clearTimeout(pending.timeoutId);
   pendingProviderApprovals.delete(request.id);
   pending.resolve({
     requestId: request.id,
@@ -1719,6 +1732,7 @@ function rejectPendingProviderApproval(
     return;
   }
 
+  clearTimeout(pending.timeoutId);
   pendingProviderApprovals.delete(requestId);
   pending.resolve({
     requestId,

@@ -1,99 +1,156 @@
-import type { BackgroundStateSnapshot } from "../shared/protocol";
-import type { ExtensionPortfolioSnapshot } from "../background/extension-assets";
+import {
+  createRequestId,
+  type BackgroundStateSnapshot,
+  type ExtensionRuntimeResponse,
+} from "../shared/protocol";
+
+type RuntimeSurface = "popup" | "options";
+
+async function sendUiMessage<T = unknown>(
+  message: Record<string, unknown>,
+  surface: RuntimeSurface = "popup",
+): Promise<T> {
+  const response = (await chrome.runtime.sendMessage({
+    requestId: createRequestId(`ui_${surface}`),
+    surface,
+    ...message,
+  })) as ExtensionRuntimeResponse | undefined;
+
+  if (!response) {
+    throw new Error("Acorus background did not return a response.");
+  }
+
+  if (!response.ok) {
+    throw new Error(response.error?.message ?? "Acorus extension request failed.");
+  }
+
+  return response.result as T;
+}
 
 export async function getBackgroundState(): Promise<BackgroundStateSnapshot | null> {
   try {
-    const response: any = await chrome.runtime.sendMessage({
-      kind: "get_state",
-      requestId: "ui_get_state_" + Date.now(),
-      surface: "popup",
-      origin: window.location.origin,
-    });
-    if (response?.ok) {
-      return response.result as BackgroundStateSnapshot;
-    }
+    return await sendUiMessage<BackgroundStateSnapshot>(
+      {
+        kind: "get_state",
+        // В popup не передаём chrome-extension:// как active dApp origin.
+        // Background сам поднимет active prompt origin, если он есть.
+        origin: null,
+      },
+      "popup",
+    );
   } catch (error) {
     console.error("Failed to get background state", error);
+    return null;
   }
-  return null;
 }
 
-export async function getExtensionHome(): Promise<any> {
-  try {
-    const response: any = await chrome.runtime.sendMessage({
+export async function getExtensionHome(): Promise<unknown> {
+  return sendUiMessage(
+    {
       kind: "get_extension_home",
-      surface: "popup",
-      requestId: "ui_get_home_" + Date.now(),
-    });
-    return response;
-  } catch (error) {
-    return { ok: false, error: String(error) };
-  }
+    },
+    "popup",
+  );
 }
 
-export async function createWallet(name: string, passcode: string): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function createWallet(name: string, passcode: string): Promise<unknown> {
+  return sendUiMessage({
     kind: "create_wallet",
-    surface: "popup",
-    requestId: "ui_create_" + Date.now(),
     name,
-    passcode
+    passcode,
   });
 }
 
-export async function importWallet(name: string, mnemonic: string, passcode: string): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function importWallet(
+  name: string,
+  mnemonic: string,
+  passcode: string,
+): Promise<unknown> {
+  return sendUiMessage({
     kind: "import_wallet",
-    surface: "popup",
-    requestId: "ui_import_" + Date.now(),
     name,
     mnemonic,
-    passcode
+    passcode,
   });
 }
 
-export async function unlockWallet(passcode: string): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function unlockWallet(passcode: string): Promise<unknown> {
+  return sendUiMessage({
     kind: "unlock_wallet",
-    surface: "popup",
-    requestId: "ui_unlock_" + Date.now(),
-    passcode
+    passcode,
   });
 }
 
-export async function lockWallet(): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function lockWallet(): Promise<unknown> {
+  return sendUiMessage({
     kind: "lock_wallet",
-    surface: "popup",
-    requestId: "ui_lock_" + Date.now()
   });
 }
 
-export async function resetWallet(): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function resetWallet(): Promise<unknown> {
+  return sendUiMessage({
     kind: "reset_extension_wallet",
-    surface: "popup",
-    requestId: "ui_reset_" + Date.now()
   });
 }
 
-export async function revokeSession(sessionId: string): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function revokeSession(sessionId: string): Promise<unknown> {
+  return sendUiMessage({
     kind: "revoke_session",
-    surface: "popup",
-    requestId: "ui_revoke_" + Date.now(),
-    sessionId
+    sessionId,
   });
 }
 
-export async function sendInternalTransaction(to: string, value: string, chainId: number): Promise<any> {
-  return chrome.runtime.sendMessage({
+export async function approveProposal(proposalId: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "approve_proposal",
+    proposalId,
+  });
+}
+
+export async function rejectProposal(proposalId: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "reject_proposal",
+    proposalId,
+  });
+}
+
+export async function approveRequest(requestIdTarget: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "approve_request",
+    requestIdTarget,
+  });
+}
+
+export async function rejectRequest(requestIdTarget: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "reject_request",
+    requestIdTarget,
+  });
+}
+
+export async function confirmSignerUnlock(intentId: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "confirm_signer_unlock",
+    intentId,
+  });
+}
+
+export async function rejectSignerUnlock(intentId: string): Promise<unknown> {
+  return sendUiMessage({
+    kind: "reject_signer_unlock",
+    intentId,
+  });
+}
+
+export async function sendInternalTransaction(
+  to: string,
+  value: string,
+  chainId: number,
+): Promise<unknown> {
+  return sendUiMessage({
     kind: "send_internal_transaction",
-    surface: "popup",
-    requestId: "ui_send_" + Date.now(),
     to,
     value,
-    chainId
+    chainId,
   });
 }
-

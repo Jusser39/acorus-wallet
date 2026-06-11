@@ -1,27 +1,27 @@
 import React, { useState } from "react";
-import { Link2, ShieldCheck, X, Check, Globe } from "lucide-react";
-import type { DappSessionProposal } from "../../shared/protocol";
+import { Link2, X, Check, Globe } from "lucide-react";
+import type { DappSessionProposal } from "@acorus/shared";
+import { approveProposal, rejectProposal } from "../api";
 
-export function ConnectionApproval({ 
-  proposal, 
-  onComplete 
-}: { 
-  proposal: DappSessionProposal; 
-  onComplete: () => void 
+export function ConnectionApproval({
+  proposal,
+  onComplete,
+}: {
+  proposal: DappSessionProposal;
+  onComplete: () => void;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleApprove = async () => {
     setIsSubmitting(true);
+    setError(null);
+
     try {
-      await chrome.runtime.sendMessage({
-        kind: "resolve_proposal",
-        proposalId: proposal.id,
-        decision: "approve"
-      });
+      await approveProposal(proposal.id);
       onComplete();
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : "Unable to approve connection.");
     } finally {
       setIsSubmitting(false);
     }
@@ -29,15 +29,13 @@ export function ConnectionApproval({
 
   const handleReject = async () => {
     setIsSubmitting(true);
+    setError(null);
+
     try {
-      await chrome.runtime.sendMessage({
-        kind: "resolve_proposal",
-        proposalId: proposal.id,
-        decision: "reject"
-      });
+      await rejectProposal(proposal.id);
       onComplete();
     } catch (e) {
-      console.error(e);
+      setError(e instanceof Error ? e.message : "Unable to reject connection.");
     } finally {
       setIsSubmitting(false);
     }
@@ -58,11 +56,21 @@ export function ConnectionApproval({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        ) : null}
+
         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex gap-3 text-slate-700 dark:text-slate-300">
           <Globe className="w-5 h-5 text-blue-500 shrink-0" />
           <div>
-            <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">{proposal.origin.title || proposal.origin.origin}</p>
-            <p className="text-xs leading-relaxed opacity-80">This site is requesting access to view your account address and balance.</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
+              {proposal.origin.title || proposal.origin.origin}
+            </p>
+            <p className="text-xs leading-relaxed opacity-80">
+              This site is requesting access to view your selected account address and active network.
+            </p>
           </div>
         </div>
 
@@ -71,38 +79,35 @@ export function ConnectionApproval({
             Permissions Requested
           </div>
           <div className="p-4 flex flex-col gap-2">
-            {proposal.requestedPermissions.map((perm) => (
+            {(proposal.requestedPermissions.length > 0
+              ? proposal.requestedPermissions
+              : ["view_accounts" as const]
+            ).map((perm) => (
               <div key={perm} className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                 <Check className="w-4 h-4 text-emerald-500" />
                 {perm.replace(/_/g, " ")}
               </div>
             ))}
-            {proposal.requestedPermissions.length === 0 && (
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                <Check className="w-4 h-4 text-emerald-500" />
-                View account address
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 bg-white dark:bg-slate-950 transition-colors duration-300">
-        <button 
+        <button
           onClick={handleReject}
           disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />
           Cancel
         </button>
-        <button 
+        <button
           onClick={handleApprove}
           disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-bold text-white transition-all shadow-lg bg-blue-600 hover:bg-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 shadow-blue-500/20"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-bold text-white transition-all shadow-lg bg-blue-600 hover:bg-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 shadow-blue-500/20 disabled:opacity-50"
         >
           {isSubmitting ? (
-             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
           ) : (
             <Check className="w-5 h-5" />
           )}

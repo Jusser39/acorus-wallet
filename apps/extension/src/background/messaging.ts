@@ -56,7 +56,7 @@ export function validateRuntimeMessage(
   }
 
   if (rawMessage.surface === "content") {
-    const claimedOrigin = typeof rawMessage.origin === "string" ? rawMessage.origin : null;
+    const claimedOrigin = sanitizeMessageSenderOrigin(typeof rawMessage.origin === "string" ? rawMessage.origin : null);
     const senderOrigin = sanitizeMessageSenderOrigin(sender.url ?? sender.origin ?? null);
 
     if (!claimedOrigin || !senderOrigin) {

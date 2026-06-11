@@ -119,12 +119,7 @@ export async function getExtensionVaultStatus(): Promise<ExtensionVaultStatus> {
         unlockedSession = sessionResult.unlockedSession;
       }
     }
-    if (!unlockedSession) {
-      const localResult = await chrome.storage.local.get("unlockedSession");
-      if (localResult.unlockedSession) {
-        unlockedSession = localResult.unlockedSession;
-      }
-    }
+    // Removed local unlockedSession check for security
   }
 
   return {
@@ -166,9 +161,7 @@ export async function unlockExtensionWallet(input: {
     if (chrome.storage?.session) {
       await chrome.storage.session.set({ unlockedSession });
     }
-    // FIX: Persist session locally to avoid requiring password repeatedly during session closures.
-    // Production extensions often use idle timeouts instead of closing the popup.
-    await chrome.storage.local.set({ unlockedSession });
+    // Local session persistence removed for security
   }
 
   clearSensitiveMemoryBestEffort(plaintext);
@@ -411,12 +404,7 @@ async function requireUnlockedSession(): Promise<NonNullable<typeof unlockedSess
         unlockedSession = sessionResult.unlockedSession;
       }
     }
-    if (!unlockedSession) {
-      const localResult = await chrome.storage.local.get("unlockedSession");
-      if (localResult.unlockedSession) {
-        unlockedSession = localResult.unlockedSession;
-      }
-    }
+    // Removed local unlockedSession check for security
   }
 
   if (!unlockedSession) {

@@ -8,3 +8,4 @@ export * from "./multichain";
 export * from "./practice";
 export * from "./tokens";
 export * from "./types";
+export * from "./trusted-origins";
