@@ -48,7 +48,7 @@ test.describe('Acorus Wallet Extension', () => {
     const page = await context.newPage();
     
     // Step 1: Open extension popup
-    await page.goto(`chrome-extension://${extensionId}/static/popup.html`);
+    await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await page.waitForLoadState('networkidle');
 
     // Onboarding: Create Wallet
@@ -72,7 +72,7 @@ test.describe('Acorus Wallet Extension', () => {
     // Step 3: Switch back to extension and approve connection
     await page.bringToFront();
     // We need to wait for the popup content to change or re-open the popup
-    await page.goto(`chrome-extension://${extensionId}/static/popup.html`);
+    await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await expect(page.locator('text=Signature Request')).toBeVisible();
     await page.click('button:has-text("Sign")');
 
@@ -85,7 +85,7 @@ test.describe('Acorus Wallet Extension', () => {
 
     // Step 5: Switch back to extension and approve transaction
     await page.bringToFront();
-    await page.goto(`chrome-extension://${extensionId}/static/popup.html`);
+    await page.goto(`chrome-extension://${extensionId}/popup.html`);
     await expect(page.locator('text=Transaction Request')).toBeVisible();
     await expect(page.locator('text=Native Value')).toBeVisible(); // Check our new UI decoding
     
