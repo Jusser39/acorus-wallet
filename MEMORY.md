@@ -12,3 +12,5 @@ This file serves as a persistent memory block for the agents working on the Acor
 ## Known Caveats
 - Some top-tier DApps (like Uniswap) block iframes (`X-Frame-Options: DENY`), so the web DApp directory must open them natively in a new tab instead of the internal browser view.
 - Always remember to deploy manually or via `DeployAndMemoryAgent` after `git push`.
+
+- [12 Jun] Completed all 11 MV3 extension patches, resolving critical bugs in state mapping, origins, and timeout issues. Re-bundled the extension to 'extension.zip' and copied it to the 'public/' directory of the web app so it can be served dynamically. Pushed to Github and initiated a VPS deployment. Confirmed TON dApp links are present and functional. The Apple Pay and Credit card purchase methods are already integrated and enabled in both Web and Extension.
