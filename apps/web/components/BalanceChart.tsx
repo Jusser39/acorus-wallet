@@ -54,7 +54,7 @@ export function BalanceChart() {
               fontWeight: 600,
             }}
             itemStyle={{ color: "#ec4899" }}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, "Balance"]}
+            formatter={(value: any) => [`$${Number(value).toFixed(2)}`, "Balance"]}
             labelStyle={{ color: "#6b7280", fontWeight: 500, marginBottom: "4px" }}
           />
           <Area

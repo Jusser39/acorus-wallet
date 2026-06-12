@@ -9,14 +9,14 @@ client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 try:
-    client.connect(host, username=user, password=password, timeout=10)
+    client.connect(host, username=user, password=password, port=22, timeout=30)
     
     # We will try to find the acorus-wallet directory and deploy
     # The user's code might be in /root/acorus-wallet, or /var/www, etc.
     cmd = """
     cd /root/acorus-wallet-latest || cd /var/www/acorus-wallet || cd /var/www/acorus-wallet-latest || cd /root/acorus-wallet || exit 1
-    git reset --hard
-    git pull
+    git fetch origin main
+    git reset --hard origin/main
     pnpm install
     pnpm build
     pm2 restart all
