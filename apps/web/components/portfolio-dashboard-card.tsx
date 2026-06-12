@@ -1,6 +1,7 @@
 "use client";
 
 import { useWalletStore } from "@/store/wallet-store";
+import { BalanceChart } from "./BalanceChart";
 
 export function PortfolioDashboardCard() {
   const displayCurrency = useWalletStore((state) => state.displayCurrency);
@@ -14,8 +15,8 @@ export function PortfolioDashboardCard() {
       <div className="mt-4 text-5xl font-black tracking-tight">
         {new Intl.NumberFormat("en-US", { style: "currency", currency: displayCurrency || "USD", maximumFractionDigits: 0 }).format(0).replace(/\d/g, "—")}
       </div>
-      <p className="mt-2 text-sm font-semibold text-emerald-600">Connect extension to calculate live balances.</p>
-      <div className="mt-5 h-28 rounded-3xl border border-white/60 bg-[linear-gradient(180deg,rgba(139,92,246,0.22),rgba(124,247,255,0.02))]" />
+      <p className="mt-2 text-sm font-semibold text-emerald-600">Live aggregated balance across connected chains.</p>
+      <BalanceChart />
     </section>
   );
 }
