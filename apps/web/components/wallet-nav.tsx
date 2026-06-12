@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { usePathname } from "next/navigation";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { GlobalMarketSearch } from "@/components/global-market-search";
 import { WalletAccountMenu } from "@/components/wallet-account-menu";
 import { useTranslation } from "@/hooks/use-translation";
@@ -37,6 +38,22 @@ export function WalletNav() {
   const isUnlocked = Boolean(unlockedVault);
 
   const [extensionDetected, setExtensionDetected] = useState(false);
+  const { scrollY } = useScroll();
+  const navBackground = useTransform(
+    scrollY,
+    [0, 50],
+    ["rgba(251, 247, 255, 0)", "rgba(255, 255, 255, 0.72)"]
+  );
+  const navBorder = useTransform(
+    scrollY,
+    [0, 50],
+    ["rgba(255, 255, 255, 0)", "rgba(217, 70, 239, 0.15)"]
+  );
+  const navBlur = useTransform(
+    scrollY,
+    [0, 50],
+    ["blur(0px)", "blur(24px)"]
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.ethereum?.isAcorus) {
@@ -74,7 +91,16 @@ export function WalletNav() {
   }
 
   return (
-    <header className="magic-topbar relative z-40">
+    <motion.header 
+      className="magic-topbar sticky top-0 z-50 transition-all duration-300"
+      style={{ 
+        background: navBackground, 
+        borderBottomWidth: "1px",
+        borderBottomColor: navBorder,
+        backdropFilter: navBlur,
+        WebkitBackdropFilter: navBlur
+      }}
+    >
       <div className="magic-container flex flex-col gap-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <a
@@ -172,6 +198,6 @@ export function WalletNav() {
           </div>
         ) : null}
       </div>
-    </header>
+    </motion.header>
   );
 }
