@@ -137,6 +137,7 @@ export function PopupApp() {
           onComplete={() => {
             setPendingProposal(null);
             fetchState();
+            window.close();
           }} 
         />
       </div>
@@ -151,6 +152,7 @@ export function PopupApp() {
           onComplete={() => {
             setPendingSignerUnlock(null);
             fetchState();
+            window.close();
           }}
         />
       </div>
@@ -165,6 +167,7 @@ export function PopupApp() {
           onComplete={() => {
             setPendingRequest(null);
             fetchState();
+            window.close();
           }} 
         />
       </div>
