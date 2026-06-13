@@ -115,6 +115,72 @@ const MOCK_PREDICTIONS: Market[] = [
     noOdds: 10,
     image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Anthropic_logo.svg/1024px-Anthropic_logo.svg.png",
     endDate: "Dec 31, 2025"
+  },
+  {
+    id: 9,
+    title: "Will US Inflation fall below 2% in 2025?",
+    category: "Economy",
+    volume: "$18.4M",
+    traders: "9.2k",
+    yesOdds: 25,
+    noOdds: 75,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Seal_of_the_United_States_Federal_Reserve_System.svg/1024px-Seal_of_the_United_States_Federal_Reserve_System.svg.png",
+    endDate: "Dec 31, 2025"
+  },
+  {
+    id: 10,
+    title: "Will Gold reach $3,000 per ounce?",
+    category: "Economy",
+    volume: "$11.1M",
+    traders: "4.8k",
+    yesOdds: 60,
+    noOdds: 40,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Gold_bullion_bars.jpg/800px-Gold_bullion_bars.jpg",
+    endDate: "Dec 31, 2025"
+  },
+  {
+    id: 11,
+    title: "Will GTA VI be released in Q3 2025?",
+    category: "Entertainment",
+    volume: "$54.2M",
+    traders: "45.1k",
+    yesOdds: 85,
+    noOdds: 15,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Rockstar_Games_Logo.svg/1024px-Rockstar_Games_Logo.svg.png",
+    endDate: "Sep 30, 2025"
+  },
+  {
+    id: 12,
+    title: "Who will win the Oscar for Best Picture 2025?",
+    category: "Entertainment",
+    volume: "$8.7M",
+    traders: "3.5k",
+    yesOdds: 45,
+    noOdds: 55,
+    image: "https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Academy_Award_trophy.jpg/640px-Academy_Award_trophy.jpg",
+    endDate: "Mar 10, 2025"
+  },
+  {
+    id: 13,
+    title: "Will SpaceX land humans on Mars by 2029?",
+    category: "Science",
+    volume: "$4.5M",
+    traders: "2.1k",
+    yesOdds: 20,
+    noOdds: 80,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/SpaceX-Logo-Xonly.svg/1024px-SpaceX-Logo-Xonly.svg.png",
+    endDate: "Dec 31, 2029"
+  },
+  {
+    id: 14,
+    title: "Will a room-temperature superconductor be proven?",
+    category: "Science",
+    volume: "$1.2M",
+    traders: "800",
+    yesOdds: 10,
+    noOdds: 90,
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Meissner_effect_p1390048.jpg/800px-Meissner_effect_p1390048.jpg",
+    endDate: "Dec 31, 2026"
   }
 ];
 
@@ -134,7 +200,7 @@ export default function PredictionsPage() {
     }
   }, []);
   
-  const categories = ["All", "My Bets", "Crypto", "Politics", "AI", "Sports"];
+  const categories = ["All", "My Bets", "Crypto", "Politics", "AI", "Sports", "Economy", "Entertainment", "Science"];
   const filteredMarkets = activeCategory === "All" ? MOCK_PREDICTIONS : MOCK_PREDICTIONS.filter(m => m.category === activeCategory);
 
   const openBetModal = (market: Market, choice: "YES" | "NO") => {
