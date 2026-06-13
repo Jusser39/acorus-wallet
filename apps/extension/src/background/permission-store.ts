@@ -325,7 +325,12 @@ export async function ensureOriginConnectionProposal(
   family?: ChainFamily | null,
 ): Promise<DappBridgeSessionView> {
   const current = await getDappShellState();
-  const walletState = resolveBridgeWalletState(await getWalletSyncState(), family);
+  const vaultStatus = await getExtensionVaultStatus();
+  const walletState = resolveBridgeWalletState({
+    activeProfileId: vaultStatus.activeProfileId,
+    profiles: vaultStatus.profiles,
+    lastSyncedAt: new Date().toISOString(),
+  }, family);
   const ensured = ensureDappConnectionProposal(current, {
     origin,
     providerMode: walletState.providerMode,

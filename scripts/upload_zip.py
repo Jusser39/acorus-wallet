@@ -5,7 +5,7 @@ host = '85.239.59.199'
 user = 'root'
 password = 'yhNc+9-BE@FKAo'
 local_file = 'apps/web/public/downloads/acorus-wallet-extension.zip'
-remote_tmp_file = '/root/acorus-wallet-extension-v2.zip'
+remote_tmp_file = '/root/acorus-wallet-extension-v3.zip'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -21,7 +21,7 @@ try:
     
     print("Creating downloads directory and copying zip into running container...")
     # acorus-web is the container name based on our docker ps
-    cmd = f"docker exec acorus-web mkdir -p /app/apps/web/public/downloads && docker cp {remote_tmp_file} acorus-web:/app/apps/web/public/downloads/acorus-wallet-extension-v2.zip"
+    cmd = f"docker exec acorus-web mkdir -p /app/apps/web/public/downloads && docker cp {remote_tmp_file} acorus-web:/app/apps/web/public/downloads/acorus-wallet-extension-v3.zip"
     stdin, stdout, stderr = client.exec_command(cmd)
     exit_status = stdout.channel.recv_exit_status()
     print(stdout.read().decode())
