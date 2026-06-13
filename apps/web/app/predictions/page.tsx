@@ -145,7 +145,7 @@ export default function PredictionsPage() {
   };
 
   const handleConfirmBet = async () => {
-    if (!betAmount || Number(betAmount) <= 0 || !selectedMarket) return;
+    if (!betAmount || Number(betAmount) <= 0 || !selectedMarket || !betChoice) return;
     
     setIsBetting(true);
     requestAcorusProviderDiscovery();
