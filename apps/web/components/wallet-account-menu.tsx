@@ -181,9 +181,12 @@ export function WalletAccountMenu() {
         }
         setActiveProfileId(id);
         setOpen(false);
+      } else {
+        useWalletStore.getState().setError("Connection approved, but no EVM accounts were returned by the extension. Please check your extension EVM profiles.");
       }
     } catch (e) {
       console.error("Failed to connect extension", e);
+      useWalletStore.getState().setError(e instanceof Error ? e.message : "Failed to connect to extension");
     }
   }
 
