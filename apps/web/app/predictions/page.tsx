@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlassCard } from "@/components/glass-card";
 import { TrendingUp, Users, Activity, BarChart3, AlertCircle, X, ShieldCheck, Info } from "lucide-react";
 import { requestAcorusExtension, requestAcorusProviderDiscovery } from "@/lib/extension-bridge";
+
+type Bet = {
+  id: string;
+  marketId: number;
+  marketTitle: string;
+  choice: "YES" | "NO";
+  amount: number;
+  odds: number;
+  placedAt: string;
+};
 
 type Market = {
   id: number;
@@ -115,8 +125,16 @@ export default function PredictionsPage() {
   const [betChoice, setBetChoice] = useState<"YES" | "NO" | null>(null);
   const [betAmount, setBetAmount] = useState("");
   const [isBetting, setIsBetting] = useState(false);
+  const [myBets, setMyBets] = useState<Bet[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("acorus_my_bets");
+    if (stored) {
+      try { setMyBets(JSON.parse(stored)); } catch (e) {}
+    }
+  }, []);
   
-  const categories = ["All", "Crypto", "Politics", "AI", "Sports"];
+  const categories = ["All", "My Bets", "Crypto", "Politics", "AI", "Sports"];
   const filteredMarkets = activeCategory === "All" ? MOCK_PREDICTIONS : MOCK_PREDICTIONS.filter(m => m.category === activeCategory);
 
   const openBetModal = (market: Market, choice: "YES" | "NO") => {
@@ -146,6 +164,19 @@ export default function PredictionsPage() {
         value: "0x0",
         data: "0x",
       }]);
+
+      const newBet: Bet = {
+        id: Math.random().toString(36).substring(7),
+        marketId: selectedMarket.id,
+        marketTitle: selectedMarket.title,
+        choice: betChoice,
+        amount: Number(betAmount),
+        odds: betChoice === "YES" ? selectedMarket.yesOdds : selectedMarket.noOdds,
+        placedAt: new Date().toLocaleDateString()
+      };
+      const updatedBets = [newBet, ...myBets];
+      setMyBets(updatedBets);
+      localStorage.setItem("acorus_my_bets", JSON.stringify(updatedBets));
 
       alert(`Successfully placed $${betAmount} on ${betChoice} for "${selectedMarket.title}"`);
       setBetModalOpen(false);
@@ -209,57 +240,95 @@ export default function PredictionsPage() {
 
         {/* Markets Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {filteredMarkets.map((market) => (
-            <GlassCard key={market.id} glow className="p-6 flex flex-col group transition-transform duration-300">
-              <div className="flex items-start gap-4 mb-4">
-                <img src={market.image} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-white" />
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors cursor-pointer">
-                      {market.title}
-                    </h3>
+          {activeCategory === "My Bets" ? (
+            myBets.length === 0 ? (
+              <div className="col-span-1 md:col-span-2 text-center py-20 bg-white/40 rounded-3xl border border-white/50 backdrop-blur-md">
+                <BarChart3 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-slate-700 mb-2">No Active Bets</h3>
+                <p className="text-slate-500 font-medium">You haven't placed any predictions yet.</p>
+              </div>
+            ) : (
+              myBets.map((bet) => (
+                <GlassCard key={bet.id} glow className="p-6 flex flex-col transition-transform duration-300">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold mb-2 ${bet.choice === "YES" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {bet.choice} at {bet.odds}¢
+                      </span>
+                      <h3 className="text-lg font-bold text-slate-900 leading-snug">
+                        {bet.marketTitle}
+                      </h3>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-slate-500">
-                    <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md text-slate-600">
-                      <TrendingUp className="w-4 h-4" /> {market.volume}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="w-4 h-4" /> {market.traders} Traders
-                    </span>
+                  <div className="mt-auto bg-slate-50 rounded-xl p-4 flex items-center justify-between border border-slate-100">
+                    <div>
+                      <span className="block text-xs font-semibold text-slate-400 mb-1">Bet Amount</span>
+                      <span className="text-lg font-black text-slate-800">${bet.amount.toFixed(2)}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-xs font-semibold text-slate-400 mb-1">Potential Return</span>
+                      <span className="text-lg font-black text-emerald-600">${(bet.amount * 100 / bet.odds).toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-xs font-semibold text-slate-400">
+                    Placed on {bet.placedAt}
+                  </div>
+                </GlassCard>
+              ))
+            )
+          ) : (
+            filteredMarkets.map((market) => (
+              <GlassCard key={market.id} glow className="p-6 flex flex-col group transition-transform duration-300">
+                <div className="flex items-start gap-4 mb-4">
+                  <img src={market.image} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm bg-white" />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-xl font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors cursor-pointer">
+                        {market.title}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-slate-500">
+                      <span className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md text-slate-600">
+                        <TrendingUp className="w-4 h-4" /> {market.volume}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4" /> {market.traders} Traders
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Progress Bar */}
-              <div className="flex h-3 rounded-full overflow-hidden w-full mb-4 bg-slate-100 cursor-pointer">
-                <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${market.yesOdds}%` }}></div>
-                <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${market.noOdds}%` }}></div>
-              </div>
+                {/* Progress Bar */}
+                <div className="flex h-3 rounded-full overflow-hidden w-full mb-4 bg-slate-100 cursor-pointer">
+                  <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${market.yesOdds}%` }}></div>
+                  <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${market.noOdds}%` }}></div>
+                </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-4 mt-auto">
-                <button 
-                  className="flex-1 py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
-                  onClick={(e) => { e.stopPropagation(); openBetModal(market, "YES"); }}
-                >
-                  <span className="group-hover/btn:scale-105 transition-transform">Buy Yes</span>
-                  <span className="text-lg">{market.yesOdds}¢</span>
-                </button>
-                <button 
-                  className="flex-1 py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
-                  onClick={(e) => { e.stopPropagation(); openBetModal(market, "NO"); }}
-                >
-                  <span className="group-hover/btn:scale-105 transition-transform">Buy No</span>
-                  <span className="text-lg">{market.noOdds}¢</span>
-                </button>
-              </div>
-              
-              <div className="mt-4 flex items-center justify-between text-xs font-semibold text-slate-400 border-t border-slate-100 pt-3">
-                <span className="flex items-center gap-1"><Activity className="w-3.5 h-3.5" /> Live</span>
-                <span className="flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Closes {market.endDate}</span>
-              </div>
-            </GlassCard>
-          ))}
+                {/* Actions */}
+                <div className="flex items-center gap-4 mt-auto">
+                  <button 
+                    className="flex-1 py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
+                    onClick={(e) => { e.stopPropagation(); openBetModal(market, "YES"); }}
+                  >
+                    <span className="group-hover/btn:scale-105 transition-transform">Buy Yes</span>
+                    <span className="text-lg">{market.yesOdds}¢</span>
+                  </button>
+                  <button 
+                    className="flex-1 py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-bold transition-colors flex justify-between items-center group/btn"
+                    onClick={(e) => { e.stopPropagation(); openBetModal(market, "NO"); }}
+                  >
+                    <span className="group-hover/btn:scale-105 transition-transform">Buy No</span>
+                    <span className="text-lg">{market.noOdds}¢</span>
+                  </button>
+                </div>
+                
+                <div className="mt-4 flex items-center justify-between text-xs font-semibold text-slate-400 border-t border-slate-100 pt-3">
+                  <span className="flex items-center gap-1"><Activity className="w-3.5 h-3.5" /> Live</span>
+                  <span className="flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Closes {market.endDate}</span>
+                </div>
+              </GlassCard>
+            ))
+          )}
         </div>
 
       </section>
