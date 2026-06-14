@@ -123,15 +123,28 @@ export class RangoSwapService {
       if (!response.ok || payload.error) {
         // Fallback: Simulate a Rango quote/swap response if we are blocked by Cloudflare or API rate limited
         console.warn("Rango API failed or blocked, simulating response...");
-        const fromSymbol = query.from.split(".")[1]?.toUpperCase() || "ETH";
-        const toSymbol = query.to.split(".")[1]?.toUpperCase() || "SOL";
-        const fromUsd = await getMockTokenPriceUsd(fromSymbol);
-        const toUsd = await getMockTokenPriceUsd(toSymbol);
+        const parseRangoId = (id: string) => {
+          const parts = id.split(".");
+          const chain = parts[0]?.toUpperCase() || "ETH";
+          const [symbol, address] = (parts[1] || "").split("-");
+          return { chain, symbol: symbol?.toUpperCase() || "ETH", address };
+        };
+        const mapChainToId = (chain: string) => {
+          if (chain === "ETH") return 1; if (chain === "BSC") return 56;
+          if (chain === "POLYGON") return 137; if (chain === "ARBITRUM") return 42161;
+          if (chain === "BASE") return 8453; if (chain === "SOL") return 101;
+          return undefined;
+        };
+        const fromAsset = parseRangoId(query.from);
+        const toAsset = parseRangoId(query.to);
+
+        const fromUsd = await getMockTokenPriceUsd(fromAsset.symbol, fromAsset.address || query.fromAddress, mapChainToId(fromAsset.chain));
+        const toUsd = await getMockTokenPriceUsd(toAsset.symbol, toAsset.address || query.toAddress, mapChainToId(toAsset.chain));
         const rate = fromUsd / toUsd;
           
         const amount = Number(query.amount) || 1;
         const simulatedOutput = (amount * rate) * 0.98; // simulate a 2% fee/slippage drop
-        const toDecimals = toSymbol === "SOL" || toSymbol === "WSOL" ? 9 : toSymbol === "BTC" || toSymbol === "WBTC" ? 8 : toSymbol === "USDC" || toSymbol === "USDT" ? 6 : 18;
+        const toDecimals = toAsset.symbol === "SOL" || toAsset.symbol === "WSOL" ? 9 : toAsset.symbol === "BTC" || toAsset.symbol === "WBTC" ? 8 : toAsset.symbol === "USDC" || toAsset.symbol === "USDT" ? 6 : 18;
         const rawOutput = (BigInt(Math.floor(simulatedOutput * 1e6)) * (10n ** BigInt(toDecimals))) / 1000000n;
         return {
           requestId: "simulated_rango_" + Date.now(),
