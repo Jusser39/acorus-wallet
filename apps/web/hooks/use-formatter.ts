@@ -48,7 +48,9 @@ export function useFormatter() {
       return new Intl.NumberFormat(preferredLanguage || "en-US", {
         style: "currency",
         currency: currencyCode,
-        maximumFractionDigits: convertedValue < 0.01 ? 6 : 2,
+        ...(Math.abs(convertedValue) > 0 && Math.abs(convertedValue) < 0.01
+          ? { maximumSignificantDigits: 4 }
+          : { maximumFractionDigits: 2 }),
       }).format(convertedValue);
     };
   }, [displayCurrency, preferredLanguage, rates]);
