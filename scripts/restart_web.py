@@ -2,7 +2,5 @@ import paramiko
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect('85.239.59.199', username='root', password='yhNc+9-BE@FKAo', timeout=10)
-sftp = client.open_sftp()
-sftp.put('apps/web/public/downloads/acorus-wallet-extension.zip', '/root/acorus-wallet-extension-v4.zip')
-sftp.close()
+client.exec_command("docker restart acorus-web")
 client.close()

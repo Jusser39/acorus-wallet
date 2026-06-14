@@ -1113,15 +1113,18 @@ async function handleProviderMethod(
 
     if (session && hasDappPermission(session, "view_accounts")) {
       const bridge = await touchOriginSession(origin);
-      return {
-        requestId,
-        ok: true,
-        result: filterAccountsForFamily(
-          bridge.accounts,
-          requestedFamily,
-          vaultStatus.profiles,
-        ),
-      };
+      const filteredAccounts = filterAccountsForFamily(
+        bridge.accounts,
+        requestedFamily,
+        vaultStatus.profiles,
+      );
+      if (filteredAccounts.length > 0) {
+        return {
+          requestId,
+          ok: true,
+          result: filteredAccounts,
+        };
+      }
     }
 
     const bridge = await ensureOriginConnectionProposal(origin, requestedFamily);

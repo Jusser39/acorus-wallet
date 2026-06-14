@@ -1303,7 +1303,7 @@ export function SwapComposer(props: {
               <div className="flex justify-between gap-3"><span>You pay</span><strong>{shortenFormattedEvmTokenAmount(quote.sellAmountRaw, quote.sellToken.decimals)} {quote.sellToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>You receive</span><strong>{shortenFormattedEvmTokenAmount(quote.buyAmountRaw, quote.buyToken.decimals)} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Min received</span><strong>{quote.minBuyAmountRaw ? shortenFormattedEvmTokenAmount(quote.minBuyAmountRaw, quote.buyToken.decimals) : "n/a"} {quote.buyToken.symbol}</strong></div>
-              <div className="flex justify-between gap-3"><span>Курс (Rate)</span><strong>1 {quote.sellToken.symbol} = {((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals)).toFixed(4)} {quote.buyToken.symbol}</strong></div>
+              <div className="flex justify-between gap-3"><span>Курс (Rate)</span><strong>1 {quote.sellToken.symbol} = {Intl.NumberFormat("en-US", { maximumSignificantDigits: 5 }).format((Number(quote.buyAmountRaw) / 10 ** quote.buyToken.decimals) / (Number(quote.sellAmountRaw) / 10 ** quote.sellToken.decimals))} {quote.buyToken.symbol}</strong></div>
               <div className="flex justify-between gap-3"><span>Route</span><strong>{quote.routeSummary.label}</strong></div>
               <div className="flex justify-between gap-3"><span>Allowance</span><strong>{quote.approvalRequired ? "required" : "not needed"}</strong></div>
               <div className="flex justify-between gap-3"><span>Quote timer</span><strong>{quoteCountdown}s</strong></div>

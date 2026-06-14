@@ -29,9 +29,9 @@ export function Dashboard({ onNavigate }: { onNavigate?: (screen: string) => voi
     getExtensionHome().then((data: any) => {
       if (!isMounted) return;
       clearTimeout(timeout);
-      if (data?.ok) {
-        setHome(data.result);
-        localStorage.setItem("acorus_dashboard_cache", JSON.stringify(data.result));
+      if (data && typeof data === "object" && data.networks) {
+        setHome(data);
+        localStorage.setItem("acorus_dashboard_cache", JSON.stringify(data));
       } else if (!home) {
         setErr(data || { error: "Background script failed to respond or returned undefined." });
       }

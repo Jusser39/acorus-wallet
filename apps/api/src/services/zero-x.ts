@@ -425,7 +425,9 @@ function mapZeroXQuoteResponse(
   const issues = normalizeIssues(payload.issues);
   const transaction = normalizeRecord(payload.transaction);
   const allowanceTarget = findAllowanceTarget(payload, issues);
-  const approvalRequired = Boolean(issues?.allowance?.spender ?? allowanceTarget);
+  const approvalRequired = query.sellToken.address === "native"
+    ? false
+    : Boolean(issues?.allowance?.spender ?? allowanceTarget);
   const requestId = readString(payload.zid) ?? `0x_${Date.now()}`;
   const createdAt = new Date().toISOString();
 
