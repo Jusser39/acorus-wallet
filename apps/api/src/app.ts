@@ -1,5 +1,7 @@
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
+import fastifyJwt from "@fastify/jwt";
+import fastifyRateLimit from "@fastify/rate-limit";
 import { createDefaultSwapQuoteEngine, refreshTxStatus } from "@acorus/wallet-core";
 import type { AppStore } from "./store";
 import { MemoryStore } from "./memory-store";
@@ -373,6 +375,94 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const rangoSwapService = createRangoSwapService(env);
   const lifiSwapService = createLiFiSwapService(env);
 
+  app.register(fastifyRateLimit, {
+    max: 100,
+    timeWindow: "1 minute",
+  });
+
+  app.register(fastifyJwt, {
+    secret: env.JWT_SECRET || "acorus_wallet_super_secret_fallback_key",
+  });
+
+  app.decorate("authenticate", async (request: any, reply: any) => {
+    try {
+      await request.jwtVerify();
+    } catch (err) {
+      reply.send(err);
+    }
+  });
+
+  app.addHook("preHandler", async (request: any, reply: any) => {
+    const publicRoutes = [
+      "/health",
+      "/api/users/anonymous",
+      "/api/chains",
+      "/api/tokens",
+      "/api/prices",
+      "/api/market/prices",
+      "/api/market/chart",
+      "/api/market/fiat-rates",
+      "/api/market/search",
+      "/api/swap/quote",
+      "/api/swap/status",
+      "/api/swap/evm/status",
+      "/api/swap/evm/0x/price",
+      "/api/swap/evm/0x/quote",
+      "/api/swap/solana/jupiter/quote",
+      "/api/swap/solana/jupiter/swap",
+      "/api/swap/rango/quote",
+      "/api/swap/rango/swap",
+    ];
+
+    if (!publicRoutes.includes(request.routeOptions.url)) {
+      try {
+        await request.jwtVerify();
+
+        // Enforce user isolation: prevent modifying or accessing other users' data
+        const requestedUserId = (request.query as any)?.userId || (request.body as any)?.userId;
+        if (requestedUserId && requestedUserId !== request.user.id) {
+          reply.code(403).send({ error: "forbidden_user_mismatch" });
+          return;
+        }
+      } catch (err) {
+        reply.send(err);
+      }
+    }
+  });
+
+  app.post("/api/simulate", async (request, reply) => {
+    try {
+      const { chainId, from, to, data, value } = request.body as any;
+      if (!chainId || !from || !to) {
+        return reply.code(400).send({ error: "missing_fields" });
+      }
+
+      // Basic eth_call simulation using a public RPC
+      // In production, you would use Alchemy or Tenderly for precise asset changes.
+      const rpcUrl = chainId === 137 ? "https://polygon-rpc.com" : "https://eth.llamarpc.com";
+      const payload = {
+        jsonrpc: "2.0",
+        method: "eth_call",
+        params: [{ from, to, data: data || "0x", value: value || "0x0" }, "latest"],
+        id: 1
+      };
+
+      const res = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+
+      if (result.error) {
+        return { success: false, error: result.error.message };
+      }
+      return { success: true, returnData: result.result };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  });
+
   app.register(cors, { origin: resolveCorsOrigin(env) });
   app.addHook("onClose", async () => {
     await store.close();
@@ -402,7 +492,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   app.post("/api/users/anonymous", async (request) => {
     assertNoSensitiveFields(request.body);
-    return store.createAnonymousUser();
+    const user = await store.createAnonymousUser();
+    const token = (app as any).jwt.sign({ id: user.id });
+    return { ...user, token };
   });
 
   app.get("/api/chains", async () => ({

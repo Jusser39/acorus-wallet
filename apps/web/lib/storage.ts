@@ -135,6 +135,14 @@ export function saveUserId(userId: string): void {
   getStorage()?.setItem(USER_ID_KEY, userId);
 }
 
+export function loadApiToken(): string | null {
+  return getStorage()?.getItem("acorus.api_token") ?? null;
+}
+
+export function saveApiToken(token: string): void {
+  getStorage()?.setItem("acorus.api_token", token);
+}
+
 export function loadActiveWalletProfileId(): string | null {
   return getStorage()?.getItem(ACTIVE_PROFILE_ID_KEY) ?? null;
 }

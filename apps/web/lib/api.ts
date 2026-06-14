@@ -22,6 +22,7 @@ import type {
   WalletProfileType,
 } from "@acorus/shared";
 
+import { loadApiToken } from "./storage";
 export interface WalletProfileCreateInput {
   userId: string;
   name: string;
@@ -135,6 +136,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
+  const apiToken = loadApiToken();
+  if (apiToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${apiToken}`);
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), API_FETCH_TIMEOUT_MS);
 
@@ -169,7 +175,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function createAnonymousUser(): Promise<{ id: string }> {
+export async function createAnonymousUser(): Promise<{ id: string; token: string }> {
   return apiFetch("/api/users/anonymous", { method: "POST" });
 }
 

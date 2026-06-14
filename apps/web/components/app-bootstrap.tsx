@@ -81,18 +81,25 @@ export function AppBootstrap() {
       const storedSettings = loadLocalSettings();
       const storedActiveProfileId = loadActiveProfileId();
       const existingUserId = loadUserId();
-      const userId: string =
-        existingUserId
-          ?? (await createAnonymousUser()
-            .then((response) => response.id)
-            .catch(() => `local_${crypto.randomUUID()}`));
+      let userId: string = existingUserId ?? "";
+
+      if (!existingUserId) {
+        try {
+          const user = await createAnonymousUser();
+          userId = user.id;
+          saveUserId(userId);
+          if (user.token) {
+            const { saveApiToken } = await import("@/lib/storage");
+            saveApiToken(user.token);
+          }
+        } catch (error) {
+          userId = `local_${crypto.randomUUID()}`;
+          saveUserId(userId);
+        }
+      }
 
       if (!active) {
         return;
-      }
-
-      if (!existingUserId) {
-        saveUserId(userId);
       }
 
       setUserId(userId);

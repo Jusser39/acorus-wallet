@@ -68,6 +68,13 @@ export default function WalletPage() {
     setVaultMeta(loadVaultMeta());
   }, [encryptedVault]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshNonce((prev) => prev + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   const vaultUiState = useMemo(
     () =>
       resolveWalletVaultUiState({
